@@ -1,0 +1,22 @@
+{
+  "id": "./",
+  "name": "SOCCERBOTSTUDIO Singapore Admin",
+  "short_name": "Studio Admin",
+  "description": "Studio schedules, booking administration and revenue.",
+  "lang": "en-SG",
+  "start_url": "./index.html#schedule",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f6f9",
+  "theme_color": "#0d1b30",
+  "icons": [
+    {"src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "./icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ],
+  "shortcuts": [
+    {"name": "Schedule", "url": "./index.html#schedule"},
+    {"name": "Bookings", "url": "./index.html#bookings"},
+    {"name": "Revenue", "url": "./index.html#revenue"}
+  ]
+}
