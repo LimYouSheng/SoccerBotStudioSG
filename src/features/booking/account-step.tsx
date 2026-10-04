@@ -45,23 +45,25 @@ export function AccountStep() {
     return (
       <>
         <h1 className="page-title">Start your booking</h1>
-        <div className="mt-8 grid gap-5 sm:grid-cols-2">
-          <section className="surface flex flex-col items-start gap-4">
-            <Icon name="users" className="h-9 w-9 text-action" />
+        <div className="access-options mt-7">
+          <section className="surface access-option">
+            <span className="auth-mark">
+              <Icon name="users" />
+            </span>
             <h2 className="text-2xl">Book as a guest</h2>
-            <p className="mb-auto text-muted">
-              Book without creating an account.
-            </p>
+            <p className="text-muted">Book without creating an account.</p>
             <button className="button mt-3 w-full" onClick={() => proceed()}>
               Continue as guest <Icon name="arrow" />
             </button>
           </section>
-          <section className="surface flex flex-col items-start gap-4">
-            <Icon name="mail" className="h-9 w-9 text-action" />
+          <section className="surface access-option">
+            <span className="auth-mark">
+              <Icon name="mail" />
+            </span>
             <h2 className="text-2xl">
               {identity ? "Welcome back" : "Continue with email"}
             </h2>
-            <p className="mb-auto break-all text-muted">
+            <p className="break-words text-muted">
               {identity
                 ? identity.email
                 : "Verify your email to prefill your name and phone number."}

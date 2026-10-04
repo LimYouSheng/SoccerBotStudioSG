@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { guardedStep, type BookingStep } from "@/domain/booking";
 import { Icon } from "@/components/icon";
-import { logo } from "@/content/media";
+import { BrandLoading } from "@/components/brand-loading";
 import { useBooking } from "./provider";
 import { AccountStep } from "./account-step";
 import { SessionStep } from "./session-step";
@@ -38,27 +38,15 @@ export function BookingPage({ step }: { step: BookingStep }) {
   useEffect(() => {
     if (ready && actual !== step) router.replace(`/book/${actual}/`);
   }, [actual, step, ready, router]);
-  if (!ready || actual !== step)
-    return (
-      <div className="grid min-h-[65vh] place-content-center" role="status">
-        <img
-          src={logo}
-          width={565}
-          height={190}
-          className="w-60"
-          alt="Loading booking"
-        />
-      </div>
-    );
-  const Screen = screens[step],
-    wide = ["time", "details", "payment"].includes(step);
+  if (!ready || actual !== step) return <BrandLoading overlay={false} />;
+  const Screen = screens[step];
   return (
     <div
-      className={`mx-auto min-h-[65vh] px-5 py-7 sm:px-10 sm:py-10 ${wide ? "max-w-[1240px]" : "max-w-[960px]"}`}
+      className={`booking-shell min-h-[65vh] ${["account", "session", "review"].includes(step) ? "session-shell" : ""}`}
     >
       {current >= 0 && (
         <>
-          <div className="mb-7 flex items-center justify-between">
+          <div className="booking-top">
             <Link
               className="back"
               href={current > 0 ? `/book/${progress[current - 1][0]}/` : "/"}
@@ -68,19 +56,16 @@ export function BookingPage({ step }: { step: BookingStep }) {
             </Link>
             <span className="eyebrow text-muted">Booking</span>
           </div>
-          <ol
-            className="mb-9 grid grid-cols-5 gap-1 border-b border-line pb-6"
-            aria-label="Booking progress"
-          >
+          <ol className="progress" aria-label="Booking progress">
             {progress.map(([id, label], index) => (
               <li
                 key={id}
                 aria-current={index === current ? "step" : undefined}
-                className={`flex flex-col items-center gap-2 text-[11px] sm:flex-row sm:text-sm ${index === current ? "font-bold text-action" : "text-muted"}`}
+                className={
+                  index === current ? "active" : index < current ? "done" : ""
+                }
               >
-                <span
-                  className={`grid h-7 w-7 place-items-center rounded-full border text-xs ${index <= current ? "border-action bg-action text-white" : "border-line"}`}
-                >
+                <span className="step-number">
                   {index < current ? (
                     <Icon name="check" className="h-4 w-4" />
                   ) : (
@@ -102,11 +87,11 @@ export function BookingPage({ step }: { step: BookingStep }) {
       <div
         className={
           ["time", "details"].includes(step)
-            ? "grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_330px]"
-            : ""
+            ? "booking-layout"
+            : "booking-layout session-layout"
         }
       >
-        <section className="min-w-0">
+        <section className="booking-main min-w-0">
           <Screen />
         </section>
         {["time", "details"].includes(step) && (

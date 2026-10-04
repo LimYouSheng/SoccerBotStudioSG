@@ -1,12 +1,17 @@
 import { expect, test, type Page } from "@playwright/test";
-import { addDays, dateLabel, todaySG } from "../src/domain/dates";
+import { addDays, dateLabel } from "../src/domain/dates";
+const DEMO_TODAY = "2026-10-05";
+test.beforeEach(async ({ page }) => {
+  // Payment deadlines need Date.now() to advance alongside the timers.
+  await page.clock.install({ time: new Date("2026-10-05T08:00:00+08:00") });
+});
 async function chooseSlots(page: Page, multiple = false) {
   await page.goto("/book/account/");
   await page.getByRole("button", { name: "Continue as guest" }).click();
   await page.getByRole("link", { name: "See available times" }).click();
   await page
     .getByRole("button", {
-      name: dateLabel(addDays(todaySG(), 1)),
+      name: dateLabel(addDays(DEMO_TODAY, 1)),
       exact: true,
     })
     .click();
@@ -14,7 +19,7 @@ async function chooseSlots(page: Page, multiple = false) {
   if (multiple) {
     await page
       .getByRole("button", {
-        name: dateLabel(addDays(todaySG(), 2)),
+        name: dateLabel(addDays(DEMO_TODAY, 2)),
         exact: true,
       })
       .click();
@@ -150,7 +155,28 @@ test("50-minute cadence, required instructor, guardian validation and final-slot
   await chooseSlots(page);
   await page.getByRole("button", { name: "Review booking" }).click();
   await expect(page.locator("#name")).toBeFocused();
-  await details(page);
+  await page.getByLabel("Full name", { exact: false }).fill("Demo Customer");
+  await page
+    .getByLabel("Email address", { exact: false })
+    .fill("customer@example.com");
+  await page
+    .getByLabel("Mobile number", { exact: false })
+    .fill("+65 8123 4567");
+  await page.getByLabel("Participant age group").selectOption("child");
+  await page.getByLabel("Football experience").selectOption("new");
+  await expect(
+    page.getByRole("heading", { name: "Parent / guardian contact" }),
+  ).toBeVisible();
+  await page.getByLabel("Parent / guardian name").fill("Guardian Person");
+  await page.getByLabel("Parent / guardian mobile").fill("+65 9123 4567");
+  await page.getByRole("button", { name: "Review booking" }).click();
+  await expect(page).toHaveURL(/\/book\/details\/$/);
+  await expect(page.getByLabel("Emergency contact relationship")).toBeFocused();
+  await page
+    .getByLabel("Emergency contact relationship")
+    .selectOption("guardian");
+  await page.getByRole("button", { name: "Review booking" }).click();
+  await page.getByRole("checkbox", { name: /I’ve reviewed/ }).check();
   await page.getByText("Preview controls", { exact: true }).click();
   await page
     .getByRole("checkbox", { name: "Final slot taken before payment" })
@@ -189,6 +215,7 @@ test("enquiry and assistant work without external submission", async ({
   await page.goto("/enquiry/");
   await page.getByLabel("Full name").fill("Demo Customer");
   await page.getByLabel("Email address").fill("demo@example.com");
+  await expect(page.getByLabel("Full name")).toHaveValue("Demo Customer");
   await page.getByLabel("Contact number").fill("+65 8123 4567");
   await page.getByLabel("Enquiry type").selectOption("Corporate booking");
   await page
@@ -205,4 +232,65 @@ test("enquiry and assistant work without external submission", async ({
   await expect(
     page.getByRole("button", { name: "Open studio assistant" }),
   ).toBeFocused();
+});
+
+test("hero entry restores the arena scene and click-to-skip without a logo overlay", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("link", { name: /^Book now —/ }).click();
+  const transition = page.getByRole("button", {
+    name: "Skip arena transition",
+  });
+  await expect(transition).toBeVisible();
+  await expect(transition.locator("[data-scene-part]")).toHaveCount(47);
+  await expect(page.locator(".page-loading")).toHaveCount(0);
+  await transition.click();
+  await expect(page).toHaveURL(/\/book\/account\/$/);
+  await expect(transition).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Start your booking" }),
+  ).toBeVisible();
+});
+test("home navigation offer and studio booking buttons display the branded loader", async ({
+  page,
+}) => {
+  for (const [route, selector] of [
+    ["/", ".nav-book"],
+    ["/", ".offer-home"],
+    ["/studio/", ".studio-bottom .button"],
+  ]) {
+    await page.goto(route);
+    await expect(
+      page.getByRole("main").getByRole("heading", { level: 1 }),
+    ).toHaveCount(1);
+    const link = page.locator(selector);
+    await expect(link).toHaveCount(1);
+    await expect(link).toHaveAttribute("href", "/book/account/");
+    await link.click();
+    await expect(page.locator(".page-loading .loading-logo")).toBeVisible();
+    await expect(page).toHaveURL(/\/book\/account\/$/);
+    await expect(page.locator(".page-loading")).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { name: "Start your booking" }),
+    ).toBeVisible();
+  }
+});
+test("hero completes naturally and reduced motion bypasses both transition surfaces", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await page.getByRole("link", { name: /^Book now —/ }).click();
+  await expect(
+    page.getByRole("button", { name: "Skip arena transition" }),
+  ).toBeVisible();
+  await expect(page).toHaveURL(/\/book\/account\/$/);
+  await expect(
+    page.getByRole("button", { name: "Skip arena transition" }),
+  ).toHaveCount(0);
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/");
+  await page.getByRole("link", { name: /^Book now —/ }).click();
+  await expect(page).toHaveURL(/\/book\/account\/$/);
+  await expect(page.locator(".pitch-entry, .page-loading")).toHaveCount(0);
 });

@@ -47,6 +47,13 @@ const paths: Record<string, ReactNode> = {
     </>
   ),
   download: <path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5" />,
+  instagram: (
+    <>
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17" cy="7" r=".6" />
+    </>
+  ),
   phone: (
     <>
       <rect x="6" y="2" width="12" height="20" rx="2" />

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { checkSource } from "./check-source.mjs";
+import { checkCaseCollisions, checkSource } from "./check-source.mjs";
 function fixture(files, check) {
   const root = mkdtempSync(path.join(tmpdir(), "soccerbot-check-"));
   try {
@@ -98,3 +98,98 @@ test("rejects a missing declared application test", () =>
         errors.some((error) => error.includes("Test inventory differs")),
       ),
   ));
+
+// Test the production path checker with logical names. A case-insensitive disk
+// cannot materialize both spellings, so on-disk fixtures erase the collision.
+for (const [label, names, expected] of [
+  [
+    "case-colliding files",
+    ["src/app/page.tsx", "Notes.md", "notes.md"],
+    "Case collision: notes.md / Notes.md",
+  ],
+  [
+    "case-colliding parent directories",
+    ["src/app/page.tsx", "Docs/a.md", "docs/b.md"],
+    "Case collision: docs / Docs",
+  ],
+  [
+    "Unicode-normalized colliding files",
+    ["docs/caf\u00e9.md", "docs/cafe\u0301.md"],
+    "Case collision: docs/cafe\u0301.md / docs/caf\u00e9.md",
+  ],
+])
+  test(`rejects ${label}`, () => {
+    assert.deepEqual(checkCaseCollisions(names), [expected]);
+  });
+
+test("accepts distinct paths and repeated shared parents", () => {
+  assert.deepEqual(
+    checkCaseCollisions(["docs/a.md", "docs/b.md", "docs/nested/c.md", "docs"]),
+    [],
+  );
+});
+
+for (const [label, files, expected] of [
+  [
+    "invalid TypeScript",
+    { "src/app/page.tsx": "export const broken = ;" },
+    "Syntax error",
+  ],
+  [
+    "missing inventory",
+    { "package.json": "{}", "src/app/page.tsx": "export default 1;" },
+    "Missing required test inventory",
+  ],
+  [
+    "todo test",
+    {
+      "src/app/page.tsx": "export default 1;",
+      "src/domain/rule.test.ts": 'test.todo("later");',
+    },
+    "Disabled/exclusive test",
+  ],
+  [
+    "chained exclusive test",
+    {
+      "src/app/page.tsx": "export default 1;",
+      "src/domain/rule.test.ts": 'test.describe.only("group",()=>{});',
+    },
+    "Disabled/exclusive test",
+  ],
+  [
+    "inline lint suppression",
+    { "src/app/page.tsx": "// eslint-disable-next-line\nexport default 1;" },
+    "Forbidden suppression",
+  ],
+  [
+    "duplicate CSS property",
+    {
+      "src/app/layout.tsx": "import './globals.css'; export default 1;",
+      "src/app/globals.css": "body { color: red; color: blue; }",
+    },
+    "Duplicate CSS property",
+  ],
+  [
+    "invalid CSS value",
+    {
+      "src/app/layout.tsx": "import './globals.css'; export default 1;",
+      "src/app/globals.css": "body { display: banana; }",
+    },
+    "Invalid CSS value",
+  ],
+  [
+    "missing CSS mount owner",
+    {
+      "src/app/page.tsx": "export default 1;",
+      "src/app/globals.css": "body { color: red; }",
+    },
+    "Canonical CSS",
+  ],
+])
+  test(`rejects ${label}`, () =>
+    fixture(files, (errors) =>
+      assert.ok(
+        errors.some((error) => error.includes(expected)),
+        errors.join("\n"),
+      ),
+    ));

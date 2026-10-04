@@ -11,8 +11,10 @@ export function SessionStep() {
       <p className="mt-3 text-muted">
         Set the number of players for your booking.
       </p>
-      <section className="surface mt-7 flex items-start gap-4">
-        <Icon name="ball" className="h-12 w-12 text-action" />
+      <section className="surface session-product mt-7">
+        <span className="session-product-icon">
+          <Icon name="ball" />
+        </span>
         <div>
           <h2 className="text-2xl">{SERVICE_NAME}</h2>
           <p className="mt-2 text-muted">
@@ -21,10 +23,10 @@ export function SessionStep() {
           </p>
         </div>
       </section>
-      <div className="my-8 grid gap-6 sm:grid-cols-2">
+      <div className="config-row mb-7">
         <div>
           <span className="field-label">Session length</span>
-          <div className="flex min-h-14 items-center gap-3 rounded-lg border border-line bg-white px-4">
+          <div className="flex min-h-[46px] items-center gap-3 rounded-lg border border-line bg-white px-4 text-sm">
             <Icon name="clock" />
             <strong>40 minutes per session</strong>
           </div>
@@ -33,9 +35,9 @@ export function SessionStep() {
           <span className="field-label" id="players-label">
             Players · maximum 4
           </span>
-          <div className="flex items-center justify-between rounded-lg border border-line bg-white">
+          <div className="counter">
             <button
-              className="grid h-14 w-14 place-items-center disabled:text-slate-300"
+              className="disabled:text-slate-300"
               aria-label="Remove one player"
               disabled={draft.players <= 1}
               onClick={() => update({ players: draft.players - 1 })}
@@ -50,7 +52,7 @@ export function SessionStep() {
               {draft.players} {draft.players === 1 ? "player" : "players"}
             </output>
             <button
-              className="grid h-14 w-14 place-items-center disabled:text-slate-300"
+              className="disabled:text-slate-300"
               aria-label="Add one player"
               disabled={draft.players >= MAX_PLAYERS}
               onClick={() => update({ players: draft.players + 1 })}
@@ -60,7 +62,7 @@ export function SessionStep() {
           </div>
         </div>
       </div>
-      <section className="surface">
+      <section className="surface session-inclusions">
         <h2 className="mb-6 text-2xl">Included with your session</h2>
         <ul className="space-y-6">
           {[

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { BookingProvider } from "@/features/booking/provider";
+import { BookingNavigation } from "@/components/booking-navigation";
 import { SiteShell } from "@/components/site-shell";
 import "./globals.css";
 export const metadata: Metadata = {
@@ -22,7 +23,9 @@ export default function RootLayout({
     <html lang="en-SG">
       <body>
         <BookingProvider>
-          <SiteShell>{children}</SiteShell>
+          <BookingNavigation>
+            <SiteShell>{children}</SiteShell>
+          </BookingNavigation>
         </BookingProvider>
       </body>
     </html>

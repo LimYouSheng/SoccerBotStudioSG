@@ -1,5 +1,69 @@
 [
   {
+    "file": "src/components/arena-geometry.test.ts",
+    "title": "arena geometry stays finite through desktop phone and tablet entry frames"
+  },
+  {
+    "file": "src/components/arena-geometry.test.ts",
+    "title": "entry uses circular target arcs and preserves all three target colours"
+  },
+  {
+    "file": "src/components/booking-navigation.test.tsx",
+    "title": "a changed motion preference finishes an active entry and removes its scroll lock"
+  },
+  {
+    "file": "src/components/booking-navigation.test.tsx",
+    "title": "browser back cancels the pending hero and restores scrolling"
+  },
+  {
+    "file": "src/components/booking-navigation.test.tsx",
+    "title": "clicking the hero transition skips directly to booking without a delayed duplicate navigation"
+  },
+  {
+    "file": "src/components/booking-navigation.test.tsx",
+    "title": "keeps the hero scene separate from the logo and commits booking only once"
+  },
+  {
+    "file": "src/components/booking-navigation.test.tsx",
+    "title": "modifier clicks retain native link navigation without a loading overlay"
+  },
+  {
+    "file": "src/components/booking-navigation.test.tsx",
+    "title": "reduced motion enters booking immediately without either animation"
+  },
+  {
+    "file": "src/components/booking-navigation.test.tsx",
+    "title": "shows the logo on booking entry even when the destination is already prefetched"
+  },
+  {
+    "file": "src/components/booking-navigation.test.tsx",
+    "title": "unmount cleans the animation timers and preserves the previous scroll style"
+  },
+  {
+    "file": "src/features/assistant/assistant.test.tsx",
+    "title": "Escape closes the assistant after a touch reply leaves focus outside the panel"
+  },
+  {
+    "file": "src/features/assistant/assistant.test.tsx",
+    "title": "the assistant stops handling Escape when closed or unmounted"
+  },
+  {
+    "file": "src/features/booking/account-step.test.tsx",
+    "title": "email form rejects a wrong verification code and accepts the corrected code"
+  },
+  {
+    "file": "src/features/booking/account-step.test.tsx",
+    "title": "guest selection creates a guest contact and continues to the session"
+  },
+  {
+    "file": "src/features/booking/details-step.test.tsx",
+    "title": "child details use guardian labels and require a guardian relationship before review"
+  },
+  {
+    "file": "src/features/enquiry/enquiry-page.test.tsx",
+    "title": "enquiry waits for hydration then preserves entered details through submission"
+  },
+  {
     "file": "src/services/booking.test.ts",
     "title": "blocks duplicate payment and checkout while pending"
   },
@@ -86,6 +150,18 @@
   {
     "file": "tests/customer.spec.ts",
     "title": "guest multi-date booking survives reload and exports calendar and PDF"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "hero completes naturally and reduced motion bypasses both transition surfaces"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "hero entry restores the arena scene and click-to-skip without a logo overlay"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "home navigation offer and studio booking buttons display the branded loader"
   },
   {
     "file": "tests/customer.spec.ts",

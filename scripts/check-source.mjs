@@ -2,6 +2,8 @@ import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import ts from "typescript";
+import { checkCss } from "./check-css.mjs";
+import { inspectTests, orderedInventory } from "./test-inventory.mjs";
 const ignored = new Set([
   "node_modules",
   ".next",
@@ -12,13 +14,38 @@ const ignored = new Set([
   "coverage",
   "__pycache__",
 ]);
+export function checkCaseCollisions(names) {
+  const errors = [];
+  const portablePaths = new Map();
+  for (const name of names) {
+    const parts = name.split("/");
+    for (let depth = 1; depth <= parts.length; depth++) {
+      const relative = parts.slice(0, depth).join("/");
+      const portable = relative.normalize("NFC").toLowerCase();
+      if (
+        portablePaths.has(portable) &&
+        portablePaths.get(portable) !== relative
+      )
+        errors.push(
+          `Case collision: ${relative} / ${portablePaths.get(portable)}`,
+        );
+      portablePaths.set(portable, relative);
+    }
+  }
+  return [...new Set(errors)];
+}
 export function checkSource(root) {
   const errors = [],
-    files = [];
+    files = [],
+    names = [];
   function walk(dir) {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       if (ignored.has(entry.name)) continue;
       const full = path.join(dir, entry.name);
+      const relative = path.relative(root, full).replaceAll(path.sep, "/");
+      names.push(relative);
+      if (/[\x00-\x1f<>:"|?*]/.test(entry.name) || /[. ]$/.test(entry.name))
+        errors.push(`Nonportable path: ${relative}`);
       if (entry.isSymbolicLink()) {
         errors.push(`Symlink: ${path.relative(root, full)}`);
         continue;
@@ -28,9 +55,10 @@ export function checkSource(root) {
     }
   }
   walk(root);
+  errors.push(...checkCaseCollisions(names));
   const testInventory = [];
   const runtime = files.filter(
-    (file) => /src[/\\].*\.(ts|tsx)$/.test(file) && !file.endsWith(".test.ts"),
+    (file) => /src[/\\].*\.(ts|tsx)$/.test(file) && !/\.test\.tsx?$/.test(file),
   );
   const graph = new Map(runtime.map((file) => [file, []]));
   for (const file of files) {
@@ -41,37 +69,31 @@ export function checkSource(root) {
         errors.push(`Conflict marker: ${name}`);
       if (/ +$/m.test(text)) errors.push(`Trailing whitespace: ${name}`);
       if (/\.(test|spec)\./.test(name)) {
-        const testSource = ts.createSourceFile(
+        const checked = inspectTests(name, text);
+        errors.push(...checked.errors);
+        testInventory.push(...checked.inventory);
+      }
+      if (/\.(tsx?|mjs)$/.test(name) && !name.endsWith(".d.ts")) {
+        const parsed = ts.createSourceFile(
           file,
           text,
           ts.ScriptTarget.Latest,
           true,
+          name.endsWith(".tsx")
+            ? ts.ScriptKind.TSX
+            : name.endsWith(".mjs")
+              ? ts.ScriptKind.JS
+              : ts.ScriptKind.TS,
         );
-        function inspectTest(node) {
-          if (
-            ts.isCallExpression(node) &&
-            ts.isPropertyAccessExpression(node.expression) &&
-            ["only", "skip", "fixme"].includes(node.expression.name.text) &&
-            ["it", "test", "describe"].includes(
-              node.expression.expression.getText(testSource),
-            )
-          )
-            errors.push(`Disabled/exclusive test: ${name}`);
-          if (
-            ts.isCallExpression(node) &&
-            ts.isIdentifier(node.expression) &&
-            ["it", "test"].includes(node.expression.text) &&
-            node.arguments[0] &&
-            ts.isStringLiteral(node.arguments[0]) &&
-            (name.endsWith(".test.ts") || name.endsWith(".spec.ts"))
-          )
-            testInventory.push({
-              file: name.replaceAll(path.sep, "/"),
-              title: node.arguments[0].text,
-            });
-          ts.forEachChild(node, inspectTest);
-        }
-        inspectTest(testSource);
+        for (const diagnostic of parsed.parseDiagnostics)
+          errors.push(
+            `Syntax error: ${name}: ${ts.flattenDiagnosticMessageText(diagnostic.messageText, " ")}`,
+          );
+        if (
+          /src[/\\]/.test(name) &&
+          /eslint-disable|@ts-(?:ignore|nocheck)/.test(text)
+        )
+          errors.push(`Forbidden suppression: ${name}`);
       }
     }
     if (
@@ -144,15 +166,16 @@ export function checkSource(root) {
   );
   if (inventoryFile) {
     const expected = JSON.parse(readFileSync(inventoryFile, "utf8"));
-    const order = (items) =>
-      JSON.stringify(
-        [...items].sort((a, b) =>
-          (a.file + a.title).localeCompare(b.file + b.title),
-        ),
-      );
-    if (order(expected) !== order(testInventory))
+    if (orderedInventory(expected) !== orderedInventory(testInventory))
       errors.push("Test inventory differs from the reviewed candidate");
-  }
+  } else if (files.some((file) => path.relative(root, file) === "package.json"))
+    errors.push("Missing required test inventory");
+  if (
+    new Set(testInventory.map((item) => item.file + "\0" + item.title)).size !==
+    testInventory.length
+  )
+    errors.push("Duplicate test identity");
+
   const visited = new Set(),
     visiting = new Set();
   function dfs(file) {
@@ -177,17 +200,26 @@ export function checkSource(root) {
       errors.push(`Unreachable runtime module: ${path.relative(root, file)}`);
   const css = files.find((file) => file.endsWith("/src/app/globals.css"));
   if (css) {
-    const text = readFileSync(css, "utf8");
-    const defined = new Set(
-      [...text.matchAll(/(--[\w-]+)\s*:/g)].map((m) => m[1]),
+    errors.push(
+      ...checkCss(
+        readFileSync(css, "utf8"),
+        runtime.map((file) => readFileSync(file, "utf8")).join("\n"),
+      ),
     );
-    for (const [, variable] of text.matchAll(/var\((--[\w-]+)\)/g))
-      if (!defined.has(variable))
-        errors.push(`Undefined CSS variable: ${variable}`);
+    const importers = runtime.filter((file) =>
+      /import\s+["'](?:\.\/globals\.css|@\/app\/globals\.css)["']/.test(
+        readFileSync(file, "utf8"),
+      ),
+    );
+    if (importers.length !== 1 || !importers[0].endsWith("/src/app/layout.tsx"))
+      errors.push("Canonical CSS must be imported once by the root layout");
   }
   return [...new Set(errors)];
 }
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   const errors = checkSource(process.cwd());
   if (errors.length) {
     console.error(errors.join("\n"));
