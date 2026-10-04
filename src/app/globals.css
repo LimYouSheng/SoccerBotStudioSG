@@ -1,0 +1,288 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: Roboto;
+  src: url("/assets/9d867fc3ef40.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: Roboto;
+  src: url("/assets/67aa966ebd60.woff2") format("woff2");
+  font-weight: 500 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: Roboto;
+  src: url("/assets/211ed024cbe7.woff2") format("woff2");
+  font-weight: 700 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: Roboto;
+  src: url("/assets/f2c3487396a2.woff2") format("woff2");
+  font-weight: 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+@theme {
+  --color-navy: #050a2f;
+  --color-ink: #101636;
+  --color-muted: #626b80;
+  --color-paper: #f5f7fa;
+  --color-line: #dce1e9;
+  --color-action: #293d59;
+  --color-cyan: #00b8d4;
+  --font-sans: Roboto, Arial, sans-serif;
+}
+@layer base {
+  body {
+    @apply m-0 bg-paper font-sans text-ink antialiased;
+  }
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+    touch-action: manipulation;
+  }
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:not(:disabled),
+  summary {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  :focus-visible {
+    outline: 3px solid #88d6e2;
+    outline-offset: 4px;
+  }
+  h1,
+  h2 {
+    font-weight: 900;
+    font-style: italic;
+    letter-spacing: -0.035em;
+    line-height: 1.08;
+  }
+  p {
+    line-height: 1.65;
+  }
+  input,
+  select,
+  textarea {
+    min-width: 0;
+  }
+  [hidden] {
+    display: none !important;
+  }
+}
+@utility button {
+  @apply inline-flex min-h-14 items-center justify-center gap-3 rounded-xl border border-[#526983] bg-action px-6 py-4 text-center font-bold text-white transition-colors hover:bg-[#344c6b] disabled:border-line disabled:bg-slate-200 disabled:text-slate-400;
+}
+@utility secondary {
+  @apply border-[#bdcad9] bg-white text-action hover:bg-slate-100;
+}
+@utility text-link {
+  @apply inline-flex min-h-10 items-center gap-2 py-2 text-sm font-semibold text-action underline-offset-4 hover:underline;
+}
+@utility surface {
+  @apply rounded-xl border border-line bg-white p-5 sm:p-7;
+}
+@utility field-control {
+  @apply min-h-12 w-full rounded-lg border border-[#bac4d2] bg-white px-3 py-3 text-base text-ink;
+}
+@utility page-title {
+  @apply text-4xl sm:text-5xl;
+}
+@utility eyebrow {
+  @apply text-xs font-bold uppercase tracking-[0.16em];
+}
+@utility back {
+  @apply inline-flex min-h-11 items-center gap-2 rounded-lg border border-line bg-slate-100 px-3 py-2 text-sm font-semibold text-action hover:bg-slate-200;
+}
+@utility field-label {
+  @apply mb-2 block text-sm font-semibold;
+}
+@utility alert {
+  @apply rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950;
+}
+@utility nav-link {
+  @apply inline-flex min-h-11 items-center justify-center rounded-tl-sm rounded-tr-xl rounded-br-sm rounded-bl-xl border border-[#465773] px-3 py-3 text-xs font-extrabold uppercase italic tracking-wide text-slate-200 transition-colors hover:bg-white/10 sm:px-5;
+}
+/* The arena is the sole bespoke CSS owner. Layout elsewhere uses Tailwind. */
+.arena {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 610px;
+  overflow: hidden;
+  isolation: isolate;
+  padding: 30px max(24px, calc((100vw - 1160px) / 2)) 32px;
+  background: #050a2f;
+  color: white;
+}
+.arena-photo {
+  position: absolute;
+  z-index: -2;
+  inset: 0;
+  width: min(1160px, 96%);
+  height: 100%;
+  margin: auto;
+  object-fit: cover;
+  object-position: 50% 40%;
+  mask-image: radial-gradient(
+    ellipse 65% 62% at 50% 51%,
+    #000 20%,
+    #000e 43%,
+    transparent 79%
+  );
+  transition:
+    transform 1.3s,
+    opacity 0.8s;
+  opacity: 0.9;
+}
+.arena::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -3;
+  background: radial-gradient(ellipse at 50% 45%, #132c58, #050a2f 75%);
+}
+.arena::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: radial-gradient(
+    ellipse 28% 32% at 50% 53%,
+    #050a2f88,
+    transparent
+  );
+}
+.arena-words {
+  display: grid;
+  text-align: center;
+  font-size: clamp(4.5rem, 7.3vw, 6rem);
+  font-weight: 900;
+  font-style: italic;
+  line-height: 0.9;
+  letter-spacing: -0.055em;
+  align-self: end;
+  margin-bottom: 24px;
+}
+.arena-idle,
+.arena-reveal {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  transition:
+    transform 0.85s,
+    opacity 0.45s,
+    clip-path 0.85s;
+}
+.arena-idle span:last-child {
+  color: transparent;
+  -webkit-text-stroke: 1.5px #d3eaf3;
+}
+.arena-reveal {
+  opacity: 0;
+  transform: translateY(48px);
+  clip-path: inset(100% -12% -10% -12%);
+}
+.arena-reveal span:last-child {
+  color: #22d0e9;
+}
+.arena:hover .arena-idle,
+.arena:focus-visible .arena-idle {
+  opacity: 0;
+  transform: translateY(-44px);
+}
+.arena:hover .arena-reveal,
+.arena:focus-visible .arena-reveal {
+  opacity: 1;
+  transform: none;
+  clip-path: inset(-8% -12% -10% -12%);
+}
+.arena:hover .arena-photo {
+  transform: scale(1.045);
+  opacity: 1;
+}
+.arena-orbit {
+  transform-origin: 500px 350px;
+  animation: orbit 24s linear infinite;
+}
+.arena-orbit.reverse {
+  animation-duration: 32s;
+  animation-direction: reverse;
+}
+.arena-orbit.inner {
+  animation-duration: 38s;
+  animation-delay: -19s;
+}
+@keyframes orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.arena-entry {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  background: #050a2f;
+  color: #7fe6ee;
+}
+.arena-entry svg {
+  width: min(95vw, 880px);
+  height: auto;
+  animation: pitch-entry 2.8s ease-in-out both;
+}
+@keyframes pitch-entry {
+  0% {
+    transform: perspective(600px) rotateX(65deg) scale(0.6);
+    opacity: 0.3;
+  }
+  45% {
+    transform: perspective(600px) rotateX(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(3);
+    opacity: 0;
+  }
+}
+@media (max-width: 1024px), (hover: none), (pointer: coarse) {
+  .arena {
+    min-height: 550px;
+  }
+  .arena-words {
+    align-self: center;
+    font-size: clamp(5rem, 12vw, 8rem);
+  }
+  .arena-idle {
+    visibility: hidden;
+  }
+  .arena-reveal {
+    opacity: 1;
+    transform: none;
+    clip-path: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

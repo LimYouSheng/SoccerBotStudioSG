@@ -1,0 +1,35 @@
+{
+  "date": "2026-10-04",
+  "scope": "documentation, architecture and source audit; requested package-name metadata only",
+  "project": "SoccerBotStudioSG",
+  "npm_name": "soccerbotstudiosg",
+  "baseline_fingerprint": "7cd09e815fd94f43b5161a17ea0e64f8822831488ed7b0669efe04f815676664",
+  "changed_originals": [
+    "AGENTS.md",
+    "README.md",
+    "docs/SOCCERBOT_JOURNEY.md",
+    "docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md",
+    "package-lock.json",
+    "package.json"
+  ],
+  "dependency_versions_scripts_unchanged": true,
+  "frontend_tests_tooling_config_unchanged": true,
+  "original_export_files_unchanged": 103,
+  "checks": {
+    "source_checker": "passed, exit 0",
+    "original_manifest_comparison": "passed",
+    "package_and_lock_name_only_comparison": "passed",
+    "local_document_links": "passed",
+    "architecture_png_visual_review": "passed"
+  },
+  "fresh_application_test_execution": false,
+  "browser_execution": false,
+  "browser_owner": "user",
+  "github": {
+    "repository": "LimYouSheng/SoccerBotStudioSG",
+    "visibility_observed": "public",
+    "write_access_observed": false,
+    "candidate_uploaded": false
+  },
+  "deployment_performed": false
+}

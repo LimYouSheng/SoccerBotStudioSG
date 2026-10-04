@@ -1,0 +1,98 @@
+[
+  {
+    "file": "src/services/booking.test.ts",
+    "title": "blocks duplicate payment and checkout while pending"
+  },
+  {
+    "file": "src/services/booking.test.ts",
+    "title": "confirms and reserves once even when the old check is repeated"
+  },
+  {
+    "file": "src/services/booking.test.ts",
+    "title": "does not admit duplicate, overlapping, stale or off-grid slots"
+  },
+  {
+    "file": "src/services/booking.test.ts",
+    "title": "does not reserve a displayed or reviewed slot"
+  },
+  {
+    "file": "src/services/booking.test.ts",
+    "title": "freezes the reviewed snapshot separately from later draft mutation"
+  },
+  {
+    "file": "src/services/booking.test.ts",
+    "title": "makes decline retryable and status polling resumable"
+  },
+  {
+    "file": "src/services/booking.test.ts",
+    "title": "never auto-confirms late payment or allows another pay attempt"
+  },
+  {
+    "file": "src/services/booking.test.ts",
+    "title": "prefills only approved name and phone after verification"
+  },
+  {
+    "file": "src/services/booking.test.ts",
+    "title": "rechecks final-slot conflicts before offering payment"
+  },
+  {
+    "file": "src/services/booking.test.ts",
+    "title": "records multiple dates and generates one calendar event per session in UTC"
+  },
+  {
+    "file": "src/services/booking.test.ts",
+    "title": "rejects missing policy acceptance and invalid player counts"
+  },
+  {
+    "file": "src/services/booking.test.ts",
+    "title": "rejects verified-email mismatch"
+  },
+  {
+    "file": "src/services/booking.test.ts",
+    "title": "rejects wrong, expired and replayed codes"
+  },
+  {
+    "file": "src/services/booking.test.ts",
+    "title": "requires a guardian for under-18s and a different emergency number for self"
+  },
+  {
+    "file": "src/services/booking.test.ts",
+    "title": "requires instructor selection after dates before details"
+  },
+  {
+    "file": "src/services/booking.test.ts",
+    "title": "reuses booking contact for a non-self participant"
+  },
+  {
+    "file": "src/services/booking.test.ts",
+    "title": "uses one shared studio with 40-minute sessions every 50 minutes"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "50-minute cadence, required instructor, guardian validation and final-slot conflict"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "declined and pending payments remain controlled through retry and refresh"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "email verification rejects an incorrect code and continues after correction"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "enquiry and assistant work without external submission"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "guest multi-date booking survives reload and exports calendar and PDF"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "late payment has a contact path without another payment"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "public routes remove staff access and fit the viewport"
+  }
+]
