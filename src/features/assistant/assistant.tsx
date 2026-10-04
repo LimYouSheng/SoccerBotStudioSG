@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/icon";
 import { services } from "@/services";
 import { useBooking } from "@/features/booking/provider";
@@ -19,9 +19,21 @@ export function Assistant() {
     input = useRef<HTMLInputElement>(null),
     log = useRef<HTMLDivElement>(null),
     launcher = useRef<HTMLButtonElement>(null);
+  const close = useCallback(() => {
+    setOpen(false);
+    launcher.current?.focus();
+  }, []);
   useEffect(() => {
-    if (open) input.current?.focus();
-  }, [open]);
+    if (!open) return;
+    input.current?.focus();
+    const onEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      event.preventDefault();
+      close();
+    };
+    document.addEventListener("keydown", onEscape);
+    return () => document.removeEventListener("keydown", onEscape);
+  }, [open, close]);
   useEffect(() => {
     if (log.current) log.current.scrollTop = log.current.scrollHeight;
   }, [messages]);
@@ -38,19 +50,12 @@ export function Assistant() {
     ]);
     setText("");
   }
-  function close() {
-    setOpen(false);
-    launcher.current?.focus();
-  }
   return (
     <div className="fixed right-4 bottom-4 z-40 sm:right-6 sm:bottom-6">
       {open && (
         <section
           className="mb-3 flex max-h-[min(620px,80dvh)] w-[calc(100vw-32px)] max-w-sm flex-col overflow-hidden rounded-2xl border border-line bg-white shadow-2xl"
           aria-labelledby="assistant-title"
-          onKeyDown={(e) => {
-            if (e.key === "Escape") close();
-          }}
         >
           <header className="flex items-center justify-between bg-navy px-5 py-4 text-white">
             <div>

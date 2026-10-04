@@ -1,127 +1,156 @@
 "use client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRef, type PointerEvent } from "react";
 import { studioMedia } from "@/content/media";
 import { LOCATION } from "@/domain/catalog";
 import { Icon } from "./icon";
+import { ArenaFacility } from "./arena-facility";
+import { entryPath, PITCH_STROKES } from "./arena-geometry";
+import { useBookingNavigation } from "./booking-navigation";
 export function Arena() {
-  const [entering, setEntering] = useState(false),
-    router = useRouter();
-  useEffect(() => {
-    if (!entering) return;
-    const timer = setTimeout(() => router.push("/book/account/"), 2800);
-    return () => clearTimeout(timer);
-  }, [entering, router]);
+  const { entering, enter } = useBookingNavigation(),
+    area = useRef<HTMLAnchorElement>(null);
+  function reset() {
+    for (const name of ["--look-x", "--look-y", "--light-x", "--light-y"])
+      area.current?.style.removeProperty(name);
+  }
+  function move(event: PointerEvent<HTMLAnchorElement>) {
+    if (
+      entering ||
+      event.pointerType === "touch" ||
+      window.matchMedia(
+        "(prefers-reduced-motion: reduce), (max-width:1024px), (hover:none), (pointer:coarse), (any-pointer:coarse)",
+      ).matches
+    )
+      return;
+    const node = event.currentTarget,
+      rect = node.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const x = Math.max(
+        0,
+        Math.min(1, (event.clientX - rect.left) / rect.width),
+      ),
+      y = Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height));
+    node.style.setProperty("--look-x", `${(x - 0.5) * 18}px`);
+    node.style.setProperty("--look-y", `${(y - 0.5) * 12}px`);
+    node.style.setProperty("--light-x", `${x * 100}%`);
+    node.style.setProperty("--light-y", `${y * 100}%`);
+  }
   return (
-    <section className="bg-navy text-white" aria-labelledby="arena-heading">
-      <p className="border-y border-[#26374f] py-4 text-center text-xs tracking-[.23em] text-[#b5ccd8] uppercase">
-        Performance · Experience · Production
-      </p>
+    <section className="booking-stage" aria-labelledby="arena-heading">
+      <p className="arena-signature">Performance · Experience · Production</p>
       <Link
-        className="arena"
+        ref={area}
+        className="arena-booking"
         href="/book/account/"
+        data-entering={entering ? "true" : undefined}
         aria-label="Book now — choose your SOCCERBOTSTUDIO Singapore session"
+        aria-describedby="arena-booking-cue"
+        onPointerMove={move}
+        onPointerLeave={reset}
         onClick={(event) => {
           if (
+            event.button !== 0 ||
             event.metaKey ||
             event.ctrlKey ||
             event.shiftKey ||
-            event.altKey ||
-            window.matchMedia("(prefers-reduced-motion: reduce)").matches
+            event.altKey
           )
             return;
           event.preventDefault();
-          setEntering(true);
+          enter("/book/account/", event.currentTarget);
+          reset();
         }}
       >
         <h1 id="arena-heading" className="sr-only">
           Your next session starts here.
         </h1>
-        <img
-          src={studioMedia[0].src}
-          width={2560}
-          height={1707}
-          alt=""
-          fetchPriority="high"
-          className="arena-photo"
-        />
-        <svg
-          className="pointer-events-none absolute inset-0 -z-1 h-full w-full opacity-50"
-          viewBox="0 0 1000 700"
-          fill="none"
-          stroke="#93dfeb"
-          aria-hidden="true"
-        >
-          <ellipse cx="500" cy="350" rx="360" ry="170" opacity=".12" />
-          <ellipse cx="500" cy="350" rx="160" ry="90" opacity=".15" />
-          {[0, 1, 2].map((index) => (
+        <div className="arena-atmosphere" aria-hidden="true" />
+        <div className="arena-photograph" aria-hidden="true">
+          <img
+            src={studioMedia[0].src}
+            width={2560}
+            height={1707}
+            alt=""
+            fetchPriority="high"
+            decoding="async"
+          />
+        </div>
+        <div className="arena-scene" aria-hidden="true">
+          <ArenaFacility />
+          <svg
+            className="arena-drawing"
+            viewBox="0 0 1000 700"
+            preserveAspectRatio="xMidYMid slice"
+            focusable="false"
+          >
             <g
-              key={index}
-              className={`arena-orbit ${index === 1 ? "reverse" : index === 2 ? "inner" : ""}`}
+              className="arena-pitch"
+              fill="none"
+              stroke="#79c4db"
+              strokeWidth="1"
             >
-              <circle
-                cx="500"
-                cy={80 + index * 50}
-                r={18 - index * 3}
-                fill="#091637"
-              />
-              <path d={`m500 ${70 + index * 50} 9 6-3 10h-12l-3-10Z`} />
+              <g transform="translate(377 171)">
+                <path
+                  d={PITCH_STROKES.map((line) => entryPath(line)).join("")}
+                />
+              </g>
             </g>
-          ))}
-        </svg>
-        <div className="flex items-start gap-3 text-[#bec9e2]">
-          <Icon name="location" />
-          <div className="text-xs leading-6">
-            <strong className="block font-medium">
-              {LOCATION.building} · {LOCATION.unit}
-            </strong>
-            <small>
-              {LOCATION.street} · {LOCATION.postal}
-            </small>
+            {[
+              [473, 55, 54, ""],
+              [482, 103, 36, "reverse"],
+              [478, 563, 44, "inner"],
+            ].map(([x, y, size, variant], index) => (
+              <g key={index} className={`arena-ball-orbit ${variant}`}>
+                <svg
+                  className="arena-ball"
+                  x={x}
+                  y={y}
+                  width={size}
+                  height={size}
+                  viewBox="0 0 24 24"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="m12 7 5 4-2 6H9l-2-6 5-4ZM12 2v5m10 3-5 1m1 9-3-3m-9 3 3-3M2 10l5 1" />
+                </svg>
+              </g>
+            ))}
+          </svg>
+        </div>
+        <div className="arena-topline" aria-hidden="true">
+          <span className="arena-location">
+            <Icon name="location" />
+            <span>
+              <strong>
+                {LOCATION.building} · {LOCATION.unit}
+              </strong>
+              <small>
+                {LOCATION.street} · {LOCATION.postal}
+              </small>
+            </span>
+          </span>
+        </div>
+        <div className="arena-center" aria-hidden="true">
+          <div className="arena-words">
+            <div className="arena-idle">
+              <span>Your</span>
+              <span>Move.</span>
+            </div>
+            <div className="arena-reveal">
+              <span>Book</span>
+              <span>now.</span>
+            </div>
           </div>
         </div>
-        <div className="arena-words" aria-hidden="true">
-          <div className="arena-idle">
-            <span>Your</span>
-            <span>Move.</span>
+        <div className="arena-bottomline">
+          <div className="arena-cue">
+            <strong id="arena-booking-cue">Book your next session</strong>
           </div>
-          <div className="arena-reveal">
-            <span>Book</span>
-            <span>now.</span>
-          </div>
-        </div>
-        <div className="flex items-center justify-between border-t border-[#8bb6da2b] pt-5">
-          <span className="text-sm">Book your next session</span>
-          <span className="grid h-13 w-13 place-items-center rounded-full border border-[#9bc4df70] bg-cyan/10">
+          <span className="arena-entry-arrow" aria-hidden="true">
             <Icon name="arrow" />
           </span>
         </div>
       </Link>
-      {entering && (
-        <button
-          className="arena-entry"
-          aria-label="Skip arena transition"
-          onClick={() => {
-            router.push("/book/account/");
-            setEntering(false);
-          }}
-        >
-          <svg
-            viewBox="0 0 900 600"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden="true"
-          >
-            <ellipse cx="450" cy="300" rx="370" ry="235" />
-            <ellipse cx="450" cy="300" rx="325" ry="200" />
-            <path d="M450 100v400M125 300h650" />
-            <circle cx="450" cy="300" r="85" />
-            <path d="m450 255 44 32-17 50h-54l-17-50Z" />
-          </svg>
-        </button>
-      )}
     </section>
   );
 }

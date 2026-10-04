@@ -7,6 +7,7 @@ import { logo } from "@/content/media";
 import { useBooking } from "@/features/booking/provider";
 import { Assistant } from "@/features/assistant/assistant";
 import { Dialog } from "./dialog";
+import { BookingLink } from "./booking-navigation";
 import { Icon } from "./icon";
 export function SiteShell({ children }: { children: ReactNode }) {
   const pathname = usePathname(),
@@ -31,14 +32,12 @@ export function SiteShell({ children }: { children: ReactNode }) {
       >
         Skip to content
       </a>
-      <header className="bg-navy text-white">
-        <nav
-          className="mx-auto flex min-h-[88px] max-w-[1240px] flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-10"
-          aria-label="Main navigation"
-        >
+      <header className="site-header">
+        <nav className="nav" aria-label="Main navigation">
           <Link
             href="/"
             onClick={home}
+            className="brand"
             aria-label="SOCCERBOTSTUDIO Singapore home"
           >
             <img
@@ -46,84 +45,102 @@ export function SiteShell({ children }: { children: ReactNode }) {
               alt="SOCCERBOTSTUDIO Singapore"
               width={565}
               height={190}
-              className="w-[190px] mix-blend-screen sm:w-[224px]"
+              className="official-logo"
             />
           </Link>
-          <div className="flex items-center gap-2">
+          <div className="nav-links" hidden={pathname.startsWith("/book/")}>
             <Link
               href="/studio/"
-              className="nav-link"
+              className="nav-studio"
               aria-current={pathname === "/studio/" ? "page" : undefined}
             >
               The studio
             </Link>
-            <Link href="/book/account/" className="nav-link bg-action">
-              Book now <Icon name="arrow" className="ml-2 h-4 w-4" />
-            </Link>
+            <BookingLink href="/book/account/" className="nav-book">
+              Book now
+            </BookingLink>
           </div>
         </nav>
       </header>
       <main id="main" tabIndex={-1}>
         {children}
       </main>
-      <footer className="border-t border-[#26374f] bg-navy text-slate-300">
-        <div className="mx-auto grid max-w-[1240px] gap-8 px-6 py-12 sm:grid-cols-[.8fr_1fr_1fr] sm:px-10">
-          <img
-            src={logo}
-            alt="SOCCERBOTSTUDIO Singapore"
-            width={565}
-            height={190}
-            className="w-56 mix-blend-screen"
-            loading="lazy"
-          />
-          <div className="flex gap-4">
-            <Icon name="location" />
-            <div>
-              <h2 className="mb-3 font-sans text-sm font-bold not-italic tracking-normal text-white">
-                Find Us
-              </h2>
-              <a
-                className="text-sm leading-6 hover:text-white"
-                href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ADDRESS)}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {LOCATION.street}
-                <br />
-                {LOCATION.unit} {LOCATION.building}
-                <br />
-                {LOCATION.postal}
-              </a>
-            </div>
+      <footer className="site-footer">
+        <div className="footer-contact-band">
+          <div className="footer-brand">
+            <img
+              src={logo}
+              alt="SOCCERBOTSTUDIO Singapore"
+              width={565}
+              height={190}
+              className="footer-logo"
+              loading="lazy"
+            />
           </div>
-          <div className="flex gap-4">
-            <Icon name="phone" />
-            <div>
-              <h2 className="mb-3 font-sans text-sm font-bold not-italic tracking-normal text-white">
-                Contact Us
-              </h2>
-              <a
-                className="block text-sm leading-7 hover:text-white"
-                href={`tel:${CONTACT.phone}`}
-              >
-                {CONTACT.phoneDisplay}
-              </a>
-              <a
-                className="block break-all text-sm leading-7 hover:text-white"
-                href={`mailto:${CONTACT.email}`}
-              >
-                {CONTACT.email}
-              </a>
+          <div className="footer-contact-grid">
+            <div className="footer-contact-row">
+              <span className="footer-contact-icon">
+                <Icon name="location" />
+              </span>
+              <span className="footer-contact-copy">
+                <span className="footer-contact-heading">
+                  <strong>Find Us</strong>
+                </span>
+                <a
+                  className="footer-contact-detail footer-detail-link"
+                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ADDRESS)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {LOCATION.street}
+                  <br />
+                  {LOCATION.unit}
+                  <span className="footer-address-building">
+                    {" "}
+                    {LOCATION.building}
+                  </span>{" "}
+                  · {LOCATION.postal}
+                </a>
+              </span>
+            </div>
+            <div className="footer-contact-row">
+              <span className="footer-contact-icon">
+                <Icon name="instagram" />
+              </span>
+              <span className="footer-contact-copy">
+                <span className="footer-contact-heading">
+                  <strong>Connect With Us</strong>
+                </span>
+                <a
+                  className="footer-contact-detail footer-detail-link"
+                  href={CONTACT.instagram}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  @soccerbotstudiosg
+                </a>
+              </span>
+            </div>
+            <div className="footer-contact-row footer-direct-contact">
+              <span className="footer-contact-icon">
+                <Icon name="mail" />
+              </span>
+              <span className="footer-contact-copy">
+                <span className="footer-contact-heading">
+                  <strong>Contact Us</strong>
+                </span>
+                <span className="footer-contact-detail footer-direct-links">
+                  <a href={`tel:${CONTACT.phone}`}>{CONTACT.phoneDisplay}</a>
+                  <a href={`mailto:${CONTACT.email}`}>{CONTACT.email}</a>
+                </span>
+              </span>
             </div>
           </div>
         </div>
-        <div className="mx-auto flex max-w-[1240px] flex-wrap justify-between gap-4 border-t border-white/10 px-6 py-6 text-xs sm:px-10">
+        <div className="footer-inner">
           <span>© 2026 SOCCERBOTSTUDIO Singapore. All rights reserved.</span>
-          <div className="flex gap-6">
+          <div className="footer-links">
             <Link href="/enquiry/">Get in touch</Link>
-            <a href={CONTACT.instagram} target="_blank" rel="noreferrer">
-              Instagram
-            </a>
             <button onClick={() => setDialog("disclaimer")}>Disclaimer</button>
           </div>
         </div>

@@ -4,6 +4,12 @@ import nextTs from "eslint-config-next/typescript";
 export default defineConfig([
   ...nextVitals,
   ...nextTs,
+  {
+    linterOptions: {
+      noInlineConfig: true,
+      reportUnusedDisableDirectives: "error",
+    },
+  },
   { rules: { "@next/next/no-img-element": "off" } }, // Original local assets; static export has no image optimisation server.
   {
     files: ["src/domain/**/*"],
@@ -37,5 +43,6 @@ export default defineConfig([
     "test-results/**",
     "playwright-report/**",
     "next-env.d.ts",
+    "coverage/**",
   ]),
 ]);

@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { Icon } from "@/components/icon";
 import { ENQUIRY_TYPES } from "@/domain/catalog";
 import { todaySG } from "@/domain/dates";
@@ -17,7 +17,16 @@ const blank: Enquiry = {
   time: "",
   message: "",
 };
+// The exported HTML must not accept input before React can retain changes.
+const subscribeToHydration = () => () => {};
+const hydratedSnapshot = () => true;
+const serverSnapshot = () => false;
 export function EnquiryPage() {
+  const ready = useSyncExternalStore(
+    subscribeToHydration,
+    hydratedSnapshot,
+    serverSnapshot,
+  );
   const [value, setValue] = useState(blank),
     [receipt, setReceipt] = useState(""),
     [error, setError] = useState(""),
@@ -88,9 +97,10 @@ export function EnquiryPage() {
           </p>
           <form
             className="surface mt-8 space-y-7"
+            aria-busy={!ready || busy}
             onSubmit={async (event) => {
               event.preventDefault();
-              if (busy) return;
+              if (!ready || busy) return;
               setBusy(true);
               setError("");
               try {
@@ -104,7 +114,7 @@ export function EnquiryPage() {
             }}
           >
             <p className="text-xs text-muted">* Required fields</p>
-            <fieldset>
+            <fieldset disabled={!ready}>
               <legend className="mb-5 text-xl font-bold">Your details</legend>
               <div className="grid gap-5 sm:grid-cols-2">
                 {field("name", "Full name", "text", true)}
@@ -113,7 +123,7 @@ export function EnquiryPage() {
                 {field("organisation", "Academy, school or organisation")}
               </div>
             </fieldset>
-            <fieldset>
+            <fieldset disabled={!ready}>
               <legend className="mb-5 text-xl font-bold">Your plans</legend>
               <div className="grid gap-5 sm:grid-cols-2">
                 <div>
@@ -157,7 +167,7 @@ export function EnquiryPage() {
                 {error}
               </p>
             )}
-            <button className="button" disabled={busy}>
+            <button className="button" disabled={!ready || busy}>
               {busy ? "Preparing…" : "Send enquiry"}
               <Icon name="arrow" />
             </button>
