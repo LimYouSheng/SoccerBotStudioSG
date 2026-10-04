@@ -2,25 +2,25 @@
 
 @font-face {
   font-family: Roboto;
-  src: url("/assets/9d867fc3ef40.woff2") format("woff2");
+  src: url("../../public/assets/9d867fc3ef40.woff2") format("woff2");
   font-weight: 400;
   font-display: swap;
 }
 @font-face {
   font-family: Roboto;
-  src: url("/assets/67aa966ebd60.woff2") format("woff2");
+  src: url("../../public/assets/67aa966ebd60.woff2") format("woff2");
   font-weight: 500 600;
   font-display: swap;
 }
 @font-face {
   font-family: Roboto;
-  src: url("/assets/211ed024cbe7.woff2") format("woff2");
+  src: url("../../public/assets/211ed024cbe7.woff2") format("woff2");
   font-weight: 700 800;
   font-display: swap;
 }
 @font-face {
   font-family: Roboto;
-  src: url("/assets/f2c3487396a2.woff2") format("woff2");
+  src: url("../../public/assets/f2c3487396a2.woff2") format("woff2");
   font-weight: 900;
   font-style: italic;
   font-display: swap;

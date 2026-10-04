@@ -31,7 +31,10 @@ def select_manifest(root, source, run):
     guard.require(bool(variants), 'Missing reviewed source baselines')
     candidate = variants[0]['candidate']
     guard.require(all(item['candidate'] == candidate for item in variants), 'Conflicting candidate inventories')
+    revision = guard.state(root)
     for item in variants:
+        if any(revision.get(key) != value for key, value in item.get('revision', {}).items()):
+            continue
         generated = item.get('generated', [])
         current = guard.inventory(root, missing=item.get('deletions', []), generated=set(generated) - set(item['baseline']))
         applied = guard.inventory(root, missing=item.get('deletions', []), generated=generated)
@@ -39,7 +42,7 @@ def select_manifest(root, source, run):
             target = run / 'selected-manifest.json'
             save_json(target, item)
             return target
-    raise RuntimeError('Unknown source edit or partial candidate; no source overwritten. Upload the receipt and failure ZIP.')
+    raise RuntimeError('Unknown source edit, revision or partial candidate; no source overwritten. Upload the receipt and failure ZIP.')
 
 
 def check_prerequisites(root, candidate):
@@ -91,6 +94,8 @@ def collect_local_evidence(root, destination, verification):
             names.add(file.name)
         if row.get('command') == ['npm', 'test']:
             names.add('unit.json')
+        if row.get('command') == ['node', 'scripts/check-export.mjs']:
+            names.add('export.json')
         if row.get('command') == ['npm', 'run', 'test:e2e']:
             names.update(('browser.json', 'browser-engines.json'))
             artifacts = source / 'browser-artifacts'
@@ -128,6 +133,7 @@ def verify_local(root, run, receipt):
     collect_local_evidence(root, run / 'verification', verification)
     guard.require(row['exit'] == 0, f'Local verification failed; complete logs retained: {row["log"]}')
     guard.require(verification.get('scope') == 'all' and verification.get('status') == 'passed' and verification.get('browserExecuted') is True and receipt['browser_tests_run'], 'Complete code AND browser receipt required; missing browser execution cannot pass')
+    guard.require(verification.get('basePath') == '/SoccerBotStudioSG' and verification.get('export', {}).get('basePath') == '/SoccerBotStudioSG' and bool(verification.get('export', {}).get('files')), 'Verified GitHub Pages export and prefix required')
     receipt.update(tests_run=True, status='full local code and browser verification passed')
 
 
@@ -215,7 +221,7 @@ def run_local(root, manifest, logs, desktop, home):
     guard.require(not logs.resolve().is_relative_to(root.resolve()), 'Logs must be outside the repository')
     logs.mkdir(parents=True, exist_ok=True)
     run = Path(tempfile.mkdtemp(prefix=DELIVERY + '.', dir=logs)).resolve()
-    receipt = {'delivery': DELIVERY, 'scope': 'full restoration local code and browser verification', 'status': 'running',
+    receipt = {'delivery': DELIVERY, 'scope': 'GitHub Pages local code and browser verification', 'status': 'running',
                'started': datetime.now(timezone.utc).isoformat(), 'repository': str(root),
                'browser_tests_run': False, 'published': False, 'ci_accepted': False,
                'dependency_action': 'reuse installed pinned dependencies; no installation', 'runtime': None,
@@ -225,15 +231,15 @@ def run_local(root, manifest, logs, desktop, home):
         with redirect_stdout(live), redirect_stderr(live):
             print('SoccerBotStudioSG — Standard local installer')
             print(f'Logs, source backup and receipt: {run}')
-            print('Scope: complete restoration checks — code health, tooling/installer tests, formatting, lint, types, 33 unit/component cases and 30 browser cases (desktop / phone / tablet).')
-            print('One fresh Next.js build supplies the browser test site. This local check does not publish it.')
+            print('Scope: GitHub Pages repair checks — code health, tooling/installer tests, formatting, lint, types, 33 unit/component cases and 30 browser cases (desktop / phone / tablet).')
+            print('One fresh Next.js build at /SoccerBotStudioSG/ supplies the browser test site and export checks. This local check does not publish it.')
             print('Reuse installed pinned dependencies and browsers. No npm ci, dependency/browser downloads, commit, push, PR or deployment. Branch and index stay unchanged.')
             try:
                 banner('RUNNING', 'PREFLIGHT — runtime, exact source/Git baseline, installed tools/browsers and preview port')
                 environment = os.environ.copy()
                 for name in ('NO_COLOR', 'NODE_DISABLE_COLORS', 'NODE_OPTIONS', 'NODE_TEST_CONTEXT'):
                     environment.pop(name, None)
-                environment.update(FORCE_COLOR='1', CI='1', PYTHONUNBUFFERED='1', PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD='1')
+                environment.update(FORCE_COLOR='1', CI='1', PYTHONUNBUFFERED='1', PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD='1', NEXT_PUBLIC_BASE_PATH='/SoccerBotStudioSG')
                 environment, runtime = select_runtime(environment, home)
                 receipt['runtime'] = runtime
                 banner('PASS', f'PREFLIGHT — installed Node {runtime["node"]} selected automatically; npm {runtime["npm"]}')

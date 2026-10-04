@@ -1,3 +1,4 @@
+import { sitePath } from "./src/content/site-path";
 import { defineConfig, devices } from "@playwright/test";
 export default defineConfig({
   testDir: "./tests",
@@ -32,7 +33,7 @@ export default defineConfig({
   ],
   webServer: {
     command: "node scripts/serve-export.mjs",
-    url: "http://127.0.0.1:4173",
+    url: `http://127.0.0.1:4173${sitePath("/")}`,
     reuseExistingServer: false,
   },
 });

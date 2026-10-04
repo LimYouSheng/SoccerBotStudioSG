@@ -1,3 +1,4 @@
+import { sitePath } from "../src/content/site-path";
 import { expect, test, type Page } from "@playwright/test";
 import { addDays, dateLabel } from "../src/domain/dates";
 const DEMO_TODAY = "2026-10-05";
@@ -6,7 +7,7 @@ test.beforeEach(async ({ page }) => {
   await page.clock.install({ time: new Date("2026-10-05T08:00:00+08:00") });
 });
 async function chooseSlots(page: Page, multiple = false) {
-  await page.goto("/book/account/");
+  await page.goto(sitePath("/book/account/"));
   await page.getByRole("button", { name: "Continue as guest" }).click();
   await page.getByRole("link", { name: "See available times" }).click();
   await page
@@ -59,7 +60,7 @@ test("public routes remove staff access and fit the viewport", async ({
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto("/");
+  await page.goto(sitePath("/"));
   await expect(
     page.getByRole("heading", { name: "Your next session starts here." }),
   ).toBeAttached();
@@ -75,7 +76,7 @@ test("public routes remove staff access and fit the viewport", async ({
       () => document.documentElement.scrollWidth - innerWidth,
     ),
   ).toBeLessThanOrEqual(1);
-  const response = await page.goto("/admin/");
+  const response = await page.goto(sitePath("/admin/"));
   expect(response?.status()).toBe(404);
   expect(errors).toEqual([]);
 });
@@ -194,7 +195,7 @@ test("50-minute cadence, required instructor, guardian validation and final-slot
 test("email verification rejects an incorrect code and continues after correction", async ({
   page,
 }) => {
-  await page.goto("/book/account/");
+  await page.goto(sitePath("/book/account/"));
   await page.getByRole("button", { name: "Continue with email" }).click();
   await page.getByLabel("Email address").fill("customer@example.com");
   await page.getByRole("button", { name: "Continue with email" }).click();
@@ -212,7 +213,7 @@ test("email verification rejects an incorrect code and continues after correctio
 test("enquiry and assistant work without external submission", async ({
   page,
 }) => {
-  await page.goto("/enquiry/");
+  await page.goto(sitePath("/enquiry/"));
   await page.getByLabel("Full name").fill("Demo Customer");
   await page.getByLabel("Email address").fill("demo@example.com");
   await expect(page.getByLabel("Full name")).toHaveValue("Demo Customer");
@@ -237,7 +238,7 @@ test("enquiry and assistant work without external submission", async ({
 test("hero entry restores the arena scene and click-to-skip without a logo overlay", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto(sitePath("/"));
   await page.getByRole("link", { name: /^Book now —/ }).click();
   const transition = page.getByRole("button", {
     name: "Skip arena transition",
@@ -260,13 +261,13 @@ test("home navigation offer and studio booking buttons display the branded loade
     ["/", ".offer-home"],
     ["/studio/", ".studio-bottom .button"],
   ]) {
-    await page.goto(route);
+    await page.goto(sitePath(route));
     await expect(
       page.getByRole("main").getByRole("heading", { level: 1 }),
     ).toHaveCount(1);
     const link = page.locator(selector);
     await expect(link).toHaveCount(1);
-    await expect(link).toHaveAttribute("href", "/book/account/");
+    await expect(link).toHaveAttribute("href", sitePath("/book/account/"));
     await link.click();
     await expect(page.locator(".page-loading .loading-logo")).toBeVisible();
     await expect(page).toHaveURL(/\/book\/account\/$/);
@@ -279,7 +280,7 @@ test("home navigation offer and studio booking buttons display the branded loade
 test("hero completes naturally and reduced motion bypasses both transition surfaces", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto(sitePath("/"));
   await page.getByRole("link", { name: /^Book now —/ }).click();
   await expect(
     page.getByRole("button", { name: "Skip arena transition" }),
@@ -289,7 +290,7 @@ test("hero completes naturally and reduced motion bypasses both transition surfa
     page.getByRole("button", { name: "Skip arena transition" }),
   ).toHaveCount(0);
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/");
+  await page.goto(sitePath("/"));
   await page.getByRole("link", { name: /^Book now —/ }).click();
   await expect(page).toHaveURL(/\/book\/account\/$/);
   await expect(page.locator(".pitch-entry, .page-loading")).toHaveCount(0);
