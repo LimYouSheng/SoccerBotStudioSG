@@ -39,8 +39,7 @@ for (const [name, mutate] of [
   ],
   [
     "missing code gate",
-    (p) =>
-      (p.workflow = p.workflow.replace("npm run verify:code", "echo passed")),
+    (p) => (p.workflow = p.workflow.replace("npm run verify", "echo passed")),
   ],
   [
     "masked failure",

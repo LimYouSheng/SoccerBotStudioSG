@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import YAML from "yaml";
+import { checkPagesPolicy } from "./check-pages-policy.mjs";
 export function checkPolicy({
   pkg,
   lock,
@@ -49,6 +50,8 @@ export function checkPolicy({
     ), "Node runtime/types must use the reviewed Node 24 baseline");
   require(pkg.scripts?.typecheck ===
     "node scripts/reset-next-types.mjs && next typegen && tsc --noEmit", "Reset and generate Next types before typecheck");
+  require(pkg.scripts?.verify ===
+    "node scripts/verify.mjs all", "Complete verification entry changed");
   require(pkg.scripts?.["verify:code"] ===
     "node scripts/verify.mjs code", "Non-browser verification entry changed");
   require(pkg.scripts?.["verify:browser"] ===
@@ -96,9 +99,8 @@ export function checkPolicy({
   require(JSON.stringify(steps.filter((s) => s.run).map((s) => s.run)) ===
     JSON.stringify([
       "npm ci",
-      "npm run verify:code",
       "npx playwright install --with-deps chromium webkit",
-      "npm run verify:browser",
+      "npm run verify",
     ]), "Required gate order/commands changed");
   for (const step of steps) {
     require(!step["continue-on-error"], "Step failure masking refused");
@@ -109,7 +111,7 @@ export function checkPolicy({
           "working-directory"
         ], "Conditional or redirected required gate refused");
     if (step.uses)
-      require(/^actions\/(?:checkout|setup-node|upload-artifact)@[a-f0-9]{40}$/.test(
+      require(/^actions\/(?:checkout|setup-node|upload-artifact|upload-pages-artifact)@[a-f0-9]{40}$/.test(
         step.uses,
       ), "Actions must be pinned to commit SHAs");
   }
@@ -124,9 +126,10 @@ export function checkPolicy({
     artifact?.with?.path?.includes(
       "test-results/",
     ), "Always retain verification evidence");
-  require(!/secrets\.|id-token|pull_request_target/.test(
+  require(!/secrets\.|pull_request_target/.test(
     workflow,
   ), "Verification must not use deployment credentials");
+  errors.push(...checkPagesPolicy(doc));
   return errors;
 }
 export function policyInputs(root) {

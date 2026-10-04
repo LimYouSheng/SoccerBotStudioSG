@@ -8,6 +8,8 @@ import {
 } from "node:fs";
 import { createHash } from "node:crypto";
 import path from "node:path";
+import { exportInventory } from "./check-export.mjs";
+import { siteBasePath } from "../src/content/site-path.ts";
 const mode = process.argv[2];
 if (!["code", "browser", "all"].includes(mode))
   throw new Error("Use code, browser or all verification scope");
@@ -59,6 +61,7 @@ const receipt = {
   node: process.version,
   sourceFingerprint: baseline,
   gitHead: git.status === 0 ? git.stdout.trim() : null,
+  basePath: siteBasePath,
   browserExecuted: false,
   status: "running",
   commands: [],
@@ -78,6 +81,7 @@ const commands =
         ["unit-receipt", "node", "scripts/verify-test-results.mjs", "unit"],
         ["build", "npm", "run", "build"],
       ];
+commands.push(["export", "node", "scripts/check-export.mjs"]);
 if (mode !== "code")
   commands.push(
     ["browser", "npm", "run", "test:e2e"],
@@ -118,6 +122,16 @@ try {
   }
   if (fingerprint() !== baseline)
     throw new Error("Source changed during verification; receipt refused");
+  const exported = JSON.parse(readFileSync(`${dir}/export.json`, "utf8"));
+  if (
+    exported.basePath !== siteBasePath ||
+    JSON.stringify(exportInventory(path.resolve("out"))) !==
+      JSON.stringify(exported.files)
+  )
+    throw new Error(
+      "Export changed after static verification; tested artifact refused",
+    );
+  receipt.export = exported;
   receipt.status = "passed";
 } catch (error) {
   receipt.status = "failed";

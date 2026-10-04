@@ -1,5 +1,6 @@
 name: Verify frontend
 on:
+  workflow_dispatch:
   pull_request:
   push:
     branches: [main]
@@ -7,11 +8,13 @@ permissions:
   contents: read
 concurrency:
   group: verify-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   frontend:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      NEXT_PUBLIC_BASE_PATH: /SoccerBotStudioSG
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
@@ -19,9 +22,13 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
-      - run: npm run verify:code
       - run: npx playwright install --with-deps chromium webkit
-      - run: npm run verify:browser
+      - run: npm run verify
+      - name: Upload the verified site
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5
+        with:
+          path: out/
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
         with:
@@ -29,3 +36,18 @@ jobs:
           path: test-results/
           retention-days: 14
           if-no-files-found: error
+  deploy:
+    needs: frontend
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy the verified site
+        id: deployment
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5

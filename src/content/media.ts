@@ -1,7 +1,8 @@
-export const logo = "/assets/c275ccd87afb.svg";
+import { sitePath } from "./site-path";
+export const logo = sitePath("/assets/c275ccd87afb.svg");
 export const studioMedia = [
   {
-    src: "/assets/6cd9490f80ba.jpg",
+    src: sitePath("/assets/6cd9490f80ba.jpg"),
     source: "https://soccerbot360.com/en/buchung",
     alt: "Wide view inside the circular SOCCERBOTSTUDIO arena, with green turf, illuminated targets and a player facing away.",
     title: "Inside the arena.",
@@ -11,7 +12,7 @@ export const studioMedia = [
     height: 1707,
   },
   {
-    src: "/assets/09c58bd19cf8.jpg",
+    src: sitePath("/assets/09c58bd19cf8.jpg"),
     source: "https://soccerbot360.com/en/anwendungen",
     alt: "Inside the SOCCERBOTSTUDIO studio, a football match is projected across the curved arena wall.",
     title: "Football, all around.",
@@ -21,7 +22,7 @@ export const studioMedia = [
     height: 675,
   },
   {
-    src: "/assets/ef029624c918.jpg",
+    src: sitePath("/assets/ef029624c918.jpg"),
     source: "https://soccerbot360.com/en",
     sourceAsset: "https://assets.soccerbot360.com/assets/videos/hero-loop.mp4",
     sourceTimeSeconds: 11.85,
@@ -33,7 +34,7 @@ export const studioMedia = [
     height: 720,
   },
   {
-    src: "/assets/ba35618aca17.jpg",
+    src: sitePath("/assets/ba35618aca17.jpg"),
     source: "https://soccerbot360.com/en/produkt",
     sourceAsset:
       "https://assets.soccerbot360.com/assets/videos/product-hero.mp4",
@@ -47,7 +48,7 @@ export const studioMedia = [
     zoom: 1.34,
   },
   {
-    src: "/assets/fe13b3c27b10.jpg",
+    src: sitePath("/assets/fe13b3c27b10.jpg"),
     source: "https://soccerbot360.com/en/produkt",
     sourceAsset:
       "https://assets.soccerbot360.com/assets/videos/product-hero.mp4",
@@ -63,7 +64,7 @@ export const studioMedia = [
 ];
 export const homeMedia = {
   studio: {
-    src: "/assets/91d938ee515c.jpg",
+    src: sitePath("/assets/91d938ee515c.jpg"),
     width: 1080,
     height: 608,
     alt: "Two adult footballers in matching training kit practising with footballs inside a bright SOCCERBOT360 arena, surrounded by red, white and blue projections.",
@@ -71,7 +72,7 @@ export const homeMedia = {
     sourceAsset: "https://soccerbot360.com/studio/sb-players.jpg",
   },
   kickoff: {
-    src: "/assets/2be37f98cb23.jpg",
+    src: sitePath("/assets/2be37f98cb23.jpg"),
     width: 1920,
     height: 890,
     alt: "A player in a SOCCERBOT360 shirt, seen from behind, approaching illuminated targets in an arena.",

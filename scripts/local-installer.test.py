@@ -91,6 +91,7 @@ class DeliveryTests(unittest.TestCase):
             self.assertEqual(manifest, self.manifest)
             self.assertEqual(os.environ['PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD'], '1')
             self.assertEqual(os.environ['FORCE_COLOR'], '1')
+            self.assertEqual(os.environ['NEXT_PUBLIC_BASE_PATH'], '/SoccerBotStudioSG')
             print('fixture individual case passed')
             return {'status': 'full local code and browser verification passed', 'tests_run': True, 'browser_tests_run': True}
         code, output, receipt = self.execute(apply)
@@ -180,11 +181,24 @@ class DeliveryTests(unittest.TestCase):
         ]}
         delivery.save_json(self.manifest, bundle)
         for current, expected in [('old', 'old'), ('previous', 'previous'), ('new', 'old')]:
-            with patch.object(delivery.guard, 'inventory', return_value={'owner': current}):
+            with patch.object(delivery.guard, 'state', return_value={}), patch.object(delivery.guard, 'inventory', return_value={'owner': current}):
                 selected = delivery.select_manifest(self.repo, self.manifest, self.root)
             self.assertEqual(json.loads(selected.read_text())['baseline'], {'owner': expected})
-        with patch.object(delivery.guard, 'inventory', return_value={'owner': 'unknown'}):
+        with patch.object(delivery.guard, 'state', return_value={}), patch.object(delivery.guard, 'inventory', return_value={'owner': 'unknown'}):
             with self.assertRaisesRegex(RuntimeError, 'Unknown source edit'):
+                delivery.select_manifest(self.repo, self.manifest, self.root)
+
+    def test_equal_source_variants_select_matching_git_revision_before_apply(self):
+        variants = [{'baseline': {'owner': 'old'}, 'candidate': {'owner': 'new'}, 'revision': {'branch': branch, 'head': head}}
+                    for branch, head in [('fix/oracle-tooling', 'feature'), ('main', 'merged')]]
+        delivery.save_json(self.manifest, {'updates': variants})
+        for branch, head in [('fix/oracle-tooling', 'feature'), ('main', 'merged')]:
+            for content in ['old', 'new']:
+                with patch.object(delivery.guard, 'state', return_value={'branch': branch, 'head': head}), patch.object(delivery.guard, 'inventory', return_value={'owner': content}):
+                    selected = delivery.select_manifest(self.repo, self.manifest, self.root)
+                self.assertEqual(json.loads(selected.read_text())['revision'], {'branch': branch, 'head': head})
+        with patch.object(delivery.guard, 'state', return_value={'branch': 'main', 'head': 'unreviewed'}):
+            with self.assertRaisesRegex(RuntimeError, 'Unknown source edit, revision'):
                 delivery.select_manifest(self.repo, self.manifest, self.root)
 
     def dependency_fixture(self):
@@ -262,7 +276,7 @@ class DeliveryTests(unittest.TestCase):
             commands.append({'command': ['npm', 'run', 'test:e2e'], 'log': 'test-results/all-browser.log'})
         def start(command, **kwargs):
             self.assertEqual(command, ['npm', 'run', 'verify'])
-            delivery.save_json(source / 'verification-all.json', {'scope': 'all', 'status': 'passed' if exit_code == 0 else 'failed', 'browserExecuted': browser, 'commands': commands})
+            delivery.save_json(source / 'verification-all.json', {'scope': 'all', 'status': 'passed' if exit_code == 0 else 'failed', 'browserExecuted': browser, 'commands': commands, 'basePath': '/SoccerBotStudioSG', 'export': {'basePath': '/SoccerBotStudioSG', 'files': {'index.html': 'synthetic'}}})
             return Mock(stdout=['fixture command output\n'], wait=Mock(return_value=exit_code))
         return receipt, start
 
