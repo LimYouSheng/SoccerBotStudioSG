@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { addDays, dateLabel } from "../src/domain/dates";
 const DEMO_TODAY = "2026-10-05";
 test.beforeEach(async ({ page }) => {
+  // Payment deadlines need Date.now() to advance alongside the timers.
   await page.clock.install({ time: new Date("2026-10-05T08:00:00+08:00") });
 });
 async function chooseSlots(page: Page, multiple = false) {
@@ -260,7 +261,13 @@ test("home navigation offer and studio booking buttons display the branded loade
     ["/studio/", ".studio-bottom .button"],
   ]) {
     await page.goto(route);
-    await page.locator(selector).click();
+    await expect(
+      page.getByRole("main").getByRole("heading", { level: 1 }),
+    ).toHaveCount(1);
+    const link = page.locator(selector);
+    await expect(link).toHaveCount(1);
+    await expect(link).toHaveAttribute("href", "/book/account/");
+    await link.click();
     await expect(page.locator(".page-loading .loading-logo")).toBeVisible();
     await expect(page).toHaveURL(/\/book\/account\/$/);
     await expect(page.locator(".page-loading")).toHaveCount(0);

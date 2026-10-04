@@ -223,7 +223,7 @@ def run_local(root, manifest, logs, desktop, home):
     with (run / 'local-check.log').open('w') as log:
         live = LiveLog(sys.stdout, log)
         with redirect_stdout(live), redirect_stderr(live):
-            print('SoccerBotStudioSG — Standard local installer (generated type-cache repair)')
+            print('SoccerBotStudioSG — Standard local installer')
             print(f'Logs, source backup and receipt: {run}')
             print('Scope: complete restoration checks — code health, tooling/installer tests, formatting, lint, types, 33 unit/component cases and 30 browser cases (desktop / phone / tablet).')
             print('One fresh Next.js build supplies the browser test site. This local check does not publish it.')
