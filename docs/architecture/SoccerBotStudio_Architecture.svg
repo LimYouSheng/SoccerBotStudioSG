@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2400" height="2580" viewBox="0 0 2400 2580">
+<title>SoccerBotStudio high-level architecture, component uses and costs</title><desc>Documentation snapshot, 4 October 2026. Frontend demo exists; cloud and provider integrations planned. Browser execution belongs to the user.</desc>
+<defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#69869E"/></marker><marker id="start" markerWidth="10" markerHeight="10" refX="0" refY="3" orient="auto"><path d="M8,0 L0,3 L8,6" fill="#69869E"/></marker></defs>
+<rect x="0" y="0" width="2400" height="2580" rx="0" fill="#F2F6F9" stroke="none" stroke-width="2"/>
+<rect x="0" y="0" width="2400" height="195" rx="0" fill="#102D45" stroke="none" stroke-width="2"/>
+<text x="72" y="69" font-family="DejaVu Sans,sans-serif" font-size="27" fill="#81D6C3" font-weight="700">SOCCERBOTSTUDIOSG</text>
+<text x="72" y="126" font-family="DejaVu Sans,sans-serif" font-size="49" fill="#FFFFFF" font-weight="700">High-level architecture · use · cost</text>
+<text x="72" y="170" font-family="DejaVu Sans,sans-serif" font-size="23" fill="#C3D6E4" font-weight="400">4 OCT 2026   /   Initial frontend review   /   SGD = S$ · USD = US$ · prices per month unless stated</text>
+<text x="72" y="240" font-family="DejaVu Sans,sans-serif" font-size="26" fill="#102D45" font-weight="700">01   CUSTOMER &amp; PROVIDER FLOW</text>
+<text x="1330" y="240" font-family="DejaVu Sans,sans-serif" font-size="23" fill="#50697E" font-weight="400">Diagram shows the target. Only green demo components exist.</text>
+<path d="M 776 363 L 841 363" fill="none" stroke="#69869E" stroke-width="4"  marker-end="url(#arrow)" marker-start="url(#start)"/>
+<text x="780" y="340" font-family="DejaVu Sans,sans-serif" font-size="16" fill="#31465B" font-weight="400">static</text>
+<path d="M 424 472 L 424 500 L 1120 500 L 1120 563" fill="none" stroke="#69869E" stroke-width="4"  marker-end="url(#arrow)" />
+<text x="550" y="492" font-family="DejaVu Sans,sans-serif" font-size="20" fill="#31465B" font-weight="400">Customer API requests · planned</text>
+<path d="M 1976 472 L 1976 520 L 1240 520 L 1240 563" fill="none" stroke="#69869E" stroke-width="4" stroke-dasharray="10 8" marker-end="url(#arrow)" />
+<path d="M 848 670 L 784 670" fill="none" stroke="#69869E" stroke-width="4"  marker-end="url(#arrow)" marker-start="url(#start)"/>
+<path d="M 1552 670 L 1616 670" fill="none" stroke="#69869E" stroke-width="4"  marker-end="url(#arrow)" marker-start="url(#start)"/>
+<path d="M 1050 790 L 1050 824 L 424 824 L 424 858" fill="none" stroke="#69869E" stroke-width="4"  marker-end="url(#arrow)" />
+<text x="444" y="817" font-family="DejaVu Sans,sans-serif" font-size="20" fill="#31465B" font-weight="400">Verification / approved delivery</text>
+<path d="M 1976 790 L 1976 858" fill="none" stroke="#69869E" stroke-width="4"  marker-end="url(#arrow)" />
+<text x="1995" y="833" font-family="DejaVu Sans,sans-serif" font-size="21" fill="#31465B" font-weight="400">Matched invoice</text>
+<path d="M 1976 1068 L 1976 1134" fill="none" stroke="#69869E" stroke-width="4"  marker-end="url(#arrow)" />
+<text x="1995" y="1110" font-family="DejaVu Sans,sans-serif" font-size="21" fill="#31465B" font-weight="400">Native connector</text>
+<path d="M 1250 790 L 1250 858" fill="none" stroke="#69869E" stroke-width="4" stroke-dasharray="10 8" marker-end="url(#arrow)" />
+<text x="1270" y="836" font-family="DejaVu Sans,sans-serif" font-size="21" fill="#31465B" font-weight="400">Errors / logs</text>
+<rect x="72" y="282" width="704" height="190" rx="18" fill="#FFFFFF" stroke="#D9E2EA" stroke-width="2"/>
+<rect x="96" y="304" width="194" height="28" rx="6" fill="#E7F5F0" stroke="none" stroke-width="2"/>
+<text x="109" y="325" font-family="DejaVu Sans,sans-serif" font-size="18" fill="#117C69" font-weight="700">PRESENT · DEMO</text>
+<text x="96" y="367" font-family="DejaVu Sans,sans-serif" font-size="32" fill="#102D45" font-weight="700">Public frontend</text>
+<text x="96" y="407" font-family="DejaVu Sans,sans-serif" font-size="24" fill="#31465B" font-weight="400">Next.js + React/React DOM · customer journey</text>
+<text x="96" y="445" font-family="DejaVu Sans,sans-serif" font-size="25" fill="#117C69" font-weight="600">S$0 framework licence</text>
+<rect x="848" y="282" width="704" height="190" rx="18" fill="#FFFFFF" stroke="#D9E2EA" stroke-width="2"/>
+<rect x="872" y="304" width="110" height="28" rx="6" fill="#EDF1F8" stroke="none" stroke-width="2"/>
+<text x="885" y="325" font-family="DejaVu Sans,sans-serif" font-size="18" fill="#476391" font-weight="700">PLANNED</text>
+<text x="872" y="367" font-family="DejaVu Sans,sans-serif" font-size="32" fill="#102D45" font-weight="700">Cloudflare Pages</text>
+<text x="872" y="407" font-family="DejaVu Sans,sans-serif" font-size="24" fill="#31465B" font-weight="400">Hosts the static Next.js export (out/)</text>
+<text x="872" y="445" font-family="DejaVu Sans,sans-serif" font-size="25" fill="#117C69" font-weight="600">Free static requests; build limits apply</text>
+<rect x="1624" y="282" width="704" height="190" rx="18" fill="#FFFFFF" stroke="#D9E2EA" stroke-width="2"/>
+<rect x="1648" y="304" width="110" height="28" rx="6" fill="#EDF1F8" stroke="none" stroke-width="2"/>
+<text x="1661" y="325" font-family="DejaVu Sans,sans-serif" font-size="18" fill="#476391" font-weight="700">PLANNED</text>
+<text x="1648" y="367" font-family="DejaVu Sans,sans-serif" font-size="32" fill="#102D45" font-weight="700">Domain · DNS/TLS · edge security</text>
+<text x="1648" y="407" font-family="DejaVu Sans,sans-serif" font-size="24" fill="#31465B" font-weight="400">DNS/TLS, WAF/rate limits and Turnstile</text>
+<text x="1648" y="445" font-family="DejaVu Sans,sans-serif" font-size="25" fill="#117C69" font-weight="600">Basic/free tiers; entitlement limits apply</text>
+<rect x="72" y="570" width="704" height="220" rx="18" fill="#FFFFFF" stroke="#D9E2EA" stroke-width="2"/>
+<rect x="96" y="592" width="110" height="28" rx="6" fill="#EDF1F8" stroke="none" stroke-width="2"/>
+<text x="109" y="613" font-family="DejaVu Sans,sans-serif" font-size="18" fill="#476391" font-weight="700">PLANNED</text>
+<text x="96" y="655" font-family="DejaVu Sans,sans-serif" font-size="32" fill="#102D45" font-weight="700">Cloudflare D1</text>
+<text x="96" y="695" font-family="DejaVu Sans,sans-serif" font-size="24" fill="#31465B" font-weight="400">Minimal verification, session and access state</text>
+<text x="96" y="733" font-family="DejaVu Sans,sans-serif" font-size="25" fill="#117C69" font-weight="600">Included quotas; usage overages possible</text>
+<text x="96" y="766" font-family="DejaVu Sans,sans-serif" font-size="22" fill="#56697B" font-weight="400">Not a replacement booking database</text>
+<rect x="848" y="570" width="704" height="220" rx="18" fill="#FFFFFF" stroke="#D9E2EA" stroke-width="2"/>
+<rect x="872" y="592" width="110" height="28" rx="6" fill="#EDF1F8" stroke="none" stroke-width="2"/>
+<text x="885" y="613" font-family="DejaVu Sans,sans-serif" font-size="18" fill="#476391" font-weight="700">PLANNED</text>
+<text x="872" y="655" font-family="DejaVu Sans,sans-serif" font-size="32" fill="#102D45" font-weight="700">Cloudflare Worker API</text>
+<text x="872" y="695" font-family="DejaVu Sans,sans-serif" font-size="24" fill="#31465B" font-weight="400">Server authority, validation and orchestration</text>
+<text x="872" y="733" font-family="DejaVu Sans,sans-serif" font-size="25" fill="#117C69" font-weight="600">US$5 minimum paid plan + possible usage</text>
+<text x="872" y="766" font-family="DejaVu Sans,sans-serif" font-size="22" fill="#56697B" font-weight="400">TypeScript + Zod · secrets stay server-side</text>
+<rect x="1624" y="570" width="704" height="220" rx="18" fill="#FFFFFF" stroke="#D9E2EA" stroke-width="2"/>
+<rect x="1648" y="592" width="110" height="28" rx="6" fill="#EDF1F8" stroke="none" stroke-width="2"/>
+<text x="1661" y="613" font-family="DejaVu Sans,sans-serif" font-size="18" fill="#476391" font-weight="700">PLANNED</text>
+<text x="1648" y="655" font-family="DejaVu Sans,sans-serif" font-size="32" fill="#102D45" font-weight="700">SimplyBook · API + native admin</text>
+<text x="1648" y="695" font-family="DejaVu Sans,sans-serif" font-size="24" fill="#31465B" font-weight="400">Owns booking, schedule, instructor and capacity</text>
+<text x="1648" y="733" font-family="DejaVu Sans,sans-serif" font-size="25" fill="#117C69" font-weight="600">Standard US$29.90 monthly / 24.90 annual*</text>
+<text x="1648" y="766" font-family="DejaVu Sans,sans-serif" font-size="22" fill="#56697B" font-weight="400">500 bookings · 8 custom features · 15 providers</text>
+<rect x="72" y="866" width="704" height="202" rx="18" fill="#FFFFFF" stroke="#D9E2EA" stroke-width="2"/>
+<rect x="96" y="888" width="110" height="28" rx="6" fill="#EDF1F8" stroke="none" stroke-width="2"/>
+<text x="109" y="909" font-family="DejaVu Sans,sans-serif" font-size="18" fill="#476391" font-weight="700">PLANNED</text>
+<text x="96" y="951" font-family="DejaVu Sans,sans-serif" font-size="32" fill="#102D45" font-weight="700">Resend</text>
+<text x="96" y="991" font-family="DejaVu Sans,sans-serif" font-size="24" fill="#31465B" font-weight="400">Sends verification / approved enquiry emails</text>
+<text x="96" y="1029" font-family="DejaVu Sans,sans-serif" font-size="25" fill="#117C69" font-weight="600">Free 3,000/mo, 100/day; Pro US$20/mo</text>
+<rect x="1624" y="866" width="704" height="202" rx="18" fill="#FFFFFF" stroke="#D9E2EA" stroke-width="2"/>
+<rect x="1648" y="888" width="110" height="28" rx="6" fill="#EDF1F8" stroke="none" stroke-width="2"/>
+<text x="1661" y="909" font-family="DejaVu Sans,sans-serif" font-size="18" fill="#476391" font-weight="700">PLANNED</text>
+<text x="1648" y="951" font-family="DejaVu Sans,sans-serif" font-size="32" fill="#102D45" font-weight="700">SBPay</text>
+<text x="1648" y="991" font-family="DejaVu Sans,sans-serif" font-size="24" fill="#31465B" font-weight="400">Binds accepted bookings to hosted checkout</text>
+<text x="1648" y="1029" font-family="DejaVu Sans,sans-serif" font-size="25" fill="#117C69" font-weight="600">Standard included assumption; verify access</text>
+<rect x="1624" y="1142" width="704" height="216" rx="18" fill="#FFFFFF" stroke="#D9E2EA" stroke-width="2"/>
+<rect x="1648" y="1164" width="110" height="28" rx="6" fill="#EDF1F8" stroke="none" stroke-width="2"/>
+<text x="1661" y="1185" font-family="DejaVu Sans,sans-serif" font-size="18" fill="#476391" font-weight="700">PLANNED</text>
+<text x="1648" y="1227" font-family="DejaVu Sans,sans-serif" font-size="32" fill="#102D45" font-weight="700">HitPay · hosted PayNow / cards</text>
+<text x="1648" y="1267" font-family="DejaVu Sans,sans-serif" font-size="24" fill="#31465B" font-weight="400">Processes payments; owns payment records</text>
+<text x="1648" y="1305" font-family="DejaVu Sans,sans-serif" font-size="25" fill="#117C69" font-weight="600">S$0 fixed + per-transaction fees</text>
+<text x="1648" y="1338" font-family="DejaVu Sans,sans-serif" font-size="22" fill="#56697B" font-weight="400">Exact fee tiers and extra charges below</text>
+<rect x="848" y="866" width="704" height="492" rx="18" fill="#FFFFFF" stroke="#D9E2EA" stroke-width="2"/>
+<text x="873" y="913" font-family="DejaVu Sans,sans-serif" font-size="31" fill="#102D45" font-weight="700">Operations · planned</text>
+<text x="873" y="970" font-family="DejaVu Sans,sans-serif" font-size="28" fill="#102D45" font-weight="600">Workers Logs</text>
+<text x="873" y="1004" font-family="DejaVu Sans,sans-serif" font-size="23" fill="#31465B" font-weight="400">Correlates redacted runtime events</text>
+<text x="873" y="1036" font-family="DejaVu Sans,sans-serif" font-size="23" fill="#117C69" font-weight="600">Included / usage-based</text>
+<text x="873" y="1098" font-family="DejaVu Sans,sans-serif" font-size="28" fill="#102D45" font-weight="600">Sentry · Replay OFF</text>
+<text x="873" y="1132" font-family="DejaVu Sans,sans-serif" font-size="23" fill="#31465B" font-weight="400">Captures application errors</text>
+<text x="873" y="1164" font-family="DejaVu Sans,sans-serif" font-size="23" fill="#117C69" font-weight="600">Free Developer tier; paid access TBD</text>
+<text x="873" y="1226" font-family="DejaVu Sans,sans-serif" font-size="28" fill="#102D45" font-weight="600">UptimeRobot</text>
+<text x="873" y="1260" font-family="DejaVu Sans,sans-serif" font-size="23" fill="#31465B" font-weight="400">Checks public site and API uptime</text>
+<text x="873" y="1292" font-family="DejaVu Sans,sans-serif" font-size="23" fill="#117C69" font-weight="600">Free: 50 monitors / 5-minute checks</text>
+<rect x="72" y="1100" width="704" height="258" rx="18" fill="#E7EFF5" stroke="none" stroke-width="2"/>
+<text x="97" y="1145" font-family="DejaVu Sans,sans-serif" font-size="27" fill="#102D45" font-weight="700">Native notifications &amp; customer records</text>
+<text x="97" y="1188" font-family="DejaVu Sans,sans-serif" font-size="23" fill="#31465B" font-weight="400">SimplyBook sends booking confirmation email.</text>
+<text x="97" y="1225" font-family="DejaVu Sans,sans-serif" font-size="23" fill="#31465B" font-weight="400">Included in booking plan; SMS/WhatsApp extra.</text>
+<text x="97" y="1262" font-family="DejaVu Sans,sans-serif" font-size="23" fill="#31465B" font-weight="400">Browser return URL is never payment proof.</text>
+<text x="97" y="1299" font-family="DejaVu Sans,sans-serif" font-size="23" fill="#31465B" font-weight="400">Customer payment opens provider-hosted UI.</text>
+<text x="72" y="1426" font-family="DejaVu Sans,sans-serif" font-size="26" fill="#102D45" font-weight="700">02   FRONTEND &amp; ENGINEERING COMPONENTS</text>
+<text x="72" y="1464" font-family="DejaVu Sans,sans-serif" font-size="23" fill="#31465B" font-weight="400">All tools below have no additional software licence fee. Cloud usage, devices and engineering time remain separate.</text>
+<rect x="72" y="1490" width="2256" height="524" rx="18" fill="#FFFFFF" stroke="#D9E2EA" stroke-width="2"/>
+<text x="93" y="1530" font-family="DejaVu Sans,sans-serif" font-size="18" fill="#117C69" font-weight="700">PRESENT</text>
+<text x="282" y="1530" font-family="DejaVu Sans,sans-serif" font-size="22" fill="#102D45" font-weight="600">TypeScript · Zod</text>
+<text x="924" y="1530" font-family="DejaVu Sans,sans-serif" font-size="21" fill="#31465B" font-weight="400">Types and validation for domain, contact and stored data.</text>
+<text x="2075" y="1530" font-family="DejaVu Sans,sans-serif" font-size="21" fill="#117C69" font-weight="600">S$0</text>
+<rect x="74" y="1549" width="2252" height="50" rx="0" fill="#F5F8FA" stroke="none" stroke-width="2"/>
+<text x="93" y="1580" font-family="DejaVu Sans,sans-serif" font-size="18" fill="#117C69" font-weight="700">PRESENT</text>
+<text x="282" y="1580" font-family="DejaVu Sans,sans-serif" font-size="22" fill="#102D45" font-weight="600">Tailwind CSS · PostCSS</text>
+<text x="924" y="1580" font-family="DejaVu Sans,sans-serif" font-size="21" fill="#31465B" font-weight="400">Compile responsive styles into one canonical stylesheet.</text>
+<text x="2075" y="1580" font-family="DejaVu Sans,sans-serif" font-size="21" fill="#117C69" font-weight="600">S$0</text>
+<text x="93" y="1630" font-family="DejaVu Sans,sans-serif" font-size="18" fill="#117C69" font-weight="700">PRESENT</text>
+<text x="282" y="1630" font-family="DejaVu Sans,sans-serif" font-size="22" fill="#102D45" font-weight="600">Local assets · HTML/dialog · storage</text>
+<text x="924" y="1630" font-family="DejaVu Sans,sans-serif" font-size="21" fill="#31465B" font-weight="400">Brand/content, accessible controls and synthetic demo persistence.</text>
+<text x="2075" y="1630" font-family="DejaVu Sans,sans-serif" font-size="21" fill="#117C69" font-weight="600">S$0</text>
+<rect x="74" y="1649" width="2252" height="50" rx="0" fill="#F5F8FA" stroke="none" stroke-width="2"/>
+<text x="93" y="1680" font-family="DejaVu Sans,sans-serif" font-size="18" fill="#117C69" font-weight="700">PRESENT</text>
+<text x="282" y="1680" font-family="DejaVu Sans,sans-serif" font-size="22" fill="#102D45" font-weight="600">jsPDF · ICS · local enquiry/help</text>
+<text x="924" y="1680" font-family="DejaVu Sans,sans-serif" font-size="21" fill="#31465B" font-weight="400">Booking exports and local simulations; no LLM or message delivery.</text>
+<text x="2075" y="1680" font-family="DejaVu Sans,sans-serif" font-size="21" fill="#117C69" font-weight="600">S$0</text>
+<text x="93" y="1730" font-family="DejaVu Sans,sans-serif" font-size="18" fill="#117C69" font-weight="700">PRESENT</text>
+<text x="282" y="1730" font-family="DejaVu Sans,sans-serif" font-size="22" fill="#102D45" font-weight="600">Git · Node/npm · Python</text>
+<text x="924" y="1730" font-family="DejaVu Sans,sans-serif" font-size="21" fill="#31465B" font-weight="400">Version/setup/build and guarded source-update tooling.</text>
+<text x="2075" y="1730" font-family="DejaVu Sans,sans-serif" font-size="21" fill="#117C69" font-weight="600">S$0</text>
+<rect x="74" y="1749" width="2252" height="50" rx="0" fill="#F5F8FA" stroke="none" stroke-width="2"/>
+<text x="93" y="1780" font-family="DejaVu Sans,sans-serif" font-size="18" fill="#476391" font-weight="700">PARTIAL</text>
+<text x="282" y="1780" font-family="DejaVu Sans,sans-serif" font-size="22" fill="#102D45" font-weight="600">ESLint / Hooks · Prettier · source checker</text>
+<text x="924" y="1780" font-family="DejaVu Sans,sans-serif" font-size="21" fill="#31465B" font-weight="400">Semantic/type/source checks; stronger policy checks still missing.</text>
+<text x="2075" y="1780" font-family="DejaVu Sans,sans-serif" font-size="21" fill="#117C69" font-weight="600">S$0</text>
+<text x="93" y="1830" font-family="DejaVu Sans,sans-serif" font-size="18" fill="#117C69" font-weight="700">PRESENT</text>
+<text x="282" y="1830" font-family="DejaVu Sans,sans-serif" font-size="22" fill="#102D45" font-weight="600">Vitest · Node tests · Python unittest</text>
+<text x="924" y="1830" font-family="DejaVu Sans,sans-serif" font-size="21" fill="#31465B" font-weight="400">17 app + 9 checker + 6 installer historical passes.</text>
+<text x="2075" y="1830" font-family="DejaVu Sans,sans-serif" font-size="21" fill="#117C69" font-weight="600">S$0</text>
+<rect x="74" y="1849" width="2252" height="50" rx="0" fill="#F5F8FA" stroke="none" stroke-width="2"/>
+<text x="93" y="1880" font-family="DejaVu Sans,sans-serif" font-size="18" fill="#476391" font-weight="700">USER-OWNED</text>
+<text x="282" y="1880" font-family="DejaVu Sans,sans-serif" font-size="22" fill="#102D45" font-weight="600">Playwright · physical UAT</text>
+<text x="924" y="1880" font-family="DejaVu Sans,sans-serif" font-size="21" fill="#31465B" font-weight="400">Browser journey / device evidence; canonical WebKit pending.</text>
+<text x="2075" y="1880" font-family="DejaVu Sans,sans-serif" font-size="21" fill="#117C69" font-weight="600">S$0 + devices/time</text>
+<text x="93" y="1930" font-family="DejaVu Sans,sans-serif" font-size="18" fill="#476391" font-weight="700">MISSING</text>
+<text x="282" y="1930" font-family="DejaVu Sans,sans-serif" font-size="22" fill="#102D45" font-weight="600">DOM component tests · strict receipts</text>
+<text x="924" y="1930" font-family="DejaVu Sans,sans-serif" font-size="21" fill="#31465B" font-weight="400">Test forms/state; reject incomplete execution and CI-policy bypass.</text>
+<text x="2075" y="1930" font-family="DejaVu Sans,sans-serif" font-size="21" fill="#117C69" font-weight="600">S$0 tools</text>
+<rect x="74" y="1949" width="2252" height="50" rx="0" fill="#F5F8FA" stroke="none" stroke-width="2"/>
+<text x="93" y="1980" font-family="DejaVu Sans,sans-serif" font-size="18" fill="#476391" font-weight="700">PLANNED</text>
+<text x="282" y="1980" font-family="DejaVu Sans,sans-serif" font-size="22" fill="#102D45" font-weight="600">Wrangler · Worker / D1 / contract tests</text>
+<text x="924" y="1980" font-family="DejaVu Sans,sans-serif" font-size="21" fill="#31465B" font-weight="400">Deploy named environments and verify real server boundaries.</text>
+<text x="2075" y="1980" font-family="DejaVu Sans,sans-serif" font-size="21" fill="#117C69" font-weight="600">S$0 tools + usage</text>
+<rect x="72" y="2040" width="2256" height="138" rx="18" fill="#102D45" stroke="none" stroke-width="2"/>
+<text x="97" y="2080" font-family="DejaVu Sans,sans-serif" font-size="29" fill="#FFFFFF" font-weight="700">NEXT: SoccerBotStudioSG source upload → reviewed PR / Actions → Cloudflare deployment later</text>
+<text x="97" y="2120" font-family="DejaVu Sans,sans-serif" font-size="23" fill="#D1E1EB" font-weight="400">GitHub Free: repo + 2,000 Actions minutes / 500 MB artifacts. Private branch protection needs Pro/Team or higher.</text>
+<text x="97" y="2154" font-family="DejaVu Sans,sans-serif" font-size="23" fill="#D1E1EB" font-weight="400">Selected repo exists publicly; connection is read-only. No candidate upload, CI run or deployment yet.</text>
+<text x="72" y="2234" font-family="DejaVu Sans,sans-serif" font-size="26" fill="#102D45" font-weight="700">03   OPERATING BUDGET &amp; ACCOUNT BOUNDARIES</text>
+<text x="72" y="2278" font-family="DejaVu Sans,sans-serif" font-size="24" fill="#31465B" font-weight="400">Quotation target: S$60–150/mo. Free-email line items: S$60–120; all paid-email upper allowances total S$180.</text>
+<text x="72" y="2317" font-family="DejaVu Sans,sans-serif" font-size="24" fill="#31465B" font-weight="400">Cloudflare S$10–20 is one combined allowance. Excludes tax, payment fees, maintenance and optional paid monitoring/GitHub.</text>
+<text x="72" y="2356" font-family="DejaVu Sans,sans-serif" font-size="24" fill="#31465B" font-weight="400">HitPay online: PayNow &lt;S$100 = 0.9% (min S$0.20); S$100+ = 0.65% + S$0.30. Domestic cards = 2.8% + S$0.50.</text>
+<text x="72" y="2395" font-family="DejaVu Sans,sans-serif" font-size="24" fill="#31465B" font-weight="400">Applicable software/platform fees are extra. Domain already paid; quoted renewal estimate S$20–40/year (registrar prevails).</text>
+<text x="72" y="2434" font-family="DejaVu Sans,sans-serif" font-size="24" fill="#31465B" font-weight="400">Build with developer test accounts → client staging/UAT → client production. Re-map IDs/config; never copy test records or secrets.</text>
+<text x="72" y="2473" font-family="DejaVu Sans,sans-serif" font-size="24" fill="#31465B" font-weight="400">No custom staff login. OpenAI, WhatsApp, Queues/Cron, staff Access/Workspace are future-only; no current spend or implementation.</text>
+<text x="72" y="2543" font-family="DejaVu Sans,sans-serif" font-size="20" fill="#526A7C" font-weight="400">* Annual-equivalent pricing requires annual billing. Official sources, exact entitlements and the full component inventory are in Rules &amp; Architecture.</text>
+</svg>

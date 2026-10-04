@@ -1,0 +1,232 @@
+# SoccerBotStudio — Rules & Architecture
+
+Canonical current contract. `SERVICE_CONTRACTS.md` owns service inputs, results, errors, authority and demo/live availability. `SOCCERBOT_JOURNEY.md` owns chronology, audits and receipts. These are the three canonical documents; README, AGENTS, diagrams and generated receipts orient or provide evidence.
+
+Project/package name: **SoccerBotStudioSG**; npm identifier: `soccerbotstudiosg`. User-selected repository: [LimYouSheng/SoccerBotStudioSG](https://github.com/LimYouSheng/SoccerBotStudioSG). Read-only GitHub metadata confirms this repository already exists and is public; current connection reports pull-only access and installed-repository search returned no match. No source upload, CI result or deployment of this candidate is established. The earlier private-repository architecture target is not the observed visibility; review intended visibility/access before uploading client source.
+
+## Authority and current scope
+
+The 4 October 2026 instruction removes staff login and refactors the supplied customer frontend into Next.js, React and Tailwind. The quotation ZIP is an architecture/stack reference only. Its prices, dates, acceptance terms, old staff deliverables and other commercial scope are not adopted as requirements for this work. The Fitfinity PDF and guarded installer establish engineering practices, not SoccerBot business rules or its backend platform.
+
+Current implementation: TypeScript, React client components within statically exported Next.js App Router pages, Tailwind CSS, extracted local assets, typed domain rules, demo service adapters, Vitest, Playwright, source checks and CI configuration. Customer verification, availability, enquiries, chat and payments remain simulations. No external booking, charge, email or message is performed. No staff login, staff portal, staff credential constants, staff session storage, staff route, or staff API access is shipped. Customer email verification remains.
+
+## Current work boundary and source precedence
+
+- User instruction on 4 October 2026: pause further frontend changes; update documentation and audit first. Initial GitHub source upload is the next task, before more frontend work. This review does not upload source or deploy anything.
+- Browser execution belongs to the user. The assistant may inspect tests, prepare commands and review supplied results, but must not install/launch browsers, run Playwright, take browser screenshots or run an umbrella command that invokes browsers. CI browser execution must be explicitly left enabled/owned by the user during GitHub setup; the existing workflow has not been changed or executed by this review. Missing browser evidence remains pending, not passed or silently skipped.
+- Latest direct user instructions override reference process material. The latest web quotation governs product scope; older quotation files supply architecture only.
+- `OneFitfinity_Engineering_Process_and_Verification_Handbook.pdf` (reviewed 4 October, Fitfinity main `c871aca5d746`) supersedes conflicting process statements in the earlier one-page guidelines. Transfer its engineering discipline, not its platform, historical counts, deployment claims or domain features.
+- “Build With Own Accounts” conversation, 4 October 2026 at 03:33–03:34 UTC, supplies the development-account approach below. Retrieved evidence distinguishes the user's question from the prior assistant's proposed implementation. The current instruction adopts the useful approach as project guidance; it is not evidence that accounts have been configured.
+
+## Current product rules — latest quotation
+
+`APP404-SBS-Q-WEB-001(2).pdf`, dated 4 October 2026, is the latest product-rule authority. It supersedes conflicting prototype and older quotation rules. Commercial and legal terms remain in the quotation, not independently rewritten here.
+
+- A1: responsive Home and Studio pages using supplied branding/content/imagery and agreed hero; navigation/contact/Instagram, titles, metadata, sitemap and canonical URLs. Preview builds are noindex. Live canonical URLs/sitemap require the confirmed production domain at launch.
+- A2: service/player/contact details, multiple sessions on the same or different dates, dates/times before available instructor, review and policy acknowledgement.
+- A3: verify email before prefilling only approved name and phone from SimplyBook; permit correction; resolve duplicate/shared-email matches safely; expiring single-use verification and rate limits. Current demo stores only name/phone for prefill. No real SimplyBook lookup or verified identity is claimed.
+- A4: server validates prices, instructor eligibility and studio capacity. SimplyBook accepts/rejects bookings. Displayed selections are not reservations. Availability is rechecked when selection changes and again at checkout.
+- A5: offer hosted payment only after every session is accepted and invoice association/amount matches. Partial failures cancel only newly created confirmed-unpaid bookings. Verify uncertain results before retrying and flag incomplete cleanup. These are mandatory future Worker/provider gates, not proved by frontend simulation.
+- A6: supported SimplyBook/SBPay → HitPay hosted checkout for enabled PayNow/cards. Provider-authoritative success/pending/failure/expired/late/uncertain handling. Best-effort payment appearance within provider controls.
+- A7: verified references, date/time, studio, instructor, amount/status, arrival instructions, downloadable booking summary/calendar and help link. Configure and test native confirmation emails during provider integration.
+- One Singapore venue and one shared studio. Concurrency is one across all instructors. English and SGD. 40-minute sessions for 1–4 players, with one instructor and studio. Starts every 50 minutes, reserving 10 minutes for exit/entry.
+- Initial setup: four instructors and one native operating staff account. No fixed application cap for additional approved platform users/trainers. Four preview instructor records exist; only supplied confirmed identity details are used, with unnamed profiles explicitly labelled demo pending approved client content. No custom staff login is included.
+- Excluded: bespoke admin console, membership integration, recurring charging, payroll, historical migration, replacement scheduling database, automatic return to a previous confirmation page, podcasts and package integrations. Enquiry choices can describe a requested arrangement without implementing such integrations.
+- B1/Q7: full scoped automated tests and UAT must pass, including provider outcomes, verification, capacity, duplicates, uncertain writes, permissions and physical devices. Demonstrate alerts, recovery and rollback. Record failures and resolve them. Local frontend demo evidence does not satisfy final provider/UAT acceptance.
+- B2: eventual source/configuration, development notes, access/test records and OOM at handover; native refund guide/walkthrough keeps cancellation separate from refund. Native authorised staff execute refunds.
+
+Demo price S$88, operating-hours fixtures, public contact details and supplied media still come from the HTML and require client/provider confirmation before live use. No contractual development fee is used as a session price.
+
+## Target stack and ownership
+
+| Layer             | Target                                                             | Responsibility / status                                                                                                                                                                              |
+| ----------------- | ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Public UI         | TypeScript, React, Next.js App Router, Tailwind CSS                | Implemented frontend demo. Semantic HTML, accessible controls and responsive layouts.                                                                                                                |
+| Web hosting       | Next.js static export on Cloudflare Pages                          | `out/` build supported. Hosting and domains not provisioned. No Next.js API routes or Node server requirement in deployed frontend.                                                                  |
+| Network           | Client domain, Cloudflare DNS, TLS                                 | Future staging and production separation.                                                                                                                                                            |
+| API               | TypeScript Cloudflare Workers                                      | Future explicit endpoints and orchestration. No arbitrary provider-method proxy.                                                                                                                     |
+| Contracts         | Zod                                                                | Frontend models validated now. Worker request/response schemas and size/date/session limits required later. Validation does not confer authority.                                                    |
+| Booking           | SimplyBook supported APIs + native admin                           | Future authority for availability, instructors, hours, capacity and confirmed bookings.                                                                                                              |
+| Payment           | Supported SimplyBook/SBPay native HitPay connector                 | Future hosted PayNow/card checkout and authoritative status. Provider checkout may have different styling. No card entry in this demo.                                                               |
+| Customer identity | Expiring email verification, protected sessions, D1                | Future single-use challenge, exact-email lookup and approved contact prefill. Browser fixtures never establish real identity.                                                                        |
+| Email             | Resend; SimplyBook native booking notifications                    | Resend delivers verification, Worker verifies it. Booking write success does not establish email delivery.                                                                                           |
+| Security          | Turnstile, WAF, rate limits, Worker secrets                        | Future server verification, least privilege, separate environment credentials and bounded endpoints.                                                                                                 |
+| Operational data  | Cloudflare D1                                                      | Main application: minimal verification/session and access state. Does not clone SimplyBook's booking database. Any persistent booking-attempt/recovery ledger is an explicit future design decision. |
+| Diagnostics       | Workers Logs, Sentry, UptimeRobot                                  | Future correlated/redacted logs, errors and external health checks. Session Replay disabled. No custom operations dashboard required.                                                                |
+| Source / CI       | GitHub, GitHub Actions                                     | Locked dependencies and checks configured; selected public repository exists, candidate upload/CI pending.                                                                                                          |
+| Deployment        | Wrangler / Cloudflare tooling                                      | Future reviewed staging/production deployment, exact versions and rollback evidence.                                                                                                                 |
+| Testing           | Vitest, Worker runtime integration tests, Playwright, physical UAT | Frontend tests now; Worker/provider tests later. Physical acceptance is separate.                                                                                                                    |
+
+Older staff/AI architecture is retained for reference only, outside the latest web quotation. No reinstatement is authorised by this document. If later commissioned, staff identity uses named Google Workspace accounts with MFA through Cloudflare Access. Worker verification must check issuer, audience, signature, expiry and role/provider mapping. OpenAI Responses API with official TypeScript SDK proposes structured actions. Worker code authorises and executes supported actions. D1 stores actor/provider links, proposals, confirmation expiry, status and minimal audit/incident data. WhatsApp Business uses programmed menu routes with verified sender mapping. Queues, consumer Worker, dead-letter queue and Cron Triggers support accepted background jobs, reminders and safe read-back recovery. Refunds, financial/security settings and unsupported actions remain native-admin operations. No blind mutation replay. A future protected PWA keeps authenticated data online-only and separates its browser service worker from the backend Worker. No PWA or AI-backend implementation is claimed here.
+
+## Source ownership
+
+- `src/app`: static route definitions, metadata and the one global stylesheet. No business mutations.
+- `src/components`: shared UI, public shell and arena presentation.
+- `src/features/booking`: customer state, step screens and interaction orchestration.
+- `src/features/enquiry`, `src/features/assistant`: enquiry and customer-assistant UI.
+- `src/domain`: typed data, validation, dates, pricing and booking guards. No UI, storage or fetch imports.
+- `src/services`: service contracts, demo adapters, browser persistence and exports. Screens use these interfaces. Future provider fetch/persistence belongs here or in the Worker, never scattered across screens.
+- `src/content`: supplied media and attribution metadata. Binary assets live under `public/assets`.
+- `scripts`, `tests`: source/tooling checks, static preview and automated evidence.
+
+One canonical owner per responsibility. Edit it in place. Remove superseded logic. No V2/fixed copies, tracked backups, duplicate screen implementations, CSS override tails or workaround chains. No `innerHTML`, injected monolithic legacy scripts or global delegated event handlers. React owns rendering and lifecycle. Native links support direct navigation and browser history.
+
+## Booking invariants
+
+- One to four players, valid dated slots and no duplicates/overlaps. Slot changes invalidate acceptance and payment drafts.
+- The service adapter revalidates the full snapshot before checkout; displaying a slot is not a hold.
+- A payment attempt retains an immutable reviewed snapshot. Pending/checking/late/paid attempts prevent another payment or draft mutation.
+- Only a verified demo service result produces a confirmation. Declined stays retryable. Pending remains pending until a status check. Late payment remains under review and never auto-confirms.
+- Demo payment checks survive reload, use a stable attempt ID and reserve assigned resources only once. Repeated polling must not create a second booking.
+- Contact, guardian/emergency and verified-email constraints run before payment. Screens are not security boundaries.
+- Calendar and booking PDF export use the confirmed snapshot and Singapore timezone, not mutable form fields.
+- Demo storage is browser-only, versioned and schema-checked. Its contents have no production authority. Use synthetic data. No provider credentials or actual financial data are collected.
+- Production must verify customer session capability, authoritative provider status and booking/invoice association. Browser IDs, return URLs and AI output never prove identity, ownership or payment.
+- Partial multi-session failure, stale state, duplicate submission, ambiguous provider response, safe cancellation of confirmed-unpaid records, expiry and late payment require actual provider-account integration evidence before launch.
+
+## Development process — latest OneFitfinity adaptation
+
+### Change and documentation ownership
+
+1. Inspect the requirement, current canonical rule, actual source and every affected write path. Identify the baseline using an inventory/fingerprint and, once Git exists, repository/branch/HEAD/index. Preserve unknown edits; do not reset, stash or change expected hashes to bypass a mismatch.
+2. Make one bounded change in its owner, with meaningful regressions for changed behaviour. Remove superseded implementations. Split by responsibility, not arbitrary file length. Keep composition, domain, service adapters, feature UI, controlled drafts and shared navigation/modal ownership distinct.
+3. Maintain three documentation owners: current invariants and architecture here; named service operations, actual signatures, results, errors, principal derivation, permissions, idempotency/version rules and availability in `SERVICE_CONTRACTS.md`; dated reasons, failures, repairs, fingerprints and evidence in Journey. Machine contracts and pictures are supporting artefacts, not competing rules.
+4. New live interfaces use named request records, a closed operation catalogue and adapter/server-derived authority. A browser-supplied role, provider ID or hidden control cannot grant permission. The current positional synchronous demo interfaces are documented as such; their existence does not mean a live endpoint exists.
+5. Unsupported live operations fail explicitly or remain unavailable. No silent fallback to browser mocks, simulated success, or unrelated success-shaped records. A feature visible in the UI is not proof its API has been implemented.
+
+### Data, security and alternate paths
+
+6. Enforce invariant consistency across create/edit/retry/refresh/recovery and any future admin paths. Recheck trusted time, session, relationship, resource eligibility, price and capacity at the server write boundary. Prevent duplicate effects and stale writes. Correlate async replies to the current session/attempt so an old callback cannot overwrite newer state.
+7. Distinguish not attempted, committed, rejected and unknown external outcomes. Preserve the original attempt identity on an ambiguous retry and reconcile before another write. Cancellation is not refund; app rollback does not reverse provider bookings/payments, revoke delivered email or recall downloaded/shared files.
+8. Store only minimal operational state in D1; SimplyBook and SBPay/HitPay remain authoritative. Use typed schema and reviewed additive migrations; do not rewrite applied migrations. Expand, backfill/verify and switch compatible readers/writers before contraction. Test upgrades on representative populated state. Destructive downgrade/restore is a separate reviewed operation. Run migrations deliberately with separate permissions, not on every Worker request/startup.
+9. Keep secrets in backend-only environment stores; never in `NEXT_PUBLIC_*`, frontend bundles, source, installer payloads, screenshots or fixtures. Use synthetic data, minimal returned fields, redacted diagnostics and restricted retention. Verified email permits approved name/phone prefill, not unrestricted customer-record access.
+
+### Verification requirements and honest evidence
+
+10. Declare selected local versus complete milestone scope before running checks. Small repairs may use affected non-browser checks; full applicable PR/main gates remain required before claiming integrated acceptance. Browser execution is user-owned as above. A docs-only change needs source/doc integrity and change-boundary evidence, not a new application/browser run.
+11. Maintain domain/service regressions and React component/form/state/navigation tests (Vitest plus an appropriate DOM harness). Tests use explicit clocks for time-sensitive rules. Worker-runtime, D1 migrations/concurrency, authorization, provider-contract and fault-recovery tests are added when those owners exist. Controlled HTTP fixtures and provider doubles are labelled; they do not prove real provider acceptance.
+12. Use semantic ESLint and Hooks rules with zero warnings/errors, strict types, scoped globals and narrow justified exceptions. Prevent inline suppression of required lint rules. Use `npm ci` with the reviewed lockfile. Tools directly imported by custom verifiers must be direct dependencies. Tool/config/lock changes need their own regression evidence.
+13. Source health must cover portable case-insensitive file AND parent-directory collisions, path safety, supported syntax, static/dynamic imports, unused bindings, graph cycles/reachability, layer boundaries, canonical CSS import/ownership, conflict markers, whitespace and test controls. CSS parsing should reject duplicate declarations and undefined variables and validate supported property/value syntax; Tailwind/custom syntax needs deliberate handling. Parsing and reachability cannot certify every path, dynamic style or security rule.
+14. Test the verification system with isolated invalid fixtures: syntax/import/dead-module/layer/cycle/case/symlink failures; CSS and semantic/Hooks errors; forbidden suppression; workflow/lock mutations; incomplete/malformed receipts. The first draft has only a subset, recorded in Journey. Never borrow Fitfinity's test counts as SoccerBot acceptance counts.
+15. Compare expected discovered inventory with actual executed file/case/project identities and totals. Reject errors, failures, retries, skips, fixme/todo/only and truncated or missing results. Discovery is not execution. Do not inflate timeouts, reduce scope or weaken assertions to hide defects. A test-only repair preserves actions and assertions and is not an application fix.
+16. Applicable verification sequence: source/baseline → tooling regressions → semantic lint/types → unit/component/service → production export → user-owned browser matrix → final source/diff/receipt review. Add Worker/schema/infrastructure gates when implemented. The existing `npm run verify` includes browsers and is therefore not an assistant-side command. PWA/OS-sharing/camera gates apply only if such features enter scope; do not import Fitfinity's three Vite builds or PWA requirements into this static Next.js site.
+17. Retain per-case output, readable stacks, exact commands and exits, expected/actual counts, browser engine/projects, logs/artifact paths and candidate identity. Pipelines preserve nonzero exits (`set -euo pipefail` where used). Stop at failed required gates and retain the first failure and corrective explanation. Never clear storage or restore old source merely to hide a defect. Historical unchanged-source evidence must be labelled as reused.
+18. Treat implemented, selected locally checked, full local verified, full CI passed, merged, deployed, provider-accepted and physical-device accepted as separate states. User-reported acceptance without inspectable receipts stays user-reported. Device emulation is not a physical phone; a download event is not proof of readable PDF contents or saved/shared delivery.
+
+### GitHub, release and handover
+
+19. After initial repository bootstrap, use feature branches and reviewed PRs to protected main. Required verification must cover every PR/main change, without path-filter bypasses, optional required jobs, masked failures or deploy credentials in PR jobs. Test the parsed workflow policy. CI configuration alone does not prove branch protection or successful runs. Private-repository protection has a plan requirement (cost inventory below).
+20. Publishing source, merging and deploying are distinct authorized actions. Verification remains read-only with respect to deployment credentials. Cloudflare CD must consume the exact reviewed green artifact, use named environments and scoped credentials, validate account/project/bindings/domain, serialize stateful changes and retain deployment/rollback receipts. No GitHub Pages or AWS infrastructure is introduced by this handbook adaptation.
+21. Match security/dependency checks to the exact lockfile and release artifact. No vulnerability acceptance is implied by lint or unit tests. If a container is introduced later, its digest/scan is a separate gate; containers and image registries are not required for this Worker/static architecture.
+22. At milestones audit duplicated responsibilities, oversized owners, dead code/CSS, stale async state, every business write path, query/bundle cost, authorization, configuration drift, recovery and documentation drift. Passing tests do not close an untested finding. Prioritize behavioural/security issues; avoid arbitrary test-count or file-size targets.
+23. Handover records source revision/fingerprint, three doc owners, actual commands/tool versions, environment/account owners and delegated roles, secret references (never values), artifact/deploy/migration identity, verified alerts/recovery/UAT and open findings. Monitoring, cost alerts, restore drills and dashboards require implementation and evidence; their mention does not mean they exist.
+
+## Development accounts and client cutover
+
+This guidance comes from “Build With Own Accounts”, reconciled with the current web scope. No GitHub owner or deployment-ownership decision was made in that retrieved exchange. Client ownership/delegated access is the architecture/handover target; the user subsequently selected `LimYouSheng/SoccerBotStudioSG` in this conversation. Client handover/ownership arrangements remain separate from that developer-owned target.
+
+| Environment | Account/data boundary | Acceptance boundary |
+| --- | --- | --- |
+| Local demo now | Browser fixtures, synthetic contacts and simulated payment; no credentials | UI/domain behaviour only; no email, booking or funds move |
+| Developer integration | Developer SimplyBook test company, HitPay sandbox, separate Cloudflare/D1/Resend test resources | Verify the actual native SimplyBook → SBPay → HitPay sandbox route and enabled features; developer funds/real customer records are not used |
+| Client staging/UAT | Client-controlled configuration and supported test credentials; explicit test recipients | Repeat entitlement, ID mapping, resource capacity, verification and checkout/recovery acceptance on client settings |
+| Client production | Client merchant/KYC, billing, domains, verified email sender and production secrets; developer delegated least-privilege access | Go-live only after client-account UAT, authoritative payment verification, monitoring and cutover evidence |
+
+Rules for portability and cutover:
+
+- Keep the same application/service boundary. Resolve logical service, instructor, shared resource, location, form-field and notification identifiers through validated per-environment mappings. Do not hardcode developer company/provider IDs in screens or business rules. The current named demo IDs are fixtures, not live account mappings.
+- Keep SimplyBook company/API credentials, SBPay/HitPay merchant mode and keys, supported callback endpoints/signing secrets, Worker bindings, D1 database, allowed origins/return URLs, Resend sender and Turnstile configuration separate. Nonsecret configuration is not interchangeable with secrets; validate the complete environment before enabling writes.
+- Recreate and compare durations/buffers, opening hours/timezone, 1–4-player service/price, instructor eligibility, one-studio capacity, Multiple Bookings, required API/payment features, intake fields and notification templates. IDs and account entitlements differ. Do not treat a credential swap as migration completion.
+- Use the native SBPay/HitPay connector. Do not add an independent HitPay checkout creator that bypasses the accepted booking/invoice association. Where authenticated webhooks are actually supported for our integration boundary, verify signature/replay/merchant/environment; otherwise use the supported authoritative status lookup. Browser return URLs never establish payment success.
+- Test duplicate callbacks, stale prices/slots, partial multi-booking failure, lost responses, unknown writes, pending/expired/late payments and incomplete cleanup. Confirm all new sessions and invoice association before offering payment. Sandbox success does not establish live PayNow/cards activation or client KYC.
+- Before UAT: provision client entitlements, populate reviewed ID mappings, rotate/install client secrets, verify DNS/TLS/sender/callback configuration, and repeat the scoped acceptance suite. Record ownership/billing/delegation and rollback references. Keep sandbox bookings, customers and invoices out of production; historical migration is excluded.
+- At cutover: reconcile or stop in-flight test attempts, keep old account references with their originating environment, deploy the verified client configuration and record the result. Old transactions remain in their original provider account. Revoke obsolete developer/test access after handover as appropriate.
+- No percentage-complete promise is adopted from the earlier assistant's rough estimate. Live-account limitations are explicit gates. Client account creation, paid upgrades and production changes have not been performed by this review.
+
+## Architecture picture and component costs
+
+![High-level architecture, use and cost](architecture/SoccerBotStudio_Architecture.png)
+
+Editable picture: `architecture/SoccerBotStudio_Architecture.svg`. The picture is a dated summary of this table, not a deployment receipt. Components marked planned are not installed/provisioned merely because they appear here. Prices checked 4 October 2026; USD and SGD are deliberately not silently converted. Free means within the provider's applicable limits, not unlimited support or free engineering work.
+
+| Component | One-line use | Current state | Cost basis / month unless stated |
+| --- | --- | --- | --- |
+| Next.js + React + React DOM | Route and render public pages and the booking journey | Implemented demo | S$0 framework licence |
+| TypeScript | Check types across UI/domain/contracts | Implemented | S$0 tooling licence |
+| Tailwind CSS + PostCSS | Compile responsive styles in one canonical stylesheet | Implemented | S$0 tooling licence |
+| Zod | Validate drafts, contact and storage shapes; future HTTP boundaries | Frontend only | S$0 library licence |
+| Local assets, native HTML/dialog, browser storage | Present content and retain synthetic demo state | Implemented; storage is not production authority | S$0 extra service fee |
+| jsPDF + native ICS export | Generate customer booking summary and calendar files | Implemented preview exports | S$0 library/service fee |
+| Local enquiry / FAQ assistant | Simulate enquiry validation and deterministic help | Demo only, no model or delivery | S$0 service usage |
+| Cloudflare Pages | Serve the Next.js static export | Export exists; hosting planned | Free static requests within project/build limits [P2] |
+| Domain + DNS/TLS | Resolve and secure the customer site | Production domain unconfigured | Existing domain paid; quoted S$20–40/year renewal estimate, actual registrar price prevails; basic Cloudflare DNS/TLS in platform allowance |
+| Cloudflare Workers | Enforce authority and orchestrate supported provider calls | Planned | Workers Paid minimum US$5; request/CPU overages possible [P1] |
+| Cloudflare D1 | Persist minimal verification/session/access state | Planned | Included quotas with Workers; paid overages by reads/writes/storage [P3]; no second base subscription assumed |
+| Worker secrets + Zod server schemas | Keep credentials server-side and bound allowed requests | Planned | No separate library fee; included runtime/usage basis |
+| Turnstile | Challenge abuse and verify tokens server-side | Planned | Free plan within limits [P4] |
+| WAF / endpoint rate limiting | Restrict abusive traffic and verification attempts | Planned | Basic platform allowance; exact rule entitlement/paid upgrades must be checked, Workers Paid does not buy every WAF feature |
+| SimplyBook APIs + native admin | Authoritative bookings, hours, instructors and shared capacity | Planned | Standard US$29.90 monthly or US$24.90/month annual; 500 bookings, 8 features, 15 providers. Quoted allowance S$50–100 [P5] |
+| SBPay native HitPay connector | Associate accepted bookings/invoice with hosted checkout | Planned | Quotation assumes SBPay Standard included; verify required checkout/API access. Payments PRO is on SimplyBook Premium (US$59.90 monthly / US$49.90 annual-equivalent) [P5] |
+| HitPay hosted PayNow/cards | Process money and provide authoritative payment records | Planned | S$0 fixed; online domestic cards 2.8% + S$0.50. PayNow below S$100: 0.9%, min S$0.20; S$100+: 0.65% + S$0.30. Applicable software/platform fees extra [P6] |
+| Resend | Deliver email verification and any approved enquiry delivery | Planned | Free 3,000 emails/month, 100/day; Pro US$20 for 50,000/month, overages extra. Quoted paid allowance S$30–60 [P7] |
+| SimplyBook native email | Send booking confirmation/reminders | Planned | Included in booking plan; SMS/WhatsApp credits excluded [P5] |
+| Workers Logs | Correlate redacted operational events | Planned | Included allowance / usage charging under Cloudflare budget [P1] |
+| Sentry | Capture application errors with Session Replay disabled | Planned reference stack | Free Developer tier exists [P8]; team access/quotas may require paid plan, price to confirm (pricing page unreadable in this review) |
+| UptimeRobot | Externally check site/API availability | Planned reference stack | Free 50 monitors at 5-minute checks; faster/team tiers extra. Free commercial use permitted [P9] |
+| GitHub repository | Version source, review PRs and retain history | Selected repo exists publicly; upload/access next | Free private repo; enforced private branch protection needs Pro/Team or higher. Team listed US$4/user/month with offer terms [P10, P11] |
+| GitHub Actions | Run locked verification and retain evidence | Workflow present, never run | Free tier allowance 2,000 minutes and 500 MB artifacts; excess/runner pricing applies [P12] |
+| Git + Node/npm + Python | Version, install/build and run guarded tooling | Local tools; no real repo yet | S$0 tooling licence; hardware/CI time separate |
+| ESLint + Next/Hooks rules + Prettier | Check semantics and format source | Present; further hardening pending | S$0 tooling licence |
+| Vitest + Node test runner | Check domain/services and source-checker regressions | 17 + 9 historical passes | S$0 tooling licence |
+| Python unittest / guarded update fixtures | Check apply-only update safety | 6 historical passes; safety gaps open | S$0 tooling licence |
+| Playwright + physical UAT | Verify browser journeys and real-device behaviour | Configured; user owns future execution | S$0 Playwright licence; device/lab/labour costs separate |
+| DOM component harness / strict receipts / workflow policy tests | Cover UI state and verify that required tests actually ran | Missing, next tooling work | Open-source tools possible; S$0 licence, implementation effort separate |
+| Wrangler + Worker runtime/contract/D1 tests | Deploy named environments and verify actual server boundaries | Missing, later integration work | S$0 CLI/test-tool licence; Cloudflare runtime charges above |
+
+The quotation's planning target remains **S$60–150/month**, excluding payment fees, tax, domain renewal and maintenance. This is a planning target, not a computed maximum: the listed upper allowances with paid email sum to **S$180/month** (100 + 20 + 60), before optional paid monitoring/GitHub plans. Free-email allowances sum to S$60–120. Reconcile the chosen entitlements/quotas before committing a final operating budget. Cloudflare S$10–20 is one combined allowance, not a separate charge for every subcomponent. Developer test subscriptions may temporarily add costs while client accounts are also active.
+
+Payment fees apply per transaction/order, not automatically per session. For a single S$88 preview order, published base fees imply about S$0.79 PayNow or S$2.96 domestic card, before provider rounding, tax and extra fees. HitPay lists 0.2% for some software products; do not assume its applicability or absence on the native SBPay route without merchant/provider confirmation. Standard payment collection and Payments PRO/payment-link entitlements are different; prove the exact supported route before deciding a plan upgrade.
+
+Future-only reference components: OpenAI Responses API, WhatsApp Business, Queues/consumer/DLQ/Cron, staff Cloudflare Access/Google Workspace MFA and richer AI action state are **not commissioned for the current web scope and add no current service spend**. If reauthorized, price them separately and verify identity, permissions, confirmation and recovery. Do not add PostgreSQL, AWS, Cognito, Docker or a second booking database merely because the handbook used them.
+
+### Official cost references
+
+- [P1 Cloudflare Workers/runtime/logs](https://developers.cloudflare.com/workers/platform/pricing/)
+- [P2 Pages static requests](https://developers.cloudflare.com/pages/functions/pricing/)
+- [P3 D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/)
+- [P4 Turnstile plans](https://developers.cloudflare.com/turnstile/plans/)
+- [P5 SimplyBook plans](https://simplybook.me/en/pricing)
+- [P6 HitPay Singapore fees](https://hitpayapp.com/sg/pricing)
+- [P7 Resend plans](https://resend.com/pricing)
+- [P8 Sentry free Developer plan](https://www.sentry.help/en/articles/13965037-can-i-set-up-an-on-demand-pay-as-you-go-budget-for-my-free-developer-plan)
+- [P9 UptimeRobot plans](https://uptimerobot.com/pricing/) and [commercial-use clarification](https://help.uptimerobot.com/en/articles/11604710-who-should-use-uptimerobot-s-free-plan)
+- [P10 GitHub branch protection eligibility](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches)
+- [P11 GitHub plans](https://github.com/pricing)
+- [P12 GitHub Actions allowances](https://docs.github.com/en/billing/concepts/product-billing/github-actions)
+
+## Guarded installer pattern
+
+Reference: supplied Fitfinity shell wrapper and decoded `local_check.py`, inspected as text only. Its executable payload is not copied or run against this project.
+
+Future update installers require a candidate-specific manifest. This project includes a manifest builder and guarded apply utility as a limited reusable starting point, with no embedded payload or target repository. The normal development workflow remains direct edits in an isolated working copy.
+
+1. Wrapper: `set -euo pipefail`, restrictive `umask`, explicit target path, required tool checks, exclusive lock, trap cleanup. Logs and complete original-source backup outside the repository.
+2. Preflight: exact repository root, expected branch/HEAD, unchanged index, known tracked/untracked inventory, no symlinked/redirected paths or case-insensitive file/parent-directory collisions, expected source hashes and dependency lock alignment. Unknown edits stop before the first write. Never reset/stash or overwrite to force the baseline.
+3. Plan: enumerate replacements and absent files. Capture an exact candidate fingerprint and explicitly list gate commands/inventories. Validate the entire baseline and back up all affected sources before editing any of them.
+4. Apply: recheck baseline, atomically replace canonical files, then verify candidate hashes. Preserve unrelated files and branch/HEAD/index. A mid-write failure retains diagnostics and backups; do not claim a completed or automatically rolled-back update.
+5. Verify: run the declared applicable gates with nonzero failure propagation. Record each command, exit code and evidence scope. Validate expected test inventory and no retries/skips. Report only the completed evidence level.
+6. Finish: confirm candidate fingerprint and unchanged branch/HEAD/index. Write success only when all mandatory gates pass. Keep backup, logs and receipt for diagnosis.
+7. Ordinary source installer does not install dependencies, launch servers, stage, commit, tag, push, open PRs, mutate cloud infrastructure or deploy. A separate verification harness may start an isolated local test server with explicit lifecycle ownership. The supplied Fitfinity example did that during selected browser checks; it is not an exception allowing installers to change external systems.
+
+The example does not yet implement every safeguard above: portable case-collision checks, exact completed-candidate no-write rerun recognition and the broader installer-negative-fixture inventory remain open audit items. Locks are scoped to the supplied log directory, so a future operator must enforce one canonical lock location per repository. A locally generated manifest needs baseline review; its hash alone is not external approval.
+
+Initial guarded tooling is deliberately apply-only: it does not execute arbitrary commands from manifests. Verification is a separate declared operation; the existing `npm run verify` includes browsers and is user-owned. A source-applied receipt is not a test, CI or deployment receipt. Bootstrap this package into a fresh directory; never use the old Fitfinity installer on it.
+
+The handbook distinguishes apply-only delivery, selected local repair, full installer, source publication and infrastructure operators. Their names do not imply identical authority or evidence. Dependency installation is not universally forbidden: CI intentionally uses `npm ci`; an explicitly scoped setup may do so. Routine apply-only repair does not install dependencies or start servers. Browser harness ownership remains with the user.
+
+## Next implementation gate
+
+**First upload the initial source to the selected `LimYouSheng/SoccerBotStudioSG` repository in the next task.** Preserve this frontend as the reviewed baseline, omit generated/dependency/secret files, record known audit gaps, resolve repository write access and public-versus-private visibility, and reconcile browser CI ownership before activating its existing workflow. There is no requirement to finish live integrations before recording this initial source checkpoint. After that, address the tooling and regression gaps in Journey before continuing feature work.
+
+For later provider integration, confirm live hours, instructor details, provider entitlements, approved session prices/policies and production domain, then prove the exact SimplyBook → invoice/payment-link → SBPay/HitPay route in the client sandbox. Define Worker contracts, session verification and provider failure semantics before connecting UI services. Implement staging configuration, monitoring and reviewed CI/CD separately. Do not enable a production adapter by merely changing an environment flag.

@@ -1,0 +1,141 @@
+{
+  "date": "2026-10-04",
+  "stage": "frontend demo candidate",
+  "application_tests": {
+    "passed": 17,
+    "failed": 0
+  },
+  "source_checker_regressions": {
+    "passed": 9,
+    "failed": 0
+  },
+  "guarded_installer_regressions": {
+    "passed": 6,
+    "failed": 0
+  },
+  "lint": "passed, zero warnings",
+  "typescript": "passed",
+  "next_static_export": "passed",
+  "browser": {
+    "engine": "Chromium 153.0.8010.0 (portable local binary)",
+    "passed": 21,
+    "failed": 0,
+    "skipped": 0,
+    "retries": 0,
+    "cases": [
+      {
+        "title": "public routes remove staff access and fit the viewport",
+        "project": "desktop-chromium",
+        "status": "passed"
+      },
+      {
+        "title": "guest multi-date booking survives reload and exports calendar and PDF",
+        "project": "desktop-chromium",
+        "status": "passed"
+      },
+      {
+        "title": "declined and pending payments remain controlled through retry and refresh",
+        "project": "desktop-chromium",
+        "status": "passed"
+      },
+      {
+        "title": "late payment has a contact path without another payment",
+        "project": "desktop-chromium",
+        "status": "passed"
+      },
+      {
+        "title": "50-minute cadence, required instructor, guardian validation and final-slot conflict",
+        "project": "desktop-chromium",
+        "status": "passed"
+      },
+      {
+        "title": "email verification rejects an incorrect code and continues after correction",
+        "project": "desktop-chromium",
+        "status": "passed"
+      },
+      {
+        "title": "enquiry and assistant work without external submission",
+        "project": "desktop-chromium",
+        "status": "passed"
+      },
+      {
+        "title": "public routes remove staff access and fit the viewport",
+        "project": "phone-chromium",
+        "status": "passed"
+      },
+      {
+        "title": "guest multi-date booking survives reload and exports calendar and PDF",
+        "project": "phone-chromium",
+        "status": "passed"
+      },
+      {
+        "title": "declined and pending payments remain controlled through retry and refresh",
+        "project": "phone-chromium",
+        "status": "passed"
+      },
+      {
+        "title": "late payment has a contact path without another payment",
+        "project": "phone-chromium",
+        "status": "passed"
+      },
+      {
+        "title": "50-minute cadence, required instructor, guardian validation and final-slot conflict",
+        "project": "phone-chromium",
+        "status": "passed"
+      },
+      {
+        "title": "email verification rejects an incorrect code and continues after correction",
+        "project": "phone-chromium",
+        "status": "passed"
+      },
+      {
+        "title": "enquiry and assistant work without external submission",
+        "project": "phone-chromium",
+        "status": "passed"
+      },
+      {
+        "title": "public routes remove staff access and fit the viewport",
+        "project": "tablet-chromium",
+        "status": "passed"
+      },
+      {
+        "title": "guest multi-date booking survives reload and exports calendar and PDF",
+        "project": "tablet-chromium",
+        "status": "passed"
+      },
+      {
+        "title": "declined and pending payments remain controlled through retry and refresh",
+        "project": "tablet-chromium",
+        "status": "passed"
+      },
+      {
+        "title": "late payment has a contact path without another payment",
+        "project": "tablet-chromium",
+        "status": "passed"
+      },
+      {
+        "title": "50-minute cadence, required instructor, guardian validation and final-slot conflict",
+        "project": "tablet-chromium",
+        "status": "passed"
+      },
+      {
+        "title": "email verification rejects an incorrect code and continues after correction",
+        "project": "tablet-chromium",
+        "status": "passed"
+      },
+      {
+        "title": "enquiry and assistant work without external submission",
+        "project": "tablet-chromium",
+        "status": "passed"
+      }
+    ]
+  },
+  "pending": [
+    "WebKit phone/tablet: missing native libraries; system dependency installation unavailable",
+    "Physical Android/iPhone/tablet acceptance",
+    "Real SimplyBook/SBPay/HitPay/Resend integration",
+    "CI execution in the client repository",
+    "Hosting and deployment verification",
+    "Client UAT and written acceptance"
+  ]
+}
