@@ -1,19 +1,45 @@
-# SoccerBotStudio development
+# SoccerBotStudioSG engineering
 
-Read `docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md` before changes. Three canonical documentation owners: that current contract, `docs/SERVICE_CONTRACTS.md` for operation boundaries and `docs/SOCCERBOT_JOURNEY.md` for dated decisions/audits/evidence. Update affected owners for material changes.
+## 1. Start
 
-The user owns browser execution. Do not install or launch browsers, run Playwright, take browser screenshots, run `npm run verify:browser` or run `npm run verify` (it includes browsers). Use `npm run verify:code` for complete non-browser verification. Inspect browser test source and review user-supplied receipts; missing browser/CI/provider evidence stays pending. The user-run application installer must include its declared browser tests automatically; user ownership forbids assistant execution, not delivery of browser commands. User-owned CI keeps its browser matrix enabled.
+- Read `NORTH_STAR.md` and `PROGRESS.md`; confirm repository, branch, HEAD and existing changes.
+- Main already contains the inspected Mac source and merged naming PR #5. Use `experiment/codex-cloud-workflow-2026-10-06`, based on main `0cea68168738c722d05be9d3580938b65a4860c7`. Keep CLOUD-01 unmerged and outside the Mac baseline; preserve any newer branch work.
+- GitHub is canonical for the reconciled source. Preserve unknown edits and keep experiment acceptance separate. Routine Cloud work does not require a Mac installer or user-run browser tests.
+- Search relevant sections of `docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md` and `docs/SERVICE_CONTRACTS.md`; do not load all history.
+- Commands/cutover: `docs/CODEX_CLOUD.md`. Provider findings: Service Contracts and the latest Journey entry.
 
-Current authorized task (5 October 2026, 08:43 SGT): deeply incorporate the SimplyBook latency architecture and baseline/release/best-target measurement plan into the three canonical documentation owners and existing M1–M9/44 subiterations. Runtime, dependencies, application/browser tests and cloud/provider accounts remain unchanged. PERF-01–PERF-07 in Rules owns numeric policies and the P01–P12 register; Service Contracts owns planned logical operation/recovery boundaries; Journey owns decisions/evidence. All live performance results are NOT MEASURED. YS reported the design-system candidate “all good”; no new JSON receipt was supplied. Baseline is the exact 121-file candidate `9dfec3528b441369cc89924f7ab217d59fc09d58d4ddbad3b162f73ad55b8870`. Last observed user checkout remains `fix/pages-deployment` at `12c174a98c97a5d7c7b0cd041c090e31a903e95b`; guards must confirm it and preserve the actual index. Refreshed remote main remains `aeda14c53f263c2cdd8d182fbd792801e0dc4b1f`. Deliver `SoccerBotStudioSG_Performance_Plan_Local_2026-10-05.sh` with explicit planning scope: Python/Git, document integrity and both installer suites only. Application full verification remains 43 unit/component and 42 browser executions when separately required. No publication, deployment, live measurement or provider acceptance is claimed. Next resume point: M2.1 account/quota/test-route readiness, then B1 provider measurements before M2.5 contract/target freeze.
+## 2. Build
 
-The canonical design tokens and interface typography roles live in `src/app/globals.css`. `scripts/check-design.mjs` enforces brand aliases, contrast, readable type and supplied font metadata through source checks; its negative fixtures must remain. Keep page/marketing display headlines distinct from plain section/card headings and regular body text. Edit the owning component, domain function or adapter. No duplicate patched implementations, CSS override tails, legacy HTML/script injection, browser credentials, disabled tests or retries. Preserve unknown changes. Use the Node pin and reviewed npm lock. Maintain reference scene timing, reduced-motion/native-link behaviour, route cleanup and explicit branded booking entry; a framework loading fallback alone is insufficient.
+- Use one cloud feature branch. Edit canonical owners; remove superseded logic and avoid duplicate implementations.
+- Separate UI, business rules, persistence and infrastructure. Production authority stays server-side.
+- Preserve unrelated behaviour. Add meaningful coverage for changed behaviour.
+- Fix routine failures autonomously; escalate requirement, business-rule, architecture, security or material-cost decisions.
 
-Installers validate the expected Git/source baseline and entire payload before writing, hold one repository lock independent of the logs location, back up source externally, preserve branch/HEAD/index, recognise completed candidates, and retain failure receipts. The lower-level `--verify-code` is an explicit dependency-setup/non-browser mode. Routine local delivery reuses installed dependencies and runs code and browser checks when the user executes it. No mode mutates Git/cloud state. Report applied/local-code/browser/CI/deployed/provider/physical evidence separately.
+## 3. Ralph loop
 
-Application deliveries must use `scripts/build-local-installer.py` with the canonical `scripts/local-installer.py` runner. One shell command defaults to the Desktop repository, selects the installed Node pin automatically, shows each preflight check, reuses matching installed dependencies/browsers, and declares and runs code checks, one fresh test-site build and the browser matrix, streams individual results, and exports a Desktop receipt/failure ZIP. Do not replace this with a source-only wrapper, manual Node commands or a chain of obsolete installers. Prove exact no-source-write reruns and refusal of partial/unknown source states. Browser execution remains user-owned.
+- Choose one ready task serving the North Star; define completion evidence first.
+- Inspect → implement → run affected checks → diagnose → update progress → checkpoint.
+- Reuse findings/caches and read changed sections. Retry only with a new diagnosis or material fix.
+- Stop at task acceptance, a blocker, the run budget or PR readiness. No unattended relaunch without explicit finite limits.
 
-Keep local verification and PR publication separate. A later authorized PR handoff consumes the matching green local receipt without rerunning local checks; CI performs its own full gates. For small repairs declare affected tests; the broad initial restoration uses the complete current frontend scope. Never execute the delivered browser-running installer on the assistant side.
+## 4. Verify
 
-For the bounded planning delivery, use the same builder/runner with explicit `planning` manifest scope. Its allowlist is AGENTS, the three canonical documents, and the canonical builder/runner/runner tests. Application source, packages, lockfile and workflow cannot change under this scope. It requires Python 3.11+ and Git, document/44-subiteration integrity and both Python installer suites; it does not require Node, application builds or browsers. Full application delivery remains the default and retains its browser gate. Planning receipts cannot satisfy a full application/PR publication gate.
+- Run focused checks while iterating. Codex may prepare browsers, run Playwright and inspect internal previews.
+- Require the exact GitHub Actions check `verify / frontend`, including desktop Chromium, phone WebKit and tablet WebKit. A fresh Cloud setup also needs its own scoped execution evidence.
+- Never weaken assertions, skip coverage, lower required counts, add retries, raise timeouts or alter runner settings to obtain green results.
+- Record SHA, command, environment and result. Separate cloud/CI, visual/device and live-provider evidence; blocked is not passed.
 
-Before sending a download, verify the final file bytes, exact filename, link and command. Keep artifact SHA-256, candidate-map fingerprint, verifier sourceFingerprint, Git commit/tree and deployed artifact identity distinct. For publication, recompute the saved receipt's sourceFingerprint using the reviewed verifier algorithm in the original user checkout, never the author's workspace. Read the retained R2 correction and Journey before modifying this path. Preserve the original failed receipts and improve the canonical owner and regression coverage after each verified mistake.
+## 5. Deliver
+
+- Update affected docs/progress; review the diff and stage exact intended paths.
+- Commit/push the task branch and open/update its PR when access permits. Reuse existing CI; require green checks for the final commit.
+- Stop at PR-ready. Provide the PR, evidence, preview or blocker, and next action. Never merge, enable auto-merge, push to `main`, deploy or alter protection in the loop. Every merge needs explicit user approval for that specific PR; requests to continue, synchronize main, publish a PR or obtain green CI are not merge approval.
+
+## 6. Boundaries
+
+- No reset, force push, destructive cleanup, real customer data, credential export or applied-migration edits.
+- Client SimplyBook access remains read-only. Keep production secrets outside coding tasks; connected tools grant no extra authority.
+- One North Star, one ledger, relevant context. No speculative tooling, background agents or duplicated full test runs.
+
+- Preserve exact logos, header blue and typography in their canonical owners. Unsupported live operations never fall back to demo success.
+- Local delivery retains guarded baselines, backups and distinct receipt/hash identities; verify final downloadable bytes, filename and command.

@@ -109,7 +109,7 @@ Backend-only provider transport accepts a closed supported operation descriptor,
 
 ## Required evidence and change discipline
 
-Update this owner whenever signatures, results, error semantics, permissions, retry/version behaviour or live capabilities change. Review any generated Worker/OpenAPI snapshot separately when implemented; no generated HTTP contract exists now. Test adapter contracts using deterministic faults, then Worker runtime/D1 integration and authorized provider accounts. Browser/physical acceptance is user-owned. Mocks, a registered method, a green build and a provider sandbox result are separate evidence levels.
+Update this owner whenever signatures, results, error semantics, permissions, retry/version behaviour or live capabilities change. Review any generated Worker/OpenAPI snapshot separately when implemented; no generated HTTP contract exists now. Test adapter contracts using deterministic faults, then Worker runtime/D1 integration and authorized provider accounts. Codex Cloud/CI may run browser checks; YS/client owns physical-device acceptance. Mocks, a registered method, a green build and a provider sandbox result are separate evidence levels.
 
 ## Presentation navigation boundary — 4 October restoration
 
@@ -124,3 +124,39 @@ No endpoint or production implementation is introduced by the planning installer
 M3.2 defines named asynchronous request/result/error envelopes, access derivation, bounded inputs and idempotency/stale-write rules. M3.3–M3.6 add only the necessary durable identity/session/verification records and protected prefill. M4 defines authoritative availability and attempt/recovery contracts: all sessions before payment, same attempt identity across unknown results, and cleanup limited to newly created confirmed-unpaid records. M5 binds booking/account/invoice/amount to provider-authoritative status and protected confirmation; return URLs and browser fields never authorize payment success. M6 owns delivery/export evidence, client-environment validation and diagnostics. M7 verifies these contracts against authorized provider accounts and physical workflows before acceptance.
 
 Document each implemented signature and state/error transition here when its milestone ships. Do not silently turn current positional synchronous demo adapters into purported live contracts, invent provider endpoints, expose secrets or create a replacement scheduling database. A guest checkout also needs an appropriate protected attempt/confirmation capability. Reload, stale responses, duplicate callbacks, incomplete cleanup and authorization denial are explicit contract cases.
+
+## Observed SimplyBook reads — 6 October 2026
+
+These results came from standalone user-run diagnostic shells, not the application service adapters. The client company is `soccerbotstudio`, endpoint `https://user-api.simplybook.asia/`, service name `Kickoff Special`. The developer test company `app404` is separate and uses `Kick Off Special`; matching numeric IDs across accounts proves no relationship. Discover each account's public IDs and validate reviewed logical mappings before production use.
+
+| Operation                     | Observed result                                                                                    | Authority / remaining boundary                                                                                                                  |
+| ----------------------------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `getToken`                    | Successful client authentication; tested RPC IDs are strings with exact matching response IDs      | Keep key/token outside chat and public evidence. Expiry, concurrent refresh and family/entitlement coverage remain unproved                     |
+| `getEventList`                | Unique Kickoff Special, observed service ID 2, duration 40 minutes                                 | This does not freeze live prices, player options, resource mapping or every feature entitlement                                                 |
+| `getUnitList`                 | Active public providers: 2 Faisal, 3 Nabil, 4 Caelan                                               | Public discovery is `PUBLIC_IDS_UNFILTERED`, not a confirmed production service/provider/resource allowlist. Strip contacts/internal fields     |
+| `getCompanyTimezoneOffset`    | Singapore timezone and +480-minute offset                                                          | Interpret booking dates/times in Asia/Singapore; trusted server time still owns elapsed-slot validation                                         |
+| `getTimeframe`                | 10 minutes                                                                                         | Account timeframe is not the business's 50-minute appointment-start rule                                                                        |
+| `getAdditionalFields`         | Zero fields in the supplied client scheduling discovery                                            | No proof that player count/service price mapping is ready; do not pass 1–4 players as studio resource quantity without proof                    |
+| `getWorkCalendar`             | Company/provider day-off flags and calendar envelopes                                              | These envelopes do not prove intra-day breaks or every working interval. Collect interval/break evidence when required by actual configuration  |
+| `getCartesianStartTimeMatrix` | Provider-separated starts for bounded 1/7/31-day queries with resource count 1                     | Exact provider/date/start membership is display availability evidence, not a hold. Revalidate and require provider write acceptance at checkout |
+| `calculateEndTime`            | Strict end datetime or observed null; sampled offered starts returned 50-minute provider intervals | It also returned ends for absent starts. Never use it alone to declare a slot available, aligned, reserved or authorized                        |
+
+### End-time result interpretation
+
+- R2 selected 36 cases, with 21 generated cases explicitly omitted under the request budget. Both availability snapshots contained the same 268 starts. All 16 selected starts offered in both snapshots returned 50-minute intervals.
+- Ten starts absent from both snapshots still returned an end datetime. Caelan on 19 October: 12:20, 13:10 and 13:40 all returned 14:50 despite being absent; his offered 14:00 returned 14:50. These observations do not turn the service into a 150/100/70-minute session. The calculator's internal mechanism remains unproved.
+- Ten other absent starts returned `null` with successful transport/RPC envelopes. Keep null as unresolved; do not coerce it to false, zero, an empty schedule or availability. The documented negative `false` is distinct; it was not observed in this R2 sample. Unknown shapes fail validation.
+- Catalogue duration 40, the supplied settings screenshot's 10-minute buffer after, and sampled 50-minute provider intervals are consistent with 40+10. The end result is not independently labelled customer play duration, and read-only evidence does not prove buffer enforcement under competing bookings.
+- Display play end as start +40 and changeover end as start +50 under the approved rule, clearly keeping those derived values distinct from provider-returned fields. Preserve full staffing during play and studio protection across instructors. Require exact fresh matrix membership plus the provider's final booking acceptance.
+
+### Remaining provider acceptance
+
+| Gate                       | Required evidence before enabling it                                                                                                                                                   |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M2.1 account and catalogue | Actual quota/reset scope, other consumers, permissions/features, supported synthetic test route, live price/player/intake mapping and reviewed service/provider/resource relationships |
+| M2.2 booking/capacity      | Authorized test-account create/read-back, competing different-instructor and native-admin bookings, 10-minute changeover, mixed dates/instructors and closing/shift/break boundaries   |
+| M2.3 native payment        | Accepted bookings → matched account/invoice/currency/amount → supported SimplyBook/SBPay/HitPay checkout → authoritative status; verify exact entitlement and callback/polling support |
+| M2.4 recovery              | Lost-response read-back, same-attempt retry, partial creation, positively unpaid-only cleanup, expiry/late/duplicate/out-of-order status and native staff refund procedure             |
+| M3.6 customer prefill      | Synthetic verified-email cases covering unique, missing, shared/duplicate matches; return only approved name/phone without record enumeration                                          |
+
+No further client read benchmark is required merely to transfer source to GitHub. These unfinished gates remain in the roadmap and block their respective live features. Test-account use does not silently authorize writes to the soon-live client account. No customer/book/payment/cancel RPC contract is frozen by this discovery table.
