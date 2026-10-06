@@ -45,14 +45,14 @@ export function AccountStep() {
     return (
       <>
         <h1 className="page-title">Start your booking</h1>
-        <div className="access-options mt-7">
+        <div className="access-options">
           <section className="surface access-option">
             <span className="auth-mark">
               <Icon name="users" />
             </span>
-            <h2 className="text-2xl">Book as a guest</h2>
+            <h2>Book as a guest</h2>
             <p className="text-muted">Book without creating an account.</p>
-            <button className="button mt-3 w-full" onClick={() => proceed()}>
+            <button className="button wide" onClick={() => proceed()}>
               Continue as guest <Icon name="arrow" />
             </button>
           </section>
@@ -60,16 +60,14 @@ export function AccountStep() {
             <span className="auth-mark">
               <Icon name="mail" />
             </span>
-            <h2 className="text-2xl">
-              {identity ? "Welcome back" : "Continue with email"}
-            </h2>
+            <h2>{identity ? "Welcome back" : "Continue with email"}</h2>
             <p className="break-words text-muted">
               {identity
                 ? identity.email
                 : "Verify your email to prefill your name and phone number."}
             </p>
             <button
-              className="button mt-3 w-full"
+              className="button wide"
               onClick={() =>
                 identity ? proceed(identity.email) : setView("email")
               }
@@ -97,8 +95,18 @@ export function AccountStep() {
       <h1 className="page-title">
         {view === "email" ? "Continue with email" : "Verify your email"}
       </h1>
+      <p className="lead">
+        {view === "email" ? (
+          "Verify your email to continue with your saved booking contact details."
+        ) : (
+          <>
+            Enter the six-digit code for{" "}
+            <strong className="auth-email-address">{challenge?.email}</strong>
+          </>
+        )}
+      </p>
       <form
-        className="surface mt-7 max-w-xl"
+        className="surface auth-panel"
         onSubmit={(event) => {
           event.preventDefault();
           if (view === "email") request();
@@ -117,6 +125,9 @@ export function AccountStep() {
           }
         }}
       >
+        <span className="auth-mark">
+          <Icon name="mail" />
+        </span>
         {view === "email" ? (
           <>
             <label htmlFor="auth-email" className="field-label">
@@ -132,7 +143,7 @@ export function AccountStep() {
               onChange={(e) => setEmail(e.target.value)}
               maxLength={120}
             />
-            <label className="mt-5 flex gap-3 text-sm">
+            <label className="check-label auth-remember">
               <input
                 type="checkbox"
                 checked={remember}
@@ -143,15 +154,12 @@ export function AccountStep() {
           </>
         ) : (
           <>
-            <p className="mb-5 break-all">
-              Enter the six-digit code for <strong>{challenge?.email}</strong>.
-            </p>
             <label htmlFor="auth-code" className="field-label">
               Verification code
             </label>
             <input
               id="auth-code"
-              className="field-control tracking-[.3em]"
+              className="field-control auth-code"
               inputMode="numeric"
               autoComplete="one-time-code"
               maxLength={6}
@@ -162,25 +170,24 @@ export function AccountStep() {
                 setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
               }
             />
-            <p className="mt-4 rounded-lg bg-slate-100 p-3 text-sm">
+            <p className="auth-demo-code">
               Demo code <strong>{DEMO_CODE}</strong>
-              <br />
-              <span className="text-xs text-muted">
-                No email sent · Code valid for 10 minutes
-              </span>
+              <span>No email sent · Code valid for 10 minutes</span>
             </p>
           </>
         )}
         {error && (
-          <p role="alert" className="mt-4 text-sm text-red-700">
+          <p role="alert" className="field-error auth-error">
             {error}
           </p>
         )}
-        <button type="submit" className="button mt-6">
-          {view === "email" ? "Continue with email" : "Verify and continue"}
-          <Icon name="arrow" />
-        </button>
-        <div className="mt-4 flex flex-wrap gap-5">
+        <div className="actions">
+          <button type="submit" className="button">
+            {view === "email" ? "Continue with email" : "Verify and continue"}
+            <Icon name="arrow" />
+          </button>
+        </div>
+        <div className="auth-code-actions">
           {view === "code" && (
             <>
               <button type="button" className="text-link" onClick={request}>
@@ -195,19 +202,19 @@ export function AccountStep() {
               </button>
             </>
           )}
-          <button
-            type="button"
-            className="text-link"
-            onClick={() => {
-              setView("choice");
-              setError("");
-            }}
-          >
-            Back to booking options
-          </button>
         </div>
+        <button
+          type="button"
+          className="text-link auth-back"
+          onClick={() => {
+            setView("choice");
+            setError("");
+          }}
+        >
+          Back to booking options
+        </button>
         {view === "email" && (
-          <p className="mt-4 text-xs text-muted">
+          <p className="auth-demo">
             Email sign-in preview · No email will be sent.
           </p>
         )}

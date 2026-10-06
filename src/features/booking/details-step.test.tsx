@@ -12,13 +12,19 @@ beforeEach(() => {
   mocks.push.mockClear();
 });
 
-test("child details use guardian labels and require a guardian relationship before review", async () => {
+test("details contains only the five contact fields and validates them before review", async () => {
   const user = userEvent.setup();
   render(
     <BookingProvider>
       <DetailsStep />
     </BookingProvider>,
   );
+  expect(screen.getAllByRole("textbox")).toHaveLength(4);
+  expect(screen.getAllByRole("combobox")).toHaveLength(1);
+  expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "Review booking" }));
+  expect(screen.getByLabelText(/Full name/)).toHaveFocus();
+  expect(mocks.push).not.toHaveBeenCalled();
   await user.type(screen.getByLabelText(/Full name/), "Demo Customer");
   await user.type(
     screen.getByLabelText(/Email address/),
@@ -26,25 +32,10 @@ test("child details use guardian labels and require a guardian relationship befo
   );
   await user.type(screen.getByLabelText(/Mobile number/), "+65 8123 4567");
   await user.selectOptions(
-    screen.getByLabelText(/Participant age group/),
-    "child",
+    screen.getByLabelText(/Preferred contact method/),
+    "whatsapp",
   );
-  await user.selectOptions(screen.getByLabelText(/Football experience/), "new");
-  expect(screen.queryByLabelText(/Emergency contact name/)).toBeNull();
-  await user.type(
-    screen.getByLabelText(/Parent \/ guardian name/),
-    "Guardian Person",
-  );
-  await user.type(
-    screen.getByLabelText(/Parent \/ guardian mobile/),
-    "+65 9123 4567",
-  );
+  await user.type(screen.getByLabelText(/Academy \/ school/), "Demo Academy");
   await user.click(screen.getByRole("button", { name: "Review booking" }));
-  const relationship = screen.getByLabelText(/Emergency contact relationship/);
-  expect(relationship).toHaveFocus();
-  expect(relationship).toHaveAttribute("aria-invalid", "true");
-  expect(mocks.push).not.toHaveBeenCalled();
-  await user.selectOptions(relationship, "guardian");
-  await user.click(screen.getByRole("button", { name: "Review booking" }));
-  expect(mocks.push).toHaveBeenCalledWith("/book/review/");
+  expect(mocks.push).toHaveBeenCalledExactlyOnceWith("/book/review/");
 });

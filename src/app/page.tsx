@@ -39,9 +39,9 @@ export default function Home() {
               football scenarios into the arena. Every session includes full
               instructor guidance for your group.
             </p>
-            <Link className="button" href="/studio/">
+            <BookingLink className="button" href="/studio/">
               Explore the studio <Icon name="arrow" />
-            </Link>
+            </BookingLink>
             <small className="home-image-credit">
               Imagery:{" "}
               <a

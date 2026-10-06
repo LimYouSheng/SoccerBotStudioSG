@@ -102,12 +102,12 @@ function fixture(t) {
     const draft = blankDraft();
     Object.assign(draft, {
       mode: "guest",
-      instructor: "faisal",
       accepted: true,
       slots: [
         {
           date: `2026-10-${String(nextDay++).padStart(2, "0")}`,
-          start: "10:00",
+          start: "09:00",
+          instructor: "faisal",
         },
       ],
     });
@@ -115,11 +115,6 @@ function fixture(t) {
       name: "Demo Customer",
       email: "customer@example.com",
       phone: "+65 8123 4567",
-      ageGroup: "adult",
-      experience: "new",
-      emergencyName: "Emergency Person",
-      emergencyPhone: "+65 9123 4567",
-      emergencyRelationship: "family",
     });
     return service.pay(service.checkout(draft, null), outcome);
   }

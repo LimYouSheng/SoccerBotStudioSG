@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """Standard local delivery: runtime selection, guarded apply, live checks and upload receipts."""
 import argparse
+import ast
 from contextlib import contextmanager, redirect_stderr, redirect_stdout
 from datetime import datetime, timezone
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import shlex
@@ -21,7 +23,66 @@ guard = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(guard)
 
 NODE_VERSION = '24.19.0'
-DELIVERY = 'SoccerBotStudioSG_Standard_Local_2026-10-04'
+DELIVERY = 'SoccerBotStudioSG_Design_System_Local_2026-10-05'
+PLANNING_DELIVERY = 'SoccerBotStudioSG_Performance_Plan_Local_2026-10-05'
+PLANNING_DOCUMENTS = {
+    'AGENTS.md', 'docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md',
+    'docs/SERVICE_CONTRACTS.md', 'docs/SOCCERBOT_JOURNEY.md',
+}
+PLANNING_OWNERS = PLANNING_DOCUMENTS | {
+    'scripts/build-local-installer.py', 'scripts/local-installer.py',
+    'scripts/local-installer.test.py',
+}
+
+
+def delivery_scope(manifest):
+    bundle = json.loads(manifest.read_text())
+    scope = bundle.get('scope', 'full')
+    guard.require(scope in {'full', 'planning'}, 'Unknown delivery scope')
+    if scope == 'planning':
+        variants = bundle.get('updates', [bundle])
+        guard.require(bool(variants), 'Missing planning variants')
+        for item in variants:
+            changed = {name for name in set(item['baseline']) | set(item['candidate'])
+                       if item['baseline'].get(name) != item['candidate'].get(name)}
+            guard.require(changed and changed <= PLANNING_OWNERS and not item.get('deletions'),
+                          'Planning scope permits only canonical documentation and its delivery owners; no application/configuration changes')
+            guard.require(PLANNING_DOCUMENTS <= set(item['candidate']), 'Missing canonical planning documents')
+    return scope
+
+
+def check_planning_documents(root, candidate):
+    """Dependency-free integrity gate; no Node, application build or browser invocation."""
+    for name in PLANNING_DOCUMENTS:
+        source = (candidate / name).read_text()
+        guard.require(source.strip() and source.endswith('\n'), f'Empty or incomplete document: {name}')
+    rules = (candidate / 'docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md').read_text()
+    counts = (4, 5, 6, 6, 5, 6, 4, 4, 4)
+    expected = [f'M{major}.{minor}' for major, count in enumerate(counts, 1) for minor in range(1, count + 1)]
+    actual = re.findall(r'^### (M[1-9]\.\d+) — ', rules, re.M)
+    guard.require(actual == expected, 'Iteration plan must contain each of the 44 reviewed subiterations once, in order')
+    for name in PLANNING_OWNERS - PLANNING_DOCUMENTS:
+        ast.parse((candidate / name).read_text(), filename=name)
+    banner('PASS', 'PREFLIGHT — three canonical documents, AGENTS, 44 ordered subiterations and Python syntax')
+
+
+def verify_planning(root, run, receipt):
+    check_planning_documents(root, root)
+    for name in ('guarded-update.test.py', 'local-installer.test.py'):
+        command = [sys.executable, '-B', str(root / 'scripts' / name), '-v']
+        row = {'command': command, 'exit': None, 'log': str(run / (name + '.log'))}
+        receipt['commands'].append(row)
+        banner('RUNNING', 'selected installer regressions: ' + name)
+        with Path(row['log']).open('w') as log:
+            process = subprocess.Popen(command, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            for line in process.stdout:
+                print(line, end='', flush=True)
+                log.write(line)
+            row['exit'] = process.wait()
+        guard.require(row['exit'] == 0, f'Selected installer regression failed: {name}')
+    receipt.update(tests_run=True, documentation_integrity=True, browser_tests_run=False,
+                   status='planning documentation and selected installer verification passed',
+                   application_verification='not run; application unchanged')
 
 
 def select_manifest(root, source, run):
@@ -220,36 +281,57 @@ def run_local(root, manifest, logs, desktop, home):
     guard.safe_directory(logs)
     guard.require(not logs.resolve().is_relative_to(root.resolve()), 'Logs must be outside the repository')
     logs.mkdir(parents=True, exist_ok=True)
-    run = Path(tempfile.mkdtemp(prefix=DELIVERY + '.', dir=logs)).resolve()
-    receipt = {'delivery': DELIVERY, 'scope': 'GitHub Pages local code and browser verification', 'status': 'running',
+    # Scope errors still receive the normal failure receipt below.
+    planning = json.loads(manifest.read_text()).get('scope') == 'planning'
+    run = Path(tempfile.mkdtemp(prefix=(PLANNING_DELIVERY if planning else DELIVERY) + '.', dir=logs)).resolve()
+    receipt = {'delivery': DELIVERY, 'scope': 'Central brand colour and typography update; full local code and browser verification', 'status': 'running',
                'started': datetime.now(timezone.utc).isoformat(), 'repository': str(root),
                'browser_tests_run': False, 'published': False, 'ci_accepted': False,
                'dependency_action': 'reuse installed pinned dependencies; no installation', 'runtime': None,
                'source_backup': None, 'commands': []}
+    if planning:
+        receipt.update(delivery=PLANNING_DELIVERY, scope='planning documentation and selected installer regressions',
+                       dependency_action='none; Python standard library and Git only')
     with (run / 'local-check.log').open('w') as log:
         live = LiveLog(sys.stdout, log)
         with redirect_stdout(live), redirect_stderr(live):
             print('SoccerBotStudioSG — Standard local installer')
             print(f'Logs, source backup and receipt: {run}')
-            print('Scope: GitHub Pages repair checks — code health, tooling/installer tests, formatting, lint, types, 33 unit/component cases and 30 browser cases (desktop / phone / tablet).')
-            print('One fresh Next.js build at /SoccerBotStudioSG/ supplies the browser test site and export checks. This local check does not publish it.')
-            print('Reuse installed pinned dependencies and browsers. No npm ci, dependency/browser downloads, commit, push, PR or deployment. Branch and index stay unchanged.')
+            if planning:
+                print('Scope: latency architecture, baseline/acceptance plan and selected installer regressions. Python 3.11+ and Git only.')
+                print('Application, dependencies and workflow are unchanged. No Node, application build or browser suite is required for this scope.')
+            else:
+                print('Scope: central brand colour and typography update — code health, tooling/installer tests, formatting, lint, types, 43 unit/component cases and 42 browser cases (desktop / phone / tablet).')
+                print('One fresh Next.js build at /SoccerBotStudioSG/ supplies the browser test site and export checks. This local check does not publish it.')
+                print('Reuse installed pinned dependencies and browsers. No npm ci or dependency/browser downloads.')
+            print('No commit, push, PR or deployment. Branch, HEAD and index stay unchanged.')
             try:
-                banner('RUNNING', 'PREFLIGHT — runtime, exact source/Git baseline, installed tools/browsers and preview port')
+                scope = delivery_scope(manifest)
+                banner('RUNNING', 'PREFLIGHT — exact source/Git baseline and declared ' + scope + ' scope')
                 environment = os.environ.copy()
                 for name in ('NO_COLOR', 'NODE_DISABLE_COLORS', 'NODE_OPTIONS', 'NODE_TEST_CONTEXT'):
                     environment.pop(name, None)
                 environment.update(FORCE_COLOR='1', CI='1', PYTHONUNBUFFERED='1', PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD='1', NEXT_PUBLIC_BASE_PATH='/SoccerBotStudioSG')
-                environment, runtime = select_runtime(environment, home)
-                receipt['runtime'] = runtime
-                banner('PASS', f'PREFLIGHT — installed Node {runtime["node"]} selected automatically; npm {runtime["npm"]}')
+                if not planning:
+                    environment, runtime = select_runtime(environment, home)
+                    receipt['runtime'] = runtime
+                    banner('PASS', f'PREFLIGHT — installed Node {runtime["node"]} selected automatically; npm {runtime["npm"]}')
+                else:
+                    environment['PYTHONDONTWRITEBYTECODE'] = '1'
+                    receipt['runtime'] = {'python': sys.version.split()[0], 'python_path': sys.executable}
                 save_json(run / 'receipt.json', receipt)
                 guard.safe_directory(root)
                 root = root.resolve()
                 with process_environment(environment):
                     selected = select_manifest(root, manifest, run)
-                    result = guard.apply(root, selected, run / 'apply', preflight=check_prerequisites, verify_local=verify_local)
-                guard.require(result.get('tests_run') and result.get('browser_tests_run'), 'Incomplete code/browser execution cannot be marked passed')
+                    result = guard.apply(root, selected, run / 'apply',
+                                         preflight=check_planning_documents if planning else check_prerequisites,
+                                         verify_local=verify_planning if planning else verify_local)
+                if planning:
+                    guard.require(result.get('tests_run') and result.get('documentation_integrity') and result.get('browser_tests_run') is False,
+                                  'Incomplete planning verification cannot be marked passed')
+                else:
+                    guard.require(result.get('tests_run') and result.get('browser_tests_run'), 'Incomplete code/browser execution cannot be marked passed')
                 receipt.update(result)
             except (Exception, KeyboardInterrupt) as error:
                 receipt.update(status='failed', error=str(error) or 'Interrupted')
@@ -288,9 +370,13 @@ def run_local(root, manifest, logs, desktop, home):
             if receipt['status'] == 'failed':
                 banner('STOPPED', 'NOT GREEN — local verification stopped. Keep the receipt and failure ZIP.')
                 return 1
-            banner('PASS', 'Full local code and browser verification passed. Git state preserved.')
-            banner('PENDING', 'Physical comparison, dependency-advisory review and CI acceptance.')
-            print('Before committing: git rm --cached --ignore-unmatch next-env.d.ts')
+            if planning:
+                banner('PASS', 'Planning documentation and selected installer verification passed. Git state preserved.')
+                banner('PENDING', 'Review the local diff. This receipt is not full application, browser, CI or production acceptance.')
+            else:
+                banner('PASS', 'Full local code and browser verification passed. Git state preserved.')
+                banner('PENDING', 'Physical comparison, dependency-advisory review and CI acceptance.')
+                print('Before committing: git rm --cached --ignore-unmatch next-env.d.ts')
             return 0
 
 

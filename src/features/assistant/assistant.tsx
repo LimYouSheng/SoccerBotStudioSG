@@ -59,7 +59,7 @@ export function Assistant() {
         >
           <header className="flex items-center justify-between bg-navy px-5 py-4 text-white">
             <div>
-              <h2 id="assistant-title" className="text-lg">
+              <h2 id="assistant-title" className="assistant-title">
                 Studio assistant
               </h2>
               <span className="text-xs text-slate-300">Booking preview</span>

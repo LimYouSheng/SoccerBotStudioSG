@@ -158,7 +158,12 @@ export function BookingNavigation({ children }: { children: ReactNode }) {
       >
         {children}
       </div>
-      {entry?.kind === "logo" && <BrandLoading leaving={leaving} />}
+      {entry?.kind === "logo" && (
+        <BrandLoading
+          leaving={leaving}
+          label={entry.to === "/studio/" ? "Opening studio" : "Opening booking"}
+        />
+      )}
       {entry?.kind === "arena" && entry.origin && entry.viewport && (
         <ArenaEntry
           origin={entry.origin}

@@ -6,7 +6,6 @@ import {
   normalizeContact,
 } from "./contact";
 import {
-  INSTRUCTORS,
   MAX_PLAYERS,
   PRICE_CENTS,
   SESSION_MINUTES,
@@ -18,15 +17,26 @@ export const slotSchema = z.object({
   start: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
 });
 export type Slot = z.infer<typeof slotSchema>;
-export const assignedSlotSchema = slotSchema.extend({ studio: z.string() });
+export const instructorSchema = z.enum([
+  "faisal",
+  "daniel",
+  "instructor3",
+  "instructor4",
+]);
+export const sessionSchema = slotSchema.extend({
+  instructor: instructorSchema,
+  rotationAt: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+    .optional(),
+});
+export type Session = z.infer<typeof sessionSchema>;
+export const assignedSlotSchema = sessionSchema.extend({ studio: z.string() });
 export const draftSchema = z.object({
   mode: z.enum(["guest", "member"]).nullable(),
   accountEmail: z.string(),
   players: z.number().int().min(1).max(MAX_PLAYERS),
-  instructor: z
-    .enum(["faisal", "daniel", "instructor3", "instructor4"])
-    .nullable(),
-  slots: z.array(slotSchema).max(100),
+  slots: z.array(sessionSchema).max(100),
   contact: contactSchema,
   accepted: z.boolean(),
 });
@@ -54,13 +64,12 @@ export const blankDraft = (): BookingDraft => ({
   mode: null,
   accountEmail: "",
   players: 1,
-  instructor: null,
   slots: [],
   contact: blankContact(),
   accepted: false,
 });
 export const slotKey = (slot: Slot) => `${slot.date}|${slot.start}`;
-export const orderedSlots = (slots: Slot[]) =>
+export const orderedSlots = <T extends Slot>(slots: T[]) =>
   [...slots].sort((a, b) => slotKey(a).localeCompare(slotKey(b)));
 export const totalCents = (draft: BookingDraft) =>
   draft.slots.length * PRICE_CENTS;
@@ -96,12 +105,7 @@ export function selectionErrors(slots: Slot[], today = todaySG()): string[] {
   return [];
 }
 export function draftError(draft: BookingDraft): string | null {
-  if (
-    !draftSchema.safeParse(draft).success ||
-    !draft.mode ||
-    !draft.instructor ||
-    !(draft.instructor in INSTRUCTORS)
-  )
+  if (!draftSchema.safeParse(draft).success || !draft.mode)
     return "Review your booking options.";
   if (draft.mode === "member" && !draft.accountEmail)
     return "Verify your email again.";
@@ -115,7 +119,7 @@ export function draftError(draft: BookingDraft): string | null {
       ),
     ).length
   )
-    return "Review your contact and participant details.";
+    return "Review your contact details.";
   if (!draft.accepted) return "Review and accept the booking information.";
   return null;
 }
@@ -147,7 +151,9 @@ export function guardedStep(
   if (requested !== "account" && !draft.mode) return "account";
   if (
     ["details", "review", "payment"].includes(requested) &&
-    (!draft.slots.length || !draft.instructor)
+    (!draft.slots.length ||
+      !z.array(sessionSchema).safeParse(draft.slots).success ||
+      selectionErrors(draft.slots).length > 0)
   )
     return "time";
   if (

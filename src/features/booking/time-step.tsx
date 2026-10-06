@@ -12,59 +12,69 @@ import {
   todaySG,
 } from "@/domain/dates";
 import { services } from "@/services";
+import type { AvailableSlot } from "@/services/contracts";
 import { useBooking } from "./provider";
 export function TimeStep() {
   const { draft, update } = useBooking();
   const today = todaySG();
   const [date, setDate] = useState(() => draft.slots[0]?.date || today),
-    [offset, setOffset] = useState(0),
-    [empty, setEmpty] = useState(false);
+    [offset, setOffset] = useState(() => {
+      const initial = draft.slots[0]?.date || today;
+      return Math.max(
+        0,
+        Math.min(
+          11,
+          (+initial.slice(0, 4) - +today.slice(0, 4)) * 12 +
+            +initial.slice(5, 7) -
+            +today.slice(5, 7),
+        ),
+      );
+    });
   const month = monthAt(today, offset),
     firstDay = (new Date(`${month}T12:00:00Z`).getUTCDay() + 6) % 7;
   const days = new Date(`${monthAt(today, offset + 1)}T12:00:00Z`);
   days.setUTCDate(0);
-  const slots = empty ? [] : services.booking.availability(date),
-    instructors = services.booking.instructors(draft.slots);
-  function select(start: string) {
-    const slot = { date, start },
+  const slots = services.booking.availability(date);
+  function select({ date, start, instructor, rotationAt }: AvailableSlot) {
+    const slot = { date, start, instructor, rotationAt },
       selected = draft.slots.some((item) => slotKey(item) === slotKey(slot));
     update({
       slots: selected
         ? draft.slots.filter((item) => slotKey(item) !== slotKey(slot))
         : [...draft.slots, slot],
-      instructor: null,
     });
   }
   return (
     <>
       <h1 className="page-title">Select dates and times</h1>
-      <p className="mt-3 text-muted">
+      <p className="lead">
         Add 40-minute sessions on the same or different dates. Start times are
         50 minutes apart, with 10 minutes for exit and entry.
       </p>
-      <section className="surface mt-7" aria-label="Booking calendar">
-        <div className="mb-5 flex items-center justify-between gap-4">
-          <label className="sr-only" htmlFor="calendar-month">
-            Calendar month
-          </label>
-          <select
-            id="calendar-month"
-            className="min-h-11 max-w-[65%] rounded-lg border border-line bg-white px-3 font-bold"
-            value={offset}
-            onChange={(e) => setOffset(+e.target.value)}
-          >
-            {Array.from({ length: 12 }, (_, i) => (
-              <option key={i} value={i}>
-                {dateLabel(monthAt(today, i), {
-                  month: "long",
-                  year: "numeric",
-                })}
-              </option>
-            ))}
-          </select>
-          <div className="flex gap-1">
+      <section className="calendar-panel" aria-label="Booking calendar">
+        <div className="calendar-head">
+          <div className="month-picker">
+            <label className="sr-only" htmlFor="calendar-month">
+              Calendar month
+            </label>
+            <select
+              id="calendar-month"
+              value={offset}
+              onChange={(e) => setOffset(+e.target.value)}
+            >
+              {Array.from({ length: 12 }, (_, i) => (
+                <option key={i} value={i}>
+                  {dateLabel(monthAt(today, i), {
+                    month: "long",
+                    year: "numeric",
+                  })}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="calendar-nav">
             <button
-              className="back"
+              className="icon-button"
               aria-label="Previous month"
               disabled={offset === 0}
               onClick={() => setOffset(offset - 1)}
@@ -72,7 +82,7 @@ export function TimeStep() {
               <Icon name="back" />
             </button>
             <button
-              className="back"
+              className="icon-button"
               aria-label="Next month"
               disabled={offset === 11}
               onClick={() => setOffset(offset + 1)}
@@ -81,14 +91,14 @@ export function TimeStep() {
             </button>
           </div>
         </div>
-        <div className="grid grid-cols-7 gap-1 text-center">
+        <div className="calendar-weekdays">
           {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day) => (
-            <span key={day} className="py-2 text-xs text-muted">
-              {day}
-            </span>
+            <span key={day}>{day}</span>
           ))}
+        </div>
+        <div className="dates">
           {Array.from({ length: firstDay }, (_, i) => (
-            <span key={`blank-${i}`} />
+            <span className="date-placeholder" key={`blank-${i}`} />
           ))}
           {Array.from({ length: days.getUTCDate() }, (_, i) => {
             const value = addDays(month, i),
@@ -96,30 +106,37 @@ export function TimeStep() {
             return (
               <button
                 key={value}
-                className={`relative min-h-11 rounded-lg border text-sm disabled:border-transparent disabled:text-slate-300 ${value === date ? "border-action bg-action font-bold text-white" : "border-transparent hover:bg-slate-100"}`}
+                className={`date${value === date ? " selected" : ""}${value === today ? " today" : ""}${hasSlots ? " in-series" : ""}`}
                 aria-label={dateLabel(value)}
                 aria-pressed={date === value}
                 disabled={value < today}
                 onClick={() => {
                   setDate(value);
-                  setEmpty(false);
                 }}
               >
-                {i + 1}
-                {hasSlots && (
-                  <span className="absolute bottom-1 left-1/2 h-1 w-1 rounded-full bg-cyan" />
-                )}
+                <strong>{i + 1}</strong>
+                <span className="dot" aria-hidden="true" />
               </button>
             );
           })}
         </div>
+        <div className="calendar-legend">
+          <span>
+            <i className="legend-mark" />
+            Selected day
+          </span>
+          <span>
+            <i className="legend-mark series" />
+            In your booking
+          </span>
+        </div>
       </section>
-      <div className="mt-7 mb-4 flex flex-wrap justify-between gap-3">
-        <h2 className="text-xl">{dateLabel(date)}</h2>
-        <span className="text-xs text-muted">SGT · Per session</span>
+      <div className="time-heading">
+        <h2>{dateLabel(date)}</h2>
+        <span>SGT · Per session</span>
       </div>
       {slots.length ? (
-        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+        <div className="times" role="group" aria-label="Session times">
           {slots.map((slot) => {
             const selected = draft.slots.some(
               (item) => slotKey(item) === slotKey(slot),
@@ -127,89 +144,77 @@ export function TimeStep() {
             return (
               <button
                 key={slot.start}
-                className={`flex min-h-21 items-center justify-between gap-2 rounded-lg border p-3 text-left text-sm sm:p-4 disabled:border-line disabled:bg-slate-100 disabled:text-slate-400 ${selected ? "border-action bg-action text-white" : "border-line bg-white hover:border-action"}`}
+                className={`time${selected ? " selected" : ""}`}
                 aria-pressed={selected}
                 disabled={!slot.available && !selected}
-                onClick={() => select(slot.start)}
+                onClick={() => select(slot)}
               >
-                <span>
-                  <strong className="block">
+                <span className="time-details">
+                  <span>
                     {slot.start}–{endTime(slot.start)}
-                  </strong>
-                  <span className="mt-1 block text-xs">
-                    {slot.available
-                      ? `${money(PRICE_CENTS)} · Trial price`
-                      : "Unavailable"}
                   </span>
+                  <span className="time-rate">
+                    {slot.available ? (
+                      <>
+                        <strong>{money(PRICE_CENTS)}</strong>
+                        <span>Trial price</span>
+                      </>
+                    ) : (
+                      "Unavailable"
+                    )}
+                  </span>
+                  <span className="time-instructor">
+                    {slot.available
+                      ? INSTRUCTORS[slot.instructor].name
+                      : "No instructor available"}
+                  </span>
+                  {slot.available && slot.rotationAt && (
+                    <span className="rotation-notice">
+                      Crosses the {slot.rotationAt} instructor rotation. Your
+                      assigned instructor stays for the full session.
+                    </span>
+                  )}
                 </span>
-                <Icon name={selected ? "check" : "plus"} className="h-4 w-4" />
+                <Icon name={selected ? "check" : "plus"} />
               </button>
             );
           })}
         </div>
       ) : (
-        <div className="surface text-center">
-          <Icon name="calendar" className="mx-auto mb-4 h-10 w-10" />
-          <h2 className="text-2xl">No times on this day.</h2>
-          <p className="mt-3 text-muted">
-            Choose another date. Your selections are saved.
-          </p>
+        <div className="empty-state">
+          <Icon name="calendar" />
+          <h3>No times on this day.</h3>
+          <p>Choose another date. Your selections are saved.</p>
           <button
-            className="button secondary mt-5"
+            className="button secondary"
             onClick={() => {
-              setDate(addDays(date, 1));
-              setEmpty(false);
+              const next = addDays(date, 1);
+              setDate(next);
+              setOffset(
+                Math.max(
+                  0,
+                  Math.min(
+                    11,
+                    (+next.slice(0, 4) - +today.slice(0, 4)) * 12 +
+                      +next.slice(5, 7) -
+                      +today.slice(5, 7),
+                  ),
+                ),
+              );
             }}
           >
             See next available day <Icon name="arrow" />
           </button>
         </div>
       )}
-      {draft.slots.length > 0 && (
-        <section className="mt-9" aria-label="Available instructors">
-          <h2 className="text-2xl">Choose your instructor</h2>
-          <p className="mt-3 mb-5 text-sm text-muted">
-            Available for all your selected sessions.
-          </p>
-          <div className="grid gap-3">
-            {instructors.map((id) => (
-              <label
-                key={id}
-                className={`flex cursor-pointer items-start gap-4 rounded-xl border p-5 ${draft.instructor === id ? "border-action bg-[#e9eff5]" : "border-line bg-white"}`}
-              >
-                <input
-                  type="radio"
-                  name="instructor"
-                  className="mt-1"
-                  value={id}
-                  checked={draft.instructor === id}
-                  onChange={() => update({ instructor: id })}
-                />
-                <span>
-                  <strong className="block">{INSTRUCTORS[id].name}</strong>
-                  <span className="mt-1 block text-xs font-bold text-muted">
-                    {INSTRUCTORS[id].role}
-                  </span>
-                  <span className="mt-3 block text-sm leading-6 text-muted">
-                    {INSTRUCTORS[id].bio}
-                  </span>
-                </span>
-              </label>
-            ))}
-          </div>
-        </section>
-      )}
-      <details className="mt-8 text-xs text-muted">
-        <summary>Preview controls</summary>
-        <label className="mt-3 flex items-center gap-2">
-          <input
-            type="checkbox"
-            checked={empty}
-            onChange={(e) => setEmpty(e.target.checked)}
-          />
-          No times on selected day
-        </label>
-      </details>
+      <p className="note">
+        <Icon name="clock" />
+        <span>
+          Open 9am–9pm. Each session includes one instructor. In this preview,
+          instructors rotate every three hours; the instructor assigned at the
+          start stays for your full session.
+        </span>
+      </p>
     </>
   );
 }

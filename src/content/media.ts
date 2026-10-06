@@ -1,4 +1,6 @@
 import { sitePath } from "./site-path";
+export const bookingCover = sitePath("/assets/68b1a1790591.jpg");
+export const darkLogo = sitePath("/assets/e1fb2d17fd4c.svg");
 export const logo = sitePath("/assets/c275ccd87afb.svg");
 export const studioMedia = [
   {

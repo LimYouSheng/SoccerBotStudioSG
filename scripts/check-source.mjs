@@ -3,6 +3,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import ts from "typescript";
 import { checkCss } from "./check-css.mjs";
+import { designAudit } from "./check-design.mjs";
 import { inspectTests, orderedInventory } from "./test-inventory.mjs";
 const ignored = new Set([
   "node_modules",
@@ -200,6 +201,7 @@ export function checkSource(root) {
       errors.push(`Unreachable runtime module: ${path.relative(root, file)}`);
   const css = files.find((file) => file.endsWith("/src/app/globals.css"));
   if (css) {
+    errors.push(...designAudit(readFileSync(css, "utf8")).errors);
     errors.push(
       ...checkCss(
         readFileSync(css, "utf8"),

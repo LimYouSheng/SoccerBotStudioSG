@@ -2,12 +2,13 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import { ADDRESS, CONTACT, LOCATION } from "@/domain/catalog";
-import { logo } from "@/content/media";
+import { ADDRESS, CONTACT, LOCATION, PLAYER_APP_URL } from "@/domain/catalog";
+import { darkLogo, logo } from "@/content/media";
 import { useBooking } from "@/features/booking/provider";
 import { Assistant } from "@/features/assistant/assistant";
 import { Dialog } from "./dialog";
 import { BookingLink } from "./booking-navigation";
+import { PlayerAppPrompt } from "./player-app-prompt";
 import { Icon } from "./icon";
 export function SiteShell({ children }: { children: ReactNode }) {
   const pathname = usePathname(),
@@ -49,13 +50,21 @@ export function SiteShell({ children }: { children: ReactNode }) {
             />
           </Link>
           <div className="nav-links" hidden={pathname.startsWith("/book/")}>
-            <Link
+            <BookingLink
               href="/studio/"
               className="nav-studio"
               aria-current={pathname === "/studio/" ? "page" : undefined}
             >
               The studio
-            </Link>
+            </BookingLink>
+            <a
+              href={PLAYER_APP_URL}
+              className="nav-download"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Download app
+            </a>
             <BookingLink href="/book/account/" className="nav-book">
               Book now
             </BookingLink>
@@ -69,7 +78,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
         <div className="footer-contact-band">
           <div className="footer-brand">
             <img
-              src={logo}
+              src={darkLogo}
               alt="SOCCERBOTSTUDIO Singapore"
               width={565}
               height={190}
@@ -146,6 +155,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
         </div>
       </footer>
       <Assistant />
+      <PlayerAppPrompt />
       {dialog && (
         <Dialog
           title={
@@ -159,21 +169,18 @@ export function SiteShell({ children }: { children: ReactNode }) {
                 Your current selections are saved in this browser. Any payment
                 in progress remains available when you return.
               </p>
-              <div className="flex flex-wrap gap-3">
+              <div className="dialog-actions">
                 <button
                   className="button secondary"
-                  onClick={() => setDialog(null)}
-                >
-                  Keep booking
-                </button>
-                <button
-                  className="button"
                   onClick={() => {
                     setDialog(null);
                     router.push("/");
                   }}
                 >
                   Back to home
+                </button>
+                <button className="button" onClick={() => setDialog(null)}>
+                  Stay
                 </button>
               </div>
             </>

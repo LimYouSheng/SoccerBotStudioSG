@@ -166,3 +166,26 @@ test("a changed motion preference finishes an active entry and removes its scrol
     screen.queryByRole("button", { name: "Skip arena transition" }),
   ).not.toBeInTheDocument();
 });
+
+test("studio navigation uses the same branded loader and restores focus after arrival", () => {
+  function StudioLink() {
+    return (
+      <BookingNavigation>
+        <main id="main" tabIndex={-1}>
+          <BookingLink href="/studio/">The studio</BookingLink>
+        </main>
+      </BookingNavigation>
+    );
+  }
+  const view = render(<StudioLink />);
+  fireEvent.click(screen.getByRole("link", { name: "The studio" }));
+  expect(
+    screen.getByRole("status", { name: "Opening studio" }),
+  ).toBeInTheDocument();
+  expect(navigation.push).toHaveBeenCalledExactlyOnceWith("/studio/");
+  navigation.path = "/studio/";
+  view.rerender(<StudioLink />);
+  act(() => vi.advanceTimersByTime(660));
+  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  expect(screen.getByRole("main")).toHaveFocus();
+});

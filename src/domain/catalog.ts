@@ -4,9 +4,17 @@ export const START_INTERVAL_MINUTES = 50;
 export const MAX_PLAYERS = 4;
 export const PRICE_CENTS = 8800;
 export const SERVICE_NAME = "Kickoff Special (Trial Price)";
+export const OPENING_MINUTE = 9 * 60;
+export const CLOSING_MINUTE = 21 * 60;
 export const SESSION_STARTS = Array.from(
-  { length: 14 },
-  (_, i) => 600 + i * START_INTERVAL_MINUTES,
+  {
+    length:
+      Math.floor(
+        (CLOSING_MINUTE - OPENING_MINUTE - SESSION_MINUTES) /
+          START_INTERVAL_MINUTES,
+      ) + 1,
+  },
+  (_, i) => OPENING_MINUTE + i * START_INTERVAL_MINUTES,
 );
 export const STUDIOS = ["Studio 1"] as const;
 export const INSTRUCTORS = {
@@ -54,34 +62,7 @@ export const CONTACT_METHODS = {
   phone: "Phone call",
   whatsapp: "WhatsApp",
 };
-export const AGE_GROUPS = {
-  child: "Under 12",
-  youth: "12–17",
-  adult: "18 and above",
-  mixed: "Mixed adults and under-18s",
-};
-export const EXPERIENCE = {
-  new: "New to football",
-  recreational: "Recreational",
-  academy: "Academy / club",
-  competitive: "Competitive",
-  mixed: "Mixed experience levels",
-};
-export const RELATIONSHIPS = {
-  parent: "Parent / guardian",
-  coach: "Coach / teacher",
-  organiser: "Group organiser",
-  other: "Other",
-};
-export const EMERGENCY_RELATIONSHIPS = {
-  parent: "Parent",
-  guardian: "Legal guardian",
-  partner: "Spouse / partner",
-  family: "Family member",
-  coach: "Coach / teacher",
-  friend: "Friend",
-  other: "Other",
-};
+export const PLAYER_APP_URL = "https://soccerbot360.com/en/player-app";
 export const ENQUIRY_TYPES = [
   "Multi-session bundle",
   "Membership",

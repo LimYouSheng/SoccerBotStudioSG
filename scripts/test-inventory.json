@@ -37,6 +37,10 @@
   },
   {
     "file": "src/components/booking-navigation.test.tsx",
+    "title": "studio navigation uses the same branded loader and restores focus after arrival"
+  },
+  {
+    "file": "src/components/booking-navigation.test.tsx",
     "title": "unmount cleans the animation timers and preserves the previous scroll style"
   },
   {
@@ -57,11 +61,31 @@
   },
   {
     "file": "src/features/booking/details-step.test.tsx",
-    "title": "child details use guardian labels and require a guardian relationship before review"
+    "title": "details contains only the five contact fields and validates them before review"
+  },
+  {
+    "file": "src/features/booking/time-step.test.tsx",
+    "title": "confirmation shows each contact and location once with all five sections expanded"
+  },
+  {
+    "file": "src/features/booking/time-step.test.tsx",
+    "title": "crossing notices persist in the basket and review before payment"
+  },
+  {
+    "file": "src/features/booking/time-step.test.tsx",
+    "title": "selecting and removing sessions automatically accumulates unique instructors and enables Continue"
   },
   {
     "file": "src/features/enquiry/enquiry-page.test.tsx",
     "title": "enquiry waits for hydration then preserves entered details through submission"
+  },
+  {
+    "file": "src/services/booking.test.ts",
+    "title": "accepts different session instructors and rejects stale assignments or missing rotation disclosures"
+  },
+  {
+    "file": "src/services/booking.test.ts",
+    "title": "allows contact-only booking without removed participant fields"
   },
   {
     "file": "src/services/booking.test.ts",
@@ -70,6 +94,10 @@
   {
     "file": "src/services/booking.test.ts",
     "title": "confirms and reserves once even when the old check is repeated"
+  },
+  {
+    "file": "src/services/booking.test.ts",
+    "title": "discloses crossing rotations while retaining the starting instructor for the whole session"
   },
   {
     "file": "src/services/booking.test.ts",
@@ -85,11 +113,19 @@
   },
   {
     "file": "src/services/booking.test.ts",
+    "title": "keeps payment checking for exactly five seconds and preserves the deadline through storage"
+  },
+  {
+    "file": "src/services/booking.test.ts",
     "title": "makes decline retryable and status polling resumable"
   },
   {
     "file": "src/services/booking.test.ts",
     "title": "never auto-confirms late payment or allows another pay attempt"
+  },
+  {
+    "file": "src/services/booking.test.ts",
+    "title": "offers only complete sessions within 9am to 9pm and rotates instructors every three hours"
   },
   {
     "file": "src/services/booking.test.ts",
@@ -117,23 +153,27 @@
   },
   {
     "file": "src/services/booking.test.ts",
-    "title": "requires a guardian for under-18s and a different emergency number for self"
+    "title": "requires a per-session assignment before details"
   },
   {
     "file": "src/services/booking.test.ts",
-    "title": "requires instructor selection after dates before details"
+    "title": "upgrades pending and paid legacy attempts without changing their identity or charging twice"
   },
   {
     "file": "src/services/booking.test.ts",
-    "title": "reuses booking contact for a non-self participant"
+    "title": "upgrades the previous draft without deleting its source or losing contact and session data"
   },
   {
     "file": "src/services/booking.test.ts",
     "title": "uses one shared studio with 40-minute sessions every 50 minutes"
   },
   {
+    "file": "src/services/booking.test.ts",
+    "title": "validates all required contact fields and their length limits"
+  },
+  {
     "file": "tests/customer.spec.ts",
-    "title": "50-minute cadence, required instructor, guardian validation and final-slot conflict"
+    "title": "50-minute cadence, automatic instructors, contact validation and final-slot conflict"
   },
   {
     "file": "tests/customer.spec.ts",
@@ -149,7 +189,15 @@
   },
   {
     "file": "tests/customer.spec.ts",
+    "title": "first visit offers the Player App and dismissal persists while the navbar download remains"
+  },
+  {
+    "file": "tests/customer.spec.ts",
     "title": "guest multi-date booking survives reload and exports calendar and PDF"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "header blue and the typography hierarchy stay consistent across every booking step"
   },
   {
     "file": "tests/customer.spec.ts",
@@ -166,6 +214,14 @@
   {
     "file": "tests/customer.spec.ts",
     "title": "late payment has a contact path without another payment"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "leave booking uses equal-width sentence-case actions with home left and stay right"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "oracle booking sizing and rotation disclaimers persist through checkout"
   },
   {
     "file": "tests/customer.spec.ts",

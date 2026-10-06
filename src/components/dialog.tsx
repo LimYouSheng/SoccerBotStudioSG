@@ -36,7 +36,7 @@ export function Dialog({
       }}
     >
       <div className="mb-5 flex items-center justify-between gap-4">
-        <h2 className="text-2xl" id="dialog-title">
+        <h2 className="dialog-title" id="dialog-title">
           {title}
         </h2>
         <button

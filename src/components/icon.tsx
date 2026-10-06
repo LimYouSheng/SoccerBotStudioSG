@@ -5,6 +5,16 @@ const paths: Record<string, ReactNode> = {
       <path d="M5 12h14m-6-6 6 6-6 6" />
     </>
   ),
+  spinner: <path d="M21 12a9 9 0 1 1-9-9" />,
+  card: (
+    <>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3 10h18M7 15h3" />
+    </>
+  ),
+  external: (
+    <path d="M14 3h7v7m0-7-11 11M10 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-5" />
+  ),
   back: <path d="m15 6-6 6 6 6" />,
   check: <path d="m5 12 4 4L19 6" />,
   plus: <path d="M12 5v14M5 12h14" />,
@@ -79,7 +89,7 @@ export function Icon({
 }) {
   return (
     <svg
-      className={`h-[22px] w-[22px] shrink-0 ${className}`}
+      className={`icon ${className}`}
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"

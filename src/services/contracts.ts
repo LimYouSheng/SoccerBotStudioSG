@@ -1,20 +1,14 @@
-import type { InstructorId } from "@/domain/catalog";
 import type {
   Attempt,
   Booking,
   BookingDraft,
   Outcome,
-  Slot,
+  Session,
 } from "@/domain/booking";
-export type AvailableSlot = Slot & { available: boolean };
+export type AvailableSlot = Session & { available: boolean };
 export interface BookingService {
-  instructors(slots: Slot[]): InstructorId[];
   availability(date: string): AvailableSlot[];
-  checkout(
-    draft: BookingDraft,
-    previous: Attempt | null,
-    simulateConflict?: boolean,
-  ): Attempt;
+  checkout(draft: BookingDraft, previous: Attempt | null): Attempt;
   pay(attempt: Attempt, outcome: Outcome): Attempt;
   check(attempt: Attempt): Attempt;
   resolve(attempt: Attempt, now?: number): Attempt;

@@ -4,52 +4,44 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Icon } from "@/components/icon";
 import { Dialog } from "@/components/dialog";
-import { AGE_GROUPS, INSTRUCTORS, SERVICE_NAME } from "@/domain/catalog";
+import { CONTACT_METHODS, SERVICE_NAME } from "@/domain/catalog";
 import { normalizeContact, type ContactDetails } from "@/domain/contact";
 import { useBooking } from "./provider";
 import { PriceSummary, SessionList } from "./summary";
-export function ParticipantSummary({ contact }: { contact: ContactDetails }) {
+export function ClientDetails({ contact }: { contact: ContactDetails }) {
   const c = normalizeContact(contact);
   return (
-    <div className="grid gap-5 border-t border-line py-5 text-sm sm:grid-cols-2">
-      <div>
-        <h3 className="mb-2 font-bold">Participants</h3>
-        <p>
-          {c.self ? c.name : c.participant}
-          <br />
-          {AGE_GROUPS[c.ageGroup as keyof typeof AGE_GROUPS]}
-        </p>
-        {c.additionalParticipants && <p>{c.additionalParticipants}</p>}
-      </div>
-      <div>
-        <h3 className="mb-2 font-bold">Emergency contact</h3>
-        <p>
-          {c.emergencyName}
-          <br />
-          {c.emergencyPhone}
-        </p>
-      </div>
-      {(c.requirements || c.notes) && (
-        <div className="sm:col-span-2">
-          <h3 className="mb-2 font-bold">Session requirements</h3>
-          <p className="whitespace-pre-wrap">
-            {c.requirements}
-            <br />
-            {c.notes}
-          </p>
-        </div>
+    <dl className="booking-facts client-details">
+      <dt>Full name</dt>
+      <dd>{c.name}</dd>
+      <dt>Email address</dt>
+      <dd>{c.email}</dd>
+      <dt>Mobile number</dt>
+      <dd>{c.phone}</dd>
+      <dt>Preferred contact method</dt>
+      <dd>
+        {CONTACT_METHODS[c.contactMethod as keyof typeof CONTACT_METHODS]}
+      </dd>
+      {c.academy && (
+        <>
+          <dt>Academy / school / organisation</dt>
+          <dd>{c.academy}</dd>
+        </>
       )}
-    </div>
+    </dl>
   );
 }
 export function Arrival() {
   return (
-    <section className="mt-5 rounded-lg bg-slate-100 p-5 text-sm">
-      <h3 className="mb-2 font-bold">Before your session</h3>
+    <section className="arrival-information" aria-label="Before your session">
+      <h3>Before your session</h3>
+      <p className="arrival-time">
+        <strong>Arrive 10 minutes early.</strong>
+        <span>Latecomers may not be given extra time.</span>
+      </p>
       <p>
-        <strong>Arrive 10 minutes early.</strong> Late arrival may shorten your
-        session. Follow the instructor’s directions and have your Player App
-        profile ready.
+        Wear training gear or activewear. Soccer boots are preferred; sports
+        shoes are also suitable. Bring your own towel.
       </p>
     </section>
   );
@@ -58,73 +50,60 @@ export function ReviewStep() {
   const { draft, update, checkout } = useBooking(),
     router = useRouter();
   const [error, setError] = useState(""),
-    [policy, setPolicy] = useState(false),
-    [conflict, setConflict] = useState(false);
+    [policy, setPolicy] = useState(false);
   return (
     <>
       <h1 className="page-title">Review booking</h1>
-      <p className="mt-3 mb-7 text-muted">Check your details before payment.</p>
+      <p className="lead">Check your details before payment.</p>
       <section className="surface">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <h2 className="text-2xl">{SERVICE_NAME}</h2>
-            <p className="mt-2 text-sm">
-              {draft.players} players per session · Full instructor guidance
-            </p>
+        <div className="review-block">
+          <div className="review-head">
+            <h2>Your sessions</h2>
+            <Link className="text-link" href="/book/session/">
+              Edit players
+            </Link>
           </div>
-          <Link className="text-link shrink-0" href="/book/session/">
-            Edit players
-          </Link>
+          <p>
+            <strong>{SERVICE_NAME}</strong>
+            <br />
+            {draft.players} {draft.players === 1 ? "player" : "players"} per
+            session · Full instructor guidance
+          </p>
         </div>
-        <div className="mt-5 border-t border-line pt-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold">Dates & times</h3>
-            <Link href="/book/time/" className="text-link">
+        <div className="review-block">
+          <div className="review-head">
+            <h2>Dates &amp; times</h2>
+            <Link className="text-link" href="/book/time/">
               Edit selections
             </Link>
           </div>
           <SessionList slots={draft.slots} />
         </div>
-        <div className="flex items-start justify-between border-t border-line py-5">
-          <div>
-            <h3 className="mb-2 font-bold">Instructor</h3>
-            <p className="text-sm">
-              {draft.instructor && INSTRUCTORS[draft.instructor].name}
-            </p>
+        <div className="review-block">
+          <div className="review-head">
+            <h2>Booking contact</h2>
+            <Link className="text-link" href="/book/details/">
+              Edit details
+            </Link>
           </div>
-          <Link href="/book/time/" className="text-link">
-            Edit instructor
-          </Link>
+          <ClientDetails contact={draft.contact} />
         </div>
-        <div className="flex justify-between gap-4 border-t border-line py-5">
-          <div className="min-w-0">
-            <h3 className="mb-2 font-bold">Booking contact</h3>
-            <p className="break-words text-sm">
-              {draft.contact.name}
-              <br />
-              {draft.contact.email}
-              <br />
-              {draft.contact.phone}
-            </p>
-          </div>
-          <Link href="/book/details/" className="text-link shrink-0">
-            Edit details
-          </Link>
+        <div className="review-block">
+          <h2 className="section-title">Order summary</h2>
+          <PriceSummary draft={draft} />
         </div>
-        <ParticipantSummary contact={draft.contact} />
-        <PriceSummary draft={draft} />
         <Arrival />
       </section>
-      <label className="mt-7 flex items-start gap-3 text-sm">
+      <label className="check-label review-terms">
         <input
           type="checkbox"
-          className="mt-1"
+
           checked={draft.accepted}
           onChange={(e) => update({ accepted: e.target.checked })}
         />
         <span>
           I’ve reviewed all selected dates and times and the{" "}
-          <button className="underline" onClick={() => setPolicy(true)}>
+          <button className="text-link" onClick={() => setPolicy(true)}>
             booking information
           </button>
           .
@@ -138,34 +117,25 @@ export function ReviewStep() {
           </Link>
         </div>
       )}
-      <button
-        className="button mt-6"
-        disabled={!draft.accepted}
-        onClick={() => {
-          try {
-            checkout(conflict);
-            router.push("/book/payment/");
-          } catch (e) {
-            setError((e as Error).message);
-          }
-        }}
-      >
-        Continue to payment <Icon name="arrow" />
-      </button>
-      <details className="mt-7 text-xs text-muted">
-        <summary>Preview controls</summary>
-        <label className="mt-3 flex gap-2">
-          <input
-            type="checkbox"
-            checked={conflict}
-            onChange={(e) => setConflict(e.target.checked)}
-          />
-          Final slot taken before payment
-        </label>
-      </details>
+      <div className="actions">
+        <button
+          className="button"
+          disabled={!draft.accepted}
+          onClick={() => {
+            try {
+              checkout();
+              router.push("/book/payment/");
+            } catch (e) {
+              setError((e as Error).message);
+            }
+          }}
+        >
+          Continue to payment <Icon name="arrow" />
+        </button>
+      </div>
       {policy && (
         <Dialog title="Booking information" onClose={() => setPolicy(false)}>
-          <div className="space-y-4 text-sm">
+          <div className="space-y-4">
             <p>
               Each session is 40 minutes for 1–4 players with one instructor in
               the shared studio. Start times are 50 minutes apart.

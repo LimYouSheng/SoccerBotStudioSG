@@ -22,7 +22,7 @@ def build(manifest, output):
 set -euo pipefail
 umask 077
 if [[ $# -gt 1 || ${1:-} == --* ]]; then
-  printf 'Usage: bash installer.sh [repository-path]\\nRuns local code and browser checks with installed dependencies.\\n' >&2
+  printf 'Usage: bash installer.sh [repository-path]\\nRuns the reviewed manifest scope: full application/browser checks or bounded planning/installer checks.\\n' >&2
   exit 2
 fi
 command -v python3 >/dev/null || { printf 'STOPPED — Python 3.11+ is required. No source changed.\\n' >&2; exit 1; }

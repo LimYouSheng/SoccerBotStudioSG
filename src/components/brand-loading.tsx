@@ -1,22 +1,26 @@
-import { logo } from "@/content/media";
+import { darkLogo } from "@/content/media";
 export function BrandLoading({
   leaving = false,
   overlay = true,
+  label = "Opening booking",
 }: {
   leaving?: boolean;
   overlay?: boolean;
+  label?: string;
 }) {
   return (
     <div
       className={overlay ? "page-loading" : "booking-loading"}
       data-phase={leaving ? "leaving" : "loading"}
       role="status"
-      aria-label="Opening booking"
+      aria-label={label}
     >
       <div className="page-loading-content">
         <svg
           className="page-loading-emblem"
           viewBox="0 0 120 120"
+          strokeLinecap="round"
+          strokeLinejoin="round"
           aria-hidden="true"
         >
           <circle cx="60" cy="60" r="51" stroke="#dce5ec" strokeWidth="1" />
@@ -27,7 +31,7 @@ export function BrandLoading({
           </g>
         </svg>
         <img
-          src={logo}
+          src={darkLogo}
           width={565}
           height={190}
           className="official-logo loading-logo"
