@@ -66,7 +66,7 @@ For a new candidate, `scripts/guarded-update.py` prepares and applies the review
 
 Select repository **Settings → Pages → Build and deployment → Source → GitHub Actions**. Branch/Jekyll publishing renders the repository README. This account setting cannot be changed by a source edit or local installer.
 
-The existing `Verify frontend` workflow verifies every PR and main change. The `frontend` job runs all code gates, 43 unit/component cases, one Next.js static export, export integrity checks and all 42 browser cases at `/SoccerBotStudioSG/`. Export integrity covers the 11 required HTML routes including 404, internal links, scripts, styles, images and fonts. It rejects a README homepage or missing files and binds the export inventory across browser execution.
+The `Verify` workflow verifies every PR and main change. Its `frontend` job publishes the status check `verify / frontend` and runs all code gates, 43 unit/component cases, one Next.js static export, export integrity checks and all 42 browser cases at `/SoccerBotStudioSG/`. Export integrity covers the 11 required HTML routes including 404, internal links, scripts, styles, images and fonts. It rejects a README homepage or missing files and binds the export inventory across browser execution.
 
 Main only uploads that verified `out/` directory. The separate `deploy` job requires successful `frontend`, uses `github-pages`, and alone receives Pages/OIDC write permissions. It does not install, rebuild or retest. Main runs are serialized. PRs cannot deploy. Manual workflow dispatch on main can retry after correcting Pages settings.
 
@@ -94,4 +94,4 @@ Expected demo: <https://limyousheng.github.io/SoccerBotStudioSG/>. A green PR is
 - `src/features`: customer journeys; `src/domain`: typed rules; `src/services`: demo adapters/storage/exports.
 - `public/assets`: original local assets; attribution in `src/content/media.ts`.
 
-Live Worker/provider integration, dependency-security acceptance, production deployment, monitoring and client UAT remain separate work. The build remains noindex. Require the `frontend` check on protected `main` in GitHub settings; local scripts cannot enforce repository protection.
+Live Worker/provider integration, dependency-security acceptance, production deployment, monitoring and client UAT remain separate work. The build remains noindex. Require the `verify / frontend` check from GitHub Actions on protected `main` in GitHub settings; local scripts cannot enforce repository protection. When adopting this rename, first obtain a successful `verify / frontend` PR run, then replace the required `frontend` context with `verify / frontend` in the same protection-rule save. Keep required checks, up-to-date branches and administrator enforcement enabled. Merge requires explicit user approval.
