@@ -312,5 +312,83 @@ class DeliveryTests(unittest.TestCase):
         self.assertEqual({file.name for file in destination.iterdir()}, {'verification-all.json', 'all-source.log'})
 
 
+class PlanningTests(unittest.TestCase):
+    setUp = DeliveryTests.setUp
+    executables = DeliveryTests.executables
+    execute = DeliveryTests.execute
+
+    def planning_manifest(self):
+        candidate = {name: 'same' for name in delivery.PLANNING_OWNERS}
+        baseline = {**candidate, 'AGENTS.md': 'old'}
+        value = {'scope': 'planning', 'updates': [{'baseline': baseline, 'candidate': candidate, 'deletions': []}]}
+        delivery.save_json(self.manifest, value)
+        return value
+
+    def test_planning_scope_rejects_product_change(self):
+        value = self.planning_manifest()
+        value['updates'][0]['candidate']['src/app/page.tsx'] = 'unreviewed'
+        delivery.save_json(self.manifest, value)
+        with self.assertRaisesRegex(RuntimeError, 'no application/configuration changes'):
+            delivery.delivery_scope(self.manifest)
+
+    def test_planning_scope_rejects_deletion_or_missing_owner(self):
+        value = self.planning_manifest()
+        value['updates'][0]['deletions'] = ['AGENTS.md']
+        delivery.save_json(self.manifest, value)
+        with self.assertRaisesRegex(RuntimeError, 'Planning scope permits'):
+            delivery.delivery_scope(self.manifest)
+        value['updates'][0]['deletions'] = []
+        del value['updates'][0]['candidate']['AGENTS.md']
+        delivery.save_json(self.manifest, value)
+        with self.assertRaisesRegex(RuntimeError, 'Missing canonical'):
+            delivery.delivery_scope(self.manifest)
+
+    def test_unknown_scope_cannot_bypass_full_gate(self):
+        delivery.save_json(self.manifest, {'scope': 'skip'})
+        with self.assertRaisesRegex(RuntimeError, 'Unknown delivery scope'):
+            delivery.delivery_scope(self.manifest)
+
+    def test_planning_dispatch_needs_no_node_and_has_distinct_receipt(self):
+        self.planning_manifest()
+        (self.pin / 'node').unlink()
+        def apply(root, manifest, logs, preflight, verify_local):
+            self.assertIs(preflight, delivery.check_planning_documents)
+            self.assertIs(verify_local, delivery.verify_planning)
+            return {'status': 'planning documentation and selected installer verification passed',
+                    'tests_run': True, 'documentation_integrity': True, 'browser_tests_run': False}
+        with patch.object(delivery, 'select_runtime', side_effect=AssertionError('Node must not run')):
+            code, output, receipt = self.execute(apply)
+        self.assertEqual(code, 0)
+        self.assertEqual(receipt['delivery'], delivery.PLANNING_DELIVERY)
+        self.assertFalse(receipt['browser_tests_run'])
+        self.assertFalse(receipt['published'])
+        self.assertNotIn('Full local code and browser verification passed', output)
+
+    def test_planning_requires_integrity_and_selected_checks(self):
+        self.planning_manifest()
+        code, _, receipt = self.execute(lambda *a, **k: {'status': 'source applied', 'tests_run': True, 'browser_tests_run': False})
+        self.assertEqual(code, 1)
+        self.assertEqual(receipt['status'], 'failed')
+
+    def test_planning_integrity_rejects_missing_duplicate_or_reordered_iteration(self):
+        for name in delivery.PLANNING_DOCUMENTS:
+            path = self.repo / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('Document\n')
+        for name in delivery.PLANNING_OWNERS - delivery.PLANNING_DOCUMENTS:
+            path = self.repo / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('# fixture\n')
+        rules = self.repo / 'docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md'
+        headings = [f'### M{major}.{minor} — fixture\n' for major, count in enumerate((4, 5, 6, 6, 5, 6, 4, 4, 4), 1) for minor in range(1, count + 1)]
+        rules.write_text(''.join(headings))
+        with redirect_stdout(io.StringIO()):
+            delivery.check_planning_documents(self.repo, self.repo)
+        for invalid in (headings[:-1], headings + headings[-1:], list(reversed(headings))):
+            rules.write_text(''.join(invalid))
+            with self.assertRaisesRegex(RuntimeError, '44 reviewed subiterations'):
+                delivery.check_planning_documents(self.repo, self.repo)
+
+
 if __name__ == '__main__':
     unittest.main()

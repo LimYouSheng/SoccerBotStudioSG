@@ -3,12 +3,12 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icon";
-import { ADDRESS, CONTACT, INSTRUCTORS, SERVICE_NAME } from "@/domain/catalog";
-import { money } from "@/domain/dates";
+import { ADDRESS, CONTACT, PRICE_CENTS, SERVICE_NAME } from "@/domain/catalog";
+import { dateLabel, endTime, money } from "@/domain/dates";
 import { downloadBooking, downloadCalendar } from "@/services/exports";
 import { useBooking } from "./provider";
 import { SessionList } from "./summary";
-import { Arrival, ParticipantSummary } from "./review-step";
+import { Arrival, ClientDetails } from "./review-step";
 export function ConfirmationStep() {
   const { attempt, reset } = useBooking(),
     router = useRouter(),
@@ -17,77 +17,106 @@ export function ConfirmationStep() {
     [downloading, setDownloading] = useState(false);
   if (!booking) return null;
   return (
-    <div className="mx-auto max-w-2xl">
-      <div className="mb-8 text-center">
-        <span className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-full bg-emerald-100 text-emerald-700">
-          <Icon name="check" className="h-8 w-8" />
+    <div className="status-shell">
+      <div className="status-heading">
+        <span className="status-icon">
+          <Icon name="check" />
         </span>
-        <h1 className="page-title">Booking confirmed</h1>
-        <p className="mt-4 text-sm text-muted">
+        <h1>Booking confirmed</h1>
+        <p className="reference">
           Booking reference{" "}
           <strong className="text-ink">{booking.reference}</strong>
         </p>
       </div>
-      <section className="surface mb-5">
-        <h2 className="text-2xl">Download the SoccerBot Player App</h2>
-        <p className="mt-3 text-sm text-muted">
-          Create your player profile before arrival and have your player QR card
-          ready.
-        </p>
-        <a
-          className="button mt-5"
-          href="https://soccerbot360.com/en/player-app"
-          target="_blank"
-          rel="noreferrer"
+      <section className="surface confirmation-card">
+        <section
+          className="confirmation-section"
+          aria-labelledby="confirmation-client"
         >
-          <Icon name="download" />
-          Get the Player App
-        </a>
-      </section>
-      <section className="surface">
-        <h2 className="text-2xl">{SERVICE_NAME}</h2>
-        <SessionList slots={booking.slots} />
-        <div className="space-y-4 border-t border-line py-5 text-sm">
-          <p>
-            <strong>Studio 1</strong>
+          <h2 className="section-title" id="confirmation-client">
+            Client Details
+          </h2>
+          <ClientDetails contact={booking.draft.contact} />
+        </section>
+        <section
+          className="confirmation-section"
+          aria-labelledby="confirmation-sessions"
+        >
+          <h2 className="section-title" id="confirmation-sessions">
+            Session Details
+          </h2>
+          <p className="confirmation-service">
+            <strong>{SERVICE_NAME}</strong>
             <br />
-            Instructor:{" "}
-            {booking.draft.instructor &&
-              INSTRUCTORS[booking.draft.instructor].name}
+            {booking.draft.players}{" "}
+            {booking.draft.players === 1 ? "player" : "players"} per session ·
+            40 minutes · Singapore time
+          </p>
+          <SessionList slots={booking.slots} showRotation={false} />
+        </section>
+        <section
+          className="confirmation-section"
+          aria-labelledby="confirmation-location"
+        >
+          <h2 className="section-title" id="confirmation-location">
+            Location
+          </h2>
+          <p>
+            <strong>
+              {[...new Set(booking.slots.map((slot) => slot.studio))].join(
+                ", ",
+              )}
+            </strong>
             <br />
             {ADDRESS}
           </p>
-          <p>
-            {booking.draft.players} players per session · Full instructor
-            guidance
+        </section>
+        <section
+          className="confirmation-section"
+          aria-labelledby="confirmation-amount"
+        >
+          <h2 className="section-title" id="confirmation-amount">
+            Amount
+          </h2>
+          <div className="paid">
+            <span className="pill success">Paid · Preview</span>
+            <strong>{money(booking.totalCents)}</strong>
+          </div>
+          <p className="hint">
+            {booking.slots.length} × {money(PRICE_CENTS)} · SGD · Inclusive of
+            GST
           </p>
-          <p className="break-words">
-            {booking.draft.contact.name}
-            <br />
-            {booking.draft.contact.email}
+        </section>
+        <section
+          className="confirmation-section"
+          aria-labelledby="confirmation-disclaimers"
+        >
+          <h2 className="section-title" id="confirmation-disclaimers">
+            Disclaimers
+          </h2>
+          {booking.slots
+            .filter((slot) => slot.rotationAt)
+            .map((slot) => (
+              <p className="rotation-notice" key={`${slot.date}|${slot.start}`}>
+                {dateLabel(slot.date)}, {slot.start}–{endTime(slot.start)}:
+                Crosses the {slot.rotationAt} instructor rotation. Your assigned
+                instructor stays for the full session.
+              </p>
+            ))}
+          <Arrival />
+          <p className="hint">
+            Follow your instructor’s safety guidance. Contact the studio for
+            changes, cancellations or refund enquiries.
           </p>
-        </div>
-        <details>
-          <summary className="py-3 text-sm font-bold">
-            Participant and session details
-          </summary>
-          <ParticipantSummary contact={booking.draft.contact} />
-        </details>
-        <div className="mt-5 flex justify-between border-t border-line pt-5">
-          <span className="rounded bg-emerald-50 px-3 py-1 text-sm text-emerald-800">
-            Paid · Preview
-          </span>
-          <strong>{money(booking.totalCents)}</strong>
-        </div>
-        <Arrival />
-        <p className="mt-4 text-xs text-muted">
-          Payment preview · No money was charged.
-        </p>
+          <p className="payment-foot">
+            Payment preview · No money was charged.
+          </p>
+        </section>
       </section>
-      <div className="mt-6 grid gap-3 sm:grid-cols-2">
+      <div className="confirmation-actions" aria-label="Booking actions">
         <button className="button" onClick={() => downloadCalendar(booking)}>
           <Icon name="calendar" />
-          Add to calendar
+          <span>Add to calendar</span>
         </button>
         <button
           className="button"
@@ -104,7 +133,9 @@ export function ConfirmationStep() {
           }}
         >
           <Icon name="download" />
-          {downloading ? "Preparing download…" : "Download booking details"}
+          <span>
+            {downloading ? "Preparing download…" : "Download booking details"}
+          </span>
         </button>
         <button
           className="button secondary"
@@ -114,11 +145,11 @@ export function ConfirmationStep() {
           }}
         >
           <Icon name="plus" />
-          Make another booking
+          <span>Make another booking</span>
         </button>
         <a className="button secondary" href={`tel:${CONTACT.phone}`}>
           <Icon name="phone" />
-          Need help?
+          <span>Need help?</span>
         </a>
       </div>
       {error && (

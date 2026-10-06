@@ -24,7 +24,7 @@ import {
 interface BookingContextValue extends StoredBooking {
   ready: boolean;
   update: (change: Partial<BookingDraft>) => void;
-  checkout: (conflict?: boolean) => void;
+  checkout: () => void;
   pay: (outcome: Outcome) => void;
   check: () => void;
   reset: () => void;
@@ -36,7 +36,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
       _state: StoredBooking & { ready: boolean },
       next: StoredBooking & { ready: boolean },
     ) => next,
-    { version: 1, draft: blankDraft(), attempt: null, ready: false },
+    { version: 2, draft: blankDraft(), attempt: null, ready: false },
   );
   const latest = useRef(value);
   const commit = useCallback((next: StoredBooking) => {
@@ -81,7 +81,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
             attempt: null,
           });
         },
-        checkout(conflict) {
+        checkout() {
           const current = latest.current;
           if (
             current.draft.mode === "member" &&
@@ -93,7 +93,6 @@ export function BookingProvider({ children }: { children: ReactNode }) {
           const attempt = services.booking.checkout(
             current.draft,
             current.attempt,
-            conflict,
           );
           services.identity.saveProfile(current.draft);
           commit({ ...current, attempt });
@@ -111,7 +110,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
             ["checking", "pending", "late"].includes(current.attempt.status)
           )
             return;
-          commit({ version: 1, draft: blankDraft(), attempt: null });
+          commit({ version: 2, draft: blankDraft(), attempt: null });
         },
       }}
     >

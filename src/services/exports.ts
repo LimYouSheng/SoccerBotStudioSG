@@ -39,7 +39,7 @@ export function calendarText(booking: Booking): string {
       `DTEND:${utcTime(slot.date, endTime(slot.start))}`,
       `SUMMARY:${escapeICS(SERVICE_NAME)}`,
       `LOCATION:${escapeICS(`${slot.studio}, ${ADDRESS}`)}`,
-      `DESCRIPTION:${escapeICS(`Preview booking ${booking.reference}. Instructor: ${booking.draft.instructor ? INSTRUCTORS[booking.draft.instructor].name : "To be confirmed"}. Arrive 10 minutes early.`)}`,
+      `DESCRIPTION:${escapeICS(`Preview booking ${booking.reference}. Instructor: ${INSTRUCTORS[slot.instructor].name}. Arrive 10 minutes early.`)}`,
       "END:VEVENT",
     ]),
     "END:VCALENDAR",
@@ -89,14 +89,12 @@ export async function downloadBooking(booking: Booking) {
   y += 6;
   line(booking.reference, 15);
   line(SERVICE_NAME);
-  line(
-    `${booking.draft.players} players | Instructor: ${booking.draft.instructor ? INSTRUCTORS[booking.draft.instructor].name : "To be confirmed"}`,
-  );
+  line(`${booking.draft.players} players per session`);
   line(ADDRESS);
   y += 5;
   booking.slots.forEach((slot) =>
     line(
-      `${dateLabel(slot.date)} | ${slot.start}-${endTime(slot.start)} SGT | ${slot.studio}`,
+      `${dateLabel(slot.date)} | ${slot.start}-${endTime(slot.start)} SGT | ${slot.studio} | ${INSTRUCTORS[slot.instructor].name}`,
     ),
   );
   y += 5;
@@ -104,16 +102,6 @@ export async function downloadBooking(booking: Booking) {
   line(
     `Contact: ${booking.draft.contact.name} | ${booking.draft.contact.email} | ${booking.draft.contact.phone}`,
   );
-  line(
-    `Lead participant: ${booking.draft.contact.self ? booking.draft.contact.name : booking.draft.contact.participant}`,
-  );
-  line(
-    `Emergency contact: ${booking.draft.contact.emergencyName} | ${booking.draft.contact.emergencyPhone}`,
-  );
-  if (booking.draft.contact.requirements)
-    line(`Access/support: ${booking.draft.contact.requirements}`);
-  if (booking.draft.contact.notes)
-    line(`Notes: ${booking.draft.contact.notes}`);
   y += 5;
   line(
     "Arrive 10 minutes early. Have your SoccerBot Player App profile and QR card ready.",

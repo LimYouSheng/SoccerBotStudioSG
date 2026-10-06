@@ -10,7 +10,7 @@ export const demoAssistantService: AssistantService = {
     if (/price|cost|rate|session|coach|player|pax/i.test(text))
       return "The Kickoff Special is S$88 per 40-minute session for 1–4 players. Full instructor guidance and Single, Team and Battle play are included.";
     if (/where|address|location|hour|open/i.test(text))
-      return `${ADDRESS}. The preview schedule runs from 10 am to 10 pm. Please confirm live opening hours with the studio.`;
+      return `${ADDRESS}. The preview schedule runs from 9 am to 9 pm. Please confirm live opening hours with the studio.`;
     if (/bring|wear|shoe|arriv/i.test(text))
       return "Arrive 10 minutes early in comfortable sportswear and suitable footwear. Have your SoccerBot Player App profile ready. Contact the studio about specific access needs.";
     if (/group|corporate|school|membership|sponsor/i.test(text))

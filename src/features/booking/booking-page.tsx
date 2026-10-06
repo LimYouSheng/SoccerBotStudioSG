@@ -40,9 +40,10 @@ export function BookingPage({ step }: { step: BookingStep }) {
   }, [actual, step, ready, router]);
   if (!ready || actual !== step) return <BrandLoading overlay={false} />;
   const Screen = screens[step];
+  if (step === "payment" || step === "confirmation") return <Screen />;
   return (
     <div
-      className={`booking-shell min-h-[65vh] ${["account", "session", "review"].includes(step) ? "session-shell" : ""}`}
+      className={`booking-shell ${["account", "session", "review"].includes(step) ? "session-shell" : ""}`}
     >
       {current >= 0 && (
         <>
@@ -73,7 +74,7 @@ export function BookingPage({ step }: { step: BookingStep }) {
                   )}
                 </span>
                 {index < current ? (
-                  <Link href={`/book/${id}/`} className="py-2 hover:underline">
+                  <Link href={`/book/${id}/`} className="hover:underline">
                     {label}
                   </Link>
                 ) : (

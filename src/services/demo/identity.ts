@@ -66,8 +66,6 @@ export const demoIdentityService: IdentityService = {
     if (draft.mode !== "member" || read()?.email !== draft.accountEmail) return;
     const parsed = profilesSchema.safeParse(safeRead(PROFILES));
     const contact = normalizeContact(draft.contact);
-    contact.requirements = "";
-    contact.notes = "";
     safeWrite(PROFILES, {
       ...(parsed.success ? parsed.data : {}),
       [draft.accountEmail]: { name: contact.name, phone: contact.phone },

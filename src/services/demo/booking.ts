@@ -8,19 +8,18 @@ import {
   snapshot,
   totalCents,
   type Slot,
+  type Session,
 } from "@/domain/booking";
 import { clock, clockMinutes } from "@/domain/dates";
-import {
-  INSTRUCTORS,
-  SESSION_MINUTES,
-  SESSION_STARTS,
-  STUDIOS,
-  type InstructorId,
-} from "@/domain/catalog";
+import { SESSION_MINUTES, SESSION_STARTS, STUDIOS } from "@/domain/catalog";
 import type { BookingService } from "../contracts";
-import { safeRead, safeWrite } from "../storage";
+import { safeRead, safeWrite, upgradeBooking } from "../storage";
+import { demoSession } from "./schedule";
 const RECEIPTS = "soccerbot-next-demo-receipts";
-const receiptsSchema = z.record(z.string(), bookingSchema);
+const receiptsSchema = z.record(
+  z.string(),
+  z.preprocess(upgradeBooking, bookingSchema),
+);
 const INVENTORY = "soccerbot-next-demo-inventory";
 const inventorySchema = z.array(z.string());
 function blocked() {
@@ -44,8 +43,8 @@ function availableStudios(slot: Slot): string[] {
     );
   });
 }
-function assign(slots: Slot[]) {
-  const assigned: Array<Slot & { studio: string }> = [];
+function assign(slots: Session[]) {
+  const assigned: Array<Session & { studio: string }> = [];
   let previous: string | null = null;
   for (const slot of orderedSlots(slots)) {
     const options = availableStudios(slot);
@@ -58,28 +57,13 @@ function assign(slots: Slot[]) {
   return assigned;
 }
 export const demoBookingService: BookingService = {
-  instructors(slots) {
-    if (!slots.length) return [];
-    return (Object.keys(INSTRUCTORS) as InstructorId[]).filter(
-      (_, index) =>
-        index === 0 ||
-        slots.every(
-          (slot) =>
-            (clockMinutes(slot.start) / 50 +
-              new Date(`${slot.date}T12:00:00Z`).getUTCDay() +
-              index) %
-              3 !==
-            0,
-        ),
-    );
-  },
   availability(date) {
     return SESSION_STARTS.map((minute) => {
-      const slot = { date, start: clock(minute) };
+      const slot = demoSession({ date, start: clock(minute) })!;
       return { ...slot, available: availableStudios(slot).length > 0 };
     });
   },
-  checkout(draft, previous, simulateConflict = false) {
+  checkout(draft, previous) {
     if (paymentLocked(previous))
       throw new Error(
         "A payment is already in progress. Check its status before starting another.",
@@ -87,19 +71,18 @@ export const demoBookingService: BookingService = {
     const error = draftError(draft);
     if (error) throw new Error(error);
     if (
-      !draft.instructor ||
-      !demoBookingService.instructors(draft.slots).includes(draft.instructor)
+      draft.slots.some((slot) => {
+        const assigned = demoSession(slot);
+        return (
+          !assigned ||
+          assigned.instructor !== slot.instructor ||
+          assigned.rotationAt !== slot.rotationAt
+        );
+      })
     )
       throw new Error(
-        "Choose an instructor available for all selected sessions.",
+        "An instructor assignment has changed. Review your selected sessions.",
       );
-    if (simulateConflict) {
-      const unavailable = blocked();
-      STUDIOS.forEach((studio) =>
-        unavailable.add(studioKey(draft.slots[0], studio)),
-      );
-      safeWrite(INVENTORY, [...unavailable]);
-    }
     if (!draft.slots.every((slot) => availableStudios(slot).length > 0))
       throw new Error(
         "A selected session is no longer available. No sessions were booked. Please review your selections.",
@@ -119,7 +102,7 @@ export const demoBookingService: BookingService = {
       ...attempt,
       status: "checking",
       outcome,
-      checkUntil: Date.now() + 1000,
+      checkUntil: Date.now() + 5000,
     };
   },
   check(attempt) {
@@ -128,7 +111,7 @@ export const demoBookingService: BookingService = {
       ...attempt,
       status: "checking",
       outcome: "success",
-      checkUntil: Date.now() + 1000,
+      checkUntil: Date.now() + 5000,
     };
   },
   resolve(attempt, now = Date.now()) {

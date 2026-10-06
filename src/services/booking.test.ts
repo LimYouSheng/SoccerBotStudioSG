@@ -20,6 +20,8 @@ import {
   demoIdentityService as identity,
   DEMO_CODE,
 } from "@/services/demo/identity";
+import { demoSession } from "@/services/demo/schedule";
+import { loadBooking, saveBooking, safeWrite } from "@/services/storage";
 import { calendarText } from "@/services/exports";
 class StorageMock {
   private values = new Map<string, string>();
@@ -38,19 +40,13 @@ function validDraft(): BookingDraft {
   return {
     ...blankDraft(),
     mode: "guest",
-    instructor: "faisal",
-    slots: [{ date: tomorrow(), start: "10:00" }],
+    slots: [demoSession({ date: tomorrow(), start: "09:00" })!],
     accepted: true,
     contact: {
       ...blankContact(),
       name: "Demo Customer",
       email: "customer@example.com",
       phone: "+65 8123 4567",
-      ageGroup: "adult",
-      experience: "new",
-      emergencyName: "Emergency Person",
-      emergencyPhone: "+65 9123 4567",
-      emergencyRelationship: "family",
     },
   };
 }
@@ -63,21 +59,23 @@ describe("booking contract", () => {
     expect(STUDIOS).toHaveLength(1);
     expect(START_INTERVAL_MINUTES).toBe(50);
     expect(SESSION_STARTS.slice(0, 3).map(clock)).toEqual([
-      "10:00",
-      "10:50",
-      "11:40",
+      "09:00",
+      "09:50",
+      "10:40",
     ]);
   });
   it("does not admit duplicate, overlapping, stale or off-grid slots", () => {
-    const slot = { date: tomorrow(), start: "10:00" };
+    const slot = { date: tomorrow(), start: "09:00" };
     expect(selectionErrors([slot, slot])).not.toEqual([]);
-    expect(overlaps(slot, { ...slot, start: "10:20" })).toBe(true);
-    expect(selectionErrors([{ ...slot, start: "10:40" }])).not.toEqual([]);
+    expect(overlaps(slot, { ...slot, start: "09:20" })).toBe(true);
+    expect(selectionErrors([{ ...slot, start: "09:40" }])).not.toEqual([]);
     expect(selectionErrors([{ ...slot, date: "2020-01-01" }])).not.toEqual([]);
   });
-  it("requires instructor selection after dates before details", () => {
+  it("requires a per-session assignment before details", () => {
     const draft = validDraft();
-    draft.instructor = null;
+    draft.slots = [
+      { date: tomorrow(), start: "09:00" },
+    ] as BookingDraft["slots"];
     expect(guardedStep("details", draft, null)).toBe("time");
     expect(draftError(draft)).toBeTruthy();
   });
@@ -87,28 +85,37 @@ describe("booking contract", () => {
     expect(draftError({ ...draft, accepted: false })).toBeTruthy();
     expect(draftError({ ...draft, players: 5 })).toBeTruthy();
   });
-  it("requires a guardian for under-18s and a different emergency number for self", () => {
+  it("validates all required contact fields and their length limits", () => {
     const c = validDraft().contact;
-    expect(contactErrors({ ...c, ageGroup: "child" })).toHaveProperty(
-      "emergencyRelationship",
-    );
-    expect(contactErrors({ ...c, emergencyPhone: c.phone })).toHaveProperty(
-      "emergencyPhone",
-    );
+    expect(
+      contactErrors({
+        ...c,
+        name: "",
+        email: "invalid",
+        phone: "123",
+        contactMethod: "unknown",
+      }),
+    ).toMatchObject({
+      name: expect.any(String),
+      email: expect.any(String),
+      phone: expect.any(String),
+      contactMethod: expect.any(String),
+    });
+    expect(
+      contactErrors({ ...c, name: "x".repeat(81), academy: "x".repeat(121) }),
+    ).toMatchObject({ name: expect.any(String), academy: expect.any(String) });
   });
-  it("reuses booking contact for a non-self participant", () => {
-    const c = {
-      ...validDraft().contact,
-      self: false,
-      participant: "Young Player",
-      relationship: "parent",
-      emergencySame: true,
-      ageGroup: "child",
-      emergencyRelationship: "parent",
-      emergencyName: "",
-      emergencyPhone: "",
-    };
+  it("allows contact-only booking without removed participant fields", () => {
+    const c = validDraft().contact;
+    expect(Object.keys(blankContact()).sort()).toEqual([
+      "academy",
+      "contactMethod",
+      "email",
+      "name",
+      "phone",
+    ]);
     expect(contactErrors(c)).toEqual({});
+    expect(draftError(validDraft())).toBeNull();
   });
   it("rejects verified-email mismatch", () => {
     expect(
@@ -121,7 +128,7 @@ describe("service and payment invariants", () => {
     const draft = validDraft();
     service.checkout(draft, null);
     expect(
-      service.availability(tomorrow()).find((slot) => slot.start === "10:00")
+      service.availability(tomorrow()).find((slot) => slot.start === "09:00")
         ?.available,
     ).toBe(true);
   });
@@ -134,7 +141,10 @@ describe("service and payment invariants", () => {
     expect(attempt.draft.slots).toHaveLength(1);
   });
   it("rechecks final-slot conflicts before offering payment", () => {
-    expect(() => service.checkout(validDraft(), null, true)).toThrow(
+    safeWrite("soccerbot-next-demo-inventory", [
+      `Studio 1|${tomorrow()}|09:00`,
+    ]);
+    expect(() => service.checkout(validDraft(), null)).toThrow(
       /no longer available/,
     );
   });
@@ -149,7 +159,7 @@ describe("service and payment invariants", () => {
     expect(second.booking).toEqual(first.booking);
     expect(first.booking?.totalCents).toBe(8800);
     expect(
-      service.availability(tomorrow()).find((slot) => slot.start === "10:00")
+      service.availability(tomorrow()).find((slot) => slot.start === "09:00")
         ?.available,
     ).toBe(false);
     expect(service.resolve(first)).toEqual(first);
@@ -191,14 +201,16 @@ describe("service and payment invariants", () => {
   });
   it("records multiple dates and generates one calendar event per session in UTC", () => {
     const draft = validDraft();
-    draft.slots.push({ date: addDays(tomorrow(), 1), start: "10:00" });
+    draft.slots.push(
+      demoSession({ date: addDays(tomorrow(), 1), start: "09:00" })!,
+    );
     const attempt = service.pay(service.checkout(draft, null), "success"),
       paid = service.resolve(attempt, attempt.checkUntil),
       ics = calendarText(paid.booking!);
     expect(paid.booking?.totalCents).toBe(17600);
     expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(2);
-    expect(ics).toContain("T020000Z");
-    expect(ics).toContain("T024000Z");
+    expect(ics).toContain("T010000Z");
+    expect(ics).toContain("T014000Z");
     expect(new Set(paid.booking?.slots.map(slotKey)).size).toBe(2);
   });
 });
@@ -222,14 +234,216 @@ describe("customer verification preview", () => {
     const draft = validDraft();
     draft.mode = "member";
     draft.accountEmail = "customer@example.com";
-    draft.contact.notes = "Private note";
+    draft.contact.academy = "Private academy";
     identity.saveProfile(draft);
     const profile = identity.profile("customer@example.com");
     expect(profile?.name).toBe("Demo Customer");
     expect(profile?.phone).toBe("+65 8123 4567");
-    expect(profile?.notes).toBe("");
-    expect(profile?.emergencyName).toBe("");
+    expect(profile?.academy).toBe("");
+    expect(Object.keys(profile!).sort()).toEqual([
+      "academy",
+      "contactMethod",
+      "email",
+      "name",
+      "phone",
+    ]);
     identity.signOut();
     expect(identity.profile("customer@example.com")).toBeNull();
   });
+});
+describe("opening hours and demo instructor rotation", () => {
+  it("offers only complete sessions within 9am to 9pm and rotates instructors every three hours", () => {
+    const slots = service.availability(tomorrow());
+    expect(slots.map((slot) => slot.start)).toEqual([
+      "09:00",
+      "09:50",
+      "10:40",
+      "11:30",
+      "12:20",
+      "13:10",
+      "14:00",
+      "14:50",
+      "15:40",
+      "16:30",
+      "17:20",
+      "18:10",
+      "19:00",
+      "19:50",
+    ]);
+    for (const [start, instructor] of [
+      ["09:00", "faisal"],
+      ["11:30", "faisal"],
+      ["12:20", "daniel"],
+      ["14:50", "daniel"],
+      ["15:40", "instructor3"],
+      ["17:20", "instructor3"],
+      ["18:10", "instructor4"],
+      ["19:50", "instructor4"],
+    ]) {
+      expect(demoSession({ date: tomorrow(), start })?.instructor).toBe(
+        instructor,
+      );
+      expect(slots.find((slot) => slot.start === start)?.instructor).toBe(
+        instructor,
+      );
+    }
+    expect(demoSession({ date: tomorrow(), start: "08:10" })).toBeNull();
+    expect(demoSession({ date: tomorrow(), start: "20:40" })).toBeNull();
+    expect(() =>
+      service.checkout(
+        {
+          ...validDraft(),
+          slots: [
+            { date: tomorrow(), start: "20:40", instructor: "instructor4" },
+          ],
+        },
+        null,
+      ),
+    ).toThrow();
+  });
+
+  it("discloses crossing rotations while retaining the starting instructor for the whole session", () => {
+    const slots = service.availability(tomorrow());
+    expect(
+      slots
+        .filter((slot) => slot.rotationAt)
+        .map(({ start, rotationAt }) => [start, rotationAt]),
+    ).toEqual([
+      ["11:30", "12:00"],
+      ["14:50", "15:00"],
+    ]);
+    expect(
+      slots.find((slot) => slot.start === "17:20")?.rotationAt,
+    ).toBeUndefined();
+    const date = Array.from({ length: 7 }, (_, i) =>
+      addDays(tomorrow(), i),
+    ).find((date) => new Date(`${date}T12:00:00Z`).getUTCDay() === 2)!;
+    const draft = {
+      ...validDraft(),
+      slots: [demoSession({ date, start: "11:30" })!],
+    };
+    expect(
+      service.availability(date).find((slot) => slot.start === "11:30")
+        ?.available,
+    ).toBe(true);
+    const attempt = service.checkout(draft, null);
+    const checking = service.pay(attempt, "success");
+    const paid = service.resolve(checking, checking.checkUntil);
+    expect(paid.booking?.slots[0].instructor).toBe("faisal");
+    expect(paid.booking?.slots[0].start).toBe("11:30");
+  });
+  it("accepts different session instructors and rejects stale assignments or missing rotation disclosures", () => {
+    const date = Array.from({ length: 7 }, (_, i) =>
+      addDays(tomorrow(), i),
+    ).find((date) => new Date(`${date}T12:00:00Z`).getUTCDay() === 2)!;
+    const slots = [
+      demoSession({ date, start: "11:30" })!,
+      demoSession({ date, start: "12:20" })!,
+      demoSession({ date: addDays(date, 1), start: "09:00" })!,
+    ];
+    const attempt = service.pay(
+      service.checkout({ ...validDraft(), slots }, null),
+      "success",
+    );
+    const paid = service.resolve(attempt, attempt.checkUntil);
+    expect(paid.booking?.slots.map((slot) => slot.instructor)).toEqual([
+      "faisal",
+      "daniel",
+      "faisal",
+    ]);
+    expect(paid.booking?.totalCents).toBe(26400);
+    const ics = calendarText(paid.booking!);
+    expect(ics).toContain("Instructor: Faisal Shahril");
+    expect(ics).toContain("Instructor: Daniel Tan");
+    expect(() =>
+      service.checkout(
+        { ...validDraft(), slots: [{ ...slots[0], instructor: "daniel" }] },
+        null,
+      ),
+    ).toThrow(/assignment has changed/);
+    expect(() =>
+      service.checkout(
+        { ...validDraft(), slots: [{ ...slots[0], rotationAt: undefined }] },
+        null,
+      ),
+    ).toThrow(/assignment has changed/);
+  });
+});
+it("keeps payment checking for exactly five seconds and preserves the deadline through storage", () => {
+  const before = Date.now();
+  const attempt = service.pay(service.checkout(validDraft(), null), "success");
+  expect(attempt.checkUntil).toBeGreaterThanOrEqual(before + 5000);
+  expect(attempt.checkUntil).toBeLessThanOrEqual(Date.now() + 5000);
+  expect(service.resolve(attempt, attempt.checkUntil - 1).status).toBe(
+    "checking",
+  );
+  saveBooking({ version: 2, draft: attempt.draft, attempt });
+  const restored = loadBooking().attempt!;
+  expect(restored.checkUntil).toBe(attempt.checkUntil);
+  expect(restored.id).toBe(attempt.id);
+  expect(service.resolve(restored, restored.checkUntil).status).toBe("paid");
+});
+it("upgrades the previous draft without deleting its source or losing contact and session data", () => {
+  const draft = validDraft();
+  const legacy = {
+    version: 1,
+    draft: {
+      ...draft,
+      instructor: null,
+      contact: { ...draft.contact, notes: "old optional field" },
+      slots: [{ date: tomorrow(), start: "09:00" }],
+    },
+    attempt: null,
+  };
+  safeWrite("soccerbot-next-demo-v1", legacy);
+  const upgraded = loadBooking();
+  expect(upgraded.version).toBe(2);
+  expect(upgraded.draft.slots[0].instructor).toBe("faisal");
+  expect(upgraded.draft.contact).toEqual(draft.contact);
+  expect(upgraded.draft).not.toHaveProperty("instructor");
+  saveBooking(upgraded);
+  expect(loadBooking()).toEqual(upgraded);
+  expect(JSON.parse(sessionStorage.getItem("soccerbot-next-demo-v1")!)).toEqual(
+    legacy,
+  );
+});
+it("upgrades pending and paid legacy attempts without changing their identity or charging twice", () => {
+  const checking = service.pay(service.checkout(validDraft(), null), "success");
+  const legacyDraft = {
+    ...checking.draft,
+    instructor: "faisal",
+    slots: checking.draft.slots.map(({ date, start }) => ({ date, start })),
+  };
+  safeWrite("soccerbot-next-demo-v1", {
+    version: 1,
+    draft: legacyDraft,
+    attempt: { ...checking, draft: legacyDraft },
+  });
+  const restored = loadBooking().attempt!;
+  expect(restored.id).toBe(checking.id);
+  expect(restored.checkUntil).toBe(checking.checkUntil);
+  expect(restored.status).toBe("checking");
+  const paid = service.resolve(restored, restored.checkUntil);
+  const legacyBooking = {
+    ...paid.booking!,
+    draft: legacyDraft,
+    slots: paid.booking!.slots.map(({ date, start, studio }) => ({
+      date,
+      start,
+      studio,
+    })),
+  };
+  safeWrite("soccerbot-next-demo-receipts", { [checking.id]: legacyBooking });
+  safeWrite("soccerbot-next-demo-v1", {
+    version: 1,
+    draft: legacyDraft,
+    attempt: { ...paid, draft: legacyDraft, booking: legacyBooking },
+  });
+  const oldPaid = loadBooking().attempt!;
+  expect(oldPaid.status).toBe("paid");
+  expect(oldPaid.booking?.slots[0].instructor).toBe("faisal");
+  expect(
+    service.resolve(restored, restored.checkUntil).booking?.reference,
+  ).toBe(checking.id);
+  expect(oldPaid.booking?.totalCents).toBe(8800);
 });

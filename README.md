@@ -48,25 +48,25 @@ The delivered `.sh` contains a reviewed source payload and a manifest bound to a
 - Standard delivery is one command, from any current directory:
 
 ```bash
-bash "$HOME/Downloads/SoccerBotStudioSG_Pages_Local_2026-10-04.sh"
+bash "$HOME/Downloads/SoccerBotStudioSG_Design_System_Local_2026-10-05.sh"
 ```
 
 - Default repository: `$HOME/Desktop/SoccerBotStudioSG`. Supply another repository path as the sole optional argument. No `cd`, manual `nvm use` or verification flag is required.
 - The runner selects an already-installed Node 24.19.0 from the active path, `$NVM_DIR`, or `$HOME/.nvm`. It changes only its own process environment. A genuinely missing runtime stops with a precise setup message and a failure receipt; no runtime/global-default installation is performed.
-- Visible preflight validates Git/source/payload, staged health, installed dependency versions, Chromium Headless Shell/WebKit executables and preview port before any source write. No `npm ci` or browser download occurs. The user-run installer then calls `npm run verify`: full code health, 33 unit/component cases, one fresh test-site build and 30 browser cases across desktop/phone/tablet. Every run keeps live individual test results, readable failure output and full external logs.
+- Visible preflight validates Git/source/payload, staged health, installed dependency versions, Chromium Headless Shell/WebKit executables and preview port before any source write. No `npm ci` or browser download occurs. The user-run installer then calls `npm run verify`: full code health, 43 unit/component cases, one fresh test-site build and 42 browser cases across desktop/phone/tablet. Every run keeps live individual test results, readable failure output and full external logs.
 - Success and failure both produce a Desktop JSON receipt. Failure also produces a diagnostic ZIP with logs, current unit/browser evidence and retained browser failure artifacts, excluding source backups and stale results. Full source backups remain in the external run folder.
 - A completed candidate is idempotent: rerunning does not rewrite source or alter branch/HEAD/index. It deliberately repeats the declared code/browser verification and writes a fresh receipt. Generated/build/test outputs may be refreshed; installed dependencies are reused. A partial or unknown source state stops for review, without automatic rollback or forced completion.
 - The standard delivery never commits, stages, pushes, opens a PR or deploys. Browser tests run on the user’s computer, not in the assistant workspace. A later authorized PR script consumes a matching green local receipt; it does not repeat local tests/builds.
 - Do not run a Fitfinity installer against this repository.
 - To reverse an applied change, use the receipt's `source-before` backup and `absent-files.json` only after reviewing any subsequent edits. Dependency installation is not reversed by restoring source; run `npm ci` after an intentional source restore.
 
-For a new candidate, `scripts/guarded-update.py` prepares and applies the reviewed manifest, `scripts/local-installer.py` owns runtime/output/receipt handling, and `scripts/build-local-installer.py` packages those canonical owners into one self-contained shell file. The lower-level apply utility retains explicit source-only and `--verify-code` modes; the user-facing standard delivery always performs the declared code and browser verification. This Pages repair accepts only the reviewed merged-main or previous feature-head source, and its completed candidate. Branch/HEAD selection is checked even when accepted revisions share a source tree. Partial or unknown states are refused.
+For a new candidate, `scripts/guarded-update.py` prepares and applies the reviewed manifest, `scripts/local-installer.py` owns runtime/output/receipt handling, and `scripts/build-local-installer.py` packages those canonical owners into one self-contained shell file. The lower-level apply utility retains explicit source-only and `--verify-code` modes; the user-facing standard delivery always performs the declared code and browser verification. This colour/type update accepts only the user-accepted 119-file booking-flow candidate on `fix/pages-deployment` at `12c174a98c97a5d7c7b0cd041c090e31a903e95b`, and its completed candidate. Branch/HEAD selection is checked even when accepted revisions share a source tree. Partial or unknown states are refused.
 
 ## GitHub Pages demo
 
 Select repository **Settings → Pages → Build and deployment → Source → GitHub Actions**. Branch/Jekyll publishing renders the repository README. This account setting cannot be changed by a source edit or local installer.
 
-The existing `Verify frontend` workflow verifies every PR and main change. The `frontend` job runs all code gates, 33 unit cases, one Next.js static export, export integrity checks and all 30 browser cases at `/SoccerBotStudioSG/`. Export integrity covers the 11 required HTML routes including 404, internal links, scripts, styles, images and fonts. It rejects a README homepage or missing files and binds the export inventory across browser execution.
+The existing `Verify frontend` workflow verifies every PR and main change. The `frontend` job runs all code gates, 43 unit/component cases, one Next.js static export, export integrity checks and all 42 browser cases at `/SoccerBotStudioSG/`. Export integrity covers the 11 required HTML routes including 404, internal links, scripts, styles, images and fonts. It rejects a README homepage or missing files and binds the export inventory across browser execution.
 
 Main only uploads that verified `out/` directory. The separate `deploy` job requires successful `frontend`, uses `github-pages`, and alone receives Pages/OIDC write permissions. It does not install, rebuild or retest. Main runs are serialized. PRs cannot deploy. Manual workflow dispatch on main can retry after correcting Pages settings.
 
@@ -79,8 +79,10 @@ Expected demo: <https://limyousheng.github.io/SoccerBotStudioSG/>. A green PR is
 - The supplied `showcase(2).html` is the visual reference. Original arena panels/geometry, pointer/touch treatments, 3-second entry and 900ms reveal are React-owned. Clicking the entry skips it. Reduced motion navigates immediately.
 - Normal Home/Studio booking links show the branded logo loader, including prefetched navigation. The hero retains its own scene and does not display a second logo overlay.
 - Home/Studio imagery, colours, spacing, typography, offer/contact blocks, footer and shared booking shell are restored from the reference. Canonical styles remain in `src/app/globals.css`; no legacy runtime is injected.
-- Guest or demo email verification (`360360`); 40-minute sessions every 50 minutes; 1–4 players; one shared studio; instructor after dates/times.
-- Participant/guardian forms, review, simulated payments, confirmation, PDF/calendar and local enquiry/help remain available.
+- Guest or demo email verification (`360360`); 40-minute sessions every 50 minutes; 1–4 players; one shared studio; per-session instructor assigned automatically from selected dates/times, including mixed instructors.
+- Five-field Booking Contact form, review, five-second simulated payments, fully expanded confirmation, PDF/calendar and local enquiry/help remain available. Visible Preview controls are removed; fault outcomes remain covered by tests.
+- Public navigation includes the official Player App link and a dismissible first-visit download prompt. Studio entry uses the existing branded loader.
+- Central header blue `#050a2f`, exact local Roboto weights, named type roles and readable mobile sizes are owned by `src/app/globals.css`. Source checks enforce brand/contrast/type contracts. The Rules & Architecture document contains the exact scale.
 - No real booking, payment, email, enquiry or AI request is sent. Use synthetic data. No custom staff login is included.
 
 ## Canonical owners
