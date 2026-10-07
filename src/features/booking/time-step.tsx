@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Icon } from "@/components/icon";
 import { INSTRUCTORS, PRICE_CENTS } from "@/domain/catalog";
-import { slotKey } from "@/domain/booking";
+import { isElapsed, slotKey } from "@/domain/booking";
 import {
   addDays,
   dateLabel,
@@ -15,21 +15,21 @@ import { services } from "@/services";
 import type { AvailableSlot } from "@/services/contracts";
 import { useBooking } from "./provider";
 export function TimeStep() {
-  const { draft, update } = useBooking();
-  const today = todaySG();
+  const { draft, update, now } = useBooking();
+  const today = todaySG(new Date(now));
   const [date, setDate] = useState(() => draft.slots[0]?.date || today),
-    [offset, setOffset] = useState(() => {
-      const initial = draft.slots[0]?.date || today;
-      return Math.max(
-        0,
-        Math.min(
-          11,
-          (+initial.slice(0, 4) - +today.slice(0, 4)) * 12 +
-            +initial.slice(5, 7) -
-            +today.slice(5, 7),
-        ),
-      );
-    });
+    [selectedMonth, setMonth] = useState(() =>
+      monthAt(draft.slots[0]?.date || today, 0),
+    );
+  const offset = Math.max(
+    0,
+    Math.min(
+      11,
+      (+selectedMonth.slice(0, 4) - +today.slice(0, 4)) * 12 +
+        +selectedMonth.slice(5, 7) -
+        +today.slice(5, 7),
+    ),
+  );
   const month = monthAt(today, offset),
     firstDay = (new Date(`${month}T12:00:00Z`).getUTCDay() + 6) % 7;
   const days = new Date(`${monthAt(today, offset + 1)}T12:00:00Z`);
@@ -38,6 +38,16 @@ export function TimeStep() {
   function select({ date, start, instructor, rotationAt }: AvailableSlot) {
     const slot = { date, start, instructor, rotationAt },
       selected = draft.slots.some((item) => slotKey(item) === slotKey(slot));
+    if (
+      !selected &&
+      !services.booking
+        .availability(date)
+        .some(
+          (candidate) =>
+            slotKey(candidate) === slotKey(slot) && candidate.available,
+        )
+    )
+      return;
     update({
       slots: selected
         ? draft.slots.filter((item) => slotKey(item) !== slotKey(slot))
@@ -60,7 +70,7 @@ export function TimeStep() {
             <select
               id="calendar-month"
               value={offset}
-              onChange={(e) => setOffset(+e.target.value)}
+              onChange={(e) => setMonth(monthAt(today, +e.target.value))}
             >
               {Array.from({ length: 12 }, (_, i) => (
                 <option key={i} value={i}>
@@ -77,7 +87,7 @@ export function TimeStep() {
               className="icon-button"
               aria-label="Previous month"
               disabled={offset === 0}
-              onClick={() => setOffset(offset - 1)}
+              onClick={() => setMonth(monthAt(today, offset - 1))}
             >
               <Icon name="back" />
             </button>
@@ -85,7 +95,7 @@ export function TimeStep() {
               className="icon-button"
               aria-label="Next month"
               disabled={offset === 11}
-              onClick={() => setOffset(offset + 1)}
+              onClick={() => setMonth(monthAt(today, offset + 1))}
             >
               <Icon name="arrow" />
             </button>
@@ -141,6 +151,7 @@ export function TimeStep() {
             const selected = draft.slots.some(
               (item) => slotKey(item) === slotKey(slot),
             );
+            const elapsed = isElapsed(slot, now);
             return (
               <button
                 key={slot.start}
@@ -154,7 +165,9 @@ export function TimeStep() {
                     {slot.start}–{endTime(slot.start)}
                   </span>
                   <span className="time-rate">
-                    {slot.available ? (
+                    {elapsed ? (
+                      "Session has started"
+                    ) : slot.available ? (
                       <>
                         <strong>{money(PRICE_CENTS)}</strong>
                         <span>Trial price</span>
@@ -164,7 +177,7 @@ export function TimeStep() {
                     )}
                   </span>
                   <span className="time-instructor">
-                    {slot.available
+                    {slot.available || elapsed
                       ? INSTRUCTORS[slot.instructor].name
                       : "No instructor available"}
                   </span>
@@ -190,17 +203,7 @@ export function TimeStep() {
             onClick={() => {
               const next = addDays(date, 1);
               setDate(next);
-              setOffset(
-                Math.max(
-                  0,
-                  Math.min(
-                    11,
-                    (+next.slice(0, 4) - +today.slice(0, 4)) * 12 +
-                      +next.slice(5, 7) -
-                      +today.slice(5, 7),
-                  ),
-                ),
-              );
+              setMonth(monthAt(next, 0));
             }}
           >
             See next available day <Icon name="arrow" />

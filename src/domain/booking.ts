@@ -82,7 +82,13 @@ export function overlaps(a: Slot, b: Slot) {
     clockMinutes(b.start) < clockMinutes(a.start) + SESSION_MINUTES
   );
 }
-export function selectionErrors(slots: Slot[], today = todaySG()): string[] {
+// Slots are Singapore wall times regardless of the device timezone. Browser time
+// is a demo clock only; a live adapter must revalidate with trusted server time.
+export function isElapsed(slot: Slot, now = Date.now()): boolean {
+  return Date.parse(`${slot.date}T${slot.start}:00+08:00`) <= now;
+}
+export function selectionErrors(slots: Slot[], now = Date.now()): string[] {
+  const today = todaySG(new Date(now));
   if (!slots.length) return ["Choose at least one session."];
   const max = new Date(`${today}T12:00:00Z`);
   max.setUTCMonth(max.getUTCMonth() + 12, 0);
@@ -90,12 +96,15 @@ export function selectionErrors(slots: Slot[], today = todaySG()): string[] {
     slots.some(
       (slot) =>
         !slotSchema.safeParse(slot).success ||
-        slot.date < today ||
         slot.date > max.toISOString().slice(0, 10) ||
         !SESSION_STARTS.includes(clockMinutes(slot.start)),
     )
   )
     return ["Choose a valid session within the booking window."];
+  if (slots.some((slot) => isElapsed(slot, now)))
+    return [
+      "A selected session has started. Remove it and choose a future time.",
+    ];
   if (
     slots.some((slot, i) =>
       slots.slice(0, i).some((other) => overlaps(slot, other)),
@@ -144,6 +153,7 @@ export function guardedStep(
   requested: BookingStep,
   draft: BookingDraft,
   attempt: Attempt | null,
+  now = Date.now(),
 ): BookingStep {
   if (attempt?.status === "paid") return "confirmation";
   if (paymentLocked(attempt)) return "payment";
@@ -153,7 +163,7 @@ export function guardedStep(
     ["details", "review", "payment"].includes(requested) &&
     (!draft.slots.length ||
       !z.array(sessionSchema).safeParse(draft.slots).success ||
-      selectionErrors(draft.slots).length > 0)
+      selectionErrors(draft.slots, now).length > 0)
   )
     return "time";
   if (

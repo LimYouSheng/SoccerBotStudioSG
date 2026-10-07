@@ -681,3 +681,82 @@ test("header blue and the typography hierarchy stay consistent across every book
   );
   await expect(page.locator("main details")).toHaveCount(0);
 });
+
+test("elapsed selections block checkout on an open page and remain removable before a future multi-session payment", async ({
+  page,
+}) => {
+  await chooseSlots(page);
+  await details(page);
+  await page.clock.pauseAt(new Date("2026-10-06T08:59:59.999+08:00"));
+  await expect(
+    page.getByRole("button", { name: "Continue to payment" }),
+  ).toBeEnabled();
+  await page.clock.runFor(1);
+  await expect(
+    page.getByRole("heading", { name: "Select dates and times" }),
+  ).toBeVisible();
+  const basket = page.getByRole("complementary", {
+    name: "Your booking summary",
+  });
+  await expect(
+    basket.getByText("Session has started — remove to continue."),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Continue", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: /09:00–09:40/ }),
+  ).toHaveAttribute("aria-pressed", "true");
+  expect(
+    await page.evaluate(
+      () =>
+        JSON.parse(sessionStorage.getItem("soccerbot-next-demo-v2")!).draft
+          .slots.length,
+    ),
+  ).toBe(1);
+  await page
+    .getByRole("button", { name: "Remove 2026-10-06 at 09:00" })
+    .click();
+  await expect(
+    page.getByRole("button", { name: /09:00–09:40/ }),
+  ).toBeDisabled();
+  await page.clock.runFor(1);
+  await expect(
+    page.getByRole("button", { name: /09:00–09:40/ }),
+  ).toBeDisabled();
+  await page.clock.resume();
+  await page.getByRole("button", { name: /09:50–10:30/ }).click();
+  await page
+    .getByRole("button", { name: dateLabel("2026-10-07"), exact: true })
+    .click();
+  await page.getByRole("button", { name: /09:00–09:40/ }).click();
+  await page.getByRole("link", { name: "Continue", exact: true }).click();
+  await details(page);
+  await payment(page);
+  await expect(
+    page.getByRole("heading", { name: "Booking confirmed", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("list", { name: "Selected sessions" }).getByRole("listitem"),
+  ).toHaveCount(2);
+  const paid = await page.evaluate(() => {
+    const { draft, attempt } = JSON.parse(
+      sessionStorage.getItem("soccerbot-next-demo-v2")!,
+    );
+    return { draft, attempt };
+  });
+  await page.clock.setSystemTime(new Date("2027-01-01T00:00:00+08:00"));
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Booking confirmed", exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() => {
+      const { draft, attempt } = JSON.parse(
+        sessionStorage.getItem("soccerbot-next-demo-v2")!,
+      );
+      return { draft, attempt };
+    }),
+  ).toEqual(paid);
+  await expect(page.getByText(/Session has started/)).toHaveCount(0);
+});

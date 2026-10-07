@@ -4,6 +4,8 @@ import { Icon } from "@/components/icon";
 import { INSTRUCTORS, PRICE_CENTS, SERVICE_NAME } from "@/domain/catalog";
 import {
   orderedSlots,
+  isElapsed,
+  selectionErrors,
   slotKey,
   totalCents,
   type BookingDraft,
@@ -18,8 +20,10 @@ export function SessionList({
   slots,
   remove,
   showRotation = true,
+  now,
 }: {
   slots: Session[];
+  now?: number;
   showRotation?: boolean;
   remove?: (slot: Session) => void;
 }) {
@@ -45,6 +49,11 @@ export function SessionList({
                 <span className="rotation-notice">
                   Crosses the {slot.rotationAt} instructor rotation. Your
                   assigned instructor stays for the full session.
+                </span>
+              )}
+              {now !== undefined && isElapsed(slot, now) && (
+                <span className="field-error">
+                  Session has started — remove to continue.
                 </span>
               )}
               {remove && <small>{money(PRICE_CENTS)}</small>}
@@ -85,18 +94,20 @@ export function PriceSummary({ draft }: { draft: BookingDraft }) {
   );
 }
 export function Summary({ basket = false }: { basket?: boolean }) {
-  const { draft, update } = useBooking();
-  const valid = draft.slots.every((slot) =>
-    services.booking
-      .availability(slot.date)
-      .some(
-        (available) =>
-          slotKey(available) === slotKey(slot) &&
-          available.available &&
-          available.instructor === slot.instructor &&
-          available.rotationAt === slot.rotationAt,
-      ),
-  );
+  const { draft, update, now } = useBooking();
+  const valid =
+    selectionErrors(draft.slots, now).length === 0 &&
+    draft.slots.every((slot) =>
+      services.booking
+        .availability(slot.date)
+        .some(
+          (available) =>
+            slotKey(available) === slotKey(slot) &&
+            available.available &&
+            available.instructor === slot.instructor &&
+            available.rotationAt === slot.rotationAt,
+        ),
+    );
   const instructors = [
     ...new Set(orderedSlots(draft.slots).map((slot) => slot.instructor)),
   ];
@@ -135,6 +146,7 @@ export function Summary({ basket = false }: { basket?: boolean }) {
               )}
               <SessionList
                 slots={draft.slots}
+                now={now}
                 remove={
                   basket
                     ? (slot) =>
@@ -172,7 +184,7 @@ export function Summary({ basket = false }: { basket?: boolean }) {
                 Continue <Icon name="arrow" />
               </button>
             ))}
-          {!valid && (
+          {draft.slots.length > 0 && !valid && (
             <p className="field-error" role="status">
               A selected session is no longer available. Remove it and choose
               another time.

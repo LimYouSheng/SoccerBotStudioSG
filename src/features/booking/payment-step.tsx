@@ -9,7 +9,8 @@ import { useBooking } from "./provider";
 import { SessionList } from "./summary";
 export function PaymentStep() {
   const { attempt, pay, check } = useBooking(),
-    [method, setMethod] = useState("card");
+    [method, setMethod] = useState("card"),
+    [error, setError] = useState("");
   if (!attempt) return null;
   const waiting = ["checking", "pending", "late"].includes(attempt.status),
     checking = attempt.status === "checking",
@@ -123,7 +124,24 @@ export function PaymentStep() {
             <h3>{method === "card" ? "Card payment" : "PayNow"}</h3>
             <p>Hosted payment preview</p>
           </div>
-          <button className="button wide" onClick={() => pay("success")}>
+          {error && (
+            <p className="alert" role="alert">
+              {error}{" "}
+              <Link className="text-link" href="/book/time/">
+                Review selections
+              </Link>
+            </p>
+          )}
+          <button
+            className="button wide"
+            onClick={() => {
+              try {
+                pay("success");
+              } catch (e) {
+                setError((e as Error).message);
+              }
+            }}
+          >
             Pay {money(totalCents(attempt.draft))}
           </button>
           <p className="payment-foot">

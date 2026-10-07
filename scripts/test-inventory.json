@@ -65,6 +65,18 @@
   },
   {
     "file": "src/features/booking/time-step.test.tsx",
+    "title": "an open booking page expires a selected slot at its start and keeps it removable"
+  },
+  {
+    "file": "src/features/booking/time-step.test.tsx",
+    "title": "an open calendar follows Singapore year rollover without deleting its draft"
+  },
+  {
+    "file": "src/features/booking/time-step.test.tsx",
+    "title": "booking page restores a future Tuesday on Wednesday before selecting and removing sessions, accumulating unique instructors and enabling Continue"
+  },
+  {
+    "file": "src/features/booking/time-step.test.tsx",
     "title": "confirmation shows each contact and location once with all five sections expanded"
   },
   {
@@ -73,7 +85,11 @@
   },
   {
     "file": "src/features/booking/time-step.test.tsx",
-    "title": "selecting and removing sessions automatically accumulates unique instructors and enables Continue"
+    "title": "restored elapsed sessions remain labelled and removable alongside valid future sessions"
+  },
+  {
+    "file": "src/features/booking/time-step.test.tsx",
+    "title": "selection rechecks time before dispatch and refreshes after a suspended tab resumes"
   },
   {
     "file": "src/features/enquiry/enquiry-page.test.tsx",
@@ -109,6 +125,10 @@
   },
   {
     "file": "src/services/booking.test.ts",
+    "title": "formats Singapore booking dates independently of locale date order"
+  },
+  {
+    "file": "src/services/booking.test.ts",
     "title": "freezes the reviewed snapshot separately from later draft mutation"
   },
   {
@@ -118,6 +138,10 @@
   {
     "file": "src/services/booking.test.ts",
     "title": "makes decline retryable and status polling resumable"
+  },
+  {
+    "file": "src/services/booking.test.ts",
+    "title": "marks a slot unavailable exactly at its Singapore start and afterwards"
   },
   {
     "file": "src/services/booking.test.ts",
@@ -138,6 +162,14 @@
   {
     "file": "src/services/booking.test.ts",
     "title": "records multiple dates and generates one calendar event per session in UTC"
+  },
+  {
+    "file": "src/services/booking.test.ts",
+    "title": "rejects a new payment after start but preserves pending recovery and paid receipts"
+  },
+  {
+    "file": "src/services/booking.test.ts",
+    "title": "rejects checkout at or after start without discarding the selected draft"
   },
   {
     "file": "src/services/booking.test.ts",
@@ -169,6 +201,10 @@
   },
   {
     "file": "src/services/booking.test.ts",
+    "title": "uses Singapore instants across month and year boundaries regardless of UTC date"
+  },
+  {
+    "file": "src/services/booking.test.ts",
     "title": "validates all required contact fields and their length limits"
   },
   {
@@ -178,6 +214,10 @@
   {
     "file": "tests/customer.spec.ts",
     "title": "declined and pending payments remain controlled through retry and refresh"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "elapsed selections block checkout on an open page and remain removable before a future multi-session payment"
   },
   {
     "file": "tests/customer.spec.ts",
