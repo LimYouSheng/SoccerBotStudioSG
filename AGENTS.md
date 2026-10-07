@@ -3,10 +3,10 @@
 ## 1. Start
 
 - Read `NORTH_STAR.md` and `PROGRESS.md`; confirm repository, branch, HEAD and existing changes.
-- YS merged PR #6. Verified main is `37c220a33caa85f875baaf98726205cec7b9d495`; start a new feature branch from verified main and preserve newer work. Main visual inspection is pending; CLOUD-01 preview acceptance remains blocked.
+- YS merged PR #7. Verified main is `e883c1af117a960eeae9359c4db9923d774888dd`; refresh actual main/evidence, create a new feature branch and preserve newer work. Main visual inspection is pending; CLOUD-01 preview acceptance remains blocked.
 - GitHub is canonical for the reconciled source. Preserve unknown edits and keep experiment acceptance separate. Routine Cloud work does not require a Mac installer or user-run browser tests.
 - Search relevant sections of `docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md` and `docs/SERVICE_CONTRACTS.md`; do not load all history.
-- Active bounded objective: developer native-payment evidence reconciliation, limited API-access verification and a proposed single-session proof. This task allows at most one each of `getToken`, `getEventList`, `getUnitList` on the confirmed developer account, no retries; stop on the first mismatch. Missing secure developer credentials currently block all three. No client calls, provider business writes or proof execution. New work ends at a green draft PR.
+- Active bounded objective: establish developer authentication/catalogue access and reconcile the planned Cloudflare backend/deployment responsibilities. The completed allowance permitted at most one each of `getToken`, `getEventList`, `getUnitList`, sequentially with no retries; count failed dispatches and stop on the first mismatch. Check retained usage and prevent concurrent execution. Both variables are present, supported connectivity passed and YS confirmed the configured developer identity despite the historical label mismatch. All three calls passed: cumulative usage is 3/3 and the allowance is exhausted; do not repeat them. No client calls, business writes or single-session proof execution. New work ends at a green draft PR; Rules owns the future backend/deployment plan, not implementation authorization.
 - Commands/cutover: `docs/CODEX_CLOUD.md`. Provider findings: Service Contracts and the latest Journey entry.
 
 ## 2. Build
