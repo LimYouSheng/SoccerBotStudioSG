@@ -3,10 +3,10 @@
 ## 1. Start
 
 - Read `NORTH_STAR.md` and `PROGRESS.md`; confirm repository, branch, HEAD and existing changes.
-- Main already contains the inspected Mac source and merged naming PR #5. Use `experiment/codex-cloud-workflow-2026-10-06`, based on main `0cea68168738c722d05be9d3580938b65a4860c7`. Keep CLOUD-01 unmerged and outside the Mac baseline; preserve any newer branch work.
+- YS merged PR #6. Verified main is `37c220a33caa85f875baaf98726205cec7b9d495`; start a new feature branch from verified main and preserve newer work. Main visual inspection is pending; CLOUD-01 preview acceptance remains blocked.
 - GitHub is canonical for the reconciled source. Preserve unknown edits and keep experiment acceptance separate. Routine Cloud work does not require a Mac installer or user-run browser tests.
 - Search relevant sections of `docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md` and `docs/SERVICE_CONTRACTS.md`; do not load all history.
-- Active bounded objective: the elapsed-slot demo application trial in North Star. M2 prerequisites remain open; no provider calls/writes are authorized. First merge requires successful application-trial completion, exact-revision user review and YS's explicit PR #6 approval; setup, documentation and test-only repairs do not satisfy it.
+- Active bounded objective: developer native-payment evidence reconciliation, limited API-access verification and a proposed single-session proof. This task allows at most one each of `getToken`, `getEventList`, `getUnitList` on the confirmed developer account, no retries; stop on the first mismatch. Missing secure developer credentials currently block all three. No client calls, provider business writes or proof execution. New work ends at a green draft PR.
 - Commands/cutover: `docs/CODEX_CLOUD.md`. Provider findings: Service Contracts and the latest Journey entry.
 
 ## 2. Build

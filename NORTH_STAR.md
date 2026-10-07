@@ -1,43 +1,33 @@
-# North Star: elapsed-slot application trial
+# North Star: developer native-payment path
 
-## Active outcome — authorized 7 October 2026
+## Active outcome — 7 October 2026
 
-Demonstrate one complete Cloud application-development cycle: reproduce → implement → regression tests → full CI → exact-revision user review. The bounded change prevents new selection and checkout of demo sessions whose Singapore start is at or before now, including on an open page. Preserve and label elapsed draft selections so customers can remove them; preserve paid records and payment recovery. Browser time is demo-only, never trusted live-provider authority.
+Establish the supported custom-site path: booking → native invoice/cart → SBPay-hosted checkout → authoritative payment status, preserving SimplyBook → SBPay → HitPay. Reconcile existing manual evidence and prepare the first single-session API proof; do not execute it.
 
-- [x] Preserve controlled-clock failure evidence and implement the shared domain rule in the demo service and UI owners.
-- [x] Cover before/at/after start, Singapore month/year boundaries, open-page passage, restored drafts/removal, checkout rejection, future/multiple sessions and payment recovery.
-- [x] Pass affected journeys across desktop Chromium, phone WebKit and tablet WebKit (15 executions).
-- [ ] Require full final-commit `verify / frontend`; the matching final SHA/result is recorded in draft PR #6 after publication.
-- [ ] YS reviews the exact published application revision. Supported Cloud preview is unavailable; an isolated user-run local review may be proposed without executing it for YS.
+- [x] Inspect the four supplied screenshots and distinguish observed native successes from YS's reported developer/sandbox configuration and missing cross-system mapping.
+- [x] Verify access prerequisites without displaying values: both intended developer variables are missing; **0 of 3 authorized requests dispatched**. API access remains blocked, not passed.
+- [x] Record supported method candidates, missing entitlement/checkout contracts and a bounded proof proposal in Service Contracts.
+- [ ] Require final-commit `verify / frontend` on the new draft PR; record exact SHA/run there after publication.
+- [ ] YS supplies the secure account/contract packet and approves the completed executable single-session plan before any business write.
 
-**The first merge of this experiment requires successful completion of this application trial, including user review, plus YS's explicit approval for PR #6.** Setup, documentation and test-only repairs do not satisfy the trial. Passing automation does not imply visual acceptance or merge approval. Keep the PR draft/unmerged and stop at a green candidate awaiting review or a concrete blocker.
+Use `docs/developer-payment-proof-2026-10-07` from verified main `37c220a33caa85f875baaf98726205cec7b9d495`. YS merged PR #6; [main run 37568173451](https://github.com/LimYouSheng/SoccerBotStudioSG/actions/runs/37568173451) passed. YS moved application inspection to deployed main; **inspection is not recorded complete**. Previous first-merge instructions are historical, not current prohibitions on that completed user action. Future merges still require explicit approval for that PR.
 
-Reuse the prepared runtime/dependencies; no provider calls, live adapters, account/configuration changes, routine environment refresh, deployment, new hosting or auto-merge. This demo correction is separate from full M4.1 acceptance. M2 provider prerequisites and all PERF-01–07/P01–P12 gates remain open as recorded below. Preserve original C3 and failure receipts.
+No new booking/payment, admin/client call, configuration change, deployment, paid provisioning or live adapter. The demo remains in demo mode. Reuse preparation/dependencies and preserve original C3/trial failures and receipts. Public documentation research is separate from provider account requests. No retries or substitute client credentials.
 
-## Deferred M2 provider feasibility — prerequisites remain open
+## Next ready task and retained gates
 
-Establish an evidence-backed integration contract for the custom customer website's native SimplyBook → SBPay → HitPay path before live adapters are implemented. Each required capability needs an account-specific supported mechanism or a concrete blocker. Preserve one shared studio, identity boundaries, provider authority, payment reconciliation and PERF-01–PERF-07/P01–P12.
+Obtain the redacted developer account/contract packet defined in [Service Contracts](docs/SERVICE_CONTRACTS.md#developer-native-payment-evidence-and-first-proof--7-october-2026), including secure credential bindings and the supported native hosted-checkout/status association. This is a prerequisite collection task, not permission to execute the proof or send messages to others.
 
-The completed bounded reconciliation was **M2.1 readiness and capability-gap reconciliation**. Reuse existing scheduling discovery; do not repeat it without an unresolved question. Service Contracts owns the capability matrix, evidence sources, access owners and proposed proof plan. Progress owns the next task; Rules owns invariants and unchanged M1–M9 dependencies; Journey records this decision.
+M2.1 remains partial; M2.2–M2.4 provider capacity/payment/recovery proof and M2.5 contract freeze remain open. Client-specific validation is deferred until its account is available. Manual sandbox success does not close custom API, failure/recovery, production or PERF-01–07/P01–P12 acceptance.
 
-## Bounded M2.1 acceptance
-
-- [x] Reconcile retained discovery and official documentation, distinguishing observations, documented candidates and unproved account capability.
-- [x] Record developer, temporary operating and client production separation, entitlement/auth/quota, merchant/test route, shared capacity/field mapping, customer matching, native invoice/checkout/status and recovery gaps with exact next proof and access owner.
-- [x] Prepare synthetic write/reconciliation scenarios for review without executing them or inventing unsupported provider contracts.
-- [ ] Obtain account-owner read-back and supported test-route evidence; M2.1 itself remains partial until this exists.
-- [ ] M2.2–M2.4 produce provider-backed capacity/payment/recovery proof before M2.5 contract freeze. This reconciliation does not close them.
-
-Task provider-call budget is **0** (no authentication, customer reads, writes or configuration calls). Public official-document retrieval is research, not an account capability probe. Any later provider read needs an explicit account/method/call budget within existing authorization. Synthetic writes require separate approval of exact environment, methods, fixtures, quota and recovery; stop at that boundary. No independent HitPay checkout substitution, paid provisioning or live-adapter implementation.
-
-Use the prepared Cloud environment and existing experiment branch; preserve unknown work and original receipts. That documentation-only work used affected checks, with full `verify / frontend` required for a newly published commit. Keep PR #6 draft/unmerged; no main push, auto-merge, deployment, environment change or new preview hosting. This M2 permission does not relax the deferred Cloud acceptance below or renumber M1–M9.
+The elapsed-slot application trial passed final PR automation (52 unit/component/service cases, 45 browser executions). YS's visual inspection moved to deployed main and remains pending; full M4.1 and physical-device acceptance remain separate. Setup, documentation and test-only repairs are not substitutes for the application trial. CLOUD-01 is still incomplete for the original preview blocker below.
 
 ## Deferred CLOUD-01 — incomplete
 
 ### Deferred outcome
 
 - Evaluate reproducible SoccerBotStudioSG development in a fresh Codex Cloud task on an experimental feature branch, with reviewed source, strict validation and a usable preview.
-- Start from main `0cea68168738c722d05be9d3580938b65a4860c7`, which contains the inspected Mac source and naming PR #5. The Cloud experiment remains separate and unmerged, including after its checks pass.
+- Start from main `0cea68168738c722d05be9d3580938b65a4860c7`, which contains the inspected Mac source and naming PR #5. This was the original experiment base; YS subsequently merged PR #6 at `37c220a33caa85f875baaf98726205cec7b9d495`. Preserve that history without implying preview acceptance.
 - End at a reviewable PR and recorded setup evidence. Merging and application deployment remain separate decisions. Feature-branch/PR publication is part of the authorized handoff.
 
 ### Scope
@@ -51,7 +41,7 @@ Use the prepared Cloud environment and existing experiment branch; preserve unkn
 ### Acceptance
 
 - [x] Inspected Mac source is preserved in main; merged naming PR #5 is included. The prior merge-authorization failure is recorded without relabelling it as approval.
-- [ ] Cloud changes remain on a separate experimental feature PR based on the synchronized main; they are not merged or applied to the Mac baseline.
+- Historical branch-isolation gate was superseded by YS merging PR #6. New work uses a new feature PR; the actual Mac checkout is not changed by this task.
 - [ ] A fresh cloud task reads the current instructions and records its repository, branch, HEAD and runtime versions.
 - [ ] Dependencies install from the committed lockfile; relevant frontend checks and Playwright run against a fresh internal preview.
 - [ ] Provider discovery findings and remaining M2 gates are preserved; no client booking/payment writes or live-adapter acceptance are implied.
