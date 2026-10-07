@@ -3,10 +3,10 @@
 ## 1. Start
 
 - Read `NORTH_STAR.md` and `PROGRESS.md`; confirm repository, branch, HEAD and existing changes.
-- YS merged PR #6. Verified main is `37c220a33caa85f875baaf98726205cec7b9d495`; start a new feature branch from verified main and preserve newer work. Main visual inspection is pending; CLOUD-01 preview acceptance remains blocked.
+- YS merged PR #7. Verified main is `e883c1af117a960eeae9359c4db9923d774888dd`; refresh actual main/evidence; PR #8 remains open, so continue `docs/developer-api-cloudflare-plan-2026-10-07` and preserve newer work. Main visual inspection is pending; CLOUD-01 preview acceptance remains blocked.
 - GitHub is canonical for the reconciled source. Preserve unknown edits and keep experiment acceptance separate. Routine Cloud work does not require a Mac installer or user-run browser tests.
 - Search relevant sections of `docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md` and `docs/SERVICE_CONTRACTS.md`; do not load all history.
-- Active bounded objective: developer native-payment evidence reconciliation, limited API-access verification and a proposed single-session proof. This task allows at most one each of `getToken`, `getEventList`, `getUnitList` on the confirmed developer account, no retries; stop on the first mismatch. Missing secure developer credentials currently block all three. No client calls, provider business writes or proof execution. New work ends at a green draft PR.
+- Active bounded objective: research the supported native SimplyBook → SBPay → HitPay checkout contract, reconcile owner screenshots and prepare the first single-session plan or exact support gaps. Public-document research only; **zero additional provider-account calls**. Original successful `getToken`/`getEventList`/`getUnitList` allowance is **3/3 exhausted**, no retries/business writes. Do not execute the proof, repeat manual payments or request new secrets. Service Contracts owns the invoice-link findings, gaps and conditional budget; Worker/DO/D1 and deployment plans remain unimplemented. Continue PR #8 and end at green draft PR, no merge/deployment.
 - Commands/cutover: `docs/CODEX_CLOUD.md`. Provider findings: Service Contracts and the latest Journey entry.
 
 ## 2. Build
