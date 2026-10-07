@@ -21,16 +21,16 @@ Fitfinity's additional AWS runbook records implemented AWS operations. SoccerBot
 ## 2. Current source and experiment boundary
 
 - Repository: `LimYouSheng/SoccerBotStudioSG`.
-- Base main: `0cea68168738c722d05be9d3580938b65a4860c7`, after YS merged naming PR #5. Main CI `37485321460` passed verification and the existing Pages demo deployment.
-- Experiment branch: `experiment/codex-cloud-workflow-2026-10-06`. The PR records its exact published head. Keep it unmerged, including after CLOUD-01 acceptance.
+- Verified main: `37c220a33caa85f875baaf98726205cec7b9d495`, after YS merged PR #6. Main run `37568173451` passed verification and the existing Pages deployment.
+- Current branch: `docs/developer-payment-proof-2026-10-07`, created from verified main. Publish a new draft PR; preserve the previous experiment branch and receipts. PR #6 is already merged by YS.
 - The original Mac source was inspected and synchronized in PR #4, but its merge was unauthorized. Journey preserves that incident. No new Mac pull, branch switch or Cloud-document installation is claimed.
 - Required status check: `verify / frontend` from GitHub Actions. Preserve the inherited workflow and repository protections.
 
 Routine Cloud development uses the reviewed GitHub branch directly. A Mac installer and local provider login are not prerequisites. Optional Mac updates still use the existing guarded delivery/source checks and preserve new local edits.
 
-Before a task changes source, read branch, HEAD, diff and the PR's current head. Confirm the base main above is an ancestor. If the Cloud checkout starts on main or a detached revision, select/attach the experiment branch after checking for existing work; never reset, clean, force push or discard changes. If main advances, inspect the delta and integrate it on the experimental branch without overwriting concurrent work. Refresh the recorded base/evidence as needed.
+Before a task changes source, read branch, HEAD, diff and the PR's current head. Confirm the base main above is an ancestor. If the Cloud checkout starts on main or a detached revision, create the task feature branch from verified main after checking for existing work; never reset, clean, force push or discard changes. If main advances, inspect the delta and integrate it on the task feature branch without overwriting concurrent work. Refresh the recorded base/evidence as needed.
 
-Publishing this experiment and passing checks do not authorize merging it. The first merge requires successful completion of the elapsed-slot application trial, including YS’s exact-revision review, plus explicit approval for PR #6. Setup, documentation and test-only repairs are insufficient. Every future merge needs explicit user approval for that specific PR. The ChatGPT GitHub plugin's ask-before-write setting is separate from any Cloud/CLI credential; Markdown is not a technical permission control.
+YS merged PR #6 and moved application inspection to deployed main. That explicit user decision supersedes the earlier first-merge process requirement; do not retroactively mark visual review complete. Future publication and green checks do not authorize a merge. Every future merge needs explicit approval for that PR. The GitHub plugin's ask-before-write setting is separate from Cloud/CLI credentials; Markdown is not a technical permission control.
 
 ## 3. Reuse the verified Cloud runtime
 
@@ -118,14 +118,14 @@ The retained smoke's internal demo preview is scoped to its container lifetime. 
 
 ### Exact-revision local review proposal — user-run only
 
-For the elapsed-slot trial, no supported Cloud forwarding surface has been established. The alternative below is a proposed review of the exact final SHA and matching green CI recorded in draft PR #6; it has not been executed on YS's computer and does not imply visual acceptance. Do not use merged-main Pages.
+No supported Cloud forwarding surface has been established. YS has now chosen deployed main for application inspection; identify its exact deployed SHA and demo mode when recording observations. Inspection is pending, and Pages is not a Cloud feature-PR preview. The optional isolated local walkthrough below is retained for exact-revision diagnosis; it has not been executed on YS’s computer.
 
-1. In the existing local repository, inspect branch/HEAD/index/working tree and preserve all work. Fetch only the experiment branch; verify the full review SHA from PR #6 exists. Create a **new detached worktree at that SHA** in an unused sibling directory. Never switch/reset the working checkout or overwrite an existing review directory.
+1. In the existing local repository, inspect branch/HEAD/index/working tree and preserve all work. Fetch the branch containing the agreed review SHA; verify that full SHA exists. Create a **new detached worktree at that SHA** in an unused sibling directory. Never switch/reset the working checkout or overwrite an existing review directory.
 2. Require Node 24.19.0 and npm 11.9.0. Reuse an existing dependency installation only when its package/lock bytes match the review checkout; an absolute `node_modules` symlink in the new worktree can reuse that installation. If matching dependencies are unavailable, stop and report the local preparation blocker rather than implicitly reinstalling or changing the original checkout.
 3. In the review worktree, confirm `git rev-parse HEAD` equals the full PR candidate and `git status --short` is clean. Build with process-scoped `NEXT_PUBLIC_BASE_PATH=/SoccerBotStudioSG npm run build`, then run `npm run preview`. Open `http://127.0.0.1:4173/SoccerBotStudioSG/` locally; this serves only while the command runs. No hosting, provider or deployment operation is involved.
 4. Review Home/Studio and the guest booking journey with synthetic contact details. On today's Singapore date, elapsed times must be disabled for new selection. Future dates/multiple sessions remain usable. A selected slot crossing its start must stay in the basket, visibly labelled and removable, with Continue blocked. Restored stale drafts follow the same rule; confirmed paid records remain confirmed.
 5. For an exact-boundary walkthrough without waiting for wall time, stop the manual preview so port 4173 is free. With the already installed browser runtime, the user may run `./node_modules/.bin/playwright test tests/customer.spec.ts --grep '(^| )elapsed selections' --project=desktop-chromium --debug` against that fresh build and step through the controlled-clock regression. Its advancing timer exercises before/at/after start and future multi-session payment. This optional visual walkthrough is distinct from the required full three-project CI and physical-device acceptance.
-6. Record the reviewed SHA, local URL/base path, demo mode, browser/device, observations and explicit acceptance or defects. Stop the preview afterward. Trial completion and a later explicit PR #6 merge approval are separate records; neither is inferred from opening a URL or green automation.
+6. Record the reviewed SHA, local URL/base path, demo mode, browser/device, observations and explicit acceptance or defects. Stop the preview afterward. Visual acceptance remains a separate record even though YS merged PR #6; it is not inferred from opening a URL or green automation.
 
 ## 5. Efficient Ralph runs
 
@@ -142,7 +142,7 @@ For the elapsed-slot trial, no supported Cloud forwarding surface has been estab
 ## 6. Review and release boundary
 
 - Review intended source/docs and checks, checkpoint the feature branch and open/update its PR. Keep it draft while required acceptance is blocked. Consume existing CI for the same final commit; do not launch duplicate suites.
-- Stop at PR-ready. Keep the experiment unmerged until YS explicitly approves merging that specific PR. Requests to continue, synchronize main, publish a PR or obtain green checks are not merge approval. Never enable auto-merge. Main independently verifies an approved merged revision and its existing Pages deployment consumes the tested artifact; this is outside the Cloud loop.
+- Stop at PR-ready. Keep each new task PR draft/unmerged until YS explicitly approves merging that specific PR. Requests to continue, synchronize main, publish a PR or obtain green checks are not merge approval. Never enable auto-merge. Main independently verifies an approved merged revision and its existing Pages deployment consumes the tested artifact; this is outside the Cloud loop.
 - Never broaden repository permissions, change branch protection, provision paid services or mutate protected infrastructure merely to complete the loop. Record a concrete blocker instead.
 - The client `soccerbotstudio` account remains read-only. The account going live on 7 October does not authorize the custom website's cutover, synthetic customer bookings or real charges.
 - Remaining provider tests belong to M2.1–M2.5: account entitlement/quota and field/price mapping, synthetic customer matching, shared-capacity/changeover contention, native SimplyBook → SBPay → HitPay checkout, status/reconciliation and limited confirmed-unpaid cleanup. Exact supported operations must be proved; no independent payment bypass or blind write retry.
@@ -153,3 +153,9 @@ For the elapsed-slot trial, no supported Cloud forwarding surface has been estab
 Record in Progress and the PR: source SHA, intended diff, commands/environment/results, final-commit CI URLs, preview revision/mode, limitations and next action. Move completed milestone evidence to Journey. A fresh task must resume from these files without reconstructing this chat.
 
 OneFitfinity source: [latest reviewed Cloud workflow commit](https://github.com/LimYouSheng/FitfinityReact/tree/16eea945f9324b6f20610d0a0b98b1a1cb6014e9). Its efficient Ralph section is retained with the project name adapted. SoccerBot's existing pins, gates, provider boundary and deployment model replace Fitfinity-specific details.
+
+## Developer API prerequisite check — 7 October 2026
+
+Current task permits only one each of `getToken`, `getEventList`, `getUnitList` for the confirmed developer account, at most three requests and no retries. Both intended runtime variables are absent; managed status lists no secret binding for `SIMPLYBOOK_DEV_API_KEY` on `user-api.simplybook.me`. Stop before authentication: actual provider requests **0**. Do not use client credentials or configure the environment as a workaround. YS reports the settings were already saved. Compare the attached revision 25/source version with the intended saved configuration before requesting a change; the status tool does not expose the latest editor configuration. The outer-task variables are absent, so this is not a Docker-forwarding-only failure. Older/wrong attachment versus saved-setting application remains unresolved. A nonempty network-secret placeholder is acceptable; no raw key is required. Preserve inherited HTTPS proxy/TLS verification; never transform a network-secret placeholder or persist returned tokens.
+
+Reuse retained runtime/dependencies and the existing C3 evidence. The historical `container.py smoke` enforces its original experiment checkpoint/branch; do not bypass that guard or rerun smoke for this documentation task. New draft PR CI verifies the final documentation candidate. The single-session provider proof in Service Contracts is a proposal only; the application stays demo-only.
