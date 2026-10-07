@@ -1,25 +1,25 @@
-# North Star: native checkout contract and first-proof preparation
+# North Star: supported native checkout through research and controlled experiments
 
 ## Active outcome — 7 October 2026
 
-Resolve the documented API booking → native invoice/payment page → SBPay/HitPay → authoritative status route. Prepare an executable single-session plan if evidence permits; otherwise identify exact provider/account gaps. Public research is complete to the documented limits. **Do not execute the proof.**
+Establish the supported SimplyBook → SBPay → HitPay integration using official research and bounded developer-account experiments. Resolve documentary questions first, then observe remaining behaviour under a concrete approved plan. Do not make six live-chat answers or full multi-session/adverse-outcome proof prerequisites for the first single-session happy path.
 
-- [x] Refresh PR #8: open at reviewed `04e82f800508c08defa433776f715259333772cf`; its [CI 37583277947](https://github.com/LimYouSheng/SoccerBotStudioSG/actions/runs/37583277947) passed. Continue its existing branch, preserving main `e883c1af117a960eeae9359c4db9923d774888dd` and earlier evidence.
-- [x] Research official API/help/support sources before asking YS for technical answers. Invoice-enabled public booking and an Admin REST native payment-link route are documented; legacy cart creation is deprecated. Current schema/entitlement, multi-session association and recovery remain gated.
-- [x] Reconcile supplied screenshots: sandbox controls, trial/features/10-minute timeout and explicit Ref 19 → prior HitPay charge-ID link. Preserve prior Card/PayNow evidence; account isolation and API invoice joins remain unproved.
-- [x] Replace the unapproved 14-call estimate with explicit conditional arithmetic and prepare one ready-to-send support question set in Service Contracts. No runnable proof is claimed.
-- [ ] Final updated head must pass `verify / frontend`; record exact SHA/run in [PR #8](https://github.com/LimYouSheng/SoccerBotStudioSG/pull/8).
-- [ ] Resolve support/owner gaps, then bind and obtain approval for a separate execution task.
+- [x] Refresh actual main after merged PR #8: `97b42c7d561ffa0167eb3ca1113d18e143a9e0d9`, tree `976cf0a064a82bb655d22fc9156c5a4663a80068`. Main run `37589441392`, required job `112687131937`, passed; its existing deployment also succeeded. These are observed merge results, not actions performed here.
+- [x] Preserve clean prior branch and start `docs/native-checkout-stages-2026-10-07` from refreshed main.
+- [x] Reconcile owner confirmations and D15–D20 research in Service Contracts, including source retrieval limits.
+- [x] Prepare stages: offline binding → authenticated existing-invoice discovery → one synthetic booking/native sandbox checkout → bounded reads/manual reconciliation.
+- [ ] Bind exact remaining fixture/authentication inputs and obtain approval of the complete plan: maximum **16 server requests**, **one booking call**, **one potentially stateful payment-link call**, **one YS sandbox submission**, **zero cancellation/refund calls**.
+- [ ] Required final-head `verify / frontend` and new draft PR publication; exact receipt belongs in the PR. Stop unmerged.
 
-Continue `docs/developer-api-cloudflare-plan-2026-10-07`. The attached clean historical `work` branch at `897cbfe737d31069ae25dca39c638cdededf3593` was preserved before switching to the reviewed task head. PR #8 was observed open/non-draft despite its earlier draft instruction; this task returns it to draft for review. No reset, main push, merge, deployment or auto-merge.
+YS confirms development company/merchant/HitPay isolation, intended service/instructor/shared-resource/timing/price-tax/required-field structure, a controlled notification inbox and YS dashboard reconciliation. These are owner confirmations, not new API execution; do not request them again. Exact slot/instructor/amount/contact/form values, existing invoice reference and chosen authentication bindings still need binding.
 
-Original developer access remains **getToken 1, getEventList 1, getUnitList 1; 3/3 exhausted**. This research adds **zero provider-account requests and zero business writes**. No new authentication, catalogue/availability probe, manual payment, admin/client access, live adapter, settings change, secret request, paid provisioning or support message. Worker/DO/D1 and release plans are retained without implementation. Reuse dependencies; only focused local documentation checks and required final-head CI.
+Original developer allowance remains **getToken 1, getEventList 1, getUnitList 1; 3/3 exhausted**. Current preparation executes **zero provider-account requests and zero business writes**. No settings/key creation, support messages, production adapters, provisioning or deployment. The complete staged approval boundary and conservative recovery procedure are in [Service Contracts](docs/SERVICE_CONTRACTS.md#staged-single-session-experiment--approval-proposal).
 
 ## One next action and retained gates
 
-YS sends the [prepared support question set](docs/SERVICE_CONTRACTS.md#provider-support-question-set--prepared-not-sent) and returns answers with the missing E4 owner facts. The research identifies technical questions precisely; YS need not supply invented method names or repeat successful payments. No new secrets or proof-execution approval is requested until the plan is fully bound.
+YS supplies the exact remaining inputs listed in Service Contracts and approves the staged ceiling together. Codex then prepares/validates the bound probe offline before any authorized dispatch; missing schemas that can safely be observed are discovery objectives, not a blanket support gate. Unexpected authentication/schema/identity or ambiguous recovery stops dependent stages without spending unused calls elsewhere.
 
-M2.1 remains partial; M2.2–M2.4 capacity/payment/recovery proof and M2.5 freeze stay open. The conditional request estimate is not authorization. Client-specific validation, PERF-01–07/P01–P12, full M4.1, visual/device review and the original Cloud-preview blocker remain unchanged. The app stays demo-only; existing Worker/DO/D1 and tested-artifact deployment plans are unchanged.
+M2.1 remains partial. Multi-session partial acceptance, shared-capacity contention, adverse outcomes, M2.5 freeze, PERF-01–07/P01–P12, client validation, full M4.1, visual/device review and Cloud-preview acceptance remain open. Worker/DO/D1 and tested-artifact release plans are unchanged; the application remains demo-only.
 
 ## Deferred CLOUD-01 — incomplete
 
