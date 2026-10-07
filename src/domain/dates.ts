@@ -1,10 +1,13 @@
 export function todaySG(now = new Date()): string {
-  return new Intl.DateTimeFormat("en-CA", {
+  const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Singapore",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(now);
+  }).formatToParts(now);
+  const part = (type: string) =>
+    parts.find((value) => value.type === type)!.value;
+  return `${part("year")}-${part("month")}-${part("day")}`;
 }
 export function addDays(date: string, days: number): string {
   const value = new Date(`${date}T12:00:00Z`);

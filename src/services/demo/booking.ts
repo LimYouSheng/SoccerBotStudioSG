@@ -2,6 +2,8 @@ import { z } from "zod";
 import {
   bookingSchema,
   draftError,
+  isElapsed,
+  selectionErrors,
   orderedSlots,
   paymentLocked,
   slotKey,
@@ -60,7 +62,10 @@ export const demoBookingService: BookingService = {
   availability(date) {
     return SESSION_STARTS.map((minute) => {
       const slot = demoSession({ date, start: clock(minute) })!;
-      return { ...slot, available: availableStudios(slot).length > 0 };
+      return {
+        ...slot,
+        available: !isElapsed(slot) && availableStudios(slot).length > 0,
+      };
     });
   },
   checkout(draft, previous) {
@@ -98,6 +103,8 @@ export const demoBookingService: BookingService = {
   },
   pay(attempt, outcome) {
     if (!["ready", "declined"].includes(attempt.status)) return attempt;
+    const errors = selectionErrors(attempt.draft.slots);
+    if (errors.length) throw new Error(errors[0]);
     return {
       ...attempt,
       status: "checking",

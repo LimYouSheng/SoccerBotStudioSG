@@ -6,7 +6,7 @@
 - Main already contains the inspected Mac source and merged naming PR #5. Use `experiment/codex-cloud-workflow-2026-10-06`, based on main `0cea68168738c722d05be9d3580938b65a4860c7`. Keep CLOUD-01 unmerged and outside the Mac baseline; preserve any newer branch work.
 - GitHub is canonical for the reconciled source. Preserve unknown edits and keep experiment acceptance separate. Routine Cloud work does not require a Mac installer or user-run browser tests.
 - Search relevant sections of `docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md` and `docs/SERVICE_CONTRACTS.md`; do not load all history.
-- Active bounded objective: M2 provider feasibility, beginning with M2.1 evidence/capability-gap reconciliation. CLOUD-01 preview remains deferred and incomplete; this does not block authorized M2 planning. Use the capability matrix and review-only proof plan in Service Contracts; no provider writes are authorized.
+- Active bounded objective: the elapsed-slot demo application trial in North Star. M2 prerequisites remain open; no provider calls/writes are authorized. First merge requires successful application-trial completion, exact-revision user review and YS's explicit PR #6 approval; setup, documentation and test-only repairs do not satisfy it.
 - Commands/cutover: `docs/CODEX_CLOUD.md`. Provider findings: Service Contracts and the latest Journey entry.
 
 ## 2. Build

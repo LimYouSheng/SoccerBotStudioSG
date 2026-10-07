@@ -31,9 +31,9 @@ const screens = {
   confirmation: ConfirmationStep,
 };
 export function BookingPage({ step }: { step: BookingStep }) {
-  const { ready, draft, attempt } = useBooking(),
+  const { ready, draft, attempt, now } = useBooking(),
     router = useRouter();
-  const actual = guardedStep(step, draft, attempt),
+  const actual = guardedStep(step, draft, attempt, now),
     current = progress.findIndex(([id]) => id === step);
   useEffect(() => {
     if (ready && actual !== step) router.replace(`/book/${actual}/`);

@@ -30,7 +30,7 @@ Routine Cloud development uses the reviewed GitHub branch directly. A Mac instal
 
 Before a task changes source, read branch, HEAD, diff and the PR's current head. Confirm the base main above is an ancestor. If the Cloud checkout starts on main or a detached revision, select/attach the experiment branch after checking for existing work; never reset, clean, force push or discard changes. If main advances, inspect the delta and integrate it on the experimental branch without overwriting concurrent work. Refresh the recorded base/evidence as needed.
 
-Publishing this experiment and passing checks do not authorize merging it. Every future merge needs explicit user approval for that specific PR. The ChatGPT GitHub plugin's ask-before-write setting is separate from any Cloud/CLI credential; Markdown is not a technical permission control.
+Publishing this experiment and passing checks do not authorize merging it. The first merge requires successful completion of the elapsed-slot application trial, including YS’s exact-revision review, plus explicit approval for PR #6. Setup, documentation and test-only repairs are insufficient. Every future merge needs explicit user approval for that specific PR. The ChatGPT GitHub plugin's ask-before-write setting is separate from any Cloud/CLI credential; Markdown is not a technical permission control.
 
 ## 3. Reuse the verified Cloud runtime
 
@@ -115,6 +115,17 @@ The retained smoke's internal demo preview is scoped to its container lifetime. 
 - Stop manual preview/dev processes before any separately authorized verification; the browser harness owns port 4173 and refuses reuse.
 - Existing GitHub Pages deploys merged main only. It is not a PR preview. New isolated preview hosting requires a separately reviewed task; never merge merely to obtain a preview.
 - Cloud/CI browser evidence does not replace YS/client physical-device acceptance or live-provider evidence.
+
+### Exact-revision local review proposal — user-run only
+
+For the elapsed-slot trial, no supported Cloud forwarding surface has been established. The alternative below is a proposed review of the exact final SHA and matching green CI recorded in draft PR #6; it has not been executed on YS's computer and does not imply visual acceptance. Do not use merged-main Pages.
+
+1. In the existing local repository, inspect branch/HEAD/index/working tree and preserve all work. Fetch only the experiment branch; verify the full review SHA from PR #6 exists. Create a **new detached worktree at that SHA** in an unused sibling directory. Never switch/reset the working checkout or overwrite an existing review directory.
+2. Require Node 24.19.0 and npm 11.9.0. Reuse an existing dependency installation only when its package/lock bytes match the review checkout; an absolute `node_modules` symlink in the new worktree can reuse that installation. If matching dependencies are unavailable, stop and report the local preparation blocker rather than implicitly reinstalling or changing the original checkout.
+3. In the review worktree, confirm `git rev-parse HEAD` equals the full PR candidate and `git status --short` is clean. Build with process-scoped `NEXT_PUBLIC_BASE_PATH=/SoccerBotStudioSG npm run build`, then run `npm run preview`. Open `http://127.0.0.1:4173/SoccerBotStudioSG/` locally; this serves only while the command runs. No hosting, provider or deployment operation is involved.
+4. Review Home/Studio and the guest booking journey with synthetic contact details. On today's Singapore date, elapsed times must be disabled for new selection. Future dates/multiple sessions remain usable. A selected slot crossing its start must stay in the basket, visibly labelled and removable, with Continue blocked. Restored stale drafts follow the same rule; confirmed paid records remain confirmed.
+5. For an exact-boundary walkthrough without waiting for wall time, stop the manual preview so port 4173 is free. With the already installed browser runtime, the user may run `./node_modules/.bin/playwright test tests/customer.spec.ts --grep '^elapsed selections' --project=desktop-chromium --debug` against that fresh build and step through the controlled-clock regression. Its advancing timer exercises before/at/after start and future multi-session payment. This optional visual walkthrough is distinct from the required full three-project CI and physical-device acceptance.
+6. Record the reviewed SHA, local URL/base path, demo mode, browser/device, observations and explicit acceptance or defects. Stop the preview afterward. Trial completion and a later explicit PR #6 merge approval are separate records; neither is inferred from opening a URL or green automation.
 
 ## 5. Efficient Ralph runs
 

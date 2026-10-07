@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Icon } from "@/components/icon";
 import { Dialog } from "@/components/dialog";
+import { selectionErrors } from "@/domain/booking";
 import { CONTACT_METHODS, SERVICE_NAME } from "@/domain/catalog";
 import { normalizeContact, type ContactDetails } from "@/domain/contact";
 import { useBooking } from "./provider";
@@ -47,7 +48,7 @@ export function Arrival() {
   );
 }
 export function ReviewStep() {
-  const { draft, update, checkout } = useBooking(),
+  const { draft, update, checkout, now } = useBooking(),
     router = useRouter();
   const [error, setError] = useState(""),
     [policy, setPolicy] = useState(false);
@@ -77,7 +78,7 @@ export function ReviewStep() {
               Edit selections
             </Link>
           </div>
-          <SessionList slots={draft.slots} />
+          <SessionList slots={draft.slots} now={now} />
         </div>
         <div className="review-block">
           <div className="review-head">
@@ -120,7 +121,9 @@ export function ReviewStep() {
       <div className="actions">
         <button
           className="button"
-          disabled={!draft.accepted}
+          disabled={
+            !draft.accepted || selectionErrors(draft.slots, now).length > 0
+          }
           onClick={() => {
             try {
               checkout();

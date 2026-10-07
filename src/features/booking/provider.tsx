@@ -6,6 +6,7 @@ import {
   useEffect,
   useReducer,
   useRef,
+  useState,
   type ReactNode,
 } from "react";
 import {
@@ -23,6 +24,7 @@ import {
 } from "@/services/storage";
 interface BookingContextValue extends StoredBooking {
   ready: boolean;
+  now: number;
   update: (change: Partial<BookingDraft>) => void;
   checkout: () => void;
   pay: (outcome: Outcome) => void;
@@ -38,6 +40,26 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     ) => next,
     { version: 2, draft: blankDraft(), attempt: null, ready: false },
   );
+  const [now, setNow] = useState(() => Date.now());
+  // Every start is minute-aligned. Also refresh after a suspended/background tab
+  // resumes; action/service guards still sample the clock at dispatch time.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    function refresh() {
+      clearTimeout(timer);
+      const current = Date.now();
+      setNow(current);
+      timer = setTimeout(refresh, 60_000 - (current % 60_000));
+    }
+    refresh();
+    window.addEventListener("focus", refresh);
+    document.addEventListener("visibilitychange", refresh);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, []);
   const latest = useRef(value);
   const commit = useCallback((next: StoredBooking) => {
     const state = { ...next, ready: true };
@@ -72,6 +94,7 @@ export function BookingProvider({ children }: { children: ReactNode }) {
     <Context.Provider
       value={{
         ...value,
+        now,
         update(change) {
           const current = latest.current;
           if (paymentLocked(current.attempt)) return;

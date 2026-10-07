@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { blankDraft } from "@/domain/booking";
@@ -152,4 +152,107 @@ test("confirmation shows each contact and location once with all five sections e
   expect(
     screen.getByText(/Crosses the 12:00 instructor rotation/),
   ).toBeVisible();
+});
+
+test("an open booking page expires a selected slot at its start and keeps it removable", () => {
+  vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+  vi.setSystemTime(new Date("2026-10-06T08:59:59.999+08:00"));
+  const draft = { ...blankDraft(), mode: "guest" as const };
+  saveBooking({ version: 2, draft, attempt: null });
+  const view = render(
+    <BookingProvider>
+      <BookingPage step="time" />
+    </BookingProvider>,
+  );
+  const slot = screen.getByRole("button", { name: /09:00–09:40/ });
+  expect(slot).toBeEnabled();
+  fireEvent.click(slot);
+  expect(screen.getByRole("link", { name: "Continue" })).toBeInTheDocument();
+  act(() => {
+    vi.advanceTimersByTime(1);
+  });
+  expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+  expect(
+    within(screen.getByRole("complementary")).getByText(/Session has started/),
+  ).toBeVisible();
+  expect(loadBooking().draft.slots).toHaveLength(1);
+  fireEvent.click(
+    screen.getByRole("button", { name: "Remove 2026-10-06 at 09:00" }),
+  );
+  expect(loadBooking().draft.slots).toHaveLength(0);
+  expect(slot).toBeDisabled();
+  view.unmount();
+});
+
+test("restored elapsed sessions remain labelled and removable alongside valid future sessions", () => {
+  vi.setSystemTime(new Date("2027-01-01T00:00:00+08:00"));
+  const stale = demoSession({ date: "2026-12-31", start: "19:50" })!;
+  const future = demoSession({ date: "2027-01-01", start: "09:00" })!;
+  saveBooking({
+    version: 2,
+    draft: { ...blankDraft(), mode: "guest", slots: [stale, future] },
+    attempt: null,
+  });
+  render(
+    <BookingProvider>
+      <BookingPage step="time" />
+    </BookingProvider>,
+  );
+  const basket = within(screen.getByRole("complementary"));
+  expect(basket.getByText(/Session has started/)).toBeVisible();
+  expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+  expect(loadBooking().draft.slots).toEqual([stale, future]);
+  fireEvent.click(
+    screen.getByRole("button", { name: "Remove 2026-12-31 at 19:50" }),
+  );
+  expect(loadBooking().draft.slots).toEqual([future]);
+  expect(basket.queryByText(/Session has started/)).not.toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Continue" })).toBeInTheDocument();
+});
+test("selection rechecks time before dispatch and refreshes after a suspended tab resumes", () => {
+  vi.setSystemTime(new Date("2026-10-06T08:59:59+08:00"));
+  saveBooking({
+    version: 2,
+    draft: { ...blankDraft(), mode: "guest" },
+    attempt: null,
+  });
+  render(
+    <BookingProvider>
+      <BookingPage step="time" />
+    </BookingProvider>,
+  );
+  const slot = screen.getByRole("button", { name: /09:00–09:40/ });
+  expect(slot).toBeEnabled();
+  // Move Date only, without delivering the scheduled UI timer.
+  vi.setSystemTime(new Date("2026-10-06T09:00:00+08:00"));
+  fireEvent.click(slot);
+  expect(loadBooking().draft.slots).toEqual([]);
+  fireEvent.focus(window);
+  expect(slot).toBeDisabled();
+  expect(slot).toHaveTextContent("Session has started");
+});
+test("an open calendar follows Singapore year rollover without deleting its draft", () => {
+  vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
+  vi.setSystemTime(new Date("2026-12-31T23:59:59.999+08:00"));
+  const slot = demoSession({ date: "2027-01-01", start: "09:00" })!;
+  saveBooking({
+    version: 2,
+    draft: { ...blankDraft(), mode: "guest", slots: [slot] },
+    attempt: null,
+  });
+  const view = render(
+    <BookingProvider>
+      <BookingPage step="time" />
+    </BookingProvider>,
+  );
+  act(() => {
+    vi.advanceTimersByTime(1);
+  });
+  expect(todaySG()).toBe("2027-01-01");
+  expect(
+    screen.getByRole("button", { name: dateLabel("2027-01-01") }),
+  ).toHaveAttribute("aria-pressed", "true");
+  expect(loadBooking().draft.slots).toEqual([slot]);
+  expect(screen.getByRole("link", { name: "Continue" })).toBeInTheDocument();
+  view.unmount();
 });
