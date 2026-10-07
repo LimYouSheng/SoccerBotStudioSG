@@ -2,14 +2,14 @@
 
 ## Checkpoint — 7 October 2026
 
-- North Star: `CLOUD-01`, an experiment; **not accepted or adopted**. C3 runtime restoration is verified at the checkpoint below; usable user preview acceptance remains blocked.
+- Active North Star: **M2 provider feasibility**, starting with bounded M2.1 readiness/capability-gap reconciliation as authorized on 7 October. `CLOUD-01` remains **incomplete and not adopted**: C3 restoration is verified, but user preview remains blocked. The user permits M2 planning while that criterion is deferred.
 - Base main: `0cea68168738c722d05be9d3580938b65a4860c7`, tree `61918e04933afd960358903a2aa152a0872c7024`, after YS merged [PR #5](https://github.com/LimYouSheng/SoccerBotStudioSG/pull/5). [Main CI 37485321460](https://github.com/LimYouSheng/SoccerBotStudioSG/actions/runs/37485321460) passed verification and the existing Pages demo deployment.
 - Main is protected; required context is `verify / frontend`, expected source GitHub Actions. The settings must remain enforced. Markdown and this ChatGPT plugin's ask-before-write setting do not enforce separate Cloud/CLI credentials.
-- Experimental branch: `experiment/codex-cloud-workflow-2026-10-06`. The original experiment changed eight documents only; the bounded CI repair below additionally changes one component test and its inventory entry. Application, assets, dependencies, workflow and installer tooling remain unchanged. Its PR records the exact published head and CI result.
+- Experimental branch: `experiment/codex-cloud-workflow-2026-10-06`. The original experiment changed eight documents only; the bounded CI repair below additionally changes one component test and its inventory entry. Application, assets, dependencies, workflow and installer tooling remain unchanged. The current handoff adds only M2 planning documentation; PR #6 records each final published head and CI result.
 - The Mac checkpoint still records `fix/pages-deployment` at `12c174a98c97a5d7c7b0cd041c090e31a903e95b`. No new Mac pull, switch, index change or Cloud-doc installation has been performed.
 - Baseline PR #4 was merged by the assistant without explicit user approval. Source identity and successful CI remain valid evidence, but they did not authorize that merge. Journey records the incident. Every future merge requires explicit approval for that specific PR.
 
-## Task ledger
+## Task ledger — active M2 and deferred Cloud
 
 | ID  | Task and completion evidence                                                                               | State                                            | Next action                                                                       |
 | --- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | --------------------------------------------------------------------------------- |
@@ -17,6 +17,12 @@
 | C2  | Preserve the inspected Mac source on main, including later naming/protection changes                       | Source reconciliation complete                   | Retain PR #4 failure record and PR #5/main evidence                               |
 | C3  | Publish the experimental PR, then verify a fresh Cloud task, pinned setup and scoped Playwright            | Runtime restoration verified                     | Retain the exact checkpoint/evidence below; reconcile PR metadata in C4           |
 | C4  | Final-candidate CI, usable user preview and completed CLOUD-01 receipt                                     | Committed-candidate CI verified; preview blocked | Retain checkpoint CI; require handoff-commit CI in PR #6; preview remains blocked |
+
+| ID        | Bounded task / completion evidence                                                                    | State                                                         | Next action                                                                                                      |
+| --------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| M2.1      | Reconcile account readiness and capability gaps with evidence, owners and review-only synthetic proof | Reconciliation complete; account-readiness acceptance partial | Obtain redacted account/merchant owner read-back and supported native test-route contract; see Service Contracts |
+| M2.2–M2.4 | Prove provider capacity, native payment and recovery under approved isolated fixtures                 | Blocked on readiness and write-test review                    | Do not run write scenarios or repeat scheduling discovery now                                                    |
+| M2.5      | Freeze integration mappings, supported contracts and performance dispositions                         | Blocked on M2.2–M2.4                                          | Retain all unproved operations and P01–P12 as open                                                               |
 
 ## C3 runtime restoration evidence — 7 October 2026
 
@@ -68,9 +74,20 @@ The resulting final commit and its matching `verify / frontend` run are recorded
 - Focused evidence: `/workspace/work/ci-ready-repair/` retains `original-ci-failure.log`, `reproduction.log`/`reproduction.json` (1 failed, 2 passed) and `focused.log`/`focused.json` (3 passed, zero pending). Source/inventory integrity, affected-file ESLint and TypeScript `tsc --noEmit` passed. No full local application/browser suite was repeated; no runtime, environment or assertion weakening occurred. Original C3 receipts remain unchanged.
 - The repair's final SHA and full `verify / frontend` result belong in [draft PR #6](https://github.com/LimYouSheng/SoccerBotStudioSG/pull/6). Require full CI for this new candidate; retain the earlier failed run. Preview remains blocked by the missing supported Cloud forwarding surface. No merge, deployment or provider calls are authorized.
 
+## M2.1 reconciliation — 7 October 2026
+
+- Started from clean branch `experiment/codex-cloud-workflow-2026-10-06`, HEAD `a6f1a6cc151200727d7806ff97a79c963edb2516`, clean index. [Full CI 37560542328](https://github.com/LimYouSheng/SoccerBotStudioSG/actions/runs/37560542328) passed that repair candidate (43 unit/component/service, 42 browser cases); C3 runtime/evidence and original failures are reused, not rerun or rewritten.
+- [Service Contracts](docs/SERVICE_CONTRACTS.md#m21-capability-matrix--reconciled-7-october-2026) now owns the 14-row capability matrix, dated official sources, exact next proof, responsible access roles and synthetic reconciliation plan. No production adapter, Worker API or payment flow is implemented.
+- Reused the canonical 51/51 R2 findings, 268 unchanged starts and 16 offered-start 50-minute intervals. The raw client receipt and quotation PDF are absent here; their existing canonical findings/hash references remain the evidence limit. No claim of fresh raw-receipt verification or commercial-term revision.
+- Official documentation supports native SBPay/HitPay setup and candidate cart/status/resource mechanisms, but actual entitlement, merchant activation/test-route compatibility, shared-capacity enforcement, field/customer mappings, invoice association and recovery remain unproved. `calculateEndTime` is not availability. Current three-client-provider roster and synthetic demo rotations stay distinct.
+- Provider-call budget **0**, actual **0**; no support message or owner contact sent. Write proof is prepared for review only. Exact methods, account mappings, synthetic route and per-scenario budgets must be approved before any dispatch. No environment change, reinstall, baseline suite, live write, provider configuration, paid provisioning, merge or deployment.
+- This bounded result is documentation reconciliation, not M2.1 account-readiness acceptance, M2 completion or CLOUD-01 completion. Local affected checks cover Markdown, links/anchors, stable milestone/performance IDs, exact scope and preserved receipts. Any newly published commit requires its own `verify / frontend`; its SHA/run belongs in draft PR #6 rather than a self-referential documentation cycle.
+
 ## Next run
 
-Read PR #6's final head and matching required CI result before resuming. C3 restoration is verified; C4 overall remains blocked by user preview acceptance. Next action is to obtain a supported candidate-preview surface, then verify Home, Studio and a direct booking route with revision, demo mode and lifetime. Do not repeat successful suites, substitute merged-main Pages, introduce preview deployment or mark CLOUD-01 accepted while this criterion is unmet. Physical-device and provider acceptance remain separate.
+Next ready task: **M2.1 account-owner proof packet**. Obtain the redacted developer/temporary/client account register, API/plan/token/quota/other-consumer read-back and merchant/native synthetic-test-route confirmation described in Service Contracts. YS coordinates developer access; client admin and merchant owner supply account evidence; provider support resolves undocumented contracts. No provider reads or messages are implicitly authorized by this next-task label.
+
+After that packet resolves the preconditions, review exact bounded synthetic M2.2–M2.4 scenarios before writes; do not skip directly to live adapters or M2.5 contract freeze. Preserve PERF-01–PERF-07/P01–P12 and all M1–M9 IDs. CLOUD-01 preview remains blocked by the missing supported forwarding surface; no new hosting, merge or deployment is authorized. Keep PR #6 draft/unmerged and reconcile its exact final head/CI when resuming.
 
 ## Update discipline
 

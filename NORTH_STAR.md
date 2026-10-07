@@ -1,12 +1,32 @@
-# North Star: CLOUD-01
+# North Star: M2 provider feasibility
 
-## Outcome
+## Active outcome — authorized 7 October 2026
+
+Establish an evidence-backed integration contract for the custom customer website's native SimplyBook → SBPay → HitPay path before live adapters are implemented. Each required capability needs an account-specific supported mechanism or a concrete blocker. Preserve one shared studio, identity boundaries, provider authority, payment reconciliation and PERF-01–PERF-07/P01–P12.
+
+The first bounded task is **M2.1 readiness and capability-gap reconciliation**. Reuse existing scheduling discovery; do not repeat it without an unresolved question. Service Contracts owns the capability matrix, evidence sources, access owners and proposed proof plan. Progress owns the next task; Rules owns invariants and unchanged M1–M9 dependencies; Journey records this decision.
+
+## Bounded M2.1 acceptance
+
+- [x] Reconcile retained discovery and official documentation, distinguishing observations, documented candidates and unproved account capability.
+- [x] Record developer, temporary operating and client production separation, entitlement/auth/quota, merchant/test route, shared capacity/field mapping, customer matching, native invoice/checkout/status and recovery gaps with exact next proof and access owner.
+- [x] Prepare synthetic write/reconciliation scenarios for review without executing them or inventing unsupported provider contracts.
+- [ ] Obtain account-owner read-back and supported test-route evidence; M2.1 itself remains partial until this exists.
+- [ ] M2.2–M2.4 produce provider-backed capacity/payment/recovery proof before M2.5 contract freeze. This reconciliation does not close them.
+
+Task provider-call budget is **0** (no authentication, customer reads, writes or configuration calls). Public official-document retrieval is research, not an account capability probe. Any later provider read needs an explicit account/method/call budget within existing authorization. Synthetic writes require separate approval of exact environment, methods, fixtures, quota and recovery; stop at that boundary. No independent HitPay checkout substitution, paid provisioning or live-adapter implementation.
+
+Use the prepared Cloud environment and existing experiment branch; preserve unknown work and original receipts. Documentation-only work uses affected checks, with full `verify / frontend` required for a newly published commit. Keep PR #6 draft/unmerged; no main push, auto-merge, deployment, environment change or new preview hosting. This M2 permission does not relax the deferred Cloud acceptance below or renumber M1–M9.
+
+## Deferred CLOUD-01 — incomplete
+
+### Deferred outcome
 
 - Evaluate reproducible SoccerBotStudioSG development in a fresh Codex Cloud task on an experimental feature branch, with reviewed source, strict validation and a usable preview.
 - Start from main `0cea68168738c722d05be9d3580938b65a4860c7`, which contains the inspected Mac source and naming PR #5. The Cloud experiment remains separate and unmerged, including after its checks pass.
 - End at a reviewable PR and recorded setup evidence. Merging and application deployment remain separate decisions. Feature-branch/PR publication is part of the authorized handoff.
 
-## Scope
+### Scope
 
 - Concise `AGENTS.md`, cloud operating guide and compact progress/task ledger.
 - Preserve the reconciled source and latest main changes. The previous unauthorized PR #4 merge is recorded in Journey; source identity and passing CI do not imply merge authorization.
@@ -14,7 +34,7 @@
 - Configure and verify the cloud environment using existing repository commands.
 - Preserve application behaviour, test strength and canonical ownership.
 
-## Acceptance
+### Acceptance
 
 - [x] Inspected Mac source is preserved in main; merged naming PR #5 is included. The prior merge-authorization failure is recorded without relabelling it as approval.
 - [ ] Cloud changes remain on a separate experimental feature PR based on the synchronized main; they are not merged or applied to the Mac baseline.
@@ -25,20 +45,20 @@
 - [ ] A usable user preview is demonstrated, with the exact revision and demo/API mode stated. If unavailable, this criterion remains blocked.
 - [ ] The PR includes verification evidence and remaining human/device/provider boundaries; no merge or deployment occurs in the development loop.
 
-## Exclusions
+### Exclusions
 
-- No business features, client production rollout, provider configuration changes, deployment activation, database migrations or real bookings/payments.
+- CLOUD-01 scope excludes business features, client production rollout, provider configuration changes, deployment activation, database migrations and real bookings/payments. The separately authorized M2.1 reconciliation above may proceed while preview acceptance is deferred.
 - No new CI preview deployment, always-running agent, scheduler, paid service, custom MCP server or code graph in this milestone.
 - Existing hosted Pages is the merged-main demo; it must not be represented as a PR preview.
 
-## Run policy
+### CLOUD-01 run policy
 
 - One ready ledger task per run; stop at its acceptance or a concrete blocker.
 - No unattended relaunches are configured. A future orchestrator needs an explicit run/time/spend limit and stop condition before activation.
 - Run focused checks while changing code; consume existing full-CI results for the final candidate rather than repeatedly duplicating that suite.
 - Do not enlarge scope or edit acceptance criteria to make the milestone appear complete. Ask the user for a changed outcome when needed.
 
-## Owners
+### Owners
 
 - Tasks, blockers and evidence: `PROGRESS.md`.
 - Engineering authority: `docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md`; concise entry instructions: `AGENTS.md`.
