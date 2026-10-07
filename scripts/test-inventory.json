@@ -65,15 +65,15 @@
   },
   {
     "file": "src/features/booking/time-step.test.tsx",
+    "title": "booking page restores a future Tuesday on Wednesday before selecting and removing sessions, accumulating unique instructors and enabling Continue"
+  },
+  {
+    "file": "src/features/booking/time-step.test.tsx",
     "title": "confirmation shows each contact and location once with all five sections expanded"
   },
   {
     "file": "src/features/booking/time-step.test.tsx",
     "title": "crossing notices persist in the basket and review before payment"
-  },
-  {
-    "file": "src/features/booking/time-step.test.tsx",
-    "title": "selecting and removing sessions automatically accumulates unique instructors and enables Continue"
   },
   {
     "file": "src/features/enquiry/enquiry-page.test.tsx",
