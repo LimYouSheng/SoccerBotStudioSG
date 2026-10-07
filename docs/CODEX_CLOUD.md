@@ -1,6 +1,6 @@
 # SoccerBotStudioSG Codex Cloud workflow
 
-Updated 6 October 2026 against OneFitfinity PR #8's `docs/CODEX_CLOUD.md`, `NORTH_STAR.md`, `PROGRESS.md` and `AGENTS.md` at `16eea945f9324b6f20610d0a0b98b1a1cb6014e9`, after its main advanced to `7970f65b5975a6554c46eb521c7ca118939e4bb9`. The source-cutover, C1–C4 ledger, six-section agent checklist, bounded Ralph loop and receipt conventions follow that current reference. SoccerBot retains its own runtime, commands, provider contracts and release boundaries. Cloud activation remains unverified.
+Adapted 6 October 2026 against OneFitfinity PR #8's `docs/CODEX_CLOUD.md`, `NORTH_STAR.md`, `PROGRESS.md` and `AGENTS.md` at `16eea945f9324b6f20610d0a0b98b1a1cb6014e9`, after its main advanced to `7970f65b5975a6554c46eb521c7ca118939e4bb9`. The source-cutover, C1–C4 ledger, six-section agent checklist, bounded Ralph loop and receipt conventions follow that current reference. SoccerBot retains its own runtime, commands, provider contracts and release boundaries. Updated 7 October 2026 to document verified C3 restoration using the retained Docker runtime. C4 CI evidence is recorded in Progress; usable user preview acceptance remains blocked.
 
 ## 1. Canonical files
 
@@ -32,108 +32,56 @@ Before a task changes source, read branch, HEAD, diff and the PR's current head.
 
 Publishing this experiment and passing checks do not authorize merging it. Every future merge needs explicit user approval for that specific PR. The ChatGPT GitHub plugin's ask-before-write setting is separate from any Cloud/CLI credential; Markdown is not a technical permission control.
 
-## 3. Cloud environment setup
+## 3. Reuse the verified Cloud runtime
 
-The following setup is prepared, not yet executed in the user's Codex Cloud environment. [Current Cloud environments](https://learn.chatgpt.com/docs/environments/cloud-environments) use Install script and Start skill controls. The [legacy interface](https://learn.chatgpt.com/docs/environments/cloud-environment) exposes setup and maintenance scripts. Use the controls shown in the actual UI and record which was configured.
+The retained runtime at `/workspace/soccerbot-cloud-container/` is the verified Cloud restoration path. It isolates browser dependencies from the host and leaves the repository intact. Docker is development infrastructure only; the application remains a static demo with no Docker, PostgreSQL or AWS backend requirement. The runner, recipe, image metadata and archive are retained environment assets, not repository files or a portable installer delivered by this PR. A different environment must have that reviewed preparation available before restoration can be claimed.
 
-### Create the environment
+### Required inherited state
 
-1. Open **Settings → Codex Cloud → Environments → Create environment** (or **Work in → Cloud → Create environment**).
-2. Select `LimYouSheng/SoccerBotStudioSG`; name the environment `SoccerBotStudioSG experiment` and keep it private.
-3. Use `experiment/codex-cloud-workflow-2026-10-06` for the experiment. Where a branch selector is absent, give setup the prompt below and require it to confirm the checkout before reading the experiment instructions or changing source.
-4. Configure the network and persistent variables below. Supply no provider/deployment credentials for this demo task.
-5. Review the prepared install/start controls and the actual smoke-test results. Publish the environment only after setup succeeds, then launch a **new task** to verify C3. Environment publication is not application deployment.
+- Checkout: `/workspace/SoccerBotStudioSG` on `experiment/codex-cloud-workflow-2026-10-06`. Read AGENTS, North Star, Progress and this guide; record branch, full HEAD, source/index status and inherited variables before work.
+- Host: Python, Git, Docker client and access to the managed local daemon at `unix:///var/run/docker.sock`. The verified daemon was Docker `28.4.0` with `vfs`; the runner requires at least 5 GiB free for its container copy and fresh application build.
+- Container: Debian 12, Node `24.19.0`, npm `11.9.0`, Python `3.11.2`, Git `2.39.5` and lockfile-pinned Playwright `1.58.2` with Chromium/WebKit and native libraries already prepared. Host Node/browser caches are not the restoration runtime.
+- Inherited variables must match exactly; the runner rejects missing/mismatched values instead of supplying fallback exports. It passes them into the container. Do not create host caches or change environment settings merely to make restoration pass.
 
-### Runtime and network
-
-| Setting                     | Required value or treatment                                                                            |
-| --------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Node                        | `24.19.0`, owned by `.nvmrc`; explicitly prepare this runtime if the image differs                     |
-| npm                         | `11.9.0`, owned by `package.json`; never change the repository pin to fit the image                    |
-| Python / Git                | Python `3.11+` and Git                                                                                 |
-| Playwright                  | Lockfile-pinned `1.58.2`, Chromium and WebKit; retain all three configured projects                    |
-| Internet                    | Enabled with the Package managers preset; legacy UI calls its corresponding preset Common dependencies |
-| Additional download hosts   | `nodejs.org`, `registry.npmjs.org`, `cdn.playwright.dev`, `playwright.download.prss.microsoft.com`     |
-| Provider/deployment secrets | None for CLOUD-01                                                                                      |
-
-The browser hosts come from the installed pinned Playwright registry implementation. A redirect or image-specific dependency host may need a targeted addition after observing the actual failure. Preserve TLS verification and lockfile integrity. Do not use unrestricted networking, alter tests, or claim browser readiness merely because a download command succeeded. Service authorization remains separate from network reachability. See [legacy internet controls](https://learn.chatgpt.com/docs/cloud/internet-access) if that interface is in use.
-
-SoccerBot has no Docker, PostgreSQL or AWS backend gate. Keep the existing demo adapters. Worker/D1/provider checks arrive with their implemented owners in later milestones.
-
-### Persistent environment variables
-
-Add these in environment settings so setup and later tasks agree. The example assumes the checkout is `/workspace/SoccerBotStudioSG`; inspect and substitute the actual repository path if it differs. Cache directories must be writable by the task user.
-
-| Key                        | Value                                       |
+| Key                        | Required inherited value                    |
 | -------------------------- | ------------------------------------------- |
 | `NEXT_PUBLIC_BASE_PATH`    | `/SoccerBotStudioSG`                        |
 | `npm_config_cache`         | `/workspace/soccerbot-cloud-cache/npm`      |
 | `PLAYWRIGHT_BROWSERS_PATH` | `/workspace/soccerbot-cloud-cache/browsers` |
 
-### Installation and one setup smoke test
+### Restoration command and identity guards
 
-Paste this into the Install/setup script after preparing the exact runtime. It intentionally works when a legacy cache is initially prepared on main; the experiment branch guard belongs to the source-editing task, since legacy setup may run before the task's branch checkout.
+For an explicitly requested fresh restoration verification, use the retained runner:
 
 ```bash
-#!/usr/bin/env bash
-set -euo pipefail
-cd /workspace/SoccerBotStudioSG
-git merge-base --is-ancestor 0cea68168738c722d05be9d3580938b65a4860c7 HEAD
-test "$(node --version)" = "v$(cat .nvmrc)"
-test "$(npm --version)" = "$(node -p 'require("./package.json").packageManager.split("@")[1]')"
-python3 -c 'import sys; assert sys.version_info >= (3, 11)'
-test "${NEXT_PUBLIC_BASE_PATH:-}" = /SoccerBotStudioSG
-test -n "${npm_config_cache:-}"
-test -n "${PLAYWRIGHT_BROWSERS_PATH:-}"
-mkdir -p "$npm_config_cache" "$PLAYWRIGHT_BROWSERS_PATH"
-npm ci
-./node_modules/.bin/playwright install chromium webkit
-npm run check:policy
-npm run build
-./node_modules/.bin/playwright test tests/customer.spec.ts --grep '^public routes remove staff access and fit the viewport$'
+python3 /workspace/soccerbot-cloud-container/container.py smoke
 ```
 
-This smoke selects one existing case across all three projects: expected **3 passed**, with zero skips/retries. It is not the 42-execution full browser gate. The harness starts/stops its own internal preview. Keep the first failed setup logs and repair the identified environment cause.
+Do not rerun a successful restoration or local application suite merely to publish documentation. The runner requires a clean source/index on the experiment branch and ancestry from both base `0cea68168738c722d05be9d3580938b65a4860c7` and reviewed checkpoint `897cbfe737d31069ae25dca39c638cdededf3593`. Preserve dirty work and report the blocker; never reset, stash or discard it to satisfy preflight. Tests consume a read-only archive of committed HEAD, not uncommitted files.
 
-Use the image's existing browser system libraries first. Do not assume sudo/root or run `install --with-deps` by default in a non-root Cloud image. If a browser launch identifies missing native libraries, report the exact missing dependency and use a supported environment provisioning path; do not remove WebKit or modify runner flags to make the probe pass. Runtime/cache/network failures remain setup blockers.
+The runner recomputes the preparation key from `Dockerfile`, `run-smoke.sh`, `validate-smoke.mjs`, `package.json` and `package-lock.json`, then compares `/workspace/soccerbot-cloud-container/image.json`. The verified preparation identities are:
 
-For legacy maintenance, leave the field empty for this initial unchanged-lockfile experiment. At task start, verify runtime pins, installed dependency versions and browser paths; reuse only matching preparation. A changed lockfile/runtime/browser pin requires deliberate environment refresh, not silent reliance on a stale cache. Current environments also need republishing when reusable setup changes. Shell-only exports are not a substitute for the persistent variables above.
+- Preparation key: `8c9b6fadfc4cfa4319895a630f940fae8569e76a0dbc6cdf103e76db1c8d6a0a`.
+- Image: `sha256:f574dd94b351dfcb0cb769d9a541d37bc5d3246f054d2a88598ba5365df3e76c`.
+- Retained archive: `/workspace/soccerbot-cloud-cache/container-images/8c9b6fadfc4cfa4319895a630f940fae8569e76a0dbc6cdf103e76db1c8d6a0a.tar`.
+- Archive SHA-256: `df4309e5cc195ad5ee2844b178a5c819910bc4f183427a294682067b0cd00865`.
+- Lockfile SHA-256: `8699ac69d1dc161826288dd055af9f5fd2370a2db217962b7c0d29c550836b37`.
 
-### Setup prompt / Start skill instructions
+Reuse the matching local image. Only if it is absent may the runner checksum the retained archive, load it and require the exact image ID. A changed recipe/pin, missing archive or identity mismatch blocks restoration; do not reinstall packages, rebuild the runtime image, invoke `prepare` or run an installer to conceal a failure. A deliberate preparation refresh is a separate authorized task with its own evidence and environment review. Preserve inherited proxies, CA trust and authentication settings; restoration runs with `--network=none` and needs no downloads or provider credentials.
 
-```text
-Prepare LimYouSheng/SoccerBotStudioSG on
-experiment/codex-cloud-workflow-2026-10-06, based on main
-0cea68168738c722d05be9d3580938b65a4860c7. Inspect existing work before
-selecting the branch. Read AGENTS.md, NORTH_STAR.md, PROGRESS.md and
-docs/CODEX_CLOUD.md from that branch. Preserve the source and CI.
-Prepare Node 24.19.0, npm 11.9.0, Python 3.11+ and the pinned dependencies
-and Chromium/WebKit engines. Use the guide's persistent cache variables
-and selected three-project smoke. Record actual branch/SHA, versions,
-commands and results. Do not weaken a failed gate or assume root access.
-At task startup recheck source/runtime/cache readiness. Start no permanent
-preview process: Playwright owns port 4173 during tests. A requested user
-preview must use a supported Cloud forwarding surface and show this
-revision, base path and demo mode. Report a concrete blocker if unavailable.
-Use synthetic demo data only. Keep the experiment unmerged. Do not enable
-auto-merge, push main, change protection, call providers or deploy the app.
-```
+The runner selects the local socket while clearing inherited Docker endpoint/context/TLS selectors for its subprocesses. If sandbox access to the socket is denied, retain that failure and use the supported permission path for the same bounded command. Missing daemon access or unavailable preparation remains a blocker; do not redirect to another daemon or alter the environment configuration.
 
-### First fresh Cloud task
+### What the scoped smoke proves
 
-After publishing the environment, select it and the experiment branch. Use:
+The ephemeral container checks runtime pins and exact package/lockfile bytes against its prepared dependencies, then runs `npm run check:policy`, one fresh `npm run build`, and the existing public-route/viewport case across all three projects. The retained validator requires exactly **3 passed**: `desktop-chromium`, `phone-webkit`, `tablet-webkit`, with zero failures, skips, retries or flaky results and valid engine/case identities. The case selector is `(^| )public routes remove staff access and fit the viewport$`. Assertions, projects and runner settings stay unchanged.
 
-```text
-Execute C3 only for CLOUD-01 on
-experiment/codex-cloud-workflow-2026-10-06. Read AGENTS.md, NORTH_STAR.md,
-PROGRESS.md and docs/CODEX_CLOUD.md. Verify branch/HEAD and base ancestry,
-then prove a fresh task can reuse the pinned setup and pass the selected
-three-project Playwright smoke against a fresh build. Provide a usable
-preview of this revision if supported; otherwise record the exact blocker.
-Update the existing ledger/PR with evidence, preserving failures and
-unrelated changes. Stop at C3 acceptance or a blocker. Do not implement
-M2 features, call SimplyBook/HitPay, merge, enable auto-merge or deploy.
-```
+Evidence is written under `/workspace/soccerbot-cloud-evidence/container-smoke-*/`, including source/variables, index snapshot, image identity, logs, browser results, validation and exit receipt. Require exit 0 and preserved source/index. Keep the first failure and all original receipts. The retained runner's generic `C3_restoration` field is not automatically updated; record the fresh-task restoration conclusion in Progress without rewriting that field.
+
+C3 restoration passed on 7 October 2026 at checkpoint `897cbfe737d31069ae25dca39c638cdededf3593`; original evidence is `/workspace/soccerbot-cloud-evidence/container-smoke-cb1zpd4r/`. The local image was already present, so no archive load was needed. The initial sandbox failure remains at `/workspace/soccerbot-cloud-evidence/container-smoke-pkwfxnog/receipt.json`. See Progress for the exact evidence and C4 review. This scoped smoke does not replace full final-candidate GitHub Actions CI.
+
+### Preview boundary
+
+The test harness owns `127.0.0.1:4173/SoccerBotStudioSG/` inside the network-disabled container, publishes no host port and stops its preview when tests finish. No supported Cloud forwarding surface is exposed in the verified task, so a user-accessible candidate preview remains **blocked**. A localhost URL, passing smoke or merged-main Pages cannot satisfy this criterion. No persistent preview or environment-setting change is part of restoration.
 
 ## 4. Verification and preview
 
@@ -158,19 +106,15 @@ Use current package scripts and check their owners when they change. Keep case/p
 - Docs-only changes need document/link/diff integrity and affected tooling checks. They do not need repeated full application runs; the unchanged required PR CI still runs.
 - Retain commands, versions, source/configuration fingerprints, exits, per-case logs and failure traces. Preserve nonzero exits through log capture. Setup/network failure is not a passing or skipped test.
 
-### Internal preview and optional local viewing
+### User preview acceptance
 
-```bash
-npm run build
-npm run preview
-```
+The retained smoke's internal demo preview is scoped to its container lifetime. The repository's static server binds `127.0.0.1:4173` and uses `/SoccerBotStudioSG/`; it is not exposed by the restoration runner. Host `npm run build`/`npm run preview` is not the reusable Docker restoration procedure.
 
-The existing static server uses `http://127.0.0.1:4173/SoccerBotStudioSG/`. `npm run dev` provides development at `http://localhost:3000/SoccerBotStudioSG/`. Inspect the server's binding and supported Cloud forwarding before claiming a remote URL. A localhost address or running process alone is not a clickable user preview.
-
-- Record the actual preview surface/URL, source revision, base path, demo mode and lifetime. Verify Home, Studio and a direct booking route. Leave preview acceptance blocked if it is unavailable.
-- Stop manual preview/dev processes before verification; the browser harness owns port 4173 and refuses reuse.
-- Existing GitHub Pages deploys merged main only. It is not a PR preview. A new isolated preview-hosting workflow requires a separately reviewed task; never merge merely to obtain a preview.
-- YS can occasionally watch local headed Playwright. After a fresh export, run `./node_modules/.bin/playwright test --project=desktop-chromium --headed`. That selected view does not replace full CI or physical phone/tablet checks.
+- Resume user preview verification only when a supported Cloud forwarding surface is available. Record the actual URL, source revision, base path, demo mode and lifetime; verify Home, Studio and a direct booking route.
+- Leave preview acceptance blocked until that evidence exists. Do not change network mode, publish ports, launch a permanent process or provision hosting as an implicit part of restoration.
+- Stop manual preview/dev processes before any separately authorized verification; the browser harness owns port 4173 and refuses reuse.
+- Existing GitHub Pages deploys merged main only. It is not a PR preview. New isolated preview hosting requires a separately reviewed task; never merge merely to obtain a preview.
+- Cloud/CI browser evidence does not replace YS/client physical-device acceptance or live-provider evidence.
 
 ## 5. Efficient Ralph runs
 
