@@ -21,8 +21,8 @@ Fitfinity's additional AWS runbook records implemented AWS operations. SoccerBot
 ## 2. Current source and experiment boundary
 
 - Repository: `LimYouSheng/SoccerBotStudioSG`.
-- Refreshed main: `97b42c7d561ffa0167eb3ca1113d18e143a9e0d9`, containing owner-merged PR#8. Historical main verification is recorded in Progress; publication requires the new PR candidate's own required CI.
-- Active remote branch: `docs/native-checkout-stages-2026-10-07`, existing open draft PR#9. Reuse `/workspace/work/soccerbot-pr9-auth-20261007`; execution began detached at `21c8fc855a0e6d8371b541b7ef35d3d4ee1b4e75`. Preserve the historical experiment checkout and unknown work. Latest owner authority permits committing/pushing the reviewed documentation to this branch without force; do not create a replacement PR.
+- Refreshed main: `6bce457dbc7a3c7700d1f4c545554210b9de406c`, containing owner-merged PR#9 and the same tree as reviewed262a69e. Historical verification is recorded in Progress; publication requires the new PR candidate's own required CI.
+- Current feature branch: `feat/offline-protected-confirmation-2026-10-08`. Reuse `/workspace/work/soccerbot-pr9-auth-20261007`; preserve the historical experiment checkout and original PR branch. PR#9 was initially open, then owner-merged during this task; the explicit fallback instruction authorizes a new focused draft PR from verified main. Only reviewed offline implementation/docs are authorized for commit/push, without force. No merge, auto-merge, deployment or provider-account request.
 - The original Mac source was inspected and synchronized in PR #4, but its merge was unauthorized. Journey preserves that incident. No new Mac pull, branch switch or Cloud-document installation is claimed.
 - Required status check: `verify / frontend` from GitHub Actions. Preserve the inherited workflow and repository protections.
 
@@ -33,6 +33,10 @@ Before a task changes source, read branch, HEAD, index/diff and the PR's current
 YS merged PR #6 and moved application inspection to deployed main. That explicit user decision supersedes the earlier first-merge process requirement; do not retroactively mark visual review complete. Future publication and green checks do not authorize a merge. Every future merge needs explicit approval for that PR. The GitHub plugin's ask-before-write setting is separate from Cloud/CLI credentials; Markdown is not a technical permission control.
 
 ## 3. Reuse the verified Cloud runtime
+
+For the8October offline verifier task, the host already has matching Node24.19.0/npm11.9.0. Package and lockfile bytes match the retained installed dependencies. A temporary, untracked `node_modules` link reused them for `verify:code`; it is excluded from staging and removed after checks. No install, image/browser rebuild or environment-setting change is required. The first gate demonstrated command-sandbox EPERM on loopback listen and child-output capture. Retain that failure and use the approved local execution permission for the unchanged code gate; do not rewrite tests or weaken socket assertions. No provider-account request is part of this code gate. Keep evidence under `/workspace/work/offline-confirmation-20261008/` outside Git.
+
+Run focused domain/tooling checks while iterating, then `npm run verify:code` for the canonical source, policy, tooling, installer, formatting, lint, types, unit/receipt and export gates. Final documentation-only reconciliation needs affected format/source/policy/diff checks, not another unchanged full local suite. Final-SHA CI still runs the entire browser matrix. The offline verifier is intentionally absent from the page graph, with one named test-backed source-checker entry; future live integration must review that boundary explicitly.
 
 The retained runtime at `/workspace/soccerbot-cloud-container/` is the verified Cloud restoration path. It isolates browser dependencies from the host and leaves the repository intact. Docker is development infrastructure only; the application remains a static demo with no Docker, PostgreSQL or AWS backend requirement. The runner, recipe, image metadata and archive are retained environment assets, not repository files or a portable installer delivered by this PR. A different environment must have that reviewed preparation available before restoration can be claimed.
 
@@ -184,7 +188,7 @@ CDP Fetch Request-stage controls passed six synthetic real-loopback browser case
 
 Private evidence root is `/workspace/work/supervised-proof-20261007/campaign-20261008/`. Preserve its ledger and original failures. Only a reviewed sanitized bundle may leave Cloud; original private fixtures/contact/signing state stay private. Durable-export success must be verified separately; a local ZIP alone is not durable retention.
 
-## Focused continuation and publication checkpoint — 8 October 2026
+## Historical provider continuation and documentation publication — 8 October 2026
 
 Current provider session is closed at80, with seven new calls from73 and no new writes/payment. The four-hour preflight window was14:14:10–18:14:10SGT. The original ledger retains its shutdown-state defect; `continuation-20261008/evidence/closure-addendum.json` records closure without replacing it. The repaired runner closes all running scopes while preserving failure classifications; process-memory retention still does not establish durable recovery after process loss.
 
@@ -192,6 +196,6 @@ Fresh inherited company/admin matches and ready secret bindings passed. Admin RE
 
 Cloud policy still omits `soccerbotstudiosg.simplybook.asia`, `app.sbpay.me` and `checkout.sandbox.hit-pay.com`. The next access action is a separately approved managed-environment exact-host configuration/republish followed by inspection of the complete native checkout chain; these are known minimum hosts, not a guarantee that all assets/redirects are covered. Do not broadly allow tenants, bypass the proxy, probe blocked checkout URLs or create a payment fixture before access/control/sandbox prerequisites pass. No policy was changed here.
 
-For this documentation publication, reuse installed dependencies through private resolution, run changed-document formatting, source-integrity, CI-policy, whitespace and preservation/privacy checks. Do not reinstall or rerun unchanged local application/browser suites. Fetch/review the current PR head, stage only the seven intended documents, use a normal fast-forward push, update its body and verify required `verify / frontend` for the final pushed SHA. Keep PR draft/unmerged; existing main-only deployment remains skipped for PR verification. No auto-merge.
+That documentation-only publication staged seven documents and required their format/source/policy/preservation checks plus final-SHA CI, without repeating unchanged local suites. It completed as PR#9, later owner-merged. It is not the current implementation staging instruction: the offline verifier uses the new branch and code gate described above. Future PR verification still skips main-only deployment and requires draft/unmerged delivery without auto-merge.
 
 Preserve archives outside Git. Owner explicitly forbids Google Drive/other external evidence uploads. Retain sanitized ZIP plus manifest in the workspace and state that this is not durable external retention. Use a supported chat attachment only if actually available; never present a workspace path as a working download. Current case status/accounting stays in PROGRESS.

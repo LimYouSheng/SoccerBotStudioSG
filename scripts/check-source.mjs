@@ -15,6 +15,16 @@ const ignored = new Set([
   "coverage",
   "__pycache__",
 ]);
+// Reviewed standalone entry: exercised offline, deliberately absent from the
+// page graph until a separate trusted server integration is implemented.
+const offlineEntries = [
+  {
+    file: "src/domain/confirmation.ts",
+    test: "src/domain/confirmation.test.ts",
+    importedName: "verifyConfirmation",
+    specifier: "./confirmation",
+  },
+];
 export function checkCaseCollisions(names) {
   const errors = [];
   const portablePaths = new Map();
@@ -196,6 +206,44 @@ export function checkSource(root) {
     ),
   );
   entries.forEach(dfs);
+  for (const entry of offlineEntries) {
+    const owner = path.join(root, entry.file),
+      test = path.join(root, entry.test);
+    if (!graph.has(owner)) {
+      if (files.includes(test))
+        errors.push(`Missing offline entry: ${entry.file}`);
+      continue;
+    }
+    if (visited.has(owner))
+      errors.push(
+        `Offline entry exposed through application graph: ${entry.file}`,
+      );
+    const testSource = ts.createSourceFile(
+      test,
+      files.includes(test) ? readFileSync(test, "utf8") : "",
+      ts.ScriptTarget.Latest,
+      true,
+    );
+    const directImport = testSource.statements.some(
+      (node) =>
+        ts.isImportDeclaration(node) &&
+        node.moduleSpecifier.text === entry.specifier &&
+        !node.importClause?.isTypeOnly &&
+        node.importClause?.namedBindings &&
+        ts.isNamedImports(node.importClause.namedBindings) &&
+        node.importClause.namedBindings.elements.some(
+          (item) =>
+            !item.isTypeOnly &&
+            (item.propertyName || item.name).text === entry.importedName,
+        ),
+    );
+    if (
+      !directImport ||
+      !testInventory.some((item) => item.file === entry.test)
+    )
+      errors.push(`Missing direct offline entry tests: ${entry.file}`);
+    else dfs(owner);
+  }
   for (const file of runtime)
     if (!visited.has(file))
       errors.push(`Unreachable runtime module: ${path.relative(root, file)}`);

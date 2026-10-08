@@ -26,6 +26,94 @@ test("accepts a reachable layered source graph", () =>
     },
     (errors) => assert.deepEqual(errors, []),
   ));
+
+const offlineFixture = {
+  "src/app/page.tsx": "export default 1;",
+  "src/domain/confirmation.ts":
+    "export const verifyConfirmation = () => false;",
+  "src/domain/confirmation.test.ts":
+    'import { verifyConfirmation } from "./confirmation"; it("offline decision", () => verifyConfirmation());',
+};
+test("accepts the named offline entry with direct reviewed tests", () =>
+  fixture(offlineFixture, (errors) => assert.deepEqual(errors, [])));
+for (const [label, additions, expected] of [
+  [
+    "missing tests",
+    { "src/domain/confirmation.test.ts": "" },
+    "Missing direct offline entry tests",
+  ],
+  [
+    "unrelated test import",
+    {
+      "src/domain/confirmation.test.ts":
+        'import { other } from "./other"; it("offline decision", () => other());',
+    },
+    "Missing direct offline entry tests",
+  ],
+  [
+    "type-only test import",
+    {
+      "src/domain/confirmation.test.ts":
+        'import type { verifyConfirmation } from "./confirmation"; it("offline decision", () => {});',
+    },
+    "Missing direct offline entry tests",
+  ],
+  [
+    "application exposure",
+    {
+      "src/app/page.tsx":
+        'import { verifyConfirmation } from "../domain/confirmation"; export default verifyConfirmation;',
+    },
+    "Offline entry exposed",
+  ],
+  [
+    "offline cycle",
+    {
+      "src/domain/confirmation.ts":
+        'import "./cycle"; export const verifyConfirmation = () => false;',
+      "src/domain/cycle.ts": 'import "./confirmation";',
+    },
+    "Dependency cycle",
+  ],
+  [
+    "offline UI dependency",
+    {
+      "src/domain/confirmation.ts":
+        'import "../components/card"; export const verifyConfirmation = () => false;',
+      "src/components/card.tsx": "export default 1;",
+    },
+    "Forbidden layer",
+  ],
+  [
+    "unreviewed standalone module",
+    {
+      "src/domain/unreviewed.ts": "export const value=1;",
+      "src/domain/unreviewed.test.ts":
+        'import {value} from "./unreviewed"; it("other decision", () => value);',
+    },
+    "Unreachable runtime module: src/domain/unreviewed.ts",
+  ],
+])
+  test(`rejects ${label} for offline entries`, () =>
+    fixture({ ...offlineFixture, ...additions }, (errors) =>
+      assert.ok(
+        errors.some((error) => error.includes(expected)),
+        errors.join("\n"),
+      ),
+    ));
+
+test("rejects an offline test whose named owner is absent", () =>
+  fixture(
+    {
+      "src/app/page.tsx": offlineFixture["src/app/page.tsx"],
+      "src/domain/confirmation.test.ts":
+        offlineFixture["src/domain/confirmation.test.ts"],
+    },
+    (errors) =>
+      assert.ok(
+        errors.some((error) => error.includes("Missing offline entry")),
+      ),
+  ));
 for (const [label, files, expected] of [
   [
     "missing imports",
