@@ -665,6 +665,11 @@ test("correlated provider spans separate admission storage transport and shared 
       );
       assert.ok(http.spans.storage.count >= 4);
       assert.equal(http.spans.coordinator_rpc.count, 1);
+      const remote = providers.find((t) => t.correlationId === r.correlationId);
+      assert.ok(
+        http.spans.coordinator_rpc.durationMs >= remote.durationMs,
+        "RPC span must include awaited remote execution",
+      );
       assert.ok(providers.some((t) => t.correlationId === r.correlationId));
     }
     for (const t of traces)

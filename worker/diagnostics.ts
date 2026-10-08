@@ -32,9 +32,13 @@ export function measure<T>(span: Span, operation: () => T): T {
   };
   try {
     const result = operation();
-    if (result instanceof Promise) {
+    if (
+      result !== null &&
+      (typeof result === "object" || typeof result === "function") &&
+      typeof Reflect.get(result, "then") === "function"
+    ) {
       // Observe settlement without replacing the caller's promise or error.
-      void result.then(
+      void Promise.resolve(result).then(
         () => end(false),
         () => end(true),
       );
