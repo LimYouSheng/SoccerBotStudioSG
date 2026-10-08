@@ -413,3 +413,30 @@ test("provider read burst after eviction cannot exceed four rolling starts", asy
     await f.mf.dispose();
   }
 });
+test("uncertain provider transport retains its durable reservation without replay", async () => {
+  const f = await fixture({
+    // Miniflare converts thrown service errors into HTTP 500. A response that
+    // never arrives exercises the actual transport AbortController deadline.
+    respond: () => new Promise(() => {}),
+  });
+  try {
+    const token = await f.grant();
+    const r = await f.call(token);
+    assert.equal(r.body.result.reason, "provider_transport_uncertain");
+    assert.equal(r.body.result.accounting.used, 1);
+    assert.equal(r.body.result.accounting.active, 1);
+    assert.equal((await f.call(token)).body.state, "blocked");
+    assert.equal(f.calls.length, 1);
+    await f.mf.unsafeEvictDurableObject(
+      "provider-test",
+      "SoccerBotAccountCoordinator",
+      { name: "simplybook-developer-account" },
+    );
+    assert.equal(
+      (await f.sql("SELECT count(*) n FROM admissions WHERE finished=0"))[0].n,
+      1,
+    );
+  } finally {
+    await f.mf.dispose();
+  }
+});

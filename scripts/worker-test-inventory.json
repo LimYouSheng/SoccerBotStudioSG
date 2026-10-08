@@ -14,6 +14,7 @@
   "stale token completion is fenced before any dependent provider read",
   "provider dispatch reservation exists before transport and caps active requests",
   "provider read burst after eviction cannot exceed four rolling starts",
+  "uncertain provider transport retains its durable reservation without replay",
   "health identifies disabled development mode",
   "guest ownership is generated and only capability digests are stored",
   "missing capability denies before protected storage reads",
