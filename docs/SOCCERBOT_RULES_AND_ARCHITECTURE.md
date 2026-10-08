@@ -10,6 +10,14 @@ The 4 October 2026 instruction removes staff login and refactors the supplied cu
 
 Current implementation: TypeScript, React client components within statically exported Next.js App Router pages, Tailwind CSS, extracted local assets, typed domain rules, demo service adapters, Vitest, Playwright, source checks and CI configuration. Customer verification, availability, enquiries, chat and payments remain simulations. No external booking, charge, email or message is performed. No staff login, staff portal, staff credential constants, staff session storage, staff route, or staff API access is shipped. Customer email verification remains.
 
+## Current accepted developer evidence and reliability boundary — 8 October 2026
+
+Attempt03 proves one API-created developer booking, native SimplyBook/SBPay checkout, owner-operated HitPay sandbox Card payment, authoritative paid invoice/valid final booking and owner-screenshot external correlation. Service Contracts owns exact associations. This does not implement or accept the application's live journey. Webhook delivery, native frontend return and browser-independent payment updating remain separate open obligations; no evidence selects our future Cloudflare Worker as the native connector receiver.
+
+The focused continuation closed at80 requests (2 owner-reported +78 journaled), with no new booking/payment and no unresolved new record. Booking24 is resolved by later owner-supplied native Cancelled / Cancelled by timeout findings, preserving its earlier confirmed/new/unpaid API observation. Exact cancellation time is unknown; cancellation is not refund. Preserve historical21/22 and paid23.
+
+The owner now authorizes reviewed documentation publication to draft PR#9; merge, auto-merge and deployment remain unauthorized. Earlier dated no-publication and43/73 accounting checkpoints are historical. Current accounting/next task belong to PROGRESS; exact provider contracts and development test assignments belong to Service Contracts. Do not restart closed journals or spend unused allowance without a bound future scope/window. M2.5, performance, CLOUD-01, client-production and physical-device gates remain open.
+
 ## Current work boundary and source precedence — 7 October 2026
 
 - YS authorized refactoring the engineering documents for Codex Cloud and forwarding the reconciled local work to GitHub, referring to “Model Context Protocol Overview” and “Engineering Workflow Principles”. YS explicitly requested OneFitfinity's North Star/Ralph Markdown and, at 23:23 SGT, rechecking its current docs for standardization. The latest reviewed source is its PR #8 head `16eea945f9324b6f20610d0a0b98b1a1cb6014e9`, incorporating main `7970f65b5975a6554c46eb521c7ca118939e4bb9`; the initial `821005d50c764134865af8f00ae4aa561260b878` adaptation remains historical. At 23:11 SGT YS requested SoccerBot's experiment refreshed from latest main, its own PR and concrete Cloud setup steps.
@@ -517,6 +525,14 @@ Depends on: M1.1 and deployed demo.
 
 Recovery and demonstration: Preserve the accepted source and receipts. Unknown checkout or incomplete evidence stops the update before writes. Retain the milestone demonstration and apply the common completion gates to every item.
 
+## Current M2 acceptance — 8 October 2026
+
+The single-session native Card proof and reference correlation are accepted at their stated provider/owner evidence levels. Intended confirmation remains: supported native return → frontend “Checking your payment and booking…” → protected backend verification → Confirmed only when invoice payment and valid booking associations both match. Bound pending checks, preserve accurate unresolved/recovery states and reconcile if the browser never returns. Never automatically rebook or request another payment. This design is not implemented or verified live functionality.
+
+Fresh quota/scheduling/intake reads do not close the missing native return, batch finalization/hash/recovery, independent-client capacity, player persistence or durable process-loss recovery contracts. Sequential shared-contact refusal is limited evidence, not independent-client or simultaneous-race proof. Native-admin competition and remaining buffer/shift boundaries are still required. Cross-instructor resource testing/additional allocation remains deferred by owner scope; preserve the existing nonoverlapping timetable and one-studio40+10 requirement.
+
+M2.5 still depends on M2.2–M2.4. Full M3.1 still depends on M1 closure and M2.5. An explicitly proposed narrower exception is an offline protected-confirmation verifier with synthetic normalized provider observations and no provider/deployment wiring. It requires an explicit dependency decision before application development; publication of this plan does not approve that exception or close a milestone. Keep the actual development test matrix in Service Contracts.
+
 ## M2 — Provider feasibility and account configuration
 
 Target: 5–9 October 2026. State: Read-only discovery partially evidenced; remaining gates block live contract freeze. Scope: A2–A7 and complimentary setup.
@@ -537,13 +553,13 @@ Exit evidence: Read-back setup record, no secret values, and a clear separation 
 
 Depends on: Client access and approved configuration.
 
-### M2.2 — Prove scheduling and shared capacity
+### M2.2 — Prove scheduling and single-studio slot protection
 
 Verify one studio, the currently approved three-provider roster, 40-minute play and 50-minute starts; additional quoted trainer setup remains available when required. Verify prices, hours, forms, eligibility and multiple same/different-date bookings.
 
 Performance addition: collect B1 read measurements for 1/7/31-day matrix queries with all instructors; prove the combined method covers shared studio, buffer/rotation boundaries and quantity mapping. Record p50/p95 eligibility, payload bytes and call count, plus competing native-admin booking evidence.
 
-Exit evidence: Two competing bookings across different instructors cannot occupy the shared studio. Buffer boundaries and native administration agree.
+Exit evidence: Competing same-instructor bookings cannot occupy the same offered slot; buffer boundaries and native administration agree. Cross-instructor shared-resource testing and additional resource-allocation implementation are deferred by YS’s current one-studio/non-overlapping-timetable scope decision, not passed. Revisit that scope for future studio expansion. Current no-overlap/changeover requirements remain mandatory.
 
 Depends on: M2.1 and approved prices/hours.
 
@@ -994,3 +1010,11 @@ A1 maps to M1, M6 and M7; A2 to M2/M4; A3 to M3; A4 to M2/M4; A5 to M2/M4/M5; A6
 M9 support follows the quotation: six-month warranty from go-live or agreed handover if deployment is deferred. Optional maintenance is not required or automatically renewed; if separately taken up, it is up to 12 months after warranty (S$300/month or S$3,384 annually), with quoted checks, alerts and summaries on request. The quoted support channel/hours and business-day response/fix targets remain in the signed terms. Do not convert planning notes into a new SLA or claim the quotation is signed. Cancellation does not constitute a refund; native authorized staff perform refunds.
 
 Open prerequisites: clickable candidate preview (C3 runtime restoration is verified separately), complete release-control review, dependency-advisory disposition, physical visual evidence, approved live price/player/intake mapping/policies/domain, remaining account/payment entitlements, supported test route, sender credentials and authorized client UAT/cutover owners. Discovery evidence must precede implementation assumptions.
+
+## Developer evidence campaign invariants — 8 October 2026
+
+The bounded campaign is an evidence effort, not production implementation. Service Contracts owns the A–G results and exact operation gaps. Current new evidence verifies40-minute service plus10-minute occupied buffer, one accepted allocation atSGD88/zero tax, and a single same-instructor duplicate-slot refusal with a shared-contact limitation. It does not complete simultaneous contention, independent-client capacity, four-player persistence or multi-session atomicity. One studio with nonoverlapping instructors remains the owner scope; cross-instructor resource work is deferred.
+
+Retain the intended confirmation design: frontend → supported native checkout return → frontend “Checking your payment and booking…” → protected backend verification of correct customer, booking/invoice association, amount/currency, paid state and valid booking → Confirmed. Browser parameters and notification hints are not authority. Bound pending checks; use an honest unresolved/recovery state; never automatically book again or request another payment. Reconciliation must work without browser return. Supported native return and browser-independent payment updating remain separate open proof obligations. No callback setting, receiver or production backend was changed.
+
+Booking24 remained confirmed with a new unpaid invoice at its earlier bounded due+60 observation; later owner-supplied native findings establish cancellation by timeout. The observations coexist, without proving the exact transition time. Elapsed time alone remains insufficient cancellation evidence. Late payment on an invalid booking requires review, never automatic reinstatement; cancellation never implies refund. Unknown operations remain non-replayable. Preserve historical successful Card23 and timeout21/22 without claiming uniform outcomes.

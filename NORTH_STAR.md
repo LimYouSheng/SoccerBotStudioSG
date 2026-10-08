@@ -1,25 +1,18 @@
 # North Star: supported native checkout through research and controlled experiments
 
-## Active outcome — 7 October 2026
+## Current outcome — provider continuation closed; reconcile and publish evidence
 
-Establish the supported SimplyBook → SBPay → HitPay integration using official research and bounded developer-account experiments. Resolve documentary questions first, then observe remaining behaviour under a concrete approved plan. Do not make six live-chat answers or full multi-session/adverse-outcome proof prerequisites for the first single-session happy path.
+Resolve the capabilities needed for our frontend → backend → SimplyBook booking(s) → native SBPay/HitPay checkout → frontend → authoritative payment and booking verification. The focused continuation completed every eligible read and documented prerequisites blocking writes; it did not complete M2 or implement the live application.
 
-- [x] Refresh actual main after merged PR #8: `97b42c7d561ffa0167eb3ca1113d18e143a9e0d9`, tree `976cf0a064a82bb655d22fc9156c5a4663a80068`. Main run `37589441392`, required job `112687131937`, passed; its existing deployment also succeeded. These are observed merge results, not actions performed here.
-- [x] Preserve clean prior branch and start `docs/native-checkout-stages-2026-10-07` from refreshed main.
-- [x] Reconcile owner confirmations and D15–D20 research in Service Contracts, including source retrieval limits.
-- [x] Prepare stages: offline binding → authenticated existing-invoice discovery → one synthetic booking/native sandbox checkout → bounded reads/manual reconciliation.
-- [ ] Bind exact remaining fixture/authentication inputs and obtain approval of the complete plan: maximum **16 server requests**, **one booking call**, **one potentially stateful payment-link call**, **one YS sandbox submission**, **zero cancellation/refund calls**.
-- [ ] Required final-head `verify / frontend` and new draft PR publication; exact receipt belongs in the PR. Stop unmerged.
+The frontend confirmation route initially shows “Checking your payment and booking…”. Protected backend checks must establish the correct account, customer access, booking/invoice association, amount/currency, paid state and valid booking before Confirmed. URL parameters never establish success. Supported native return and payment updating without that return are separate open proofs.
 
-YS confirms development company/merchant/HitPay isolation, intended service/instructor/shared-resource/timing/price-tax/required-field structure, a controlled notification inbox and YS dashboard reconciliation. These are owner confirmations, not new API execution; do not request them again. Exact slot/instructor/amount/contact/form values, existing invoice reference and chosen authentication bindings still need binding.
+Final use is **80 = 2 owner-reported + 78 journaled**, including seven new calls from the verified73 baseline. The continuation allowed60 additional (ceiling133 within outer243), six possible bookings, two sandbox submissions and four hours from14:14:10 to18:14:10SGT on8October. It closed before the deadline with no new bookings, payments or provider browser traffic;53 calls remain unused, with no automatic relaunch. Earlier capacity19/NR0414 were absorbed by the preceding campaign, never stacked again. The original public3/3 allowance remains separately exhausted.
 
-Original developer allowance remains **getToken 1, getEventList 1, getUnitList 1; 3/3 exhausted**. Current preparation executes **zero provider-account requests and zero business writes**. No settings/key creation, support messages, production adapters, provisioning or deployment. The complete staged approval boundary and conservative recovery procedure are in [Service Contracts](docs/SERVICE_CONTRACTS.md#staged-single-session-experiment--approval-proposal).
+Booking24's native cancellation is now owner-reconciled. Preserve the earlier due+60 API state and all receipts; no precise cancellation time or new API payment flag is inferred. Service Contracts owns the A–E outcomes and exact missing provider inputs; PROGRESS owns the next task and evidence paths.
 
-## One next action and retained gates
+Next development proposal: the protected confirmation verifier for existing `checkout.status` / `confirmation.read`, with normalized provider evidence and fail-closed results. It can be designed/tested offline independently of checkout return, but starting an M3.1 subset before M2.5 requires an explicit dependency adjustment and M1 prerequisite review. No live journey or provider adapter freeze is ready. Resolve the native-return mechanism, batch hash/recovery, player mapping, independent-client binding and durable recovery before their dependent proofs.
 
-YS supplies the exact remaining inputs listed in Service Contracts and approves the staged ceiling together. Codex then prepares/validates the bound probe offline before any authorized dispatch; missing schemas that can safely be observed are discovery objectives, not a blanket support gate. Unexpected authentication/schema/identity or ambiguous recovery stops dependent stages without spending unused calls elsewhere.
-
-M2.1 remains partial. Multi-session partial acceptance, shared-capacity contention, adverse outcomes, M2.5 freeze, PERF-01–07/P01–P12, client validation, full M4.1, visual/device review and Cloud-preview acceptance remain open. Worker/DO/D1 and tested-artifact release plans are unchanged; the application remains demo-only.
+The latest owner instruction authorizes reconciliation of all affected documentation and publication to existing draft PR#9 with final-SHA CI. It supersedes earlier no-push restrictions only. No merge, auto-merge, deployment, provider settings/network changes, new paid infrastructure or client-account operations. Evidence archives stay in the workspace; no external upload. CLOUD-01 and milestone acceptance below remain unchanged.
 
 ## Deferred CLOUD-01 — incomplete
 
