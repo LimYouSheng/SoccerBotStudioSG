@@ -2,7 +2,7 @@
 
 ## Current outcome and authorization — 8 October 2026
 
-Active task: audit and close independently actionable M3.1 technical foundation gaps under the approved dependency exception. Zero new provider calls/bookings/payments. PROGRESS owns the requirement/evidence/gap/action matrix; M1/M2.5 and owner acceptance remain open.
+M3.1 task closed: technical foundation scope verified under the approved dependency exception; formal M1/M2.5 closure and owner acceptance remain pending. Deployed log retrieval is unverified after403. Zero new provider calls/bookings/payments. PROGRESS owns the requirement/evidence/gap/action matrix; M1/M2.5 and owner acceptance remain open.
 
 Frontend → protected Cloudflare Worker → native SimplyBook/SBPay HitPay checkout → authoritative booking/payment verification → protected confirmation. Show “Checking your payment and booking…” until complete relationships, exact amount/currency/tax and valid bookings are verified. Native frontend return, no-return reconciliation and notification delivery are separate acceptance proofs.
 

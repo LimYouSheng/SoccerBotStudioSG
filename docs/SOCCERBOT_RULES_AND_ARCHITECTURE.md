@@ -642,6 +642,8 @@ M3.1 foundation audit (8 October): runtime API policy pins the developer Cloudfl
 
 No-payload routes accept an empty transport stream but read at most one chunk with a fixed1000ms deadline; nonempty/unfinished streams fail safely. Request-generated correlation IDs join whitelisted HTTP and coordinator telemetry. Storage, admission, shared-call wait, provider transport (including body read/parse), and RPC envelope spans are separate. Spans can overlap and cannot be summed as exclusive stage timings. There is no application dispatch queue: saturation rejects; shared work is awaited and timed. Cloudflare platform scheduling/network within the RPC envelope is not separately observable here. No hosting placement change or production percentile acceptance follows from synthetic pilots.
 
+M3.1 technical scope is verified under the approved exception, with67 backend cases, exact-artifact boundary tests, populated compatible migration and eight deployed HTTP checks. Formal closure remains pending M1/M2.5 and owner acceptance. Live observability query access returned403; deployed log retrieval is unverified, separately from synthetic span/redaction proof.
+
 The new M3.1 task permits zero provider calls, bookings or payments. Historical credential acceptance is reused. Technical evidence, formal M1/M2.5 dependency clearance and owner acceptance remain distinct; PROGRESS owns the acceptance matrix and current receipts.
 
 Depends on: M1 closure and M2.5.
