@@ -1,3 +1,5 @@
+import { measure, traceId } from "./diagnostics";
+import { coordinatorName } from "./bindings";
 import { ApiError, digest } from "./policy";
 
 export async function developerOperation(
@@ -33,9 +35,12 @@ export async function developerOperation(
   let state: "complete" | "blocked" = "complete";
   let result: unknown;
   try {
-    result = await env.COORDINATOR.getByName(
-      "simplybook-developer-account",
-    ).providerRead(operation);
+    result = await measure("coordinator_rpc", () =>
+      env.COORDINATOR.getByName(coordinatorName).providerRead(
+        operation,
+        traceId(),
+      ),
+    );
     if (
       !result ||
       typeof result !== "object" ||

@@ -1,3 +1,4 @@
+import { measure } from "./diagnostics";
 import { ApiError } from "./policy";
 import { historicalComparison } from "./provider-normalization";
 import {
@@ -35,7 +36,9 @@ export class ProviderSession {
     env: Env,
     control: ProviderControl,
   ): Promise<Record<string, unknown>> {
-    if (this.comparisonRead) return this.comparisonRead;
+    const sharedComparison = this.comparisonRead;
+    if (sharedComparison)
+      return measure("coordinator_wait", () => sharedComparison);
     const run = async () => {
       const secrets = providerSecrets(env);
       if (secrets.company.toLowerCase() === "soccerbotstudio")
@@ -77,7 +80,7 @@ export class ProviderSession {
     const current = this.tokens.get(family);
     if (current && current.until > Date.now()) return current.value;
     const shared = this.authentication.get(family);
-    if (shared) return shared;
+    if (shared) return measure("coordinator_wait", () => shared);
     const authenticate = async () => {
       const claim = control.claim(family);
       const result = await providerRequest(
@@ -120,7 +123,9 @@ export class ProviderSession {
   ): Promise<Record<string, unknown>> {
     if (this.cachedIdentity && this.cachedIdentity.until > Date.now())
       return this.cachedIdentity.value;
-    if (this.identityRead) return this.identityRead;
+    const sharedIdentity = this.identityRead;
+    if (sharedIdentity)
+      return measure("coordinator_wait", () => sharedIdentity);
     const run = async () => {
       const secrets = providerSecrets(env);
       if (secrets.company.toLowerCase() === "soccerbotstudio")

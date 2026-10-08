@@ -29,6 +29,9 @@
     { "tag": "v1", "new_sqlite_classes": ["SoccerBotAccountCoordinator"] },
   ],
   "vars": {
+    "DEPLOYMENT_ACCOUNT_ID": "517f4f85eb8f982b483dbc05b797fd88",
+    "STATE_DATABASE_ID": "297a991b-70a7-438d-a0e3-39fa3a7f2cee",
+    "APP_ORIGIN": "https://soccerbot-dev.limyousheng-94.workers.dev",
     "ENVIRONMENT": "developer",
     "PROVIDER_ACCESS": "disabled",
     "SOURCE_REVISION": "unpublished",

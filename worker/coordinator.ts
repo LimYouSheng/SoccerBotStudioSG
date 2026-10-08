@@ -1,9 +1,13 @@
 import { DurableObject } from "cloudflare:workers";
-import { ApiError } from "./policy";
+import { traced, measure, instrumentStorage } from "./diagnostics";
+import { ApiError, policy } from "./policy";
 import { ProviderSession, type ProviderControl } from "./provider-session";
 // One instance per actual provider account. No booking or customer data here.
 export class SoccerBotAccountCoordinator extends DurableObject<Env> {
   private provider = new ProviderSession();
+  private get sql() {
+    return instrumentStorage(this.ctx.storage.sql);
+  }
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     ctx.storage.sql.exec(
@@ -17,6 +21,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     );
   }
   admit(recovery: boolean) {
+    policy(this.env);
     const now = Date.now();
     if (!["disabled", "trusted-reads"].includes(this.env.PROVIDER_ACCESS))
       throw new Error("Unsupported provider mode");
@@ -26,7 +31,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       now >= Number(this.env.CAMPAIGN_END_MS)
     )
       return { allowed: false, reason: "campaign_closed" };
-    const sql = this.ctx.storage.sql;
+    const sql = this.sql;
     return this.ctx.storage.transactionSync(() => {
       sql.exec(
         "INSERT OR IGNORE INTO budget(campaign,used) VALUES(?,0)",
@@ -76,19 +81,20 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
   }
   private providerControl(): ProviderControl {
     return {
-      reserve: async () => {
-        const admitted = this.admit(false);
-        if (!admitted.allowed || !admitted.id)
-          throw new ApiError(
-            503,
-            admitted.reason || "provider_admission_denied",
-          );
-        await this.ctx.storage.sync();
-        return admitted.id;
-      },
+      reserve: async () =>
+        measure("coordinator", async () => {
+          const admitted = this.admit(false);
+          if (!admitted.allowed || !admitted.id)
+            throw new ApiError(
+              503,
+              admitted.reason || "provider_admission_denied",
+            );
+          await measure("storage", () => this.ctx.storage.sync());
+          return admitted.id;
+        }),
       finish: (id, cooldown) => this.finish(id, cooldown),
       claim: (family) => {
-        const row = this.ctx.storage.sql
+        const row = this.sql
           .exec<{
             generation: number;
             expires_ms: number;
@@ -111,39 +117,47 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       pause: () => this.finish("", 60000),
     };
   }
-  async providerRead(operation: "provider_identity" | "historical_comparison") {
-    if (String(this.env.PROVIDER_ACCESS) !== "trusted-reads")
-      throw new ApiError(503, "provider_access_disabled");
-    try {
-      if (
-        operation !== "provider_identity" &&
-        operation !== "historical_comparison"
-      )
-        throw new ApiError(503, "provider_operation_unavailable");
-      const control = this.providerControl();
-      const result =
-        operation === "provider_identity"
-          ? await this.provider.identity(this.env, control)
-          : await this.provider.comparison(this.env, control);
-      return { ...result, accounting: this.providerAccounting() };
-    } catch (error) {
-      return {
-        verified: false,
-        reason:
-          error instanceof ApiError ? error.code : "provider_proof_incomplete",
-        accounting: this.providerAccounting(),
-      };
-    }
+  async providerRead(
+    operation: "provider_identity" | "historical_comparison",
+    correlationId: string,
+  ) {
+    return traced(correlationId, "coordinator", async () => {
+      policy(this.env);
+      if (String(this.env.PROVIDER_ACCESS) !== "trusted-reads")
+        throw new ApiError(503, "provider_access_disabled");
+      try {
+        if (
+          operation !== "provider_identity" &&
+          operation !== "historical_comparison"
+        )
+          throw new ApiError(503, "provider_operation_unavailable");
+        const control = this.providerControl();
+        const result =
+          operation === "provider_identity"
+            ? await this.provider.identity(this.env, control)
+            : await this.provider.comparison(this.env, control);
+        return { ...result, accounting: this.providerAccounting() };
+      } catch (error) {
+        return {
+          verified: false,
+          reason:
+            error instanceof ApiError
+              ? error.code
+              : "provider_proof_incomplete",
+          accounting: this.providerAccounting(),
+        };
+      }
+    });
   }
   private providerAccounting() {
     const used =
-      this.ctx.storage.sql
+      this.sql
         .exec<{ used: number }>(
           "SELECT used FROM budget WHERE campaign=?",
           this.env.CAMPAIGN_ID,
         )
         .toArray()[0]?.used ?? 0;
-    const active = this.ctx.storage.sql
+    const active = this.sql
       .exec<{ n: number }>("SELECT count(*) n FROM admissions WHERE finished=0")
       .one().n;
     return { used, active, ceiling: 80, recoveryReserve: 16 };
@@ -152,11 +166,11 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     if (!Number.isInteger(cooldownMs) || cooldownMs < 0 || cooldownMs > 3600000)
       throw new Error("Invalid cooldown");
     this.ctx.storage.transactionSync(() => {
-      this.ctx.storage.sql.exec(
+      this.sql.exec(
         "UPDATE admissions SET finished=1 WHERE id=? AND finished=0",
         id,
       );
-      this.ctx.storage.sql.exec(
+      this.sql.exec(
         "UPDATE budget SET cooldown_ms=max(cooldown_ms,?) WHERE campaign=?",
         Date.now() + cooldownMs,
         this.env.CAMPAIGN_ID,
@@ -171,7 +185,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     )
       throw new Error("Invalid refresh identity");
     const now = Date.now(),
-      sql = this.ctx.storage.sql;
+      sql = this.sql;
     return this.ctx.storage.transactionSync(() => {
       const row = sql
         .exec<{
@@ -205,7 +219,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
   }
   completeRefresh(key: string, claim: string, generation: number) {
     const now = Date.now();
-    this.ctx.storage.sql.exec(
+    this.sql.exec(
       "UPDATE refreshes SET completed_ms=?,expires_ms=? WHERE key=? AND claim=? AND generation=? AND expires_ms>?",
       now,
       now,
@@ -214,9 +228,6 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       generation,
       now,
     );
-    return (
-      this.ctx.storage.sql.exec<{ n: number }>("SELECT changes() n").one().n ===
-      1
-    );
+    return this.sql.exec<{ n: number }>("SELECT changes() n").one().n === 1;
   }
 }

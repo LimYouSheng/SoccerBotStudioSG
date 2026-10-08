@@ -1,3 +1,4 @@
+import { seedFoundation } from "./foundation-fixture.mjs";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, mkdtempSync, rmSync } from "node:fs";
@@ -28,6 +29,7 @@ async function start() {
       cf: false,
       bindings: {
         ...config.vars,
+        APP_ORIGIN: origin,
         CAMPAIGN_END_MS: String(Date.now() + 3600000),
       },
       d1Databases: { STATE: "synthetic-state" },
@@ -172,7 +174,7 @@ before(async () => {
       write: false,
       format: "esm",
       platform: "browser",
-      external: ["cloudflare:workers"],
+      external: ["cloudflare:workers", "node:async_hooks"],
     })
   ).outputFiles[0].text;
   await start();
@@ -180,6 +182,7 @@ before(async () => {
     "migrations/0001_developer_journal.sql",
     "utf8",
   ).replace(/^--.*$/gm, "");
+  await seedFoundation(mf, db);
   // D1 exec accepts newline-separated statements, including complete triggers.
   await db.exec(sql.replace(/\n/g, " "));
   await db.exec(

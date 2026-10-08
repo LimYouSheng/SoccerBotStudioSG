@@ -638,6 +638,12 @@ Performance addition: introduce the single account coordinator and outbound gove
 
 Exit evidence: Missing/wrong account bindings fail closed. Secrets do not appear in browser bundles or logs. Runtime/configuration negative tests pass.
 
+M3.1 foundation audit (8 October): runtime API policy pins the developer Cloudflare account, database identity and campaign; origin is explicit and checked against the request host. A management-provisioned, immutable D1 foundation identity binds the actual coordinator singleton ID. Missing/mismatched manifests fail before guest/attempt/operator reads; the Worker never self-registers against an unknown database. Deployment inspection separately validates physical bindings. Compatible migration0005 adds only this metadata; applied0001–0004 remain unchanged.
+
+No-payload routes accept an empty transport stream but read at most one chunk with a fixed1000ms deadline; nonempty/unfinished streams fail safely. Request-generated correlation IDs join whitelisted HTTP and coordinator telemetry. Storage, admission, shared-call wait, provider transport (including body read/parse), and RPC envelope spans are separate. Spans can overlap and cannot be summed as exclusive stage timings. There is no application dispatch queue: saturation rejects; shared work is awaited and timed. Cloudflare platform scheduling/network within the RPC envelope is not separately observable here. No hosting placement change or production percentile acceptance follows from synthetic pilots.
+
+The new M3.1 task permits zero provider calls, bookings or payments. Historical credential acceptance is reused. Technical evidence, formal M1/M2.5 dependency clearance and owner acceptance remain distinct; PROGRESS owns the acceptance matrix and current receipts.
+
 Depends on: M1 closure and M2.5.
 
 ### M3.2 — Named asynchronous service contracts

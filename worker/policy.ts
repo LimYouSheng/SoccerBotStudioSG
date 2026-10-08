@@ -2,6 +2,23 @@ import { z } from "zod";
 const duration = (minimum: number, maximum: number) =>
   z.coerce.number().int().min(minimum).max(maximum);
 const schema = z.object({
+  DEPLOYMENT_ACCOUNT_ID: z.literal("517f4f85eb8f982b483dbc05b797fd88"),
+  STATE_DATABASE_ID: z.literal("297a991b-70a7-438d-a0e3-39fa3a7f2cee"),
+  APP_ORIGIN: z
+    .string()
+    .url()
+    .refine((value) => {
+      const url = new URL(value);
+      return (
+        url.protocol === "https:" &&
+        url.origin === value &&
+        !url.username &&
+        !url.password
+      );
+    }),
+  CAMPAIGN_ID: z.literal("developer-20261008"),
+  CAMPAIGN_END_MS: duration(0, Number.MAX_SAFE_INTEGER),
+  SOURCE_REVISION: z.string().regex(/^(unpublished|[a-f0-9]{40})$/),
   ENVIRONMENT: z.literal("developer"),
   PROVIDER_ACCESS: z.enum(["disabled", "trusted-reads"]),
   ACCESS_LIFETIME_MS: duration(60000, 3600000),

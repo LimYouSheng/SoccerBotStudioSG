@@ -131,3 +131,22 @@ test("requires backend runtime and root browser checks without deployment permis
     assert.ok(checkPagesPolicy(changed).length > 0);
   }
 });
+
+test("rejects wrong database identity binding alias and cross-script coordinator", () => {
+  for (const change of [
+    (c) => (c.d1_databases[0].database_id = "foreign"),
+    (c) => (c.d1_databases[0].binding = "FOREIGN"),
+    (c) => (c.durable_objects.bindings[0].name = "OTHER"),
+    (c) => (c.durable_objects.bindings[0].script_name = "app404"),
+    (c) => (c.vars.DEPLOYMENT_ACCOUNT_ID = "foreign"),
+    (c) => (c.vars.APP_ORIGIN = "https://foreign.test"),
+  ])
+    assert.ok(
+      fixture((root) => {
+        const p = path.join(root, "wrangler.jsonc"),
+          c = ts.parseConfigFileTextToJson(p, readFileSync(p, "utf8")).config;
+        change(c);
+        writeFileSync(p, JSON.stringify(c));
+      }).some((e) => /boundary changed/.test(e)),
+    );
+});

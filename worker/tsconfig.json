@@ -9,7 +9,7 @@
     "noUnusedParameters": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "types": []
+    "types": ["node"]
   },
   "include": ["./**/*.ts", "../src/domain/confirmation.ts"]
 }

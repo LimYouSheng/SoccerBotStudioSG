@@ -1,3 +1,4 @@
+import { seedFoundation } from "./foundation-fixture.mjs";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync, mkdtempSync, rmSync } from "node:fs";
@@ -22,7 +23,7 @@ before(async () => {
       write: false,
       format: "esm",
       platform: "browser",
-      external: ["cloudflare:workers"],
+      external: ["cloudflare:workers", "node:async_hooks"],
     })
   ).outputFiles[0].text;
 });
@@ -35,11 +36,13 @@ async function fixture({
   end = Date.now() + 3600000,
   persistence,
   legacy = false,
+  secrets = {},
 } = {}) {
   const root =
     persistence || mkdtempSync(path.join(tmpdir(), "soccerbot-provider-"));
   if (!persistence) roots.push(root);
   const calls = [];
+  const logs = [];
   const mf = new Miniflare({
     ...convertV4MiniflareOptions({
       name: "provider-test",
@@ -48,14 +51,17 @@ async function fixture({
       compatibilityDate: config.compatibility_date,
       compatibilityFlags: config.compatibility_flags,
       cf: false,
+      handleStructuredLogs: (entry) => logs.push(entry.message),
       bindings: {
         ...config.vars,
+        APP_ORIGIN: origin,
         PROVIDER_ACCESS: mode,
         CAMPAIGN_END_MS: String(end),
         SIMPLYBOOK_DEV_COMPANY_LOGIN: "synthetic-developer",
         SIMPLYBOOK_DEV_ADMIN_LOGIN: "synthetic-operator",
         SIMPLYBOOK_DEV_API_KEY: "synthetic-public-secret",
         SIMPLYBOOK_DEV_ADMIN_API_USER_KEY: "synthetic-admin-secret",
+        ...secrets,
       },
       d1Databases: { STATE: "synthetic-state" },
       durableObjects: {
@@ -150,6 +156,7 @@ async function fixture({
           .replace(/^--.*$/gm, "")
           .replace(/\n/g, " "),
       );
+  if (!persistence) await seedFoundation(mf, db);
   const storage = await mf.unsafeGetDurableObjectStorage(
     "provider-test",
     "SoccerBotAccountCoordinator",
@@ -180,9 +187,13 @@ async function fixture({
           : "/api/developer/historical-comparison"),
       { method, headers: { origin, authorization: "Bearer " + token } },
     );
-    return { status: r.status, body: await r.json() };
+    return {
+      status: r.status,
+      body: await r.json(),
+      correlationId: r.headers.get("x-request-id"),
+    };
   };
-  return { mf, db, calls, grant, call, sql, root };
+  return { mf, db, calls, grant, call, sql, root, logs };
 }
 test("provider operation rejects absent expired and disabled grants before dispatch", async () => {
   const f = await fixture({ mode: "disabled" });
@@ -621,5 +632,129 @@ test("operator scope migration preserves existing completed grants and results",
     assert.equal(f.calls.length, 0);
   } finally {
     await f.mf.dispose();
+  }
+});
+
+test("correlated provider spans separate admission storage transport and shared caller work", async () => {
+  const f = await fixture();
+  try {
+    const grants = await Promise.all([f.grant(), f.grant()]);
+    const results = await Promise.all(grants.map((g) => f.call(g)));
+    assert.equal(f.calls.length, 4);
+    assert.equal(new Set(results.map((r) => r.correlationId)).size, 2);
+    const traces = f.logs
+      .filter((s) => s.includes('"foundation_trace"'))
+      .map(JSON.parse);
+    const providers = traces.filter((t) => t.boundary === "coordinator");
+    assert.equal(providers.length, 2);
+    assert.ok(
+      providers.reduce((n, t) => n + t.spans.coordinator_wait.count, 0) >= 1,
+    );
+    assert.equal(
+      providers.reduce((n, t) => n + t.spans.provider.count, 0),
+      4,
+    );
+    assert.equal(
+      providers.reduce((n, t) => n + t.spans.coordinator.count, 0),
+      4,
+    );
+    for (const r of results) {
+      assert.equal(r.body.state, "complete");
+      const http = traces.find(
+        (t) => t.boundary === "http" && t.correlationId === r.correlationId,
+      );
+      assert.ok(http.spans.storage.count >= 4);
+      assert.equal(http.spans.coordinator_rpc.count, 1);
+      assert.ok(providers.some((t) => t.correlationId === r.correlationId));
+    }
+    for (const t of traces)
+      for (const m of Object.values(t.spans)) {
+        assert.ok(Number.isFinite(m.durationMs) && m.durationMs >= 0);
+        assert.equal(m.errors, 0);
+      }
+    const serialized = JSON.stringify({ results, traces });
+    for (const secret of [
+      ...grants,
+      "synthetic-public-secret",
+      "synthetic-admin-secret",
+      "synthetic-public-token",
+      "synthetic-admin-token",
+      "must-not-escape",
+    ])
+      assert.ok(!serialized.includes(secret));
+  } finally {
+    await f.mf.dispose();
+  }
+});
+
+test("provider failure spans are redacted and preserve consumed reservations", async () => {
+  const f = await fixture({
+    respond: async () =>
+      new Response("SYNTHETIC_PRIVATE_FAILURE", { status: 401 }),
+  });
+  try {
+    const r = await f.call(await f.grant());
+    assert.equal(r.body.state, "blocked");
+    const traces = f.logs
+      .filter((s) => s.includes('"foundation_trace"'))
+      .map(JSON.parse);
+    const provider = traces.find((t) => t.boundary === "coordinator");
+    assert.equal(provider.spans.provider.count, 1);
+    assert.equal(provider.spans.provider.errors, 1);
+    assert.equal((await f.sql("SELECT used FROM budget"))[0].used, 1);
+    assert.ok(
+      !JSON.stringify({ r, logs: f.logs }).includes(
+        "SYNTHETIC_PRIVATE_FAILURE",
+      ),
+    );
+  } finally {
+    await f.mf.dispose();
+  }
+});
+
+test("provider cooldown and consumption persist across runtime restart", async () => {
+  const f = await fixture({
+    respond: async (request) =>
+      new URL(request.url).pathname === "/admin/company/info"
+        ? new Response("synthetic refusal", { status: 429 })
+        : undefined,
+  });
+  const first = await f.call(await f.grant());
+  assert.equal(first.body.state, "blocked");
+  assert.equal(f.calls.length, 3);
+  const root = f.root;
+  await f.mf.dispose();
+  const resumed = await fixture({ persistence: root });
+  try {
+    const r = await resumed.call(await resumed.grant());
+    assert.equal(r.body.result.reason, "cooldown");
+    assert.equal(resumed.calls.length, 0);
+    assert.equal((await resumed.sql("SELECT used FROM budget"))[0].used, 3);
+  } finally {
+    await resumed.mf.dispose();
+  }
+});
+
+test("provider missing credentials and client mapping refuse before authentication", async () => {
+  for (const secrets of [
+    { SIMPLYBOOK_DEV_COMPANY_LOGIN: "" },
+    { SIMPLYBOOK_DEV_ADMIN_LOGIN: "" },
+    { SIMPLYBOOK_DEV_API_KEY: "" },
+    { SIMPLYBOOK_DEV_ADMIN_API_USER_KEY: "" },
+    { SIMPLYBOOK_DEV_COMPANY_LOGIN: "soccerbotstudio" },
+  ]) {
+    const f = await fixture({ secrets });
+    try {
+      const r = await f.call(await f.grant());
+      assert.equal(r.body.state, "blocked");
+      assert.equal(f.calls.length, 0);
+      assert.ok(
+        ["provider_credentials_missing", "client_account_forbidden"].includes(
+          r.body.result.reason,
+        ),
+      );
+    } finally {
+      await f.mf.dispose();
+    }
   }
 });

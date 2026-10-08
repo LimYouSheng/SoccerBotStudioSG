@@ -2,6 +2,8 @@
 
 ## Current outcome and authorization — 8 October 2026
 
+Active task: audit and close independently actionable M3.1 technical foundation gaps under the approved dependency exception. Zero new provider calls/bookings/payments. PROGRESS owns the requirement/evidence/gap/action matrix; M1/M2.5 and owner acceptance remain open.
+
 Frontend → protected Cloudflare Worker → native SimplyBook/SBPay HitPay checkout → authoritative booking/payment verification → protected confirmation. Show “Checking your payment and booking…” until complete relationships, exact amount/currency/tax and valid bookings are verified. Native frontend return, no-return reconciliation and notification delivery are separate acceptance proofs.
 
 The owner authorizes implementation now under a narrow M1/M2/M2.5 dependency exception. This does not complete those milestones. One finite campaign may create only soccerbot-dev, soccerbot-dev-state and SQLite-backed SoccerBotAccountCoordinator in account517f4f85eb8f982b483dbc05b797fd88. Preserve app404, existing callbacks, production, client data and GitHub Pages. No paid upgrade, DNS, merge or auto-merge. One agent and PROGRESS ledger; bounded budgets and recovery are canonical in Rules.

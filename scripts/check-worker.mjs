@@ -91,6 +91,10 @@ export function checkWorker(root) {
     config.name !== "soccerbot-dev" ||
     config.account_id !== "517f4f85eb8f982b483dbc05b797fd88" ||
     config.main !== "worker/index.ts" ||
+    config.vars.DEPLOYMENT_ACCOUNT_ID !== config.account_id ||
+    config.vars.STATE_DATABASE_ID !== "297a991b-70a7-438d-a0e3-39fa3a7f2cee" ||
+    config.vars.APP_ORIGIN !==
+      "https://soccerbot-dev.limyousheng-94.workers.dev" ||
     config.vars.PROVIDER_ACCESS !== "disabled" ||
     config.vars.CAMPAIGN_ID !== "developer-20261008" ||
     config.vars.CAMPAIGN_END_MS !== "0"
@@ -100,6 +104,11 @@ export function checkWorker(root) {
     errors.push("Unreviewed Worker routing or automation");
   if (
     config.d1_databases?.length !== 1 ||
+    config.d1_databases[0].binding !== "STATE" ||
+    config.d1_databases[0].database_id !== config.vars.STATE_DATABASE_ID ||
+    config.durable_objects?.bindings?.[0]?.name !== "COORDINATOR" ||
+    config.durable_objects?.bindings?.[0]?.script_name !== undefined ||
+    config.durable_objects?.bindings?.[0]?.environment !== undefined ||
     config.d1_databases[0].database_name !== "soccerbot-dev-state" ||
     config.durable_objects?.bindings?.length !== 1 ||
     config.durable_objects.bindings[0].class_name !==
