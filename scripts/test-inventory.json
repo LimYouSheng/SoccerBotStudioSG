@@ -44,6 +44,122 @@
     "title": "unmount cleans the animation timers and preserves the previous scroll style"
   },
   {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "checks approved line totals and currency with overflow-safe integer arithmetic"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "classifies contradictory paid status and payment flags as unresolved"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "confirms a fully matched paid guest booking without returning record data"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "confirms complete multi-session evidence independent of observation order"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "denies absent or malformed access with one non-disclosing result"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "denies cross-account environment attempt principal and capability scopes"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "does not accept browser return or simulated success hints as evidence"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "does not inspect protected observations when access is denied"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "ends the local checking window without inventing provider cancellation or payment failure"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "enforces caller-supplied freshness at the exact boundary for each observation"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "is repeatable with frozen inputs and performs no clock network storage or timer effects"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "keeps missing invoices or incomplete booking observations pending"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "keeps paid cancelled or invalid bookings unresolved for reconciliation"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "leaves unknown booking payment and invoice states unresolved"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "matches service instructor play duration and the entire occupied interval"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "never treats a confirmed unpaid booking or pending booking as confirmed payment"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "permits valid historical paid sessions and verified results after a local checking deadline"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "refuses fractional negative unsafe coerced and nonfinite financial inputs"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "refuses missing malformed and unsupported normalized evidence"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "rejects duplicate and unrelated observed bookings rather than counting rows"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "rejects empty or duplicate expected booking identities"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "rejects future approved intent and invalid policy or evaluation times"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "rejects malformed intervals instead of normalizing incorrect durations"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "rejects observation account environment attempt and customer mismatches"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "reports known invalid invoice states only from explicit observations"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "requires exact invoice identity and a complete unique invoice booking set"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "requires exact minor-unit total tax and currency for invoice and every line"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "supports principal access and approved financial values without historical account constants"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "uses explicit inclusive access start and exclusive expiry boundaries"
+  },
+  {
     "file": "src/features/assistant/assistant.test.tsx",
     "title": "Escape closes the assistant after a touch reply leaves focus outside the panel"
   },
