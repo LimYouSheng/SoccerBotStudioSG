@@ -747,6 +747,8 @@ test("provider missing credentials and client mapping refuse before authenticati
     { SIMPLYBOOK_DEV_API_KEY: "" },
     { SIMPLYBOOK_DEV_ADMIN_API_USER_KEY: "" },
     { SIMPLYBOOK_DEV_COMPANY_LOGIN: "soccerbotstudio" },
+    { SIMPLYBOOK_DEV_COMPANY_LOGIN: " soccerbotstudio " },
+    { SIMPLYBOOK_DEV_ADMIN_LOGIN: "synthetic-operator\n" },
   ]) {
     const f = await fixture({ secrets });
     try {

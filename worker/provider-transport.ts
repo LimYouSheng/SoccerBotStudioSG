@@ -18,7 +18,12 @@ export type ProviderSecrets = {
 export function providerSecrets(env: Env): ProviderSecrets {
   const read = (name: string) => {
     const value: unknown = Reflect.get(env, name);
-    if (typeof value !== "string" || !value.trim())
+    if (
+      typeof value !== "string" ||
+      !value.trim() ||
+      value !== value.trim() ||
+      /[\r\n]/.test(value)
+    )
       throw new ApiError(503, "provider_credentials_missing");
     return value;
   };

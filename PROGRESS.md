@@ -4,6 +4,8 @@
 
 **M3.1 technical scope verified under the approved exception; formal milestone closure pending the named dependencies.** Technical verification uses isolated runtime/concurrency evidence plus deployed foundation checks. Live log retrieval is separately unverified because the scoped observability query returned403; no production timing/placement or owner acceptance is claimed. The wider North Star remains incomplete.
 
+Final pre-delivery boundary review additionally reproduced a padded-client mapping reaching synthetic auth; secret bindings now reject surrounding whitespace and CR/LF before transport. Earlier deployment receipt below is superseded only when the repaired artifact is verified and deployed; final publication remains in progress.
+
 ### Final M3.1 acceptance matrix
 
 | Requirement                                               | Implementation                                                                                                               | Exact evidence                                                                                                                                                                                              | Remaining gap / next action                                                                                                                                                                                     |
