@@ -16,6 +16,8 @@ Browser-only Worker secret installation, after the protected initial deployment 
 
 Saving/deploying secret changes creates a Worker version/deployment and consumes the campaign deployment allowance; it does not enable provider access. Report completion only; Codex reads names/deployment metadata without values and separately verifies runtime availability/identity before enabling any future named provider slice. Actual application operations remain disabled pending these gates.
 
+Current installation receipt: YS reported all four secrets installed. Cloudflare secret-name metadata confirms them after final code deployment; no values were retrieved. Version `ca7bee04-95f6-43bf-b91a-4b2cc383da0e` deploys application revision `8c56f2658e9586b2b841e53c3ee179925b809d89`. Runtime presence and provider identity remain unverified because this task is attached to enforced network revision 4, which still omits the preview hostname despite the owner publishing its addition. Resume from a task attached to the new configuration; do not repeatedly change the saved allowlist or bypass the proxy. PROGRESS owns the final accounting and acceptance boundary.
+
 ## 1. Canonical files
 
 | File                                                          | Owns                                                                             |
