@@ -12,6 +12,7 @@ export function checkPagesPolicy(doc) {
     "workflow_dispatch",
   ]), "Unexpected workflow trigger");
   require(same(Object.keys(doc.jobs || {}).sort(), [
+    "backend",
     "deploy",
     "frontend",
   ]), "Unexpected or missing workflow job");
@@ -21,6 +22,36 @@ export function checkPagesPolicy(doc) {
     "verify-${{ github.workflow }}-${{ github.ref }}" &&
     doc.concurrency?.["cancel-in-progress"] ===
       "${{ github.event_name == 'pull_request' }}", "Main deployments must be serialized without cancellation");
+  const backend = doc.jobs?.backend || {};
+  require(backend.name === "verify / backend" &&
+    backend["runs-on"] === "ubuntu-latest" &&
+    backend["timeout-minutes"] === 20 &&
+    !backend.if &&
+    !backend.permissions &&
+    !backend.environment &&
+    !backend["continue-on-error"] &&
+    !backend.strategy &&
+    !backend.defaults, "Backend gate bypass or deployment access refused");
+  require(same(backend.env, {
+    NEXT_PUBLIC_BASE_PATH: "",
+    WRANGLER_SEND_METRICS: "false",
+    WRANGLER_LOG_PATH: "test-results/wrangler-logs",
+  }), "Backend root-path environment changed");
+  require(same(
+    (backend.steps || []).filter((s) => s.run).map((s) => s.run),
+    [
+      "npm ci",
+      "npm run verify:worker",
+      "npx playwright install --with-deps chromium webkit",
+      "npm run verify:browser",
+    ],
+  ), "Backend runtime/root browser gates changed");
+  for (const step of backend.steps || [])
+    require(!step["continue-on-error"] &&
+      (!step.run ||
+        (!step.if &&
+          !step.env &&
+          !step["working-directory"])), "Backend step bypass refused");
   const frontend = doc.jobs?.frontend || {};
   require(same(frontend.env, { NEXT_PUBLIC_BASE_PATH: "/SoccerBotStudioSG" }) &&
     !frontend.defaults &&

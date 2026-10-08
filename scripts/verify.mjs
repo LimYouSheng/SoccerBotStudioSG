@@ -15,6 +15,7 @@ if (!["code", "browser", "all"].includes(mode))
   throw new Error("Use code, browser or all verification scope");
 const ignored = new Set([
   "node_modules",
+  ".wrangler",
   ".git",
   ".next",
   "out",
@@ -32,6 +33,7 @@ function fingerprint() {
       if (
         ignored.has(entry.name) ||
         entry.name === "next-env.d.ts" ||
+        entry.name === "runtime.d.ts" ||
         entry.name.endsWith(".tsbuildinfo")
       )
         continue;

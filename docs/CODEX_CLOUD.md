@@ -2,6 +2,20 @@
 
 Adapted 6 October 2026 against OneFitfinity PR #8's `docs/CODEX_CLOUD.md`, `NORTH_STAR.md`, `PROGRESS.md` and `AGENTS.md` at `16eea945f9324b6f20610d0a0b98b1a1cb6014e9`, after its main advanced to `7970f65b5975a6554c46eb521c7ca118939e4bb9`. The source-cutover, C1–C4 ledger, six-section agent checklist, bounded Ralph loop and receipt conventions follow that current reference. SoccerBot retains its own runtime, commands, provider contracts and release boundaries. Updated 7 October 2026 to document verified C3 restoration using the retained Docker runtime. C4 CI evidence is recorded in Progress; usable user preview acceptance remains blocked.
 
+## Current development campaign — 8 October 2026
+
+Current main is owner-merged PR#10 at3bf8e3b; use feat/cloudflare-dev-foundation-2026-10-08. The current direct scope permits only isolated soccerbot-dev deployment before merge and draft publication. Previous task-specific no-deployment/no-provider wording below is historical; production/main/merge/settings restrictions remain. Original historical checkout is unchanged. Actual current source and evidence are in PROGRESS and the PR.
+
+Commands: npm run verify:code retains the complete non-browser frontend gate; npm run verify:worker generates pinned platform types and runs strict Workers/D1/coordinator evidence; CI independently runs existing subpath and new root browser gates. Use Node24.19.0/npm11.9.0/Playwright1.58.2. Wrangler4.148.0 ships Miniflare5 alpha; exact compatible pin is intentional, with its documented conversion adapter and explicit persistence paths tested. Do not downgrade frontend Vitest to satisfy Workers-pool peers.
+
+For Cloud commands set XDG_CONFIG_HOME and WRANGLER_LOG_PATH under the private task work directory, WRANGLER_SEND_METRICS=false, and preserve inherited HTTPS proxy/TLS trust. Never repurpose HOME or bypass network policy. The initial token had future validity dates; owner corrected them. Exact account access now passes. Billing subscription read remains403; no broadened token permission or paid feature is assumed.
+
+Deployment binds checked root out/ assets, worker/index.ts, exact source revision and wrangler configuration to the named Worker/D1/SQLite class only. Review migrations, prior version and sanitized asset/configuration identities before dispatch. Keep PROVIDER_ACCESS=disabled and CAMPAIGN_END_MS=0. Ordinary PR jobs cannot deploy. Do not point a root artifact at the Pages subpath or reuse its verification identity.
+
+Browser-only Worker secret installation, after the protected initial deployment exists (initial version6c6c833e-63a9-4f18-8470-9bdd9a73f8e9): open [soccerbot-dev Settings](https://dash.cloudflare.com/517f4f85eb8f982b483dbc05b797fd88/workers/services/view/soccerbot-dev/production/settings), Settings → Variables and Secrets → Add, choose Secret for each sensitive value, paste directly from the existing developer setup, and deploy the pending secret changes once. Names: SIMPLYBOOK_DEV_COMPANY_LOGIN, SIMPLYBOOK_DEV_ADMIN_LOGIN, SIMPLYBOOK_DEV_API_KEY, SIMPLYBOOK_DEV_ADMIN_API_USER_KEY. Company/admin login and API keys are server-only secrets. Do not copy network-secret placeholder text from Codex. Do not enter values in chat. Keep the existing provider callbacks/settings unchanged. SIMPLYBOOK_DEV_SIGNING_SECRET is not requested until its specific supported signing purpose is established; no HitPay API key or webhook secret is currently requested.
+
+Saving/deploying secret changes creates a Worker version/deployment and consumes the campaign deployment allowance; it does not enable provider access. Report completion only; Codex reads names/deployment metadata without values and separately verifies runtime availability/identity before enabling any future named provider slice. Actual application operations remain disabled pending these gates.
+
 ## 1. Canonical files
 
 | File                                                          | Owns                                                                             |
@@ -18,7 +32,7 @@ The three existing domain/engineering documents remain canonical. North Star and
 
 Fitfinity's additional AWS runbook records implemented AWS operations. SoccerBot's observed SimplyBook reads already belong in Service Contracts and Journey; no placeholder AWS/deployment runbook is imported. When approved deployment operators exist, their proven steps and recovery evidence need one clearly owned operations reference, without replacing the three canonical documents.
 
-## 2. Current source and experiment boundary
+## 2. Historical source and experiment boundary
 
 - Repository: `LimYouSheng/SoccerBotStudioSG`.
 - Refreshed main: `6bce457dbc7a3c7700d1f4c545554210b9de406c`, containing owner-merged PR#9 and the same tree as reviewed262a69e. Historical verification is recorded in Progress; publication requires the new PR candidate's own required CI.

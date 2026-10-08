@@ -281,3 +281,15 @@ for (const [label, files, expected] of [
         errors.join("\n"),
       ),
     ));
+
+test("rejects a frontend import of a Worker owner", () =>
+  fixture(
+    {
+      "src/app/page.tsx": 'import "../../worker/access"; export default 1;',
+      "worker/access.ts": "export const capability = 1;",
+    },
+    (errors) =>
+      assert.ok(
+        errors.some((error) => error.includes("Forbidden server import")),
+      ),
+  ));

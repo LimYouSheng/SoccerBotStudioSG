@@ -760,3 +760,47 @@ test("elapsed selections block checkout on an open page and remain removable bef
   ).toEqual(paid);
   await expect(page.getByText(/Session has started/)).toHaveCount(0);
 });
+
+test("protected confirmation waits for server evidence and rejects a tampered return", async ({
+  page,
+}) => {
+  const attempt = "00000000-0000-4000-8000-000000000001";
+  let release: () => void = () => {};
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(`**/api/attempts/${attempt}/confirmation`, async (route) => {
+    await gate;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ status: "confirmed", reason: "verified" }),
+    });
+  });
+  await openSite(page, `/confirmation/?attempt=${attempt}&paid=true`);
+  await expect(
+    page.getByRole("heading", { name: "Checking your payment and booking…" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Booking confirmed", exact: true }),
+  ).toHaveCount(0);
+  release();
+  await expect(
+    page.getByRole("heading", { name: "Booking confirmed", exact: true }),
+  ).toBeVisible();
+  await page.unroute(`**/api/attempts/${attempt}/confirmation`);
+  await page.route(`**/api/attempts/${attempt}/confirmation`, (route) =>
+    route.fulfill({
+      status: 401,
+      contentType: "application/json",
+      body: '{"error":"access_denied"}',
+    }),
+  );
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Confirmation unavailable" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Booking confirmed", exact: true }),
+  ).toHaveCount(0);
+});

@@ -7,6 +7,7 @@ import { designAudit } from "./check-design.mjs";
 import { inspectTests, orderedInventory } from "./test-inventory.mjs";
 const ignored = new Set([
   "node_modules",
+  ".wrangler",
   ".next",
   "out",
   ".git",
@@ -54,6 +55,7 @@ export function checkSource(root) {
       if (ignored.has(entry.name)) continue;
       const full = path.join(dir, entry.name);
       const relative = path.relative(root, full).replaceAll(path.sep, "/");
+      if (relative === "worker/runtime.d.ts") continue;
       names.push(relative);
       if (/[\x00-\x1f<>:"|?*]/.test(entry.name) || /[. ]$/.test(entry.name))
         errors.push(`Nonportable path: ${relative}`);
@@ -155,6 +157,12 @@ export function checkSource(root) {
         ].find((candidate) => files.includes(candidate));
         if (!resolved) errors.push(`Missing import: ${name} -> ${moduleName}`);
         else if (graph.has(resolved)) graph.get(file).push(resolved);
+        if (
+          resolved &&
+          /src[/\\]/.test(file) &&
+          /[/\\]worker[/\\]/.test(resolved)
+        )
+          errors.push(`Forbidden server import: ${name} -> ${moduleName}`);
         if (
           /src[/\\](domain|services)[/\\]/.test(file) &&
           resolved &&

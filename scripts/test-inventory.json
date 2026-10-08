@@ -324,8 +324,24 @@
     "title": "validates all required contact fields and their length limits"
   },
   {
+    "file": "src/features/booking/protected-confirmation.test.tsx",
+    "title": "shows checking before the protected server result and confirms only verified evidence"
+  },
+  {
+    "file": "src/features/booking/protected-confirmation.test.tsx",
+    "title": "denied and malformed responses cannot show confirmation or protected details"
+  },
+  {
+    "file": "src/features/booking/protected-confirmation.test.tsx",
+    "title": "a late reply from a previous attempt cannot confirm the current attempt"
+  },
+  {
     "file": "tests/customer.spec.ts",
-    "title": "50-minute cadence, automatic instructors, contact validation and final-slot conflict"
+    "title": "public routes remove staff access and fit the viewport"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "guest multi-date booking survives reload and exports calendar and PDF"
   },
   {
     "file": "tests/customer.spec.ts",
@@ -333,7 +349,11 @@
   },
   {
     "file": "tests/customer.spec.ts",
-    "title": "elapsed selections block checkout on an open page and remain removable before a future multi-session payment"
+    "title": "late payment has a contact path without another payment"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "50-minute cadence, automatic instructors, contact validation and final-slot conflict"
   },
   {
     "file": "tests/customer.spec.ts",
@@ -345,22 +365,6 @@
   },
   {
     "file": "tests/customer.spec.ts",
-    "title": "first visit offers the Player App and dismissal persists while the navbar download remains"
-  },
-  {
-    "file": "tests/customer.spec.ts",
-    "title": "guest multi-date booking survives reload and exports calendar and PDF"
-  },
-  {
-    "file": "tests/customer.spec.ts",
-    "title": "header blue and the typography hierarchy stay consistent across every booking step"
-  },
-  {
-    "file": "tests/customer.spec.ts",
-    "title": "hero completes naturally and reduced motion bypasses both transition surfaces"
-  },
-  {
-    "file": "tests/customer.spec.ts",
     "title": "hero entry restores the arena scene and click-to-skip without a logo overlay"
   },
   {
@@ -369,11 +373,7 @@
   },
   {
     "file": "tests/customer.spec.ts",
-    "title": "late payment has a contact path without another payment"
-  },
-  {
-    "file": "tests/customer.spec.ts",
-    "title": "leave booking uses equal-width sentence-case actions with home left and stay right"
+    "title": "hero completes naturally and reduced motion bypasses both transition surfaces"
   },
   {
     "file": "tests/customer.spec.ts",
@@ -381,6 +381,22 @@
   },
   {
     "file": "tests/customer.spec.ts",
-    "title": "public routes remove staff access and fit the viewport"
+    "title": "leave booking uses equal-width sentence-case actions with home left and stay right"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "first visit offers the Player App and dismissal persists while the navbar download remains"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "header blue and the typography hierarchy stay consistent across every booking step"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "elapsed selections block checkout on an open page and remain removable before a future multi-session payment"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "protected confirmation waits for server evidence and rejects a tampered return"
   }
 ]

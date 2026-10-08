@@ -29,9 +29,9 @@ export function checkPolicy({
       JSON.stringify(locked?.[key]), `Package/lock mismatch: ${key}`);
   for (const group of ["dependencies", "devDependencies"])
     for (const [name, version] of Object.entries(pkg[group] || {})) {
-      require(/^\d+\.\d+\.\d+$/.test(
-        version,
-      ), `Dependency must be exact: ${name}`);
+      require(name === "miniflare"
+        ? version === "5.20261006.0-alpha"
+        : /^\d+\.\d+\.\d+$/.test(version), `Dependency must be exact: ${name}`);
       require(lock.packages?.[`node_modules/${name}`]?.version ===
         version, `Locked direct version mismatch: ${name}`);
     }
