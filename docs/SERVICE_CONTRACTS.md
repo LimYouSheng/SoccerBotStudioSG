@@ -6,7 +6,13 @@ Canonical boundary reference, introduced 4 October 2026 under the latest OneFitf
 
 ## Implemented developer foundation — 8 October 2026
 
-### Continuation: bounded provider identity reads
+### Continuation: internal multi-session orchestration
+
+`worker/orchestration.ts` supplies protected asynchronous composition through the server-only `BookingOperations` contract. No production provider adapter or HTTP booking route implements it; customer creation remains unavailable. Unsupported contracts or insufficient recovery capacity produce no dispatch. D1 owner lookup and current access precede effects. Each session revalidates the complete immutable approved intent; any price/tax/identity/player/time difference stops. Each physical session/finalization effect has a unique durable unknown reservation in additive `session_effects` before calling its adapter. The reservation atomically checks current attempt fence/deadline and unrevoked access. A concurrent follower or restarted operation cannot create another effect.
+
+Only fully validated confirmed booking references matching account/customer/service/instructor/start/players/money may advance. Distinct complete booking IDs and exact invoice account/customer/currency/amount/tax are required before immutable association; root dispatch observation and association commit atomically. Known returned references survive invalid association. Partial/unknown writes, revoked access, changed intent and stale generation enter recovery without cancellation, reinstatement, replacement or blind retry. Finalization uncertainty remains under its original durable step. Complete association still returns paymentAvailable=false because native checkout is unavailable; it is not paid confirmation. This is synthetic-tested application composition, not proof of supported SimplyBook batching or production orchestration.
+
+### Provider identity operation
 
 `POST /api/developer/provider-identity` is an operator operation, not customer authentication. It requires an unexpired256-bit bearer grant whose digest and exact operation are provisioned through the scoped Cloudflare management path in `developer_operations` (additive migration0002). No HTTP grant-creation route exists. D1 atomically changes granted→running before invoking the account coordinator. Repeat POST and protected GET return saved state/result; running after interruption never replays dispatch. Missing/malformed/expired grants fail before provider access. Bodies and queries remain refused. Customer cookies cannot authorize this operation.
 

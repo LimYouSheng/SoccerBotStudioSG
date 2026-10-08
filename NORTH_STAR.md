@@ -11,6 +11,7 @@ PR #10 is owner-merged at3bf8e3b; its verifier and81 application/45 browser proo
 ## Implemented candidate and evidence boundaries
 
 - Continuation adds guarded named provider identity transport and a one-use operator grant. Actual dispatch/token negative tests remain separate from provider validity; no customer booking/payment route is enabled. PROGRESS records the new finite window and cumulative consumption.
+- Internal multi-session composition now has per-effect durable claims, revalidation and partial/unknown recovery tests. No live provider adapter supplies its unsupported booking contract; full native acceptance remains open.
 
 - Guest capability access/revocation, D1 immutable intent/idempotency/dispatch fencing, protected confirmation orchestration, account admission and refresh generation claims.
 - Actual Workers runtime/D1/SQLite coordinator tests use synthetic data and zero provider traffic. Root static export uses existing Next.js presentation; Pages subpath remains intact.

@@ -39,5 +39,13 @@
   "checking deadline never invents cancellation",
   "revoked access denies even if protected attempt storage is unavailable",
   "persistent budget reserves sixteen calls for recovery and caps at eighty",
-  "shared refresh and token generation claims reject stale completion"
+  "shared refresh and token generation claims reject stale completion",
+  "orchestration withholds all writes when native contracts or recovery capacity are unavailable",
+  "orchestration associates every session and invoice once without enabling payment",
+  "orchestration retains partial accepted and unknown sessions without replacement or finalization",
+  "orchestration rechecks exact price and revoked access before each session write",
+  "orchestration stale generation cannot dispatch a subsequent session",
+  "orchestration rejects duplicate booking references and incomplete invoice associations",
+  "orchestration unknown finalization survives restart and is never replayed",
+  "concurrent orchestration requests have one durable winner and no duplicate effects"
 ]

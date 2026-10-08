@@ -6,6 +6,7 @@ import worker, {
   recordObservation,
   requireRecovery,
   bindAssociation,
+  orchestrateBooking,
 } from "../index";
 export { SoccerBotAccountCoordinator };
 const harness = {
@@ -26,6 +27,7 @@ const harness = {
       coordinator: string;
       generation: number;
       claim: string;
+      scenario: string;
     };
     try {
       let result: unknown;
@@ -33,6 +35,77 @@ const harness = {
         input.coordinator || "synthetic-account",
       );
       switch (p) {
+        case "/test/orchestrate": {
+          const calls: string[] = [];
+          result = {
+            result: await orchestrateBooking(request, env, input.id, {
+              supported: input.scenario !== "unsupported",
+              hasRecoveryCapacity: async () => input.scenario !== "budget",
+              revalidate: async (intent, context) => {
+                calls.push(`validate:${context.sessionIndex}`);
+                if (input.scenario === "revoke" && context.sessionIndex === 1)
+                  await env.STATE.prepare(
+                    "UPDATE guest_access SET revoked_ms=? WHERE owner_id=?",
+                  )
+                    .bind(Date.now(), input.owner)
+                    .run();
+                if (input.scenario === "fence" && context.sessionIndex === 1)
+                  await requireRecovery(env.STATE, input.id, 1);
+                if (input.scenario === "price" && context.sessionIndex === 1)
+                  return {
+                    ...intent,
+                    totalMinor: intent.totalMinor + 1,
+                    sessions: intent.sessions.map((s, i) =>
+                      i === 0 ? { ...s, totalMinor: s.totalMinor + 1 } : s,
+                    ),
+                  };
+                return intent;
+              },
+              createSession: async (session, intent, context) => {
+                calls.push(`create:${context.sessionIndex}`);
+                const reserved = await env.STATE.prepare(
+                  "SELECT outcome FROM session_effects WHERE attempt_id=? AND step=?",
+                )
+                  .bind(input.id, `session:${context.sessionIndex}`)
+                  .first<{ outcome: string }>();
+                if (reserved?.outcome !== "unknown")
+                  throw new Error("Missing durable reservation");
+                if (input.scenario === "partial" && context.sessionIndex === 1)
+                  throw new Error("Unknown provider outcome");
+                return {
+                  ...session,
+                  currency: "SGD",
+                  bookingId:
+                    input.scenario === "duplicate"
+                      ? "synthetic-booking-0"
+                      : `synthetic-booking-${context.sessionIndex}`,
+                  accountId: intent.accountId,
+                  customerId: intent.customerId,
+                  confirmed: true,
+                };
+              },
+              finalize: async (bookingIds, intent) => {
+                calls.push("finalize");
+                if (input.scenario === "finalize-unknown")
+                  throw new Error("Unknown finalization");
+                return {
+                  invoiceId: "synthetic-invoice",
+                  accountId: intent.accountId,
+                  customerId: intent.customerId,
+                  currency: intent.currency,
+                  totalMinor: intent.totalMinor,
+                  taxMinor: intent.taxMinor,
+                  bookingIds:
+                    input.scenario === "incomplete"
+                      ? bookingIds.slice(0, 1)
+                      : bookingIds,
+                };
+              },
+            }),
+            calls,
+          };
+          break;
+        }
         case "/test/prepare":
           result = await prepareAttempt(
             env.STATE,

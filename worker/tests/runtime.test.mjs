@@ -182,6 +182,11 @@ before(async () => {
   ).replace(/^--.*$/gm, "");
   // D1 exec accepts newline-separated statements, including complete triggers.
   await db.exec(sql.replace(/\n/g, " "));
+  await db.exec(
+    readFileSync("migrations/0003_session_effects.sql", "utf8")
+      .replace(/^--.*$/gm, "")
+      .replace(/\n/g, " "),
+  );
 });
 after(async () => {
   if (mf) await mf.dispose();
@@ -613,4 +618,153 @@ test("shared refresh and token generation claims reject stale completion", async
     (await result("/test/refresh", body)).reason,
     "stale_generation",
   );
+});
+
+async function multiAttempt() {
+  const g = await guest(),
+    approved = intent();
+  approved.sessions.push({
+    ...approved.sessions[0],
+    startMs: approved.sessions[0].startMs + 50 * 60000,
+    players: 4,
+  });
+  approved.totalMinor *= 2;
+  const a = await result("/test/prepare", {
+    owner: g.owner,
+    key: crypto.randomUUID(),
+    intent: approved,
+    now: Date.now(),
+  });
+  return { ...g, id: a.id };
+}
+async function orchestrate(a, scenario) {
+  const r = await mf.dispatchFetch(origin + "/test/orchestrate", {
+    method: "POST",
+    headers: { cookie: a.cookie },
+    body: JSON.stringify({ id: a.id, owner: a.owner, scenario }),
+  });
+  assert.equal(r.status, 200);
+  return (await r.json()).result;
+}
+async function effects(a) {
+  return (
+    await db
+      .prepare(
+        "SELECT step,outcome,reference_id FROM session_effects WHERE attempt_id=? ORDER BY step",
+      )
+      .bind(a.id)
+      .all()
+  ).results;
+}
+test("orchestration withholds all writes when native contracts or recovery capacity are unavailable", async () => {
+  for (const scenario of ["unsupported", "budget"]) {
+    const a = await multiAttempt(),
+      r = await orchestrate(a, scenario);
+    assert.equal(r.result.paymentAvailable, false);
+    assert.deepEqual(r.calls, []);
+    assert.deepEqual(await effects(a), []);
+  }
+});
+test("orchestration associates every session and invoice once without enabling payment", async () => {
+  const a = await multiAttempt(),
+    r = await orchestrate(a, "complete");
+  assert.deepEqual(r.result, { state: "associated", paymentAvailable: false });
+  assert.deepEqual(r.calls, [
+    "validate:0",
+    "create:0",
+    "validate:1",
+    "create:1",
+    "finalize",
+  ]);
+  const rows = await effects(a);
+  assert.equal(rows.length, 3);
+  assert.ok(rows.every((x) => x.outcome === "observed"));
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT outcome FROM dispatches WHERE attempt_id=?")
+        .bind(a.id)
+        .first()
+    ).outcome,
+    "observed",
+  );
+  const repeated = await orchestrate(a, "complete");
+  assert.deepEqual(repeated.result, r.result);
+  assert.deepEqual(repeated.calls, []);
+});
+test("orchestration retains partial accepted and unknown sessions without replacement or finalization", async () => {
+  const a = await multiAttempt(),
+    r = await orchestrate(a, "partial");
+  assert.deepEqual(r.result, {
+    state: "recovery_required",
+    paymentAvailable: false,
+  });
+  assert.ok(!r.calls.includes("finalize"));
+  assert.deepEqual(await effects(a), [
+    {
+      step: "session:0",
+      outcome: "observed",
+      reference_id: "synthetic-booking-0",
+    },
+    { step: "session:1", outcome: "unknown", reference_id: null },
+  ]);
+  assert.deepEqual((await orchestrate(a, "complete")).calls, []);
+});
+test("orchestration rechecks exact price and revoked access before each session write", async () => {
+  for (const scenario of ["price", "revoke"]) {
+    const a = await multiAttempt(),
+      r = await orchestrate(a, scenario);
+    assert.equal(r.result.state, "recovery_required");
+    assert.deepEqual(r.calls, ["validate:0", "create:0", "validate:1"]);
+    assert.equal((await effects(a)).length, 1);
+  }
+});
+test("orchestration stale generation cannot dispatch a subsequent session", async () => {
+  const a = await multiAttempt(),
+    r = await orchestrate(a, "fence");
+  assert.equal(r.result.state, "recovery_required");
+  assert.deepEqual(r.calls, ["validate:0", "create:0", "validate:1"]);
+  assert.equal((await effects(a)).length, 1);
+});
+test("orchestration rejects duplicate booking references and incomplete invoice associations", async () => {
+  for (const scenario of ["duplicate", "incomplete"]) {
+    const a = await multiAttempt(),
+      r = await orchestrate(a, scenario);
+    assert.equal(r.result.state, "recovery_required");
+    assert.equal(r.result.paymentAvailable, false);
+    const row = await db
+      .prepare("SELECT association_json FROM attempts WHERE id=?")
+      .bind(a.id)
+      .first();
+    assert.equal(row.association_json, null);
+  }
+});
+test("orchestration unknown finalization survives restart and is never replayed", async () => {
+  const a = await multiAttempt(),
+    r = await orchestrate(a, "finalize-unknown");
+  assert.equal(r.result.state, "recovery_required");
+  assert.equal(
+    (await effects(a)).find((x) => x.step === "finalize").outcome,
+    "unknown",
+  );
+  await mf.dispose();
+  await start();
+  assert.deepEqual((await orchestrate(a, "complete")).calls, []);
+  assert.equal((await effects(a)).length, 3);
+});
+test("concurrent orchestration requests have one durable winner and no duplicate effects", async () => {
+  const a = await multiAttempt();
+  const results = await Promise.all([
+    orchestrate(a, "complete"),
+    orchestrate(a, "complete"),
+  ]);
+  // A follower may observe the completed result. Count effects, not responses.
+  assert.ok(results.some((x) => x.result.state === "associated"));
+  assert.equal(results.filter((x) => x.calls.includes("finalize")).length, 1);
+  assert.equal(
+    results.flatMap((x) => x.calls).filter((x) => x.startsWith("create:"))
+      .length,
+    2,
+  );
+  assert.equal((await effects(a)).length, 3);
 });

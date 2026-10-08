@@ -3,6 +3,7 @@ import { confirmation } from "./confirmation";
 import { ApiError, policy } from "./policy";
 import { developerIdentity } from "./developer-operation";
 export { SoccerBotAccountCoordinator } from "./coordinator";
+export { orchestrateBooking } from "./orchestration";
 // Journal operations are reachable only through trusted server composition, not HTTP.
 export {
   prepareAttempt,

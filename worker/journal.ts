@@ -152,13 +152,19 @@ export async function bindAssociation(
       refs.bookingIds.length
   )
     throw new ApiError(409, "association_conflict");
-  const result = await db
-    .prepare(
-      "UPDATE attempts SET association_json=?,version=version+1 WHERE id=? AND version=? AND state='dispatching' AND association_json IS NULL",
-    )
-    .bind(JSON.stringify(refs), id, fence)
-    .run();
-  if (result.meta.changes !== 1)
+  const result = await db.batch([
+    db
+      .prepare(
+        "UPDATE attempts SET association_json=?,version=version+1 WHERE id=? AND version=? AND state='dispatching' AND association_json IS NULL",
+      )
+      .bind(JSON.stringify(refs), id, fence),
+    db
+      .prepare(
+        "UPDATE dispatches SET outcome='observed' WHERE attempt_id=? AND fence=? AND outcome='unknown' AND changes()=1",
+      )
+      .bind(id, fence),
+  ]);
+  if (result[0].meta.changes !== 1)
     throw new ApiError(409, "association_conflict");
   return fence + 1;
 }
