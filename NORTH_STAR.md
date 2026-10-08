@@ -1,25 +1,18 @@
-# North Star: native checkout contract and first-proof preparation
+# North Star: supported native checkout through research and controlled experiments
 
-## Active outcome — 7 October 2026
+## Current outcome — provider continuation closed; reconcile and publish evidence
 
-Resolve the documented API booking → native invoice/payment page → SBPay/HitPay → authoritative status route. Prepare an executable single-session plan if evidence permits; otherwise identify exact provider/account gaps. Public research is complete to the documented limits. **Do not execute the proof.**
+Resolve the capabilities needed for our frontend → backend → SimplyBook booking(s) → native SBPay/HitPay checkout → frontend → authoritative payment and booking verification. The focused continuation completed every eligible read and documented prerequisites blocking writes; it did not complete M2 or implement the live application.
 
-- [x] Refresh PR #8: open at reviewed `04e82f800508c08defa433776f715259333772cf`; its [CI 37583277947](https://github.com/LimYouSheng/SoccerBotStudioSG/actions/runs/37583277947) passed. Continue its existing branch, preserving main `e883c1af117a960eeae9359c4db9923d774888dd` and earlier evidence.
-- [x] Research official API/help/support sources before asking YS for technical answers. Invoice-enabled public booking and an Admin REST native payment-link route are documented; legacy cart creation is deprecated. Current schema/entitlement, multi-session association and recovery remain gated.
-- [x] Reconcile supplied screenshots: sandbox controls, trial/features/10-minute timeout and explicit Ref 19 → prior HitPay charge-ID link. Preserve prior Card/PayNow evidence; account isolation and API invoice joins remain unproved.
-- [x] Replace the unapproved 14-call estimate with explicit conditional arithmetic and prepare one ready-to-send support question set in Service Contracts. No runnable proof is claimed.
-- [ ] Final updated head must pass `verify / frontend`; record exact SHA/run in [PR #8](https://github.com/LimYouSheng/SoccerBotStudioSG/pull/8).
-- [ ] Resolve support/owner gaps, then bind and obtain approval for a separate execution task.
+The frontend confirmation route initially shows “Checking your payment and booking…”. Protected backend checks must establish the correct account, customer access, booking/invoice association, amount/currency, paid state and valid booking before Confirmed. URL parameters never establish success. Supported native return and payment updating without that return are separate open proofs.
 
-Continue `docs/developer-api-cloudflare-plan-2026-10-07`. The attached clean historical `work` branch at `897cbfe737d31069ae25dca39c638cdededf3593` was preserved before switching to the reviewed task head. PR #8 was observed open/non-draft despite its earlier draft instruction; this task returns it to draft for review. No reset, main push, merge, deployment or auto-merge.
+Final use is **80 = 2 owner-reported + 78 journaled**, including seven new calls from the verified73 baseline. The continuation allowed60 additional (ceiling133 within outer243), six possible bookings, two sandbox submissions and four hours from14:14:10 to18:14:10SGT on8October. It closed before the deadline with no new bookings, payments or provider browser traffic;53 calls remain unused, with no automatic relaunch. Earlier capacity19/NR0414 were absorbed by the preceding campaign, never stacked again. The original public3/3 allowance remains separately exhausted.
 
-Original developer access remains **getToken 1, getEventList 1, getUnitList 1; 3/3 exhausted**. This research adds **zero provider-account requests and zero business writes**. No new authentication, catalogue/availability probe, manual payment, admin/client access, live adapter, settings change, secret request, paid provisioning or support message. Worker/DO/D1 and release plans are retained without implementation. Reuse dependencies; only focused local documentation checks and required final-head CI.
+Booking24's native cancellation is now owner-reconciled. Preserve the earlier due+60 API state and all receipts; no precise cancellation time or new API payment flag is inferred. Service Contracts owns the A–E outcomes and exact missing provider inputs; PROGRESS owns the next task and evidence paths.
 
-## One next action and retained gates
+Next development proposal: the protected confirmation verifier for existing `checkout.status` / `confirmation.read`, with normalized provider evidence and fail-closed results. It can be designed/tested offline independently of checkout return, but starting an M3.1 subset before M2.5 requires an explicit dependency adjustment and M1 prerequisite review. No live journey or provider adapter freeze is ready. Resolve the native-return mechanism, batch hash/recovery, player mapping, independent-client binding and durable recovery before their dependent proofs.
 
-YS sends the [prepared support question set](docs/SERVICE_CONTRACTS.md#provider-support-question-set--prepared-not-sent) and returns answers with the missing E4 owner facts. The research identifies technical questions precisely; YS need not supply invented method names or repeat successful payments. No new secrets or proof-execution approval is requested until the plan is fully bound.
-
-M2.1 remains partial; M2.2–M2.4 capacity/payment/recovery proof and M2.5 freeze stay open. The conditional request estimate is not authorization. Client-specific validation, PERF-01–07/P01–P12, full M4.1, visual/device review and the original Cloud-preview blocker remain unchanged. The app stays demo-only; existing Worker/DO/D1 and tested-artifact deployment plans are unchanged.
+The latest owner instruction authorizes reconciliation of all affected documentation and publication to existing draft PR#9 with final-SHA CI. It supersedes earlier no-push restrictions only. No merge, auto-merge, deployment, provider settings/network changes, new paid infrastructure or client-account operations. Evidence archives stay in the workspace; no external upload. CLOUD-01 and milestone acceptance below remain unchanged.
 
 ## Deferred CLOUD-01 — incomplete
 
