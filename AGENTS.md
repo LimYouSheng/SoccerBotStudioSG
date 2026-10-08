@@ -8,7 +8,7 @@
 - One working agent; no automatic campaign restart. Six-hour ceiling, three repair cycles per distinct issue, 200 Cloudflare management requests, 12 development deployments, 80 new provider calls with 16 reserved for recovery, four accepted new developer bookings and two sandbox payment submissions. PROGRESS records actual totals and remaining gates. Historical provider80 is closed and separate.
 - Keep provider access disabled until supported contracts, secrets, account identity and persistent admission are verified. Never copy Codex network-secret placeholders to Worker secrets. Do not print/hash/persist credentials. Preserve native SimplyBook → SBPay → HitPay routing.
 - Existing `src/domain/confirmation.ts` remains the single confirmation decision owner. Worker HTTP/access/journal/coordinator code lives in `worker/`; D1 is the only durable identity/attempt owner.
-- Physical fetch belongs only to `worker/provider-transport.ts`; operator grants are one-use D1 records. Defaults remain closed. No authentication retry, grant replay or new campaign ID may reset consumption. Preserve unknown reservations and native-contract blockers.
+- Physical fetch belongs only to `worker/provider-transport.ts`; operator grants are one-use, operation-scoped D1 records. Historical diagnostics cannot manufacture approved intent. Defaults remain closed. No authentication retry, grant replay or new campaign ID may reset consumption. Preserve unknown reservations and native-contract blockers.
 - Commands and browser-only secret installation: docs/CODEX_CLOUD. Provider/evidence representations: Service Contracts. No Google Drive or other external evidence upload.
 
 ## 2. Build

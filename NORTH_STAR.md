@@ -10,18 +10,19 @@ PR #10 is owner-merged at3bf8e3b; its verifier and81 application/45 browser proo
 
 ## Implemented candidate and evidence boundaries
 
+- Continuation is closed: campaign complete; North Star incomplete. Provider credentials and developer transport passed; native checkout/reconciliation and live write prerequisites remain blocked. PROGRESS owns exact evidence and next steps.
 - Continuation adds guarded named provider identity transport and a one-use operator grant. Actual dispatch/token negative tests remain separate from provider validity; no customer booking/payment route is enabled. PROGRESS records the new finite window and cumulative consumption.
 - Internal multi-session composition now has per-effect durable claims, revalidation and partial/unknown recovery tests. No live provider adapter supplies its unsupported booking contract; full native acceptance remains open.
 
 - Guest capability access/revocation, D1 immutable intent/idempotency/dispatch fencing, protected confirmation orchestration, account admission and refresh generation claims.
 - Actual Workers runtime/D1/SQLite coordinator tests use synthetic data and zero provider traffic. Root static export uses existing Next.js presentation; Pages subpath remains intact.
-- Initial named endpoints: health, guest access/revocation, protected confirmation and an explicitly unavailable booking operation. A separate /confirmation/ page polls only protected durable status; the existing demo remains labelled Preview. No returning-customer prefill, provider normalization, live payment initiation or guessed webhook receiver.
+- Initial named endpoints: health, guest access/revocation, protected confirmation and an explicitly unavailable booking operation. A separate /confirmation/ page polls only protected durable status; the existing demo remains labelled Preview. Historical read-only normalization is now implemented. Returning-customer prefill, live payment initiation and native notification handling remain unavailable.
 - Native return, player mapping, independently controlled capacity fixtures, complete multi-session finalization/recovery and notification authenticity/delivery remain blocked. Internal journal tests do not satisfy them.
 - Deployment and CI identities belong in the draft PR and private receipts. Do not label this foundation the completed North Star.
 
 ## Acceptance
 
-Use the owner's A–G loops. Require actual final-candidate frontend and backend CI; root and subpath builds; deployed revision/protected HTTP checks; separately authenticated provider observations; actual native return/no-return/notification proofs; supported write recovery and safe sandbox payment controls. Physical-device, client-account and production acceptance remain separate.
+Use the owner's A–E continuation loops. Require actual final-candidate frontend and backend CI; root and subpath builds; deployed revision/protected HTTP checks; separately authenticated provider observations; actual native return/no-return/notification proofs; supported write recovery and safe sandbox payment controls. Physical-device, client-account and production acceptance remain separate.
 
 Stop without merge or production deployment. If external gates remain, report campaign complete; North Star incomplete, with exact blocked paths and executable next steps.
 
