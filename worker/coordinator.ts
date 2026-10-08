@@ -1,6 +1,9 @@
 import { DurableObject } from "cloudflare:workers";
+import { ApiError } from "./policy";
+import { ProviderSession } from "./provider-session";
 // One instance per actual provider account. No booking or customer data here.
 export class SoccerBotAccountCoordinator extends DurableObject<Env> {
+  private provider = new ProviderSession();
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     ctx.storage.sql.exec(
@@ -15,10 +18,13 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
   }
   admit(recovery: boolean) {
     const now = Date.now();
-    if (this.env.PROVIDER_ACCESS !== "disabled")
+    if (!["disabled", "trusted-reads"].includes(this.env.PROVIDER_ACCESS))
       throw new Error("Unsupported provider mode");
     // Synthetic admission exercises accounting only. No outbound provider path is enabled.
-    if (now >= Number(this.env.CAMPAIGN_END_MS))
+    if (
+      !Number.isSafeInteger(Number(this.env.CAMPAIGN_END_MS)) ||
+      now >= Number(this.env.CAMPAIGN_END_MS)
+    )
       return { allowed: false, reason: "campaign_closed" };
     const sql = this.ctx.storage.sql;
     return this.ctx.storage.transactionSync(() => {
@@ -67,6 +73,68 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       );
       return { allowed: true, id, used: budget.used + 1 };
     });
+  }
+  async providerIdentity() {
+    if (String(this.env.PROVIDER_ACCESS) !== "trusted-reads")
+      throw new ApiError(503, "provider_access_disabled");
+    try {
+      const result = await this.provider.identity(this.env, {
+        reserve: async () => {
+          const admitted = this.admit(false);
+          if (!admitted.allowed || !admitted.id)
+            throw new ApiError(
+              503,
+              admitted.reason || "provider_admission_denied",
+            );
+          await this.ctx.storage.sync();
+          return admitted.id;
+        },
+        finish: (id, cooldown) => this.finish(id, cooldown),
+        claim: (family) => {
+          const row = this.ctx.storage.sql
+            .exec<{
+              generation: number;
+              expires_ms: number;
+              completed_ms: number | null;
+            }>(
+              "SELECT generation,expires_ms,completed_ms FROM refreshes WHERE key=?",
+              `token:${family}`,
+            )
+            .toArray()[0];
+          if (row && row.completed_ms === null && row.expires_ms > Date.now())
+            throw new ApiError(503, "provider_refresh_busy");
+          const generation = (row?.generation ?? 0) + 1;
+          const claimed = this.claimRefresh(`token:${family}`, generation);
+          if (!claimed.granted || !claimed.claim)
+            throw new ApiError(503, "provider_refresh_busy");
+          return { generation, claim: claimed.claim };
+        },
+        complete: (family, claim, generation) =>
+          this.completeRefresh(`token:${family}`, claim, generation),
+        pause: () => this.finish("", 60000),
+      });
+      return { ...result, accounting: this.providerAccounting() };
+    } catch (error) {
+      return {
+        verified: false,
+        reason:
+          error instanceof ApiError ? error.code : "provider_proof_incomplete",
+        accounting: this.providerAccounting(),
+      };
+    }
+  }
+  private providerAccounting() {
+    const used =
+      this.ctx.storage.sql
+        .exec<{ used: number }>(
+          "SELECT used FROM budget WHERE campaign=?",
+          this.env.CAMPAIGN_ID,
+        )
+        .toArray()[0]?.used ?? 0;
+    const active = this.ctx.storage.sql
+      .exec<{ n: number }>("SELECT count(*) n FROM admissions WHERE finished=0")
+      .one().n;
+    return { used, active, ceiling: 80, recoveryReserve: 16 };
   }
   finish(id: string, cooldownMs = 0) {
     if (!Number.isInteger(cooldownMs) || cooldownMs < 0 || cooldownMs > 3600000)

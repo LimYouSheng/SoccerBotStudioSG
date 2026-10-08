@@ -4,6 +4,12 @@ Adapted 6 October 2026 against OneFitfinity PR #8's `docs/CODEX_CLOUD.md`, `NORT
 
 ## Current development campaign — 8 October 2026
 
+Continuation: the fresh task reaches the Worker through the inherited proxy/TLS. Runtime aggregate credential presence is true; authentication is separate. Shell network permission is required; do not bypass the proxy. Refresh current deployment metadata before recovery: an intervening dashboard deployment exists. PROGRESS owns identities and cumulative counts.
+
+For the named identity operation, apply only additive migration0002 after compatibility tests, provision an expiring one-use digest grant through scoped D1 management, and invoke it only after the tested configuration enables bounded trusted reads. Keep the random capability in process memory; send it only in Authorization, never URL/logs. Read-back cannot replay a running operation. Close grants and restore provider-disabled/end0 using the same tested artifact; record both configurations/versions. No owner secret reinstallation is required.
+
+The host lacks WebKit native libraries. Preserve its failed launch receipt and reuse the retained pinned container with network disabled, candidate source/export mounted read-only and separate writable results. Run the unchanged browser matrix against the existing root export, then the canonical result/engine validator. This is Cloud evidence, not physical-device acceptance.
+
 Current main is owner-merged PR#10 at3bf8e3b; use feat/cloudflare-dev-foundation-2026-10-08. The current direct scope permits only isolated soccerbot-dev deployment before merge and draft publication. Previous task-specific no-deployment/no-provider wording below is historical; production/main/merge/settings restrictions remain. Original historical checkout is unchanged. Actual current source and evidence are in PROGRESS and the PR.
 
 Commands: npm run verify:code retains the complete non-browser frontend gate; npm run verify:worker generates pinned platform types and runs strict Workers/D1/coordinator evidence; CI independently runs existing subpath and new root browser gates. Use Node24.19.0/npm11.9.0/Playwright1.58.2. Wrangler4.148.0 ships Miniflare5 alpha; exact compatible pin is intentional, with its documented conversion adapter and explicit persistence paths tested. Do not downgrade frontend Vitest to satisfy Workers-pool peers.

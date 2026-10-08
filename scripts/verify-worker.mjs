@@ -22,7 +22,12 @@ const commands = [
   [
     "runtime",
     "node",
-    ["--test", "--test-reporter=tap", "worker/tests/runtime.test.mjs"],
+    [
+      "--test",
+      "--test-reporter=tap",
+      "worker/tests/provider.test.mjs",
+      "worker/tests/runtime.test.mjs",
+    ],
   ],
 ];
 const receipt = { status: "running", providerRequests: 0, commands: [] };

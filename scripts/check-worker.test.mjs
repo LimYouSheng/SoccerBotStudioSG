@@ -56,6 +56,21 @@ test("rejects direct provider fetch and suppression", () => {
     ).some((e) => e.includes("suppression")),
   );
 });
+test("rejects provider redirects alternate hosts and unreserved dispatch", () => {
+  for (const [from, to] of [
+    ['redirect: "manual"', 'redirect: "follow"'],
+    ["user-api-v2.simplybook.me/admin/auth", "other.invalid/admin/auth"],
+    ["await dispatch.reserve()", 'Promise.resolve("unreserved")'],
+  ])
+    assert.ok(
+      fixture((root) => {
+        const p = path.join(root, "worker/provider-transport.ts");
+        const source = readFileSync(p, "utf8");
+        assert.ok(source.includes(from));
+        writeFileSync(p, source.replace(from, to));
+      }).some((e) => e.includes("Provider transport")),
+    );
+});
 test("rejects production account alternate entry and enabled providers", () => {
   for (const [key, value] of [
     ["name", "app404"],

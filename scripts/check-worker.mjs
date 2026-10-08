@@ -17,6 +17,28 @@ export function checkWorker(root) {
       ts.ScriptTarget.Latest,
       true,
     );
+    if (name === "provider-transport.ts") {
+      if (
+        (text.match(/\bfetch\(/g) || []).length !== 1 ||
+        !text.includes('redirect: "manual"') ||
+        !text.includes("await dispatch.reserve()") ||
+        !text.includes("signal: controller.signal")
+      )
+        errors.push("Provider transport reservation/redirect boundary changed");
+      const urls = [...text.matchAll(/https:\/\/[^\s"']+/g)].map((m) => m[0]);
+      if (
+        JSON.stringify(urls.sort()) !==
+        JSON.stringify(
+          [
+            "https://user-api.simplybook.me/login",
+            "https://user-api-v2.simplybook.me/admin/auth",
+            "https://user-api-v2.simplybook.me/admin/company/info",
+            "https://user-api-v2.simplybook.me/admin/tariff/current",
+          ].sort(),
+        )
+      )
+        errors.push("Provider transport host/operation boundary changed");
+    }
     if (/@ts-(?:ignore|nocheck)|eslint-disable|\bany\b/.test(text))
       errors.push(`Worker suppression/unsafe type: ${name}`);
     function visit(node) {
@@ -35,7 +57,8 @@ export function checkWorker(root) {
       if (
         ts.isCallExpression(node) &&
         ts.isIdentifier(node.expression) &&
-        node.expression.text === "fetch"
+        node.expression.text === "fetch" &&
+        name !== "provider-transport.ts"
       )
         errors.push(`Provider dispatch is disabled: ${name}`);
       ts.forEachChild(node, visit);
@@ -66,7 +89,9 @@ export function checkWorker(root) {
     config.name !== "soccerbot-dev" ||
     config.account_id !== "517f4f85eb8f982b483dbc05b797fd88" ||
     config.main !== "worker/index.ts" ||
-    config.vars.PROVIDER_ACCESS !== "disabled"
+    config.vars.PROVIDER_ACCESS !== "disabled" ||
+    config.vars.CAMPAIGN_ID !== "developer-20261008" ||
+    config.vars.CAMPAIGN_END_MS !== "0"
   )
     errors.push("Worker deployment boundary changed");
   if (config.routes || config.route || config.env || config.triggers)

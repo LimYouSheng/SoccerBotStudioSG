@@ -1,6 +1,7 @@
 import { createAccess, authenticate, revokeAccess } from "./access";
 import { confirmation } from "./confirmation";
 import { ApiError, policy } from "./policy";
+import { developerIdentity } from "./developer-operation";
 export { SoccerBotAccountCoordinator } from "./coordinator";
 // Journal operations are reachable only through trusted server composition, not HTTP.
 export {
@@ -60,7 +61,7 @@ export default {
       if (url.pathname === "/api/health" && request.method === "GET")
         return json({
           environment: "developer",
-          providerAccess: "disabled",
+          providerAccess: env.PROVIDER_ACCESS,
           revision: env.SOURCE_REVISION,
           providerCredentialsPresent: [
             "SIMPLYBOOK_DEV_COMPANY_LOGIN",
@@ -72,6 +73,11 @@ export default {
             return typeof value === "string" && value.length > 0;
           }),
         });
+      if (
+        url.pathname === "/api/developer/provider-identity" &&
+        (request.method === "POST" || request.method === "GET")
+      )
+        return json(await developerIdentity(request, env, now));
       if (url.pathname === "/api/access" && request.method === "POST") {
         if (
           request.headers.get("cookie")?.includes("__Host-soccerbot-access=")

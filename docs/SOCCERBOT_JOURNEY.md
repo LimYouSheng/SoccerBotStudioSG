@@ -2,6 +2,16 @@
 
 Chronological decisions and evidence. Current contract: `SOCCERBOT_RULES_AND_ARCHITECTURE.md`.
 
+## 8 October 2026 — Developer integration continuation
+
+Fresh remote main and draft PR11 match the handoff. The old experiment checkout is preserved; work continues in an isolated worktree on the existing PR branch. Worker HTTPS now passes with expected source/developer mode/provider disabled and all four credentials present. This is presence, not provider authentication. Initial shell network sandbox failure was repaired with command network permission, without proxy/TLS/policy changes. Current dashboard version advanced once; cumulative deployment accounting includes it.
+
+Protected deployed HTTP verifies missing/malformed/unknown/revoked/expired capabilities and foreign attempt denial. A controlled synthetic D1 attempt returns pending/missing evidence only to its owner; no booking/provider association was created. Owner access expired and foreign access was revoked. The initial urllib probe parse failure and corrected curl evidence are retained privately.
+
+Named provider transport, one-use operator grants, memory-only shared tokens and durable physical dispatch accounting are implemented locally. Forty actual Worker/D1/SQLite cases pass, preserving all25 original cases. The new helper initially used an unavailable Miniflare inspector API and then its wrong return shape; both failures remain. Reading the pinned API and using its actual storage handle corrected the helper without changing assertions. Strict Worker types required TextDecoder ignoreBOM; this is a platform-type correction.
+
+Root frontend checks pass84 application cases and export11routes. The host browser run passed16 Chromium cases but failed32 WebKit launches on missing native libraries. Retained pinned Cloud container runs the same export and all48 browser cases successfully; first failures remain. No browser project, retry, timeout or assertion changed. Final-candidate CI, deployment and provider results are recorded after execution in PROGRESS/PR; this entry does not preclaim them.
+
 ## 2026-10-04 — Frontend foundation
 
 ### Inputs and authority

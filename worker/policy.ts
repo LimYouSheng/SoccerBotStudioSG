@@ -3,7 +3,7 @@ const duration = (minimum: number, maximum: number) =>
   z.coerce.number().int().min(minimum).max(maximum);
 const schema = z.object({
   ENVIRONMENT: z.literal("developer"),
-  PROVIDER_ACCESS: z.literal("disabled"),
+  PROVIDER_ACCESS: z.enum(["disabled", "trusted-reads"]),
   ACCESS_LIFETIME_MS: duration(60000, 3600000),
   OBSERVATION_MAX_AGE_MS: duration(1000, 60000),
   POLL_INTERVAL_MS: duration(1000, 30000),
