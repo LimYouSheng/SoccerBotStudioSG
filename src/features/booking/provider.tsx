@@ -91,6 +91,10 @@ export function BookingProvider({
     operation: Action;
   } | null>(null);
   const mounted = useRef(false);
+  const [availabilityRevision, invalidateAvailability] = useReducer(
+    (revision: number) => revision + 1,
+    0,
+  );
   const [date, showDate] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const sessionKey = useCallback(
@@ -108,6 +112,7 @@ export function BookingProvider({
     ],
     value.draft.players,
     JSON.stringify([
+      availabilityRevision,
       value.draft.mode,
       value.draft.accountEmail,
       value.attempt?.id,
@@ -241,6 +246,7 @@ export function BookingProvider({
                 "temporarily_unavailable",
                 "We couldn’t complete that request. Please try again.",
               );
+        if (known.code === "conflict") invalidateAvailability();
         setAction({
           status:
             known.code === "cancelled"

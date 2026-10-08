@@ -181,6 +181,10 @@
   },
   {
     "file": "src/features/booking/async-booking.test.tsx",
+    "title": "a checkout capacity conflict invalidates shared availability before returning to selections"
+  },
+  {
+    "file": "src/features/booking/async-booking.test.tsx",
     "title": "an old attempt completion cannot replace a newer checkout after cancellation"
   },
   {

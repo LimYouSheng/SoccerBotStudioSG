@@ -646,3 +646,42 @@ test("replacing an adapter cancels its pending action and releases the new revie
   });
   expect(navigation.push).toHaveBeenCalledExactlyOnceWith("/book/payment/");
 });
+
+test("a checkout capacity conflict invalidates shared availability before returning to selections", async () => {
+  const service = { ...demoBookingService };
+  const view = render(
+    <BookingProvider bookingService={service}>
+      <ReviewStep />
+      <Probe />
+    </BookingProvider>,
+  );
+  await act(async () => {});
+  sessionStorage.setItem(
+    "soccerbot-next-demo-inventory",
+    JSON.stringify([`Studio 1|${date}|09:00`]),
+  );
+  await act(async () => {
+    fireEvent.click(
+      screen.getByRole("button", { name: "Continue to payment" }),
+    );
+  });
+  expect(screen.getByRole("alert")).toHaveTextContent("no longer available");
+  expect(navigation.push).not.toHaveBeenCalled();
+  view.rerender(
+    <BookingProvider bookingService={service}>
+      <Calendar />
+      <Summary basket />
+      <Probe />
+    </BookingProvider>,
+  );
+  await act(async () => {});
+  expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: /09:00–09:40/ })).toHaveTextContent(
+    "Unavailable",
+  );
+  expect(loadBooking().draft.slots).toHaveLength(1);
+  fireEvent.click(
+    screen.getByRole("button", { name: "Remove 2026-10-13 at 09:00" }),
+  );
+  expect(loadBooking().draft.slots).toEqual([]);
+});
