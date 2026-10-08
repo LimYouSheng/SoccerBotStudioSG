@@ -34,6 +34,7 @@ async function fixture({
   respond,
   end = Date.now() + 3600000,
   persistence,
+  legacy = false,
 } = {}) {
   const root =
     persistence || mkdtempSync(path.join(tmpdir(), "soccerbot-provider-"));
@@ -99,6 +100,36 @@ async function fixture({
           return Response.json({
             limits: [{ key: "sheduler_limit", total: 50, rest: 26 }],
           });
+        if (url.pathname === "/admin/bookings/23")
+          return Response.json({
+            id: 23,
+            code: "synthetic-code",
+            is_confirmed: "1",
+            is_cancelled: "0",
+            invoice_id: 23,
+            invoice_status: "paid",
+            start_date_time: "2026-10-09 09:00:00",
+            end_date_time: "2026-10-09 09:50:00",
+            hash: "must-not-escape",
+          });
+        if (url.pathname === "/admin/invoices/23")
+          return Response.json({
+            id: 23,
+            number: "SI-synthetic",
+            status: "paid",
+            payment_received: "1",
+            currency: "SGD",
+            amount: "88.00",
+            tax_amount: "0.00",
+            lines: [
+              {
+                booking: { id: 23, code: "synthetic-code" },
+                amount: "88",
+                tax_amount: 0,
+              },
+            ],
+            client: { email: "must-not-escape" },
+          });
         throw new Error("Unapproved provider path");
       },
     }),
@@ -112,6 +143,7 @@ async function fixture({
     for (const name of [
       "0001_developer_journal.sql",
       "0002_developer_operations.sql",
+      ...(!legacy ? ["0004_operator_read_scopes.sql"] : []),
     ])
       await db.exec(
         readFileSync("migrations/" + name, "utf8")
@@ -124,20 +156,28 @@ async function fixture({
     { name: "simplybook-developer-account" },
   );
   const sql = async (query, ...args) => storage.exec(query, ...args);
-  const grant = async (expires = Date.now() + 60000) => {
+  const grant = async (
+    expires = Date.now() + 60000,
+    operation = "provider_identity",
+  ) => {
     const token = "a".repeat(32) + crypto.randomUUID().replaceAll("-", "");
     const hash = createHash("sha256").update(token).digest("hex");
     await db
-      .prepare(
-        "INSERT INTO developer_operations VALUES(?,'provider_identity',?,'granted',NULL)",
-      )
-      .bind(hash, expires)
+      .prepare("INSERT INTO developer_operations VALUES(?,?,?,'granted',NULL)")
+      .bind(hash, operation, expires)
       .run();
     return token;
   };
-  const call = async (token, method = "POST") => {
+  const call = async (
+    token,
+    method = "POST",
+    operation = "provider_identity",
+  ) => {
     const r = await mf.dispatchFetch(
-      origin + "/api/developer/provider-identity",
+      origin +
+        (operation === "provider_identity"
+          ? "/api/developer/provider-identity"
+          : "/api/developer/historical-comparison"),
       { method, headers: { origin, authorization: "Bearer " + token } },
     );
     return { status: r.status, body: await r.json() };
@@ -436,6 +476,149 @@ test("uncertain provider transport retains its durable reservation without repla
       (await f.sql("SELECT count(*) n FROM admissions WHERE finished=0"))[0].n,
       1,
     );
+  } finally {
+    await f.mf.dispose();
+  }
+});
+async function comparison(f) {
+  return f.call(
+    await f.grant(Date.now() + 60000, "historical_comparison"),
+    "POST",
+    "historical_comparison",
+  );
+}
+test("historical read normalization preserves string flags exact money and occupied end without manufacturing intent", async () => {
+  const f = await fixture();
+  try {
+    const r = await comparison(f),
+      v = r.body.result;
+    assert.equal(r.body.state, "complete");
+    assert.equal(v.newWritePathVerified, false);
+    assert.equal(v.evidenceKind, "historical_read_only");
+    assert.equal(v.booking.confirmed, true);
+    assert.equal(v.booking.cancelled, false);
+    assert.equal(v.invoice.paymentReceived, true);
+    assert.equal(v.invoice.totalMinor, 8800);
+    assert.equal(v.invoice.taxMinor, 0);
+    assert.equal(v.knownInvoiceJoin, true);
+    assert.equal(v.booking.end, "2026-10-09 09:50:00");
+    assert.equal(f.calls.length, 4);
+    assert.doesNotMatch(JSON.stringify(v), /must-not-escape/);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("historical normalization leaves unknown flags states and imprecise amounts unresolved", async () => {
+  const f = await fixture({
+    respond: (r) =>
+      r.url.endsWith("/invoices/23")
+        ? Response.json({
+            id: 23,
+            status: "future_state",
+            payment_received: "false",
+            amount: "88.001",
+            tax_amount: null,
+          })
+        : null,
+  });
+  try {
+    const v = (await comparison(f)).body.result;
+    assert.equal(v.invoice.status, "unknown");
+    assert.equal(v.invoice.paymentReceived, null);
+    assert.equal(v.invoice.totalMinor, null);
+    assert.equal(v.invoice.taxMinor, null);
+    assert.equal(v.knownInvoiceJoin, false);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("historical paid invoice retains cancelled booking independently and invoice renumbering is not identity", async () => {
+  const f = await fixture({
+    respond: (r) =>
+      r.url.endsWith("/bookings/23")
+        ? Response.json({
+            id: 23,
+            is_confirmed: "0",
+            is_cancelled: "1",
+            invoice_id: 23,
+            invoice_status: "paid",
+          })
+        : r.url.endsWith("/invoices/23")
+          ? Response.json({
+              id: 23,
+              number: "RENAMED",
+              status: "paid",
+              payment_received: true,
+              currency: "SGD",
+              amount: 88,
+              tax_amount: 0,
+              lines: [{ booking: { id: 23 } }],
+            })
+          : null,
+  });
+  try {
+    const v = (await comparison(f)).body.result;
+    assert.equal(v.booking.confirmed, false);
+    assert.equal(v.booking.cancelled, true);
+    assert.equal(v.invoice.paymentReceived, true);
+    assert.equal(v.invoice.number, "RENAMED");
+    assert.equal(v.knownInvoiceJoin, true);
+    assert.equal(v.newWritePathVerified, false);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("historical invoice new pending and timeout states remain distinct", async () => {
+  for (const status of ["new", "pending", "cancelled_by_timeout"]) {
+    const f = await fixture({
+      respond: (r) =>
+        r.url.endsWith("/invoices/23")
+          ? Response.json({ id: 23, status, payment_received: "0" })
+          : null,
+    });
+    try {
+      const v = (await comparison(f)).body.result;
+      assert.equal(v.invoice.status, status);
+      assert.equal(v.invoice.paymentReceived, false);
+      assert.equal(v.newWritePathVerified, false);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+test("operator grants are bound to the exact historical read operation", async () => {
+  const f = await fixture();
+  try {
+    const identity = await f.grant();
+    assert.equal(
+      (await f.call(identity, "POST", "historical_comparison")).status,
+      401,
+    );
+    const history = await f.grant(Date.now() + 60000, "historical_comparison");
+    assert.equal((await f.call(history)).status, 401);
+    assert.equal(f.calls.length, 0);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("operator scope migration preserves existing completed grants and results", async () => {
+  const f = await fixture({ legacy: true });
+  try {
+    const grant = await f.grant();
+    await f.db
+      .prepare("UPDATE developer_operations SET state='complete',result_json=?")
+      .bind('{"preserved":true}')
+      .run();
+    await f.db.exec(
+      readFileSync("migrations/0004_operator_read_scopes.sql", "utf8")
+        .replace(/^--.*$/gm, "")
+        .replace(/\n/g, " "),
+    );
+    assert.deepEqual((await f.call(grant, "GET")).body, {
+      state: "complete",
+      result: { preserved: true },
+    });
+    assert.equal(f.calls.length, 0);
   } finally {
     await f.mf.dispose();
   }

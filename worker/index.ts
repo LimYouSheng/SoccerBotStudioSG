@@ -1,7 +1,7 @@
 import { createAccess, authenticate, revokeAccess } from "./access";
 import { confirmation } from "./confirmation";
 import { ApiError, policy } from "./policy";
-import { developerIdentity } from "./developer-operation";
+import { developerOperation } from "./developer-operation";
 export { SoccerBotAccountCoordinator } from "./coordinator";
 export { orchestrateBooking } from "./orchestration";
 // Journal operations are reachable only through trusted server composition, not HTTP.
@@ -75,10 +75,20 @@ export default {
           }),
         });
       if (
-        url.pathname === "/api/developer/provider-identity" &&
+        (url.pathname === "/api/developer/provider-identity" ||
+          url.pathname === "/api/developer/historical-comparison") &&
         (request.method === "POST" || request.method === "GET")
       )
-        return json(await developerIdentity(request, env, now));
+        return json(
+          await developerOperation(
+            request,
+            env,
+            now,
+            url.pathname.endsWith("provider-identity")
+              ? "provider_identity"
+              : "historical_comparison",
+          ),
+        );
       if (url.pathname === "/api/access" && request.method === "POST") {
         if (
           request.headers.get("cookie")?.includes("__Host-soccerbot-access=")

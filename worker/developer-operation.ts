@@ -1,9 +1,10 @@
 import { ApiError, digest } from "./policy";
 
-export async function developerIdentity(
+export async function developerOperation(
   request: Request,
   env: Env,
   now: number,
+  operation: "provider_identity" | "historical_comparison",
 ) {
   const bearer = request.headers.get("authorization") || "";
   if (!/^Bearer [a-f0-9]{64}$/.test(bearer))
@@ -11,9 +12,9 @@ export async function developerIdentity(
   const hash = await digest(bearer.slice(7));
   const row = await env.STATE.withSession("first-primary")
     .prepare(
-      "SELECT state,result_json FROM developer_operations WHERE capability_hash=? AND operation='provider_identity' AND expires_ms>?",
+      "SELECT state,result_json FROM developer_operations WHERE capability_hash=? AND operation=? AND expires_ms>?",
     )
-    .bind(hash, now)
+    .bind(hash, operation, now)
     .first<{ state: string; result_json: string | null }>();
   if (!row) throw new ApiError(401, "operator_access_denied");
   if (request.method === "GET" || row.state !== "granted")
@@ -34,7 +35,7 @@ export async function developerIdentity(
   try {
     result = await env.COORDINATOR.getByName(
       "simplybook-developer-account",
-    ).providerIdentity();
+    ).providerRead(operation);
     if (
       !result ||
       typeof result !== "object" ||

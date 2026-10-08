@@ -2,7 +2,12 @@ import { ApiError } from "./policy";
 
 export type ProviderFamily = "public" | "admin";
 export type ProviderOperation =
-  "public-auth" | "admin-auth" | "identity" | "tariff";
+  | "public-auth"
+  | "admin-auth"
+  | "identity"
+  | "tariff"
+  | "historical-booking"
+  | "historical-invoice";
 export type ProviderSecrets = {
   company: string;
   login: string;
@@ -64,6 +69,14 @@ export async function providerRequest(
       url = "https://user-api-v2.simplybook.me/admin/tariff/current";
       method = "GET";
       break;
+    case "historical-booking":
+      url = "https://user-api-v2.simplybook.me/admin/bookings/23";
+      method = "GET";
+      break;
+    case "historical-invoice":
+      url = "https://user-api-v2.simplybook.me/admin/invoices/23";
+      method = "GET";
+      break;
     default:
       throw new ApiError(503, "provider_operation_unavailable");
   }
@@ -71,7 +84,7 @@ export async function providerRequest(
     "Content-Type": "application/json",
     Accept: "application/json",
   };
-  if (operation === "identity" || operation === "tariff") {
+  if (operation !== "public-auth" && operation !== "admin-auth") {
     if (!token) throw new ApiError(503, "provider_auth_required");
     headers["X-Company-Login"] = secrets.company;
     headers["X-Token"] = token;

@@ -34,6 +34,8 @@ export function checkWorker(root) {
             "https://user-api-v2.simplybook.me/admin/auth",
             "https://user-api-v2.simplybook.me/admin/company/info",
             "https://user-api-v2.simplybook.me/admin/tariff/current",
+            "https://user-api-v2.simplybook.me/admin/bookings/23",
+            "https://user-api-v2.simplybook.me/admin/invoices/23",
           ].sort(),
         )
       )

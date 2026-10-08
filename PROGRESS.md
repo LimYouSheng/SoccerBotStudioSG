@@ -4,8 +4,8 @@
 
 - Window: conservative start 17:26 SGT, deadline 23:26 SGT, maximum six hours; no automatic restart. One agent. This supersedes the previous campaign closure only for the newly authorized continuation.
 - Fresh remote main and draft/unmerged PR #11 match `3bf8e3b45b0d771bc76e9087932c0180000d83d0` and `40abe0b3b65808a2316d8fa8b73f1093fce2473e`. Final-head run 37755477114 remains successful. Original clean checkout `897cbfe` is preserved; isolated worktree `/workspace/work/soccerbot-dev` tracks the existing PR branch.
-- Attached configuration revision 2 includes the Worker hostname; tool reports readiness unknown. Actual inherited-proxy/TLS health request passes HTTP 200, exact application revision `8c56f2658e9586b2b841e53c3ee179925b809d89`, developer mode, provider disabled and aggregate four-credential presence true. Credential validity remains unverified. Initial default shell sandbox could not connect to proxy; explicit command network access fixed it without proxy/policy changes.
-- Carried totals: Cloudflare management 88/200, deployments 5/12, new provider 4/80 (16 recovery reserve), bookings 0/4, sandbox payments 0/2. Owner dashboard internal request accounting remains unavailable. Existing resource allowance consumed; historical provider 80 stays closed.
+- Attached configuration revision 2 includes the Worker hostname; tool reports readiness unknown. Actual inherited-proxy/TLS health request passes HTTP 200, exact application revision `8c56f2658e9586b2b841e53c3ee179925b809d89`, developer mode, provider disabled and aggregate four-credential presence true. This initial presence-only observation was superseded by the successful live four-credential proof below. Initial default shell sandbox could not connect to proxy; explicit command network access fixed it without proxy/policy changes.
+- Carried totals: Cloudflare management 100/200, deployments 6/12, new provider 4/80 (16 recovery reserve), bookings 0/4, sandbox payments 0/2. Owner dashboard internal request accounting remains unavailable. Existing resource allowance consumed; historical provider 80 stays closed.
 - Intervening dashboard deployment at 17:31 SGT: current version `7d69952b-3d5c-4088-a29d-385f3a794e22`; preserve it as recovery reference. Secret names unchanged. Health source remains `8c56f265`. Management read confirms four deployments; dashboard internal calls remain unknown.
 - Deployed HTTP: missing/malformed/unknown/revoked access denied; guest creation/revocation pass; missing attempt returns404; booking remains503. No real foreign-attempt fixture claimed. Probe first failed JSON parsing through urllib; corrected to curl after independent401 JSON evidence, preserving first failure.
 - Synthetic provider transport: full40-case Worker gate passed (15 new transport/operator cases plus all25 original cases); no real provider calls. Original Miniflare inspector-helper failures and pinned-type correction preserved.
@@ -17,13 +17,15 @@
 - Actual deployed WebKit26 frontend/Worker cases pass missing401, unknown-attempt404 and revoked401 despite return tampering. Exact-origin controls and supplied CA trust retained; Chromium proxy-CA failure remains. No payment fixture.
 - Evidence: `/workspace/work/continuation-20261008/`, private local only. Sole task ledger remains this file. Quotation/reference skill attachment is unavailable; canonical commercial terms are preserved without claiming fresh verification.
 
-| Slice                          | State                                     | Completion evidence / next action                                                                                       |
-| ------------------------------ | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| A transport and protected HTTP | Health verified; access tests in progress | Verify deployment metadata, protected access failures and ordering                                                      |
-| B bounded provider transport   | In progress                               | Named server-only reads; actual dispatch accounting, token lifecycle and negative runtime tests before provider traffic |
-| C native return/reconciliation | Blocked by native contract                | No guessed callbacks or direct HitPay substitution                                                                      |
-| D orchestration                | Independent synthetic work pending        | Preserve immutable intent; complete associations before payment; unsupported write paths remain unavailable             |
-| E acceptance/publication       | Pending                                   | Final candidate CI, tested development artifact, separate provider/owner status                                         |
+| Slice                          | State                                           | Completion evidence / next action                                               |
+| ------------------------------ | ----------------------------------------------- | ------------------------------------------------------------------------------- |
+| A transport and protected HTTP | Deployed / verified                             | Real protected denial, ownership and revocation checks pass                     |
+| B bounded provider transport   | Authentication verified; historical slice ready | 22 provider tests; bounded historical proof next                                |
+| C native return/reconciliation | Blocked by native contract                      | No guessed callbacks or direct HitPay substitution                              |
+| D orchestration                | Implemented / synthetic-tested                  | 33 runtime cases; unsupported provider writes remain unavailable                |
+| E acceptance/publication       | Pending                                         | Final candidate CI, tested development artifact, separate provider/owner status |
+
+- Third slice: fixed historical booking23/invoice23 comparison and grant-scope migration0004 implemented;22 provider cases passed. Combined backend inventory55. Admission closed before compatible migrations; no new write-path claim.
 
 ## Historical Cloudflare developer campaign — 8 October 2026
 

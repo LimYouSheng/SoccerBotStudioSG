@@ -1,6 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 import { ApiError } from "./policy";
-import { ProviderSession } from "./provider-session";
+import { ProviderSession, type ProviderControl } from "./provider-session";
 // One instance per actual provider account. No booking or customer data here.
 export class SoccerBotAccountCoordinator extends DurableObject<Env> {
   private provider = new ProviderSession();
@@ -74,45 +74,57 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       return { allowed: true, id, used: budget.used + 1 };
     });
   }
-  async providerIdentity() {
+  private providerControl(): ProviderControl {
+    return {
+      reserve: async () => {
+        const admitted = this.admit(false);
+        if (!admitted.allowed || !admitted.id)
+          throw new ApiError(
+            503,
+            admitted.reason || "provider_admission_denied",
+          );
+        await this.ctx.storage.sync();
+        return admitted.id;
+      },
+      finish: (id, cooldown) => this.finish(id, cooldown),
+      claim: (family) => {
+        const row = this.ctx.storage.sql
+          .exec<{
+            generation: number;
+            expires_ms: number;
+            completed_ms: number | null;
+          }>(
+            "SELECT generation,expires_ms,completed_ms FROM refreshes WHERE key=?",
+            `token:${family}`,
+          )
+          .toArray()[0];
+        if (row && row.completed_ms === null && row.expires_ms > Date.now())
+          throw new ApiError(503, "provider_refresh_busy");
+        const generation = (row?.generation ?? 0) + 1;
+        const claimed = this.claimRefresh(`token:${family}`, generation);
+        if (!claimed.granted || !claimed.claim)
+          throw new ApiError(503, "provider_refresh_busy");
+        return { generation, claim: claimed.claim };
+      },
+      complete: (family, claim, generation) =>
+        this.completeRefresh(`token:${family}`, claim, generation),
+      pause: () => this.finish("", 60000),
+    };
+  }
+  async providerRead(operation: "provider_identity" | "historical_comparison") {
     if (String(this.env.PROVIDER_ACCESS) !== "trusted-reads")
       throw new ApiError(503, "provider_access_disabled");
     try {
-      const result = await this.provider.identity(this.env, {
-        reserve: async () => {
-          const admitted = this.admit(false);
-          if (!admitted.allowed || !admitted.id)
-            throw new ApiError(
-              503,
-              admitted.reason || "provider_admission_denied",
-            );
-          await this.ctx.storage.sync();
-          return admitted.id;
-        },
-        finish: (id, cooldown) => this.finish(id, cooldown),
-        claim: (family) => {
-          const row = this.ctx.storage.sql
-            .exec<{
-              generation: number;
-              expires_ms: number;
-              completed_ms: number | null;
-            }>(
-              "SELECT generation,expires_ms,completed_ms FROM refreshes WHERE key=?",
-              `token:${family}`,
-            )
-            .toArray()[0];
-          if (row && row.completed_ms === null && row.expires_ms > Date.now())
-            throw new ApiError(503, "provider_refresh_busy");
-          const generation = (row?.generation ?? 0) + 1;
-          const claimed = this.claimRefresh(`token:${family}`, generation);
-          if (!claimed.granted || !claimed.claim)
-            throw new ApiError(503, "provider_refresh_busy");
-          return { generation, claim: claimed.claim };
-        },
-        complete: (family, claim, generation) =>
-          this.completeRefresh(`token:${family}`, claim, generation),
-        pause: () => this.finish("", 60000),
-      });
+      if (
+        operation !== "provider_identity" &&
+        operation !== "historical_comparison"
+      )
+        throw new ApiError(503, "provider_operation_unavailable");
+      const control = this.providerControl();
+      const result =
+        operation === "provider_identity"
+          ? await this.provider.identity(this.env, control)
+          : await this.provider.comparison(this.env, control);
       return { ...result, accounting: this.providerAccounting() };
     } catch (error) {
       return {

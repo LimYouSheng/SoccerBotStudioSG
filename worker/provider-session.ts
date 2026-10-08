@@ -1,11 +1,12 @@
 import { ApiError } from "./policy";
+import { historicalComparison } from "./provider-normalization";
 import {
   providerRequest,
   providerSecrets,
   type ProviderFamily,
 } from "./provider-transport";
 
-type Control = {
+export type ProviderControl = {
   reserve: () => Promise<string>;
   finish: (id: string, cooldown: number) => void;
   claim: (family: ProviderFamily) => { generation: number; claim: string };
@@ -26,10 +27,53 @@ export class ProviderSession {
   private tokens = new Map<ProviderFamily, { value: string; until: number }>();
   private authentication = new Map<ProviderFamily, Promise<string>>();
   private identityRead: Promise<Record<string, unknown>> | undefined;
+  private comparisonRead: Promise<Record<string, unknown>> | undefined;
   private cachedIdentity:
     { value: Record<string, unknown>; until: number } | undefined;
 
-  private async token(family: ProviderFamily, env: Env, control: Control) {
+  async comparison(
+    env: Env,
+    control: ProviderControl,
+  ): Promise<Record<string, unknown>> {
+    if (this.comparisonRead) return this.comparisonRead;
+    const run = async () => {
+      const secrets = providerSecrets(env);
+      if (secrets.company.toLowerCase() === "soccerbotstudio")
+        throw new ApiError(503, "client_account_forbidden");
+      const token = await this.token("admin", env, control);
+      const identity = object(
+        await providerRequest("identity", secrets, token, control),
+      );
+      if (identity.login !== secrets.company)
+        throw new ApiError(503, "provider_identity_unverified");
+      const booking = object(
+        await providerRequest("historical-booking", secrets, token, control),
+      );
+      const invoice = object(
+        await providerRequest("historical-invoice", secrets, token, control),
+      );
+      if (String(booking.id) !== "23" || String(invoice.id) !== "23")
+        throw new ApiError(503, "provider_reference_unverified");
+      return historicalComparison(booking, invoice);
+    };
+    const pending = run();
+    this.comparisonRead = pending;
+    try {
+      return await pending;
+    } catch (error) {
+      this.tokens.clear();
+      control.pause();
+      throw error;
+    } finally {
+      this.comparisonRead = undefined;
+    }
+  }
+
+  private async token(
+    family: ProviderFamily,
+    env: Env,
+    control: ProviderControl,
+  ) {
     const current = this.tokens.get(family);
     if (current && current.until > Date.now()) return current.value;
     const shared = this.authentication.get(family);
@@ -70,7 +114,10 @@ export class ProviderSession {
     }
   }
 
-  async identity(env: Env, control: Control): Promise<Record<string, unknown>> {
+  async identity(
+    env: Env,
+    control: ProviderControl,
+  ): Promise<Record<string, unknown>> {
     if (this.cachedIdentity && this.cachedIdentity.until > Date.now())
       return this.cachedIdentity.value;
     if (this.identityRead) return this.identityRead;
