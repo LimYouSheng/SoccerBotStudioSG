@@ -77,7 +77,15 @@ export function BookingProvider({
       revision: 0,
     },
   );
-  const [action, setAction] = useState<ActionState>({ status: "idle" });
+  const [actionState, dispatchAction] = useState<
+    ActionState & { owner: BookingService }
+  >({ status: "idle", owner: service });
+  const setAction = useCallback(
+    (next: ActionState) => dispatchAction({ ...next, owner: service }),
+    [service],
+  );
+  const action: ActionState =
+    actionState.owner === service ? actionState : { status: "idle" };
   const active = useRef<{
     controller: AbortController;
     operation: Action;
@@ -157,7 +165,7 @@ export function BookingProvider({
             }
           : {}),
       });
-  }, []);
+  }, [setAction]);
   useEffect(() => {
     mounted.current = true;
     commit(
@@ -248,7 +256,7 @@ export function BookingProvider({
         if (active.current === request) active.current = null;
       }
     },
-    [service, commit],
+    [service, commit, setAction],
   );
   useEffect(() => {
     if (value.attempt?.status !== "checking") return;

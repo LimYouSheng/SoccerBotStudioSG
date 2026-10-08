@@ -229,6 +229,10 @@
   },
   {
     "file": "src/features/booking/async-booking.test.tsx",
+    "title": "replacing an adapter cancels its pending action and releases the new review screen"
+  },
+  {
+    "file": "src/features/booking/async-booking.test.tsx",
     "title": "replacing an adapter with the same mode invalidates its completed availability"
   },
   {

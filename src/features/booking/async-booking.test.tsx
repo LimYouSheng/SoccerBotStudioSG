@@ -608,3 +608,41 @@ test("replacing an adapter with the same mode invalidates its completed availabi
   });
   expect(screen.getByText("No times on this day.")).toBeVisible();
 });
+
+test("replacing an adapter cancels its pending action and releases the new review screen", async () => {
+  const pending = deferred<Attempt>();
+  const checkout = vi.fn<BookingService["checkout"]>(() => pending.promise);
+  const original = { ...demoBookingService, checkout };
+  const replacement = { ...demoBookingService };
+  const view = render(
+    <BookingProvider bookingService={original}>
+      <ReviewStep />
+      <Probe />
+    </BookingProvider>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Continue to payment" }));
+  expect(
+    screen.getByRole("button", { name: "Checking your booking…" }),
+  ).toBeDisabled();
+  view.rerender(
+    <BookingProvider bookingService={replacement}>
+      <ReviewStep />
+      <Probe />
+    </BookingProvider>,
+  );
+  expect(
+    screen.getByRole("button", { name: "Continue to payment" }),
+  ).toBeEnabled();
+  expect(checkout.mock.calls[0][0].signal?.aborted).toBe(true);
+  await act(async () => {
+    pending.resolve(demoBookingModel.checkout(draft(), null));
+  });
+  expect(loadBooking().attempt).toBeNull();
+  expect(navigation.push).not.toHaveBeenCalled();
+  await act(async () => {
+    fireEvent.click(
+      screen.getByRole("button", { name: "Continue to payment" }),
+    );
+  });
+  expect(navigation.push).toHaveBeenCalledExactlyOnceWith("/book/payment/");
+});
