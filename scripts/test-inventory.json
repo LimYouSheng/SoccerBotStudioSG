@@ -176,8 +176,92 @@
     "title": "guest selection creates a guest contact and continues to the session"
   },
   {
+    "file": "src/features/booking/async-booking.test.tsx",
+    "title": "a changed booking session invalidates availability even if the old date response arrives last"
+  },
+  {
+    "file": "src/features/booking/async-booking.test.tsx",
+    "title": "an old attempt completion cannot replace a newer checkout after cancellation"
+  },
+  {
+    "file": "src/features/booking/async-booking.test.tsx",
+    "title": "availability failure is not no slots and an explicit retry retains the basket"
+  },
+  {
+    "file": "src/features/booking/async-booking.test.tsx",
+    "title": "calendar and basket share delayed availability once and preserve selection through loading success"
+  },
+  {
+    "file": "src/features/booking/async-booking.test.tsx",
+    "title": "delayed pay blocks duplicate actions and draft mutation until the same attempt advances"
+  },
+  {
+    "file": "src/features/booking/async-booking.test.tsx",
+    "title": "editing a draft cancels checkout and a late result cannot overwrite entered information"
+  },
+  {
+    "file": "src/features/booking/async-booking.test.tsx",
+    "title": "identity expiry during checkout rejects completion and preserves the member draft"
+  },
+  {
+    "file": "src/features/booking/async-booking.test.tsx",
+    "title": "interrupted status resolution remains recoverable after leaving and returning to payment"
+  },
+  {
+    "file": "src/features/booking/async-booking.test.tsx",
+    "title": "leaving review cancels its pending action without a late navigation or stored attempt"
+  },
+  {
+    "file": "src/features/booking/async-booking.test.tsx",
+    "title": "malformed availability is displayed as failure while valid empty availability is an empty day"
+  },
+  {
+    "file": "src/features/booking/async-booking.test.tsx",
+    "title": "malformed checkout cannot navigate or create an attempt and retry preserves the reviewed draft"
+  },
+  {
+    "file": "src/features/booking/async-booking.test.tsx",
+    "title": "payment resolution failure ends loading and explicit status recovery keeps the original attempt"
+  },
+  {
+    "file": "src/features/booking/async-booking.test.tsx",
+    "title": "reordered dates and player revisions discard old replies even when the adapter ignores abort"
+  },
+  {
+    "file": "src/features/booking/async-booking.test.tsx",
+    "title": "replacing an adapter with the same mode invalidates its completed availability"
+  },
+  {
+    "file": "src/features/booking/async-booking.test.tsx",
+    "title": "review waits before navigation and same-turn duplicate checkout has one logical effect"
+  },
+  {
+    "file": "src/features/booking/async-booking.test.tsx",
+    "title": "server render performs no availability or booking operation"
+  },
+  {
+    "file": "src/features/booking/async-booking.test.tsx",
+    "title": "unmount aborts the shared read and a late reply cannot replace remounted session data"
+  },
+  {
+    "file": "src/features/booking/async-booking.test.tsx",
+    "title": "unsupported live mode exposes unavailable state and cannot restore a paid demo receipt"
+  },
+  {
     "file": "src/features/booking/details-step.test.tsx",
     "title": "details contains only the five contact fields and validates them before review"
+  },
+  {
+    "file": "src/features/booking/protected-confirmation.test.tsx",
+    "title": "a late reply from a previous attempt cannot confirm the current attempt"
+  },
+  {
+    "file": "src/features/booking/protected-confirmation.test.tsx",
+    "title": "denied and malformed responses cannot show confirmation or protected details"
+  },
+  {
+    "file": "src/features/booking/protected-confirmation.test.tsx",
+    "title": "shows checking before the protected server result and confirms only verified evidence"
   },
   {
     "file": "src/features/booking/time-step.test.tsx",
@@ -210,6 +294,42 @@
   {
     "file": "src/features/enquiry/enquiry-page.test.tsx",
     "title": "enquiry waits for hydration then preserves entered details through submission"
+  },
+  {
+    "file": "src/services/async-booking.test.ts",
+    "title": "a malformed payment transition cannot bypass checking into paid confirmation"
+  },
+  {
+    "file": "src/services/async-booking.test.ts",
+    "title": "all live booking operations remain unavailable and never call demo or transport"
+  },
+  {
+    "file": "src/services/async-booking.test.ts",
+    "title": "an adapter cannot mutate the validated input to approve a different draft"
+  },
+  {
+    "file": "src/services/async-booking.test.ts",
+    "title": "async availability waits for a delayed response and validates the requested date"
+  },
+  {
+    "file": "src/services/async-booking.test.ts",
+    "title": "attempt responses cannot change identity approved draft or paid association"
+  },
+  {
+    "file": "src/services/async-booking.test.ts",
+    "title": "cancellation ends a non-cooperative read and late rejection stays handled"
+  },
+  {
+    "file": "src/services/async-booking.test.ts",
+    "title": "invalid inputs are rejected before the adapter and malformed foreign-date duplicate replies are refused"
+  },
+  {
+    "file": "src/services/async-booking.test.ts",
+    "title": "named async demo contract completes checkout payment and one repeated receipt without provider traffic"
+  },
+  {
+    "file": "src/services/async-booking.test.ts",
+    "title": "transport rejection is a stable safe error without leaking raw response details"
   },
   {
     "file": "src/services/booking.test.ts",
@@ -324,24 +444,8 @@
     "title": "validates all required contact fields and their length limits"
   },
   {
-    "file": "src/features/booking/protected-confirmation.test.tsx",
-    "title": "shows checking before the protected server result and confirms only verified evidence"
-  },
-  {
-    "file": "src/features/booking/protected-confirmation.test.tsx",
-    "title": "denied and malformed responses cannot show confirmation or protected details"
-  },
-  {
-    "file": "src/features/booking/protected-confirmation.test.tsx",
-    "title": "a late reply from a previous attempt cannot confirm the current attempt"
-  },
-  {
     "file": "tests/customer.spec.ts",
-    "title": "public routes remove staff access and fit the viewport"
-  },
-  {
-    "file": "tests/customer.spec.ts",
-    "title": "guest multi-date booking survives reload and exports calendar and PDF"
+    "title": "50-minute cadence, automatic instructors, contact validation and final-slot conflict"
   },
   {
     "file": "tests/customer.spec.ts",
@@ -349,11 +453,7 @@
   },
   {
     "file": "tests/customer.spec.ts",
-    "title": "late payment has a contact path without another payment"
-  },
-  {
-    "file": "tests/customer.spec.ts",
-    "title": "50-minute cadence, automatic instructors, contact validation and final-slot conflict"
+    "title": "elapsed selections block checkout on an open page and remain removable before a future multi-session payment"
   },
   {
     "file": "tests/customer.spec.ts",
@@ -365,6 +465,22 @@
   },
   {
     "file": "tests/customer.spec.ts",
+    "title": "first visit offers the Player App and dismissal persists while the navbar download remains"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "guest multi-date booking survives reload and exports calendar and PDF"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "header blue and the typography hierarchy stay consistent across every booking step"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "hero completes naturally and reduced motion bypasses both transition surfaces"
+  },
+  {
+    "file": "tests/customer.spec.ts",
     "title": "hero entry restores the arena scene and click-to-skip without a logo overlay"
   },
   {
@@ -373,11 +489,7 @@
   },
   {
     "file": "tests/customer.spec.ts",
-    "title": "hero completes naturally and reduced motion bypasses both transition surfaces"
-  },
-  {
-    "file": "tests/customer.spec.ts",
-    "title": "oracle booking sizing and rotation disclaimers persist through checkout"
+    "title": "late payment has a contact path without another payment"
   },
   {
     "file": "tests/customer.spec.ts",
@@ -385,18 +497,14 @@
   },
   {
     "file": "tests/customer.spec.ts",
-    "title": "first visit offers the Player App and dismissal persists while the navbar download remains"
-  },
-  {
-    "file": "tests/customer.spec.ts",
-    "title": "header blue and the typography hierarchy stay consistent across every booking step"
-  },
-  {
-    "file": "tests/customer.spec.ts",
-    "title": "elapsed selections block checkout on an open page and remain removable before a future multi-session payment"
+    "title": "oracle booking sizing and rotation disclaimers persist through checkout"
   },
   {
     "file": "tests/customer.spec.ts",
     "title": "protected confirmation waits for server evidence and rejects a tampered return"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "public routes remove staff access and fit the viewport"
   }
 ]

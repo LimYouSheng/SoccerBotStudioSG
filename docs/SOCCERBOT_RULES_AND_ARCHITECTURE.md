@@ -4,6 +4,10 @@ Canonical current contract. `SERVICE_CONTRACTS.md` owns service inputs, results,
 
 Project/package name: **SoccerBotStudioSG**; npm identifier: `soccerbotstudiosg`. Repository: [LimYouSheng/SoccerBotStudioSG](https://github.com/LimYouSheng/SoccerBotStudioSG). Current verified main is `3bf8e3b45b0d771bc76e9087932c0180000d83d0`, tree `bccdba4883eb2a4c0bd616fb81caa7613dbd7e4d`, after YS merged PR#10; main CI37743098312 passed. The reviewed PR candidate262a69e passed required CI run37738237155; its tree matches this main. Historical main97b42c7/run37589441392 and earlier protected-main observation remain retained evidence. Fresh protection read on8October returned403; current settings are not independently reverified. Required `verify / frontend` from GitHub Actions remains the canonical gate. Baseline PR #4 preserved the uploaded Mac source but was merged without explicit user approval; Journey records that failure. New work uses a new feature branch; the merged experiment’s Cloud-preview gate remains incomplete. The app remains a frontend demo; live provider, Cloudflare production and physical-device acceptance are separate gates.
 
+## M3.2 exception — 9 October 2026
+
+The owner authorizes one six-hour M3.2 build on verified M3.1 while formal M1/M2.5 remain pending: named async customer booking contracts, guarded UI state, synthetic tests, canonical docs, feature-branch publication and final CI. A developer deployment is conditional on necessary changed-behavior evidence; no routine deployment is required. Provider disabled/end0 and closed grants remain mandatory. No provider-account calls, settings, business writes, new resources, applied migration edits, main/merge or production changes. PROGRESS is the sole current ledger and consumption owner.
+
 ## Development foundation exception — 8 October 2026
 
 The current direct instruction authorizes application/Worker/persistence/tooling, compatible development-only migrations, the named development resources and deployment, bounded synthetic/provider work after prerequisites, commits/push and draft PR. This explicitly supersedes prior no-implementation/no-deployment task wording only within this scope. M1/M2/M2.5, client staging, production and device acceptance remain incomplete. No main push, merge/auto-merge, protection changes, paid upgrades, DNS, app404 changes, client writes, real funds, native callback/security/financial changes or native-route replacement.
@@ -193,7 +197,7 @@ flowchart TD
 5. Payment: keep the approved native SimplyBook → SBPay → HitPay route. Reuse the original protected attempt on return/reload. Verified callbacks wake reconciliation when supported; otherwise use the proved status read. Customer polling reads our protected journal and does not automatically trigger another upstream call. No five-second artificial delay in the future live adapter; the existing demo simulation remains unchanged.
 6. Confirmation: read one protected verified snapshot for the existing nonduplicated detail order and exports. No separate provider request per card/field. A successful browser return, cached calendar or missing callback cannot establish payment.
 
-`TimeStep` currently calls synchronous demo availability during render. M3.2/M4.2 must introduce one asynchronous query owner behind the service boundary, with in-flight sharing, lifecycle cleanup and request/revision correlation. Do not turn that render-time call into network I/O or duplicate fetching in instructor/summary components. Cancelling a UI subscription does not cancel a provider write or imply a shared read has stopped upstream. Preserve native navigation, approved loader/hero timing and reduced motion. Measure decorative time separately AND include it in user-visible entry time; never hide it from reports. Start data work during the animation without changing accepted presentation in this planning task.
+`TimeStep` and the basket now consume one asynchronous availability owner in BookingProvider (M3.2). It deduplicates dates within the current input revision, aborts disposed work and rejects stale results; exact keys and invalidation are in Service Contracts. Do not turn that render-time call into network I/O or duplicate fetching in instructor/summary components. Cancelling a UI subscription does not cancel a provider write or imply a shared read has stopped upstream. Preserve native navigation, approved loader/hero timing and reduced motion. Measure decorative time separately AND include it in user-visible entry time; never hide it from reports. Start data work during the animation without changing accepted presentation in this planning task.
 
 ### PERF-03 — Cache, freshness and invalidation
 
@@ -656,7 +660,11 @@ Performance addition: define the planned logical operations in Service Contracts
 
 Exit evidence: Contract and component tests cover delay, failure, reordered replies and unavailable live operations. No silent mock fallback.
 
-Depends on: M3.1.
+M3.2 implementation (9 October): all five existing booking interactions now use named validated async contracts. The Preview adapter alone uses the existing simulation model; live booking methods explicitly refuse execution, with no fallback or demo-storage authority. Query and action lifecycle owners preserve selection/contact input, gate navigation on validated success, reject old session/attempt replies and retain interrupted status recovery. Existing protected confirmation and Worker foundation are unchanged. Service Contracts owns exact inputs/errors/availability and query revision keys. Synthetic component and contract evidence is recorded in PROGRESS; final-source CI belongs in PR11.
+
+The owner explicitly authorizes this bounded M3.2 dependency exception while M1/M2.5 remain open. Zero provider calls/bookings/payments. Technical criteria, formal closure and owner/device acceptance are separate. No live uncached-provider B2 measurement or completed native checkout is claimed; those require separately authorized supported operations. Next independent task is the existing M3.3 minimal-state/recovery gap review under an explicit scope, reusing D1 and applied0001–0005 rather than rebuilding them.
+
+Depends on: M3.1 (technically verified under the approved exception); formal M1/M2.5 closure still pending.
 
 ### M3.3 — Minimal durable state and migrations
 

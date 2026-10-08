@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/icon";
 import { INSTRUCTORS, PRICE_CENTS } from "@/domain/catalog";
 import { isElapsed, slotKey } from "@/domain/booking";
@@ -11,11 +11,10 @@ import {
   money,
   todaySG,
 } from "@/domain/dates";
-import { services } from "@/services";
 import type { AvailableSlot } from "@/services/contracts";
 import { useBooking } from "./provider";
 export function TimeStep() {
-  const { draft, update, now } = useBooking();
+  const { draft, update, now, availability, showDate } = useBooking();
   const today = todaySG(new Date(now));
   const [date, setDate] = useState(() => draft.slots[0]?.date || today),
     [selectedMonth, setMonth] = useState(() =>
@@ -34,18 +33,28 @@ export function TimeStep() {
     firstDay = (new Date(`${month}T12:00:00Z`).getUTCDay() + 6) % 7;
   const days = new Date(`${monthAt(today, offset + 1)}T12:00:00Z`);
   days.setUTCDate(0);
-  const slots = services.booking.availability(date);
+  useEffect(() => {
+    showDate(date);
+    return () => showDate(null);
+  }, [date, showDate]);
+  const { retry } = availability;
+  const result = availability.result?.dates.includes(date)
+    ? availability.result
+    : null;
+  const slots =
+    result?.status === "success"
+      ? result.slots.filter((slot) => slot.date === date)
+      : [];
   function select({ date, start, instructor, rotationAt }: AvailableSlot) {
     const slot = { date, start, instructor, rotationAt },
       selected = draft.slots.some((item) => slotKey(item) === slotKey(slot));
     if (
       !selected &&
-      !services.booking
-        .availability(date)
-        .some(
+      (isElapsed(slot) ||
+        !slots.some(
           (candidate) =>
             slotKey(candidate) === slotKey(slot) && candidate.available,
-        )
+        ))
     )
       return;
     update({
@@ -145,7 +154,18 @@ export function TimeStep() {
         <h2>{dateLabel(date)}</h2>
         <span>SGT · Per session</span>
       </div>
-      {slots.length ? (
+      {!result ? (
+        <p role="status">Checking available times…</p>
+      ) : result.status !== "success" ? (
+        <div className="alert" role="alert">
+          <p>{result.message}</p>
+          {result.status !== "unavailable" && (
+            <button className="text-link" onClick={retry}>
+              Try again
+            </button>
+          )}
+        </div>
+      ) : slots.length ? (
         <div className="times" role="group" aria-label="Session times">
           {slots.map((slot) => {
             const selected = draft.slots.some(
@@ -157,7 +177,7 @@ export function TimeStep() {
                 key={slot.start}
                 className={`time${selected ? " selected" : ""}`}
                 aria-pressed={selected}
-                disabled={!slot.available && !selected}
+                disabled={(!slot.available || elapsed) && !selected}
                 onClick={() => select(slot)}
               >
                 <span className="time-details">

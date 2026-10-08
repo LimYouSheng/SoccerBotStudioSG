@@ -16,7 +16,7 @@ import {
   START_INTERVAL_MINUTES,
 } from "../domain/catalog";
 import { addDays, todaySG, clock } from "../domain/dates";
-import { demoBookingService as service } from "@/services/demo/booking";
+import { demoBookingModel as service } from "@/services/demo/booking";
 import {
   demoIdentityService as identity,
   DEMO_CODE,

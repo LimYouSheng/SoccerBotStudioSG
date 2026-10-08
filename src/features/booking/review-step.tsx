@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/icon";
 import { Dialog } from "@/components/dialog";
 import { selectionErrors } from "@/domain/booking";
@@ -48,10 +48,19 @@ export function Arrival() {
   );
 }
 export function ReviewStep() {
-  const { draft, update, checkout, now } = useBooking(),
+  const { draft, update, checkout, now, action, cancel } = useBooking(),
     router = useRouter();
-  const [error, setError] = useState(""),
-    [policy, setPolicy] = useState(false);
+  const [policy, setPolicy] = useState(false);
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      cancel();
+    };
+  }, [cancel]);
+  const error = action.error;
+  const busy = action.status === "loading";
   return (
     <>
       <h1 className="page-title">Review booking</h1>
@@ -122,18 +131,17 @@ export function ReviewStep() {
         <button
           className="button"
           disabled={
-            !draft.accepted || selectionErrors(draft.slots, now).length > 0
+            busy ||
+            !draft.accepted ||
+            selectionErrors(draft.slots, now).length > 0
           }
-          onClick={() => {
-            try {
-              checkout();
+          onClick={async () => {
+            if ((await checkout()) && mounted.current)
               router.push("/book/payment/");
-            } catch (e) {
-              setError((e as Error).message);
-            }
           }}
         >
-          Continue to payment <Icon name="arrow" />
+          {busy ? "Checking your booking…" : "Continue to payment"}{" "}
+          <Icon name="arrow" />
         </button>
       </div>
       {policy && (

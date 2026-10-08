@@ -95,7 +95,7 @@ function fixture(t) {
   }
   const service = load(
     path.join(root, "src/services/demo/booking.ts"),
-  ).demoBookingService;
+  ).demoBookingModel;
   const { blankDraft } = load(path.join(root, "src/domain/booking.ts"));
   let nextDay = 6;
   function attempt(outcome) {

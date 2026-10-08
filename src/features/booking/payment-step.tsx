@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/icon";
 import { CONTACT, SERVICE_NAME } from "@/domain/catalog";
 import { totalCents } from "@/domain/booking";
@@ -8,9 +8,11 @@ import { money } from "@/domain/dates";
 import { useBooking } from "./provider";
 import { SessionList } from "./summary";
 export function PaymentStep() {
-  const { attempt, pay, check } = useBooking(),
-    [method, setMethod] = useState("card"),
-    [error, setError] = useState("");
+  const { attempt, pay, check, resolve, action, cancel } = useBooking();
+  const [method, setMethod] = useState("card");
+  useEffect(() => () => cancel(), [cancel]);
+  const error = action.error;
+  const busy = action.status === "loading";
   if (!attempt) return null;
   const waiting = ["checking", "pending", "late"].includes(attempt.status),
     checking = attempt.status === "checking",
@@ -48,6 +50,11 @@ export function PaymentStep() {
             <span>Payment amount</span>
             <strong>{money(totalCents(attempt.draft))}</strong>
           </div>
+          {error && (
+            <p className="alert" role="alert">
+              {error}
+            </p>
+          )}
           {late ? (
             <a
               className="button wide payment-status-action"
@@ -58,10 +65,14 @@ export function PaymentStep() {
           ) : (
             <button
               className="button wide payment-status-action"
-              disabled={checking}
-              onClick={check}
+              disabled={busy || (checking && !error)}
+              onClick={() => {
+                void (checking ? resolve() : check());
+              }}
             >
-              {checking ? "Checking payment…" : "Check payment status"}
+              {busy || (checking && !error)
+                ? "Checking payment…"
+                : "Check payment status"}
             </button>
           )}
         </section>
@@ -134,15 +145,14 @@ export function PaymentStep() {
           )}
           <button
             className="button wide"
+            disabled={busy}
             onClick={() => {
-              try {
-                pay("success");
-              } catch (e) {
-                setError((e as Error).message);
-              }
+              void pay("success");
             }}
           >
-            Pay {money(totalCents(attempt.draft))}
+            {busy
+              ? "Starting payment…"
+              : `Pay ${money(totalCents(attempt.draft))}`}
           </button>
           <p className="payment-foot">
             Payment preview · No money will be charged.

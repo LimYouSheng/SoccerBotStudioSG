@@ -1,6 +1,8 @@
 # North Star: Cloudflare developer integration
 
-## Current outcome and authorization — 8 October 2026
+## Current outcome and authorization — 9 October 2026
+
+M3.2 implements named asynchronous booking services and guarded customer interaction state under the explicit 9 October dependency exception. All live booking operations remain unavailable; final technical evidence and candidate/deployment identities are in PROGRESS. No provider/account calls are authorized.
 
 M3.1 task closed: technical foundation scope verified under the approved dependency exception; formal M1/M2.5 closure and owner acceptance remain pending. Deployed log retrieval is unverified after403. Zero new provider calls/bookings/payments. PROGRESS owns the requirement/evidence/gap/action matrix; M1/M2.5 and owner acceptance remain open.
 

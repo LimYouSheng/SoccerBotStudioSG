@@ -13,7 +13,6 @@ import {
 } from "@/domain/booking";
 import { dateLabel, endTime, money } from "@/domain/dates";
 import { bookingCover } from "@/content/media";
-import { services } from "@/services";
 import { InstructorProfile } from "./instructor";
 import { useBooking } from "./provider";
 export function SessionList({
@@ -94,19 +93,19 @@ export function PriceSummary({ draft }: { draft: BookingDraft }) {
   );
 }
 export function Summary({ basket = false }: { basket?: boolean }) {
-  const { draft, update, now } = useBooking();
+  const { draft, update, now, availability } = useBooking();
+  const result = availability.result;
   const valid =
     selectionErrors(draft.slots, now).length === 0 &&
+    result?.status === "success" &&
     draft.slots.every((slot) =>
-      services.booking
-        .availability(slot.date)
-        .some(
-          (available) =>
-            slotKey(available) === slotKey(slot) &&
-            available.available &&
-            available.instructor === slot.instructor &&
-            available.rotationAt === slot.rotationAt,
-        ),
+      result.slots.some(
+        (available) =>
+          slotKey(available) === slotKey(slot) &&
+          available.available &&
+          available.instructor === slot.instructor &&
+          available.rotationAt === slot.rotationAt,
+      ),
     );
   const instructors = [
     ...new Set(orderedSlots(draft.slots).map((slot) => slot.instructor)),
@@ -186,8 +185,12 @@ export function Summary({ basket = false }: { basket?: boolean }) {
             ))}
           {draft.slots.length > 0 && !valid && (
             <p className="field-error" role="status">
-              A selected session is no longer available. Remove it and choose
-              another time.
+              {selectionErrors(draft.slots, now).length > 0 ||
+              result?.status === "success"
+                ? "A selected session is no longer available. Remove it and choose another time."
+                : !result
+                  ? "Checking your selected sessions…"
+                  : "Your selections are saved. Availability could not be checked."}
             </p>
           )}
           {basket && (
