@@ -1,6 +1,20 @@
 # SoccerBotStudioSG current progress
 
-## Native mapping discovery preparation — 9 October 2026
+## Approved discovery execution — closed 9 October 2026
+
+YS approved the concrete discovery-only packet with “Yes Go.” Management window07:42:10–08:42:10UTC; one180-second grant, maximum5 provider calls,66 management requests and4 deployments including rollback. Exact approved/deployed source661cbf54ae33bd8e08f00d631ea78772f9ea2ded passed both CI jobs37899051046; backend artifact11600959051 was downloaded, SHA256-checked and its135 sealed files/eight migrations verified without rebuilding. No booking/payment/provider-setting or merge authority.
+
+Applied remote0006→0007→0008 through existing Wrangler pipeline; immediate post-migration comparison proved original identity, attempts, effects, dispatches and grants unchanged after removing the two new zero-valued confirmation columns. Deployed the sealed release closed, then briefly enabled the same bytes. Management settings/deployment matched, but enabled public health still reported disabled. Stopped before the discovery POST; cause unresolved. Provider requests0 new, accounting remains8/80 with historical80 separate. No field metadata was obtained.
+
+Closure succeeded: developer Worker source661cbf54, versiona0b4befb-079b-4836-9967-b1f5fe101bd7, disabled/end0, expected D1/DO bindings and four secret names preserved; canonical curl health200 confirms closed revision. Explicit multi-statement grant-expiry query returned400, retained/count charged. Read-only reconciliation at07:57:01UTC confirms original expiry07:54:24.010UTC elapsed, stategranted/resultnull, no running discovery grant. Existing two grant fingerprints, effects and dispatches match; attempts remain8. Final attempt fingerprint includes the new columns while baseline strips them, so final byte equality is not asserted; immediate post-migration preservation proof remains valid. No replacement grant or retry.
+
+Consumption:56 new management requests, cumulative238/248;3 deployments, cumulative13/14;6/8 application HTTP requests;0/5 provider dispatches. One local proxy-CONNECT guard reservation was proven predispatch and retained separately, not counted as a Cloudflare request. First Python health failure and subsequent403/1010 retained; canonical existing curl client passed without security changes. All actual failed requests are counted. One rollback deployment and its8 management requests remain reserved; they cannot fund another enable/close cycle. Provider credentials were not revalidated because discovery never dispatched.
+
+Private immutable execution receipts: /workspace/work/native-discovery-execution-20261009/. No secrets/contact/capability values published. Draft PR14 remains unmerged. Current documentation commit/CI are separate from deployed661cbf54 and are recorded in PR14. No browser/local application suite repeated for these documentation changes.
+
+Next ready task: prepare a revised finite operator packet using the canonical curl transport, explicit bounded post-deploy readiness checks and a single parameterized grant UPDATE…RETURNING followed by a separate preservation read. Preserve mismatch/400 evidence; do not assume propagation or parameter binding is the proven cause. Another remote discovery window needs a new explicit enable/close allowance; no automatic relaunch. Customer checkout remains unavailable and all gap-matrix acceptance boundaries remain open.
+
+## Historical native mapping discovery preparation — 9 October 2026
 
 One agent, start15:10SGT, hard stop21:10SGT, maximum3 repairs per distinct issue. Owner-merged PR13 verified at main757fd288084d0e76c7cb7b766e33c4724d6988d0; main CI37896841542 actually passed verify/frontend and verify/backend and existing Pages deploy. PR source e6226ed/CI37893135210 preserved separately. Clean new feat/native-discovery-2026-10-09 starts from main. Original checkout/stash untouched.
 
@@ -428,7 +442,7 @@ The resulting final commit and its matching `verify / frontend` run are recorded
 
 ## Next run
 
-**One next ready task:** review the new candidate's two-job CI/artifact and obtain one consolidated approval for [the five-request discovery packet](docs/SERVICE_CONTRACTS.md#d1-smallest-field-discovery-packet) plus its separately bounded remote setup, or use the existing non-secret field-definition export. No complete checkout-plan prerequisite is imposed on discovery. Keep live access closed until explicit approval; no secrets/contact values, reset counters, historical23 replay or automatic replacement grant. Other precise native configuration decisions remain in the gap matrix.
+**One next ready task:** prepare the revised finite operator packet described in the current execution ledger. The approved discovery stopped before provider dispatch and is closed; do not replay its expired grant. Existing non-secret field-definition export remains an alternative. No complete checkout-plan prerequisite is imposed on discovery. Other precise native configuration decisions remain in the gap matrix.
 
 YS's deployed-main application inspection is separately pending. The original no-forwarding/network-disabled ephemeral-container preview blocker and C3 receipts below remain unchanged. All 44 M1–M9 subiteration IDs and performance gates remain intact.
 

@@ -1,10 +1,10 @@
 # North Star: Cloudflare developer integration
 
-## Current preparation — precise native discovery
+## Current outcome — discovery stopped and closed
 
 Resolve only the remaining player/customer/quote/shared-studio/priority/signing-and-sandbox mappings, beginning with the smallest useful read-only inspection. PR12 and PR13 are owner-merged; main757fd28 passed both required jobs in37896841542 and the existing Pages deployment. New feature branch starts at that main. Preserve native checkout, dynamic SimplyBook-owned catalogue, fresh validation and explicit Preview/live separation.
 
-Service Contracts owns the gap matrix, documented evidence, configuration proposals and exact five-request field-discovery packet. Rules owns the conditional existing-pipeline release/enable/close/rollback sequence and separate budget amendment. PROGRESS owns one agent's six-hour ledger. Source/synthetic/CI/new draft PR only; no provider call, remote migration, deployment, settings change or checkout authorized. Discovery may be approved before all checkout mappings are resolved; full trial remains unavailable until its remaining exact operations are known.
+Service Contracts owns the gap matrix, documented evidence, configuration proposals and exact five-request field-discovery packet. Rules owns the approved existing-pipeline release/enable/close/rollback boundary. YS approved discovery only: remote migrations and sealed release succeeded, but a management/health disagreement stopped the operation before provider dispatch. Worker closed and grant expired; PROGRESS owns exact consumption and failure receipts. No field metadata or checkout acceptance was obtained. Prepare a revised bounded operator packet; no automatic new remote window. Full trial remains unavailable until its remaining exact operations are known.
 
 Historical Experiment1 was the source/synthetic exception before queued M3.4: separate checkout with protected bounded status checking. Live native preparation remains unavailable; native return and no-return reconciliation remain separate. PROGRESS owns final receipts and unchanged accounting. M3.3, M1/M2.5/owner acceptance and Resend prerequisites remain preserved.
 
