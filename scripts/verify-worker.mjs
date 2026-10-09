@@ -28,6 +28,7 @@ const commands = [
       "worker/tests/foundation.test.mjs",
       "worker/tests/provider.test.mjs",
       "worker/tests/runtime.test.mjs",
+      "worker/tests/recovery.test.mjs",
     ],
   ],
 ];

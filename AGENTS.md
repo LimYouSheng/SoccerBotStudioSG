@@ -13,6 +13,8 @@
 - Physical fetch belongs only to `worker/provider-transport.ts`; operator grants are one-use, operation-scoped D1 records. Historical diagnostics cannot manufacture approved intent. Defaults remain closed. No authentication retry, grant replay or new campaign ID may reset consumption. Preserve unknown reservations and native-contract blockers.
 - Commands and browser-only secret installation: docs/CODEX_CLOUD. Provider/evidence representations: Service Contracts. No Google Drive or other external evidence upload.
 
+- The 9 October M3.3 instruction authorizes only source/isolated-runtime/CI durable recovery work. No provider call, deployment, remote migration, management recheck, activated scheduler, email sending or setup. Recovery metadata stays in D1; expired access never deletes unresolved evidence, and claiming recovery never permits write replay. PROGRESS owns this task's deadline, gaps and unchanged budgets.
+
 ## 2. Build
 
 - Use one cloud feature branch. Edit canonical owners; remove superseded logic and avoid duplicate implementations.

@@ -2,6 +2,8 @@
 
 ## Current outcome and authorization — 9 October 2026
 
+M3.3 adds minimal durable recovery scheduling/claims and retention safeguards under the explicit dependency exception. Reuse existing journal/coordinator/confirmation owners; no native reconciliation contract or automatic write replay is inferred. Source/local-runtime/CI only: no deployment, remote migration, provider calls, background activation or email setup. Exact acceptance/evidence is in PROGRESS; formal M1/M2.5 and owner acceptance remain pending.
+
 M3.2 implements named asynchronous booking services and guarded customer interaction state under the explicit 9 October dependency exception. All live booking operations remain unavailable; final technical evidence and candidate/deployment identities are in PROGRESS. No provider/account calls are authorized.
 
 M3.1 task closed: technical foundation scope verified under the approved dependency exception; formal M1/M2.5 closure and owner acceptance remain pending. Deployed log retrieval is unverified after403. Zero new provider calls/bookings/payments. PROGRESS owns the requirement/evidence/gap/action matrix; M1/M2.5 and owner acceptance remain open.

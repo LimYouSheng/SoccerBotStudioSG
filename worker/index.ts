@@ -5,6 +5,12 @@ import { verifyBindings } from "./bindings";
 import { traced, instrumentStorage, traceStatus } from "./diagnostics";
 import { developerOperation } from "./developer-operation";
 export { SoccerBotAccountCoordinator } from "./coordinator";
+export {
+  claimRecovery,
+  completeRecovery,
+  runRecoveryBatch,
+  retentionPreview,
+} from "./recovery";
 export { orchestrateBooking } from "./orchestration";
 // Journal operations are reachable only through trusted server composition, not HTTP.
 export {

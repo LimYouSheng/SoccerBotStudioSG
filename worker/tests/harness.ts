@@ -7,6 +7,10 @@ import worker, {
   requireRecovery,
   bindAssociation,
   orchestrateBooking,
+  claimRecovery,
+  completeRecovery,
+  runRecoveryBatch,
+  retentionPreview,
 } from "../index";
 export { SoccerBotAccountCoordinator };
 const harness = {
@@ -27,6 +31,10 @@ const harness = {
       coordinator: string;
       generation: number;
       claim: string;
+      recoveryClaim: import("../recovery").RecoveryClaim;
+      completion: unknown;
+      limit: number;
+      beforeMs: number;
       scenario: string;
     };
     try {
@@ -35,6 +43,64 @@ const harness = {
         input.coordinator || "synthetic-account",
       );
       switch (p) {
+        case "/test/recovery-claim":
+          result = await claimRecovery(
+            env.STATE,
+            input.id,
+            input.owner,
+            input.now,
+          );
+          break;
+        case "/test/recovery-complete": {
+          let clockReads = 0;
+          result = await completeRecovery(
+            env,
+            input.recoveryClaim,
+            input.completion,
+            () =>
+              input.scenario === "lease-expiry" && clockReads++ > 0
+                ? input.recoveryClaim.ready_ms
+                : input.now,
+          );
+          break;
+        }
+        case "/test/recovery-run": {
+          let reads = 0;
+          result = {
+            outcomes: await runRecoveryBatch(
+              env,
+              {
+                claimant: input.owner,
+                limit: input.limit,
+                now: () => input.now,
+              },
+              {
+                mode:
+                  input.scenario === "live"
+                    ? "live"
+                    : input.scenario === "unsupported"
+                      ? "unavailable"
+                      : "synthetic",
+                read: async () => {
+                  reads++;
+                  if (input.scenario === "throw")
+                    throw new Error("synthetic transport failure");
+                  return input.completion;
+                },
+              },
+            ),
+            reads,
+          };
+          break;
+        }
+        case "/test/retention":
+          result = await retentionPreview(
+            env.STATE,
+            input.now,
+            input.beforeMs,
+            input.limit,
+          );
+          break;
         case "/test/orchestrate": {
           const calls: string[] = [];
           result = {
@@ -72,6 +138,13 @@ const harness = {
                   throw new Error("Missing durable reservation");
                 if (input.scenario === "partial" && context.sessionIndex === 1)
                   throw new Error("Unknown provider outcome");
+                if (input.scenario === "late-effect")
+                  await claimRecovery(
+                    env.STATE,
+                    input.id,
+                    "synthetic-recovery-owner",
+                    Date.now() + 60000,
+                  );
                 return {
                   ...session,
                   currency: "SGD",

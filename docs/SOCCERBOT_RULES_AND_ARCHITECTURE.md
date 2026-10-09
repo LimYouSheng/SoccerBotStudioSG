@@ -674,13 +674,17 @@ Performance addition: implement the sole D1 attempt journal with durable claims/
 
 Exit evidence: Populated-state upgrade and interrupted-operation tests pass. Provider scheduling/payment records are not cloned into a second authority.
 
-Depends on: M3.1 and M2.5.
+M3.3 implementation (9 October, explicit dependency exception): additive0006 extends the existing D1 journal with one recovery record per original dispatch, bounded indexed selection, atomic claimant/generation/attempt fencing and expiry, finite safe-read deferral and explicit manual-review disposition. It preserves original effect identity and every unknown reservation. The canonical confirmation decision is reused; no live reconciliation/booking/payment adapter is supplied. Access expiry denies customers without erasing internal recovery evidence. Retention cleanup stays disabled pending an approved duration/disposition; bounded access dry-run inspection is not deletion authority. No deployment, remote migration, management recheck, cron/alarm, public trigger or provider call is authorized. Source/runtime/CI evidence and unchanged budgets belong in PROGRESS; M1/M2.5 and owner acceptance remain pending. This technical slice does not prove native no-return reconciliation.
+
+Depends on: technically verified M3.1/M3.2 under the explicit exception; formal M1/M2.5 remain open.
 
 ### M3.4 — Email challenge and abuse controls
 
 Deliver verification through the approved sender. Use single-use expiring challenges, bounded attempts, rate limits and verified Turnstile where applicable.
 
 Exit evidence: Wrong/expired/reused challenges and concurrent redemption reject. Enumeration and abuse tests pass. Authorized test recipient receives the actual email.
+
+M3.4 handover: reuse D1/access/policy and the named async boundaries. Resend remains the planned verification provider; exact verified developer From domain/address/account, recipient, secret binding and finite sending authority are still needed. Service Contracts owns the single-use/concurrent redemption, resend, expiry, enumeration, abuse, Turnstile and failure acceptance checklist. No speculative challenge schema, sender setup or email sending occurred in M3.3.
 
 Depends on: M3.2–M3.3; sender setup.
 

@@ -119,11 +119,11 @@ export async function requireRecovery(
 ) {
   const r = await db
     .prepare(
-      "UPDATE attempts SET state='recovery_required',version=version+1 WHERE id=? AND version=? AND state='dispatching'",
+      "UPDATE attempts SET state='recovery_required',version=version+1 WHERE id=? AND version=? AND state='dispatching' RETURNING version",
     )
     .bind(id, fence)
-    .run();
-  return r.meta.changes === 1;
+    .first<{ version: number }>();
+  return r !== null;
 }
 
 export const associationSchema = z

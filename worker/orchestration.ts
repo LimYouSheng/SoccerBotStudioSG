@@ -120,9 +120,9 @@ export async function orchestrateBooking(
   };
   const observed = async (step: string, referenceId: string) => {
     const result = await env.STATE.prepare(
-      "UPDATE session_effects SET outcome='observed',reference_id=? WHERE attempt_id=? AND step=? AND outcome='unknown'",
+      "UPDATE session_effects SET outcome='observed',reference_id=? WHERE attempt_id=? AND step=? AND outcome='unknown' AND EXISTS (SELECT 1 FROM attempts WHERE id=? AND version=? AND state='dispatching')",
     )
-      .bind(referenceId, id, step)
+      .bind(referenceId, id, step, id, fence)
       .run();
     if (result.meta.changes !== 1)
       throw new ApiError(409, "effect_completion_conflict");

@@ -1,7 +1,16 @@
 import { verifyConfirmation } from "../src/domain/confirmation";
-import { authenticate } from "./access";
+import { authenticate, type Access } from "./access";
 import { intentSchema, associationSchema } from "./journal";
 import { ApiError, policy } from "./policy";
+export type StoredAttempt = {
+  id: string;
+  created_ms: number;
+  deadline_ms: number;
+  state: string;
+  intent_json: string;
+  association_json: string | null;
+  observation_json: string | null;
+};
 export async function confirmation(
   request: Request,
   env: Env,
@@ -14,17 +23,18 @@ export async function confirmation(
       "SELECT id,created_ms,deadline_ms,state,intent_json,association_json,observation_json FROM attempts WHERE id=? AND owner_id=?",
     )
     .bind(id, access.owner_id)
-    .first<{
-      id: string;
-      created_ms: number;
-      deadline_ms: number;
-      state: string;
-      intent_json: string;
-      association_json: string | null;
-      observation_json: string | null;
-    }>();
+    .first<StoredAttempt>();
   if (!row) throw new ApiError(404, "attempt_unavailable");
-  const p = policy(env);
+  return decideStoredConfirmation(row, access, now, policy(env));
+}
+// Shared decision mapping. Caller supplies independently established authority:
+// authenticated customer access, or a current bounded internal recovery claim.
+export function decideStoredConfirmation(
+  row: StoredAttempt,
+  access: Access,
+  now: number,
+  p: ReturnType<typeof policy>,
+) {
   if (!row.association_json || !row.observation_json)
     return {
       status: now >= row.deadline_ms ? "unresolved" : "pending",
