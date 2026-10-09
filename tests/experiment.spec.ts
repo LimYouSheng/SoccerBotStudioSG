@@ -20,16 +20,25 @@ async function outcome(page: Page, label: string) {
   await expect(
     popup.getByRole("heading", { name: "Simulated checkout" }),
   ).toBeVisible();
-  await popup.getByRole("button", { name: label, exact: true }).click();
-  await expect(
-    popup.getByRole("heading", { name: "Synthetic evidence saved" }),
-  ).toBeVisible();
-  // Await the real bounded read rather than extending assertion timeouts or sleeping.
-  const read = page.waitForResponse(
-    (r) => r.url().endsWith("/confirmation") && [200, 401].includes(r.status()),
-  );
-  await page.bringToFront();
-  await read;
+  // Arm the protected-result listener before the synthetic write. A suspended
+  // original page may resume during navigation; never miss its terminal reply.
+  await Promise.all([
+    page.waitForResponse(async (response) => {
+      if (!response.url().endsWith("/confirmation")) return false;
+      if (label === "Expire synthetic access") return response.status() === 401;
+      if (response.status() !== 200) return false;
+      const expected =
+        label === "Simulate successful payment" ? "confirmed" : "unresolved";
+      return (await response.json()).status === expected;
+    }),
+    (async () => {
+      await popup.getByRole("button", { name: label, exact: true }).click();
+      await expect(
+        popup.getByRole("heading", { name: "Synthetic evidence saved" }),
+      ).toBeVisible();
+      await page.bringToFront();
+    })(),
+  ]);
   return popup;
 }
 test("synthetic checkout opens separately and only canonical evidence confirms the preserved attempt", async ({
