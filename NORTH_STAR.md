@@ -8,7 +8,7 @@ Service Contracts owns the gap matrix, documented evidence, configuration propos
 
 Historical Experiment1 was the source/synthetic exception before queued M3.4: separate checkout with protected bounded status checking. Live native preparation remains unavailable; native return and no-return reconciliation remain separate. PROGRESS owns final receipts and unchanged accounting. M3.3, M1/M2.5/owner acceptance and Resend prerequisites remain preserved.
 
-## Current outcome and authorization — 9 October 2026
+## Historical foundation outcome and authorization — 9 October 2026
 
 M3.3 adds minimal durable recovery scheduling/claims and retention safeguards under the explicit dependency exception. Reuse existing journal/coordinator/confirmation owners; no native reconciliation contract or automatic write replay is inferred. Source/local-runtime/CI only: no deployment, remote migration, provider calls, background activation or email setup. Exact acceptance/evidence is in PROGRESS; formal M1/M2.5 and owner acceptance remain pending.
 

@@ -428,7 +428,7 @@ The resulting final commit and its matching `verify / frontend` run are recorded
 
 ## Next run
 
-**One next ready task:** bind the exact remaining values and obtain approval of [the complete staged experiment](docs/SERVICE_CONTRACTS.md#staged-single-session-experiment--approval-proposal), then prepare and offline-test the bound probe before dispatch. Do not await six support answers, re-request accepted owner confirmations, repeat the exhausted original allowance or bypass stage gates. No secrets or contact values belong in the PR.
+**One next ready task:** review the new candidate's two-job CI/artifact and obtain one consolidated approval for [the five-request discovery packet](docs/SERVICE_CONTRACTS.md#d1-smallest-field-discovery-packet) plus its separately bounded remote setup, or use the existing non-secret field-definition export. No complete checkout-plan prerequisite is imposed on discovery. Keep live access closed until explicit approval; no secrets/contact values, reset counters, historical23 replay or automatic replacement grant. Other precise native configuration decisions remain in the gap matrix.
 
 YS's deployed-main application inspection is separately pending. The original no-forwarding/network-disabled ephemeral-container preview blocker and C3 receipts below remain unchanged. All 44 M1–M9 subiteration IDs and performance gates remain intact.
 
