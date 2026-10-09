@@ -31,6 +31,8 @@ export function checkWorker(root) {
         JSON.stringify(
           [
             "https://user-api.simplybook.me/login",
+            "https://user-api.simplybook.me/",
+            "https://user-api-v2.simplybook.me/admin/invoices/",
             "https://user-api-v2.simplybook.me/admin/auth",
             "https://user-api-v2.simplybook.me/admin/company/info",
             "https://user-api-v2.simplybook.me/admin/tariff/current",
@@ -52,7 +54,14 @@ export function checkWorker(root) {
             if (!graph.has(target))
               errors.push(`Missing Worker import: ${name} -> ${spec}`);
             else graph.get(name).push(target);
-          } else if (spec !== "../src/domain/confirmation")
+          } else if (
+            ![
+              "../src/domain/confirmation",
+              "../src/domain/native-checkout",
+              "../src/domain/booking-policy",
+              "../src/domain/catalog",
+            ].includes(spec)
+          )
             errors.push(`Forbidden Worker layer: ${name} -> ${spec}`);
         }
       }

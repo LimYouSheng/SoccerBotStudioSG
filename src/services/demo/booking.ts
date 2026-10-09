@@ -16,7 +16,8 @@ import {
   type Outcome,
 } from "@/domain/booking";
 import { clock, clockMinutes } from "@/domain/dates";
-import { SESSION_MINUTES, SESSION_STARTS, STUDIOS } from "@/domain/catalog";
+import { SESSION_MINUTES } from "@/domain/booking-policy";
+import { SESSION_STARTS, STUDIOS } from "@/domain/demo-catalog";
 import { BookingServiceError } from "../contracts";
 import { defineBookingService } from "../booking";
 import { safeRead, safeWrite, upgradeBooking } from "../storage";

@@ -1,3 +1,5 @@
+import { z } from "zod";
+import { providerId } from "./provider-normalization";
 import { measure } from "./diagnostics";
 import { ApiError } from "./policy";
 
@@ -8,7 +10,64 @@ export type ProviderOperation =
   | "identity"
   | "tariff"
   | "historical-booking"
-  | "historical-invoice";
+  | "historical-invoice"
+  | "native";
+// Retained request-builder shape, not a raw HTTP capture. Bounds are local policy.
+const contactText = z
+  .string()
+  .min(1)
+  .max(256)
+  .refine((value) => value.trim() === value && !/[\x00-\x1f\x7f]/.test(value));
+export const nativeClientSchema = z
+  .object({
+    name: contactText,
+    email: contactText.pipe(z.email()),
+    phone: contactText,
+  })
+  .strict();
+// Invoice handling is a control, not a discovered custom intake answer.
+export const nativeAdditionalSchema = z
+  .object({ handle_invoice: z.literal(true) })
+  .strict();
+export function nativeBookFields(client: unknown, additional: unknown) {
+  const a = nativeClientSchema.safeParse(client);
+  const b = nativeAdditionalSchema.safeParse(additional);
+  if (!a.success || !b.success)
+    throw new ApiError(503, "native_request_fields_invalid");
+  return { client: a.data, additional: b.data };
+}
+export type NativeExchange = (
+  request: NativeRequest,
+  signal?: AbortSignal,
+) => Promise<{ body: unknown; receivedAtMs: number }>;
+export type NativeRequest =
+  | { kind: "catalogue-services" }
+  | { kind: "catalogue-instructors" }
+  | {
+      kind: "eligible-instructors";
+      serviceId: string;
+      date: string;
+      time: string;
+    }
+  | { kind: "required-fields"; serviceId: string }
+  | {
+      kind: "availability";
+      serviceId: string;
+      instructorId: string;
+      date: string;
+    }
+  | {
+      kind: "book";
+      serviceId: string;
+      instructorId: string;
+      date: string;
+      time: string;
+      client: z.infer<typeof nativeClientSchema>;
+      additional: z.infer<typeof nativeAdditionalSchema>;
+    }
+  | { kind: "booking-read"; bookingId: string; signature: string }
+  | { kind: "invoice-read"; invoiceId: string }
+  | { kind: "payment-link"; invoiceId: string };
 export type ProviderSecrets = {
   company: string;
   login: string;
@@ -44,9 +103,12 @@ export async function providerRequest(
     reserve: () => Promise<string>;
     finish: (id: string, cooldown: number) => void;
   },
+  native?: NativeRequest,
+  signal?: AbortSignal,
 ): Promise<unknown> {
   const rpcId = crypto.randomUUID();
   let url: string, method: string, body: string | undefined;
+  let rpc = operation === "public-auth";
   switch (operation) {
     case "public-auth":
       url = "https://user-api.simplybook.me/login";
@@ -83,6 +145,84 @@ export async function providerRequest(
       url = "https://user-api-v2.simplybook.me/admin/invoices/23";
       method = "GET";
       break;
+    case "native": {
+      if (!native) throw new ApiError(503, "provider_operation_unavailable");
+      if (native.kind === "invoice-read" || native.kind === "payment-link") {
+        const invoiceId = providerId(native.invoiceId);
+        url =
+          "https://user-api-v2.simplybook.me/admin/invoices/" +
+          invoiceId +
+          (native.kind === "payment-link" ? "/payment-link" : "");
+        method = "GET";
+        break;
+      }
+      url = "https://user-api.simplybook.me/";
+      method = "POST";
+      rpc = true;
+      let rpcMethod: string, params: unknown[];
+      if (
+        native.kind === "catalogue-services" ||
+        native.kind === "catalogue-instructors"
+      ) {
+        rpcMethod =
+          native.kind === "catalogue-services" ? "getEventList" : "getUnitList";
+        params = [true, false];
+      } else if (native.kind === "eligible-instructors") {
+        if (
+          !/^\d{4}-\d{2}-\d{2}$/.test(native.date) ||
+          !/^([01]\d|2[0-3]):[0-5]\d:00$/.test(native.time)
+        )
+          throw new ApiError(503, "provider_date_invalid");
+        rpcMethod = "getAvailableUnits";
+        params = [
+          Number(providerId(native.serviceId)),
+          `${native.date} ${native.time}`,
+          1,
+        ];
+      } else if (native.kind === "booking-read") {
+        if (!/^[a-f0-9]{32}$/.test(native.signature))
+          throw new ApiError(503, "provider_signature_invalid");
+        rpcMethod = "getBookingDetails";
+        params = [providerId(native.bookingId), native.signature];
+      } else {
+        const service = Number(providerId(native.serviceId));
+        if (native.kind === "required-fields") {
+          rpcMethod = "getAdditionalFields";
+          params = [service];
+        } else {
+          const provider = Number(providerId(native.instructorId));
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(native.date))
+            throw new ApiError(503, "provider_date_invalid");
+          if (native.kind === "availability") {
+            rpcMethod = "getStartTimeMatrix";
+            params = [native.date, native.date, service, provider, 1];
+          } else {
+            if (!/^([01]\d|2[0-3]):[0-5]\d:00$/.test(native.time))
+              throw new ApiError(503, "provider_time_invalid");
+            const fields = nativeBookFields(native.client, native.additional);
+            rpcMethod = "book";
+            params = [
+              service,
+              provider,
+              native.date,
+              native.time,
+              fields.client,
+              fields.additional,
+              1,
+              null,
+              null,
+            ];
+          }
+        }
+      }
+      body = JSON.stringify({
+        jsonrpc: "2.0",
+        id: rpcId,
+        method: rpcMethod,
+        params,
+      });
+      break;
+    }
     default:
       throw new ApiError(503, "provider_operation_unavailable");
   }
@@ -95,9 +235,13 @@ export async function providerRequest(
     headers["X-Company-Login"] = secrets.company;
     headers["X-Token"] = token;
   }
+  signal?.throwIfAborted();
   const id = await dispatch.reserve();
   // Reservation is durable before fetch; uncertain transport keeps the slot held.
   const controller = new AbortController();
+  const abort = () => controller.abort();
+  signal?.addEventListener("abort", abort, { once: true });
+  if (signal?.aborted) controller.abort();
   const timer = setTimeout(() => controller.abort(), 15000);
   let complete = false;
   let cooldown = 0;
@@ -169,14 +313,14 @@ export async function providerRequest(
           bytes,
         ),
       );
-      if (operation === "public-auth") {
+      if (rpc) {
         if (
           !value ||
           typeof value !== "object" ||
           !("id" in value) ||
           value.id !== rpcId ||
           !("result" in value) ||
-          "error" in value
+          ("error" in value && value.error !== null)
         )
           throw new ApiError(503, "provider_rpc_failed");
         return value.result;
@@ -193,6 +337,7 @@ export async function providerRequest(
       );
     } finally {
       clearTimeout(timer);
+      signal?.removeEventListener("abort", abort);
       if (complete) dispatch.finish(id, cooldown);
     }
   });

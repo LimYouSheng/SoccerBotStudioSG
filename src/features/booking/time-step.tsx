@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/icon";
-import { INSTRUCTORS, PRICE_CENTS } from "@/domain/catalog";
+import { INSTRUCTORS, PRICE_CENTS } from "@/domain/demo-catalog";
 import { isElapsed, slotKey } from "@/domain/booking";
 import {
   addDays,

@@ -1,3 +1,5 @@
+import { MAX_PLAYERS } from "@/domain/booking-policy";
+import { isNativeCheckoutUrl } from "@/domain/native-checkout";
 import { z } from "zod";
 import type { ProtectedCheckoutService } from "./contracts";
 const idSchema = z.string().uuid();
@@ -26,17 +28,18 @@ const contextSchema = z.strictObject({
     z.strictObject({
       state: z.literal("available"),
       url: z.string().max(2048),
+      expiresAtMs: instant.optional(),
     }),
   ]),
   summary: z.strictObject({
-    players: z.number().int().min(1).max(4),
+    players: z.number().int().min(1).max(MAX_PLAYERS),
     totalMinor: instant,
     currency: z.literal("SGD"),
     sessions: z
       .array(
         z.strictObject({
           startMs: instant,
-          players: z.number().int().min(1).max(4),
+          players: z.number().int().min(1).max(MAX_PLAYERS),
         }),
       )
       .min(1)
@@ -101,11 +104,13 @@ export const protectedCheckoutService: ProtectedCheckoutService = {
     if (context.attemptId !== attemptId || context.mode !== mode)
       throw new ConfirmationError("unavailable");
     if (context.checkout.state === "available") {
-      // Live native hosts/URL contract are unproved: the supported live set is
-      // deliberately empty. Never accept a live URL or fall back to this fixture.
       if (
-        mode !== "synthetic" ||
-        context.checkout.url !== `/__experiment/checkout/${attemptId}`
+        mode === "synthetic"
+          ? context.checkout.url !== `/__experiment/checkout/${attemptId}`
+          : !isNativeCheckoutUrl(context.checkout.url) ||
+            context.checkout.expiresAtMs === undefined ||
+            context.checkout.expiresAtMs <= Date.now() ||
+            context.checkout.expiresAtMs > context.checking.deadlineMs
       )
         throw new ConfirmationError("unavailable");
     }

@@ -1,3 +1,8 @@
+import {
+  START_INTERVAL_MINUTES,
+  SESSION_MINUTES,
+} from "../src/domain/booking-policy";
+import { storedNativeCheckout } from "./native-adapter";
 import { verifyConfirmation } from "../src/domain/confirmation";
 import { authenticate, type Access } from "./access";
 import { intentSchema, associationSchema } from "./journal";
@@ -127,9 +132,9 @@ export function decideStoredConfirmation(
         serviceId: s.serviceId,
         instructorId: s.instructorId,
         startMs: s.startMs,
-        playEndMs: s.startMs + 40 * 60000,
+        playEndMs: s.startMs + SESSION_MINUTES * 60000,
         occupiedStartMs: s.startMs,
-        occupiedEndMs: s.startMs + 50 * 60000,
+        occupiedEndMs: s.startMs + START_INTERVAL_MINUTES * 60000,
       },
       money: {
         currency: intent.currency,
@@ -181,7 +186,17 @@ export async function checkoutContext(
   return {
     attemptId: id,
     mode: "live" as const,
-    checkout: { state: "unavailable" as const },
+    checkout:
+      row.association_json &&
+      row.deadline_ms > now &&
+      String(env.PROVIDER_ACCESS) === "trusted-reads"
+        ? await storedNativeCheckout(
+            env.STATE,
+            id,
+            JSON.parse(row.association_json),
+            now,
+          )
+        : { state: "unavailable" as const },
     summary: {
       players: intent.sessions[0].players,
       totalMinor: intent.totalMinor,

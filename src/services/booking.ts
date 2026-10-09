@@ -1,3 +1,10 @@
+import {
+  CATALOGUE_MAX_AGE_MS,
+  catalogueSchema,
+  catalogueBindingSchema,
+  type CatalogueBinding,
+} from "@/domain/catalog";
+import type { CatalogueService } from "./contracts";
 import { z } from "zod";
 import {
   attemptSchema,
@@ -10,7 +17,8 @@ import {
   type Attempt,
 } from "@/domain/booking";
 import { isDate, clockMinutes } from "@/domain/dates";
-import { MAX_PLAYERS, SESSION_STARTS } from "@/domain/catalog";
+import { MAX_PLAYERS } from "@/domain/booking-policy";
+import { SESSION_STARTS } from "@/domain/demo-catalog";
 import { BookingServiceError, type BookingService } from "./contracts";
 
 const availabilityInput = z.object({
@@ -245,3 +253,30 @@ export const liveBookingService: BookingService = defineBookingService({
   check: unavailable,
   resolve: unavailable,
 });
+
+// Separate live DTO boundary: no preview enum, price, timetable or identity cast.
+// A deployed route is intentionally unavailable until its read authority is bound.
+export function defineCatalogueService(
+  binding: CatalogueBinding,
+  adapter: CatalogueService,
+): CatalogueService {
+  const expected = catalogueBindingSchema.parse(binding);
+  return {
+    read(input) {
+      return invoke(input.signal, async () => {
+        const result = decode(catalogueSchema, await adapter.read(input));
+        const now = Date.now();
+        if (
+          result.binding.accountId !== expected.accountId ||
+          result.binding.environmentId !== expected.environmentId ||
+          result.binding.companyLogin !== expected.companyLogin ||
+          result.observedAtMs > now ||
+          now - result.observedAtMs >= CATALOGUE_MAX_AGE_MS
+        )
+          throw invalidResponse();
+        return result;
+      });
+    },
+  };
+}
+export const liveCatalogueService: CatalogueService = { read: unavailable };

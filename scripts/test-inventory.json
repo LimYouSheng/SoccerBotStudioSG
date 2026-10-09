@@ -273,6 +273,10 @@
   },
   {
     "file": "src/features/booking/confirmation-checking.test.tsx",
+    "title": "hides the native payment capability at its expiry without claiming payment cancellation"
+  },
+  {
+    "file": "src/features/booking/confirmation-checking.test.tsx",
     "title": "pauses hidden checking and permits only one eligible foreground refresh"
   },
   {
@@ -282,6 +286,10 @@
   {
     "file": "src/features/booking/details-step.test.tsx",
     "title": "details contains only the five contact fields and validates them before review"
+  },
+  {
+    "file": "src/features/booking/instructor.test.tsx",
+    "title": "instructor profile renders supplied display data without a fixed roster lookup"
   },
   {
     "file": "src/features/booking/protected-confirmation.test.tsx",
@@ -482,6 +490,26 @@
   {
     "file": "src/services/booking.test.ts",
     "title": "validates all required contact fields and their length limits"
+  },
+  {
+    "file": "src/services/catalogue.test.ts",
+    "title": "catalogue additions and response order do not change approved identity"
+  },
+  {
+    "file": "src/services/catalogue.test.ts",
+    "title": "catalogue review reports rename price and relationship changes while preserving selection"
+  },
+  {
+    "file": "src/services/catalogue.test.ts",
+    "title": "live catalogue boundary accepts stable provider IDs without preview aliases"
+  },
+  {
+    "file": "src/services/catalogue.test.ts",
+    "title": "live catalogue boundary rejects stale incomplete foreign and unavailable data"
+  },
+  {
+    "file": "src/services/confirmation.test.ts",
+    "title": "accepts only the backend-issued native path for the matching protected attempt"
   },
   {
     "file": "src/services/confirmation.test.ts",

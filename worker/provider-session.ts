@@ -1,10 +1,13 @@
+import { CatalogueReads } from "./catalogue";
+import { NativePrebooking } from "./prebooking";
 import { measure } from "./diagnostics";
-import { ApiError } from "./policy";
+import { ApiError, policy } from "./policy";
 import { historicalComparison } from "./provider-normalization";
 import {
   providerRequest,
   providerSecrets,
   type ProviderFamily,
+  type NativeRequest,
 } from "./provider-transport";
 
 export type ProviderControl = {
@@ -25,6 +28,51 @@ const object = (value: unknown): Record<string, unknown> => {
 };
 // Instance-owned by the account DO. Tokens never cross RPC or enter SQL/logs.
 export class ProviderSession {
+  private catalogueReads = new CatalogueReads();
+  private boundScope: string | undefined;
+  private bindScope(env: Env) {
+    const secrets = providerSecrets(env);
+    const key = JSON.stringify([
+      env.ENVIRONMENT,
+      env.DEPLOYMENT_ACCOUNT_ID,
+      secrets.company,
+    ]);
+    if (this.boundScope !== undefined && key !== this.boundScope)
+      throw new ApiError(503, "provider_scope_changed");
+    this.boundScope = key;
+    return secrets;
+  }
+  async catalogue(env: Env, control: ProviderControl, fresh = false) {
+    const p = policy(env),
+      secrets = this.bindScope(env);
+    if (
+      p.PROVIDER_ACCESS !== "trusted-reads" ||
+      p.CAMPAIGN_END_MS <= Date.now()
+    )
+      throw new ApiError(503, "provider_access_disabled");
+    return this.catalogueReads.read(
+      {
+        accountId: p.DEPLOYMENT_ACCOUNT_ID,
+        environmentId: p.ENVIRONMENT,
+        companyLogin: secrets.company,
+      },
+      (request, signal) => this.nativeRead(env, control, request, signal),
+      fresh,
+    );
+  }
+  prebooking(env: Env, control: ProviderControl) {
+    const p = policy(env),
+      secrets = this.bindScope(env);
+    return new NativePrebooking(
+      {
+        accountId: p.DEPLOYMENT_ACCOUNT_ID,
+        environmentId: p.ENVIRONMENT,
+        companyLogin: secrets.company,
+      },
+      this.catalogueReads,
+      (request, signal) => this.nativeRead(env, control, request, signal),
+    );
+  }
   private tokens = new Map<ProviderFamily, { value: string; until: number }>();
   private authentication = new Map<ProviderFamily, Promise<string>>();
   private identityRead: Promise<Record<string, unknown>> | undefined;
@@ -36,11 +84,12 @@ export class ProviderSession {
     env: Env,
     control: ProviderControl,
   ): Promise<Record<string, unknown>> {
+    this.bindScope(env);
     const sharedComparison = this.comparisonRead;
     if (sharedComparison)
       return measure("coordinator_wait", () => sharedComparison);
     const run = async () => {
-      const secrets = providerSecrets(env);
+      const secrets = this.bindScope(env);
       if (secrets.company.toLowerCase() === "soccerbotstudio")
         throw new ApiError(503, "client_account_forbidden");
       const token = await this.token("admin", env, control);
@@ -70,6 +119,45 @@ export class ProviderSession {
     } finally {
       this.comparisonRead = undefined;
     }
+  }
+
+  // Internal adapter transport. No customer route or operator grant exposes it.
+  // Current admission permits reads only; native writes remain unavailable until
+  // a separately reviewed finite write grant is installed.
+  async nativeRead(
+    env: Env,
+    control: ProviderControl,
+    request: NativeRequest,
+    signal?: AbortSignal,
+  ) {
+    if (
+      String(env.PROVIDER_ACCESS) !== "trusted-reads" ||
+      Number(env.CAMPAIGN_END_MS) <= Date.now()
+    )
+      throw new ApiError(503, "provider_access_disabled");
+    if (request.kind === "book" || request.kind === "payment-link")
+      throw new ApiError(503, "native_write_grant_unavailable");
+    signal?.throwIfAborted();
+    const secrets = this.bindScope(env);
+    if (secrets.company.toLowerCase() === "soccerbotstudio")
+      throw new ApiError(503, "client_account_forbidden");
+    // Only previously authenticated, identity-verified sessions may read; no
+    // automatic reauthentication may consume the two-read recovery reserve.
+    if (!this.cachedIdentity || this.cachedIdentity.until <= Date.now())
+      throw new ApiError(503, "provider_identity_expired");
+    const family = request.kind === "invoice-read" ? "admin" : "public";
+    const token = this.tokens.get(family);
+    if (!token || token.until <= Date.now())
+      throw new ApiError(503, "provider_auth_expired");
+    const body = await providerRequest(
+      "native",
+      secrets,
+      token.value,
+      control,
+      request,
+      signal,
+    );
+    return { body, receivedAtMs: Date.now() };
   }
 
   private async token(
@@ -121,13 +209,14 @@ export class ProviderSession {
     env: Env,
     control: ProviderControl,
   ): Promise<Record<string, unknown>> {
+    this.bindScope(env);
     if (this.cachedIdentity && this.cachedIdentity.until > Date.now())
       return this.cachedIdentity.value;
     const sharedIdentity = this.identityRead;
     if (sharedIdentity)
       return measure("coordinator_wait", () => sharedIdentity);
     const run = async () => {
-      const secrets = providerSecrets(env);
+      const secrets = this.bindScope(env);
       if (secrets.company.toLowerCase() === "soccerbotstudio")
         throw new ApiError(503, "client_account_forbidden");
       const start = performance.now();

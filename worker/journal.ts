@@ -1,3 +1,7 @@
+import {
+  START_INTERVAL_MINUTES,
+  MAX_PLAYERS,
+} from "../src/domain/booking-policy";
 import { z } from "zod";
 import { ApiError, digest } from "./policy";
 // Internal server-approved intent only. No HTTP endpoint accepts this envelope.
@@ -15,7 +19,7 @@ export const intentSchema = z
           serviceId: z.string().min(1).max(128),
           instructorId: z.string().min(1).max(128),
           startMs: z.number().int().positive().safe(),
-          players: z.number().int().min(1).max(4),
+          players: z.number().int().min(1).max(MAX_PLAYERS),
           totalMinor: z.number().int().nonnegative().safe(),
           taxMinor: z.number().int().nonnegative().safe(),
         }),
@@ -32,7 +36,11 @@ export const intentSchema = z
     )
       ctx.addIssue({ code: "custom", message: "money" });
     const starts = v.sessions.map((s) => s.startMs).sort((a, b) => a - b);
-    if (starts.some((s, i) => i > 0 && s - starts[i - 1] < 50 * 60000))
+    if (
+      starts.some(
+        (s, i) => i > 0 && s - starts[i - 1] < START_INTERVAL_MINUTES * 60000,
+      )
+    )
       ctx.addIssue({ code: "custom", message: "overlap" });
   });
 export async function prepareAttempt(

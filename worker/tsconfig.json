@@ -11,5 +11,9 @@
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["./**/*.ts", "../src/domain/confirmation.ts"]
+  "include": [
+    "./**/*.ts",
+    "../src/domain/confirmation.ts",
+    "../src/domain/native-checkout.ts"
+  ]
 }

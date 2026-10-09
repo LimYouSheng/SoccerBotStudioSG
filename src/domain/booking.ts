@@ -5,24 +5,16 @@ import {
   contactErrors,
   normalizeContact,
 } from "./contact";
-import {
-  MAX_PLAYERS,
-  PRICE_CENTS,
-  SESSION_MINUTES,
-  SESSION_STARTS,
-} from "./catalog";
+import { MAX_PLAYERS, SESSION_MINUTES } from "./booking-policy";
+import { PRICE_CENTS, SESSION_STARTS } from "./demo-catalog";
 import { clockMinutes, isDate, todaySG } from "./dates";
 export const slotSchema = z.object({
   date: z.string().refine(isDate),
   start: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
 });
 export type Slot = z.infer<typeof slotSchema>;
-export const instructorSchema = z.enum([
-  "faisal",
-  "daniel",
-  "instructor3",
-  "instructor4",
-]);
+export { demoInstructorSchema as instructorSchema } from "./demo-catalog";
+import { demoInstructorSchema as instructorSchema } from "./demo-catalog";
 export const sessionSchema = slotSchema.extend({
   instructor: instructorSchema,
   rotationAt: z

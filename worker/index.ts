@@ -9,8 +9,14 @@ export {
   claimRecovery,
   completeRecovery,
   runRecoveryBatch,
+  runNativeReadback,
   retentionPreview,
 } from "./recovery";
+export {
+  nativeBookingOperations,
+  readNativeAttempt,
+  prepareNativeLink,
+} from "./native-adapter";
 export { orchestrateBooking } from "./orchestration";
 // Journal operations are reachable only through trusted server composition, not HTTP.
 export {

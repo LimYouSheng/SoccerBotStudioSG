@@ -59,3 +59,62 @@ it("keeps unsupported live checkout unavailable without synthetic fallback", asy
   fetch.mockResolvedValue(Response.json(context));
   await expect(read("live")).rejects.toThrow();
 });
+
+it("accepts only the backend-issued native path for the matching protected attempt", async () => {
+  const expiresAtMs = Date.now() + 60000;
+  const url =
+    "https://soccerbotstudiosg.simplybook.asia/v2/client/pay-later/id/synthetic-id/hash/synthetic-hash";
+  const fetch = vi.fn().mockResolvedValue(
+    Response.json({
+      ...context,
+      mode: "live",
+      checking: { ...context.checking, deadlineMs: Date.now() + 120000 },
+      checkout: { state: "available", url, expiresAtMs },
+    }),
+  );
+  vi.stubGlobal("fetch", fetch);
+  expect((await read("live")).checkout).toEqual({
+    state: "available",
+    url,
+    expiresAtMs,
+  });
+  for (const invalid of [
+    url + "?redirect=evil",
+    url + "#paid",
+    url.replace(".asia", ".asia.evil.test"),
+    url.replace("https:", "http:"),
+    url.replace("/hash/", "/other/"),
+    url.replace("/id/", "/id/%2f"),
+  ]) {
+    fetch.mockResolvedValue(
+      Response.json({
+        ...context,
+        mode: "live",
+        checking: { ...context.checking, deadlineMs: Date.now() + 120000 },
+        checkout: { state: "available", url: invalid, expiresAtMs },
+      }),
+    );
+    await expect(read("live")).rejects.toThrow();
+  }
+  for (const expiry of [undefined, Date.now() - 1, Date.now() + 180000]) {
+    fetch.mockResolvedValue(
+      Response.json({
+        ...context,
+        mode: "live",
+        checking: { ...context.checking, deadlineMs: Date.now() + 120000 },
+        checkout: { state: "available", url, expiresAtMs: expiry },
+      }),
+    );
+    await expect(read("live")).rejects.toThrow();
+  }
+  fetch.mockResolvedValue(
+    Response.json({
+      ...context,
+      attemptId: "00000000-0000-4000-8000-000000000002",
+      mode: "live",
+      checking: { ...context.checking, deadlineMs: Date.now() + 120000 },
+      checkout: { state: "available", url, expiresAtMs },
+    }),
+  );
+  await expect(read("live")).rejects.toThrow();
+});

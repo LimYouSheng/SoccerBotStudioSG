@@ -1,49 +1,3 @@
-export const SESSION_MINUTES = 40;
-// Latest quotation: 40 minutes of play and 10 minutes for exit/entry.
-export const START_INTERVAL_MINUTES = 50;
-export const MAX_PLAYERS = 4;
-export const PRICE_CENTS = 8800;
-export const SERVICE_NAME = "Kickoff Special (Trial Price)";
-export const OPENING_MINUTE = 9 * 60;
-export const CLOSING_MINUTE = 21 * 60;
-export const SESSION_STARTS = Array.from(
-  {
-    length:
-      Math.floor(
-        (CLOSING_MINUTE - OPENING_MINUTE - SESSION_MINUTES) /
-          START_INTERVAL_MINUTES,
-      ) + 1,
-  },
-  (_, i) => OPENING_MINUTE + i * START_INTERVAL_MINUTES,
-);
-export const STUDIOS = ["Studio 1"] as const;
-export const INSTRUCTORS = {
-  faisal: {
-    name: "Faisal Shahril",
-    initials: "FS",
-    role: "Main instructor",
-    bio: "A football player, trainer and coach, Faisal is SOCCERBOTSTUDIO Singapore’s main instructor and has the most hands-on experience with the studio’s SoccerBot360 system. He runs sessions for players at every level, guides coaches and trains the studio’s other instructors.",
-  },
-  daniel: {
-    name: "Daniel Tan",
-    initials: "DT",
-    role: "Demo instructor",
-    bio: "Demonstration profile. Guides players through ball control, passing and shooting drills, adapting each session to the group’s experience and goals.",
-  },
-  instructor3: {
-    name: "Instructor 3",
-    initials: "I3",
-    role: "Demo instructor",
-    bio: "Preview profile. Final instructor details will be provided by the studio.",
-  },
-  instructor4: {
-    name: "Instructor 4",
-    initials: "I4",
-    role: "Demo instructor",
-    bio: "Preview profile. Final instructor details will be provided by the studio.",
-  },
-} as const;
-export type InstructorId = keyof typeof INSTRUCTORS;
 export const LOCATION = {
   building: "Apex @ Henderson",
   street: "201 Henderson Road",
@@ -74,3 +28,109 @@ export const ENQUIRY_TYPES = [
   "Production booking",
   "Other special arrangement",
 ];
+
+// Live catalogue DTOs use provider IDs. Legacy preview IDs live in demo-catalog.
+// These normalized contracts are not provider wire envelopes or write authority.
+import { z } from "zod";
+import { MAX_PLAYERS } from "./booking-policy";
+export const CATALOGUE_MAX_AGE_MS = 60000;
+export const CATALOGUE_RECORD_LIMIT = 1000;
+export const providerIdentifier = z
+  .string()
+  .regex(/^[1-9]\d{0,14}$/)
+  .refine((value) => Number.isSafeInteger(Number(value)));
+export const catalogueBindingSchema = z.strictObject({
+  accountId: z.string().min(1).max(128),
+  environmentId: z.literal("developer"),
+  companyLogin: z.string().min(1).max(128),
+});
+const label = z.string().trim().min(1).max(256);
+export const catalogueSchema = z
+  .strictObject({
+    binding: catalogueBindingSchema,
+    observedAtMs: z.number().int().safe().nonnegative(),
+    complete: z.literal(true),
+    services: z
+      .array(
+        z.strictObject({
+          id: providerIdentifier,
+          name: label,
+          active: z.boolean(),
+          durationMinutes: z.number().int().positive(),
+          recurring: z.boolean(),
+          priceMinor: z.number().int().safe().nonnegative(),
+          currency: z.string().regex(/^[A-Z]{3}$/),
+          // Null means the documented unrestricted relationship, never unknown data.
+          instructorIds: z.array(providerIdentifier).nullable(),
+        }),
+      )
+      .max(CATALOGUE_RECORD_LIMIT),
+    instructors: z
+      .array(
+        z.strictObject({
+          id: providerIdentifier,
+          name: label,
+          active: z.boolean(),
+        }),
+      )
+      .max(CATALOGUE_RECORD_LIMIT),
+  })
+  .superRefine((value, ctx) => {
+    for (const list of [value.services, value.instructors])
+      if (new Set(list.map((item) => item.id)).size !== list.length)
+        ctx.addIssue({
+          code: "custom",
+          message: "duplicate provider identity",
+        });
+    for (const service of value.services)
+      if (
+        service.instructorIds &&
+        new Set(service.instructorIds).size !== service.instructorIds.length
+      )
+        ctx.addIssue({ code: "custom", message: "duplicate relationship" });
+  });
+export type ProviderCatalogue = z.infer<typeof catalogueSchema>;
+export type CatalogueBinding = z.infer<typeof catalogueBindingSchema>;
+export const providerSelectionSchema = z.strictObject({
+  serviceId: providerIdentifier,
+  instructorId: providerIdentifier,
+  startMs: z.number().int().positive().safe(),
+  players: z.number().int().min(1).max(MAX_PLAYERS),
+});
+export type ProviderSelection = z.infer<typeof providerSelectionSchema>;
+export function catalogueSelection(
+  catalogue: ProviderCatalogue,
+  selection: ProviderSelection,
+) {
+  const service = catalogue.services.find(
+    (item) => item.id === selection.serviceId,
+  );
+  const instructor = catalogue.instructors.find(
+    (item) => item.id === selection.instructorId,
+  );
+  if (
+    !service?.active ||
+    !instructor?.active ||
+    (service.instructorIds && !service.instructorIds.includes(instructor.id))
+  )
+    return null;
+  return { service, instructor };
+}
+// Refresh display/review without rewriting the selected IDs, contact or committed intent.
+export function catalogueReview(
+  previous: ProviderCatalogue,
+  current: ProviderCatalogue,
+  selection: ProviderSelection,
+) {
+  const before = catalogueSelection(previous, selection),
+    after = catalogueSelection(current, selection);
+  if (JSON.stringify(previous.binding) !== JSON.stringify(current.binding))
+    return { state: "unavailable" as const };
+  if (!after) return { state: "selection_unavailable" as const, selection };
+  const changed = !before || JSON.stringify(before) !== JSON.stringify(after);
+  return {
+    state: changed ? ("review_required" as const) : ("unchanged" as const),
+    selection,
+    ...after,
+  };
+}
