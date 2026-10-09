@@ -57,7 +57,7 @@ export default {
     return traced(correlationId, "http", async () => {
       try {
         if (!url.pathname.startsWith("/api")) return env.ASSETS.fetch(request);
-        policy(env);
+        const configuration = policy(env);
         if (url.protocol !== "https:")
           throw new ApiError(400, "secure_transport_required");
         if (url.origin !== env.APP_ORIGIN)
@@ -105,6 +105,19 @@ export default {
             environment: "developer",
             providerAccess: env.PROVIDER_ACCESS,
             revision: env.SOURCE_REVISION,
+            versionId: env.CF_VERSION_METADATA?.id ?? null,
+            origin: env.APP_ORIGIN,
+            campaignEndMs: Number(env.CAMPAIGN_END_MS),
+            effectiveProviderAccess:
+              configuration.PROVIDER_ACCESS === "trusted-reads" &&
+              now < Number(env.CAMPAIGN_END_MS)
+                ? "trusted-reads"
+                : "disabled",
+            readinessNonce: /^[a-f0-9]{32}$/.test(
+              request.headers.get("X-Readiness-Nonce") ?? "",
+            )
+              ? request.headers.get("X-Readiness-Nonce")
+              : null,
             providerCredentialsPresent: [
               "SIMPLYBOOK_DEV_COMPANY_LOGIN",
               "SIMPLYBOOK_DEV_ADMIN_LOGIN",

@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## Readiness-only candidate — 9 October 2026
+
+Prepared under the governing MAIN INTEGRATION NORTH STAR; same single-agent campaign start08:18:56UTC,72-hour elapsed/24-active-hour/60-loop/6-repair ceilings, cumulative ledger in PR14. This branch isolates runtime version/nonce/effective-mode readiness and single-statement grant closure from unrelated integration code. No new migration:0001–0008 already applied. Saved receipts cannot establish the cause of enabled-management/disabled-health mismatch. Canonical Service Contracts contains the complete60-management/four-deployment/16-application/five-provider proposal; no remote execution is authorized or performed. Actual counters238/248,13/14,8/80 unchanged; historical80 separate. Expected last deployment661cbf54/a0b4befb closed, not re-queried. Preserve all prior receipts and failures. Final exact CI/artifact identity will be recorded on this draft PR; no main push/merge. Independent integration work continues on PR14.
+
 ## Approved discovery execution — closed 9 October 2026
 
 YS approved the concrete discovery-only packet with “Yes Go.” Management window07:42:10–08:42:10UTC; one180-second grant, maximum5 provider calls,66 management requests and4 deployments including rollback. Exact approved/deployed source661cbf54ae33bd8e08f00d631ea78772f9ea2ded passed both CI jobs37899051046; backend artifact11600959051 was downloaded, SHA256-checked and its135 sealed files/eight migrations verified without rebuilding. No booking/payment/provider-setting or merge authority.

@@ -83,12 +83,8 @@ const manifest = {
   basePath: "",
   providerAccess: "disabled",
   campaignEndMs: 0,
-  pendingRemoteMigrations: [
-    "0006_recovery_work.sql",
-    "0007_confirmation_checking.sql",
-    "0008_native_field_discovery.sql",
-  ],
-  priorWorkerVersion: "9d0a3c9f-b9a7-41df-907f-ba69f179cc68",
+  pendingRemoteMigrations: [],
+  priorWorkerVersion: "a0b4befb-079b-4836-9967-b1f5fe101bd7",
   acceptance: "closed foundation only; native integration remains unavailable",
   files: exportInventory(directory),
 };

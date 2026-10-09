@@ -129,5 +129,7 @@
   "expired or foreign access cannot consume another attempt checking allowance",
   "checking exhaustion survives runtime restart and cannot extend the immutable attempt deadline",
   "elapsed checking deadline returns unresolved without modifying recovery or dispatch state",
-  "synthetic fixture awaits evidence without a stale pending snapshot and reuses its attempt"
+  "synthetic fixture awaits evidence without a stale pending snapshot and reuses its attempt",
+  "readiness reports effective expiry served identity and bounded nonce without provider calls",
+  "single statement discovery closure returns expiry then independent D1 read preserves evidence"
 ]

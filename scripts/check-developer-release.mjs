@@ -130,12 +130,9 @@ try {
     .run();
   const grants = (await db.prepare("SELECT * FROM developer_operations").all())
     .results;
-  assert.deepEqual(manifest.pendingRemoteMigrations, [
-    "0006_recovery_work.sql",
-    "0007_confirmation_checking.sql",
-    "0008_native_field_discovery.sql",
-  ]);
-  for (const name of manifest.pendingRemoteMigrations) await migrate(name);
+  assert.deepEqual(manifest.pendingRemoteMigrations, []);
+  // Locally reconstruct the eight already-applied migrations; remote plan is empty.
+  for (const name of names.slice(5)) await migrate(name);
   assert.deepEqual(
     (await db.prepare("SELECT * FROM developer_operations").all()).results,
     grants,
