@@ -1,5 +1,7 @@
 # SoccerBotStudioSG current progress
 
+Final operator review 09:08:49UTC: cumulative active2993seconds/24hours;5/60 loops, same elapsed deadline. Readiness checkpointc825ea35 passed both required CI jobs37908374064 and sealed release check. Subsequent operator-only hardening retains final403/proxy response identity, supports formatted JSON and composite effect keys while retaining all columns; five focused utility cases pass. Both final published heads need their own CI; final exact receipts are attached to their draft PRs. No external execution/counter change.
+
 ## Main integration campaign — active 9 October 2026
 
 Governing instruction: MAIN INTEGRATION NORTH STAR, supplied9October. One agent. Start2026-10-09T08:18:56Z; hard elapsed stop2026-10-12T08:18:56Z;24 aggregate active hours,60 substantive loops,6 evidence-based repairs per root cause. No reset at checkpoints/resumptions. Loops1–4 implemented; loop5 verification/publication active. Conservative active usage includes all elapsed time within this working session and is checkpointed from its wall interval in private /workspace/work/integration-20261009/campaign.json; no background continuation is claimed. These ceilings replace the prior six-hour/three-repair stop rule only for engineering.

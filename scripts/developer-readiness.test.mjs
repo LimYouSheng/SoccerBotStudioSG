@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { verifyReadiness, fingerprintRows } from "./developer-readiness.mjs";
+import {
+  verifyReadiness,
+  fingerprintRows,
+  parseCurlHealth,
+} from "./developer-readiness.mjs";
 const expected = {
   origin: "https://soccerbot.example.invalid",
   revision: "a".repeat(40),
@@ -122,4 +126,42 @@ test("preservation fingerprints ignore row key order but retain every changed co
       fingerprintRows(changed, "id"),
     );
   assert.throws(() => fingerprintRows([rows[0], rows[0]], "id"));
+});
+
+test("curl receipt preserves final proxy headers and denial status without leaking bodies", () => {
+  const receipt = parseCurlHealth(
+    'HTTP/1.1 200 Connection established\r\n\r\nHTTP/2 200 OK\r\ncf-ray: synthetic-ray\r\nset-cookie: PRIVATE\r\n\r\n{\n\n"revision":"a","private":"PRIVATE"\n}',
+  );
+  assert.deepEqual(receipt, {
+    status: 200,
+    headers: { "cf-ray": "synthetic-ray" },
+    health: { revision: "a" },
+  });
+  assert.deepEqual(
+    parseCurlHealth(
+      "HTTP/1.1 200 Connection established\r\n\r\nHTTP/2 403 Forbidden\r\ncf-ray: denial-ray\r\n\r\nPRIVATE ERROR BODY",
+    ),
+    { status: 403, headers: { "cf-ray": "denial-ray" }, health: null },
+  );
+  assert.equal(
+    parseCurlHealth('HTTP/2 200 OK\r\n\r\n{"revision":"b"}').health.revision,
+    "b",
+  );
+  assert.throws(() => parseCurlHealth("HTTP/2 200 OK\r\n\r\nnull"));
+  assert.throws(() =>
+    parseCurlHealth("HTTP/2 200 OK\r\n\r\n" + "x".repeat(32769)),
+  );
+});
+test("fingerprints use composite effect identities and retain all original columns", () => {
+  const a = { attempt_id: "a", step: "read", outcome: "unknown" },
+    b = { attempt_id: "b", step: "read", outcome: "observed" };
+  assert.equal(
+    fingerprintRows([a, b], ["attempt_id", "step"]),
+    fingerprintRows([b, a], ["attempt_id", "step"]),
+  );
+  assert.notEqual(
+    fingerprintRows([a, b], ["attempt_id", "step"]),
+    fingerprintRows([a, { ...b, outcome: "unknown" }], ["attempt_id", "step"]),
+  );
+  assert.throws(() => fingerprintRows([a, a], ["attempt_id", "step"]));
 });
