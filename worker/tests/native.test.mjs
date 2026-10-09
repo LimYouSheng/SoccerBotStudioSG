@@ -233,6 +233,11 @@ test("native money mismatches and unsupported deposit tax refund semantics fail 
     (i) => (i.is_with_deposit_amount = true),
     (i) => (i.refund_datetime = "2026-10-08"),
     (i) => (i.lines[0].qty = 2),
+    (i) => (i.recurring_profile_id = "synthetic-profile"),
+    (i) => (i.deposit_parent_invoice = "synthetic-parent"),
+    (i) => (i.require_recurring_payment_method = true),
+    (i) => (i.lines[0].recurring_price_without_tax = 88),
+    (i) => (i.tip = 1),
   ]) {
     const data = input();
     mutate(data.invoice);

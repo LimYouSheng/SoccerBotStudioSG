@@ -216,12 +216,23 @@ function invoiceEvidence(raw: unknown, context: NativeReadContext) {
     line.rest_amount,
     line.discount_amount,
     line.recurring_tax_amount,
+    line.recurring_price_without_tax,
+    line.package_qty,
+    line.discount_ratio,
+    line.discount,
+    line.tax_ratio,
   ])
     equal(decimal(v), 0);
   equal(flag(invoice.is_with_deposit_amount), false);
   equal(flag(line.is_with_deposit_amount), false);
   equal(decimal(invoice.deposit), intent.totalMinor);
   equal(invoice.refund_datetime, null);
+  equal(invoice.deposit_child_invoice, null);
+  equal(invoice.deposit_parent_invoice, null);
+  equal(invoice.recurring_profile_id, null);
+  equal(invoice.tip, null);
+  equal(flag(invoice.require_recurring_payment_method), false);
+  equal(flag(invoice.deposit_is_client_can_pay_later), false);
   if (
     !Array.isArray(invoice.taxes) ||
     invoice.taxes.length !== 0 ||
