@@ -261,6 +261,14 @@
   },
   {
     "file": "src/features/booking/confirmation-checking.test.tsx",
+    "title": "an elapsed protected checkout window aborts checking without resetting its allowance"
+  },
+  {
+    "file": "src/features/booking/confirmation-checking.test.tsx",
+    "title": "binds the server checkout deadline before a pending status read and preserves it across reload"
+  },
+  {
+    "file": "src/features/booking/confirmation-checking.test.tsx",
     "title": "coalesces manual and duplicate-page reads and preserves the deadline across reload"
   },
   {
@@ -546,6 +554,10 @@
   {
     "file": "tests/customer.spec.ts",
     "title": "public routes remove staff access and fit the viewport"
+  },
+  {
+    "file": "tests/experiment.spec.ts",
+    "title": "checkout binds its server deadline while the first confirmation response is pending"
   },
   {
     "file": "tests/experiment.spec.ts",

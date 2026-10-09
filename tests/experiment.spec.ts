@@ -284,3 +284,39 @@ test("checkout stays unavailable while its protected context is pending", async 
     await starting.catch(() => {});
   }
 });
+
+test("checkout binds its server deadline while the first confirmation response is pending", async ({
+  page,
+}) => {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(
+    "**/api/attempts/*/confirmation",
+    async (route) => {
+      await gate;
+      await route.continue();
+    },
+    { times: 1 },
+  );
+  const contextResponse = page.waitForResponse((r) =>
+    /\/api\/attempts\/[^/]+\/checkout$/.test(r.url()),
+  );
+  const confirmationResponse = page.waitForResponse((r) =>
+    /\/api\/attempts\/[^/]+\/confirmation$/.test(r.url()),
+  );
+  try {
+    await start(page);
+    const context = await (await contextResponse).json();
+    const deadline = await page.evaluate(
+      (id) =>
+        JSON.parse(localStorage.getItem(`soccerbot-checking:${id}`)!).deadline,
+      context.attemptId,
+    );
+    expect(deadline).toBe(context.checking.deadlineMs);
+  } finally {
+    release();
+    await confirmationResponse;
+  }
+});

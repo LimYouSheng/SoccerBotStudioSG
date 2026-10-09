@@ -13,7 +13,7 @@ export function ProtectedConfirmation({
   checkoutMode?: "synthetic" | "live";
   sessionRevision?: number;
 }) {
-  const { view, busy, check } = useConfirmationChecking(
+  const { view, busy, check, bindWindow } = useConfirmationChecking(
     attemptId,
     sessionRevision,
   );
@@ -32,6 +32,7 @@ export function ProtectedConfirmation({
       .then(
         (value) => {
           if (active) {
+            bindWindow(value.checking);
             setContext({ value, revision: sessionRevision });
             setPreparation("ready");
           }
@@ -44,7 +45,7 @@ export function ProtectedConfirmation({
       active = false;
       controller.abort();
     };
-  }, [attemptId, checkoutMode, sessionRevision]);
+  }, [attemptId, checkoutMode, sessionRevision, bindWindow]);
   const current =
     context?.value.attemptId === attemptId &&
     context.value.mode === checkoutMode &&

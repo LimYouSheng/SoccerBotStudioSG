@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ConfirmationError, readConfirmation } from "@/services/confirmation";
 type View = "checking" | "confirmed" | "unavailable" | "unresolved" | "denied";
 type Window = { deadline: number; next: number; count: number };
+type ServerWindow = { deadlineMs: number; nextCheckMs: number };
 function windowFor(id: string): Window {
   try {
     const value = JSON.parse(
@@ -41,6 +42,11 @@ export function useConfirmationChecking(
   } | null>(null);
   const refresh = useRef<() => void>(() => {});
   const check = useCallback(() => refresh.current(), []);
+  const bind = useRef<(window: ServerWindow) => void>(() => {});
+  const bindWindow = useCallback(
+    (window: ServerWindow) => bind.current(window),
+    [],
+  );
   useEffect(() => {
     let active = true,
       busy = false,
@@ -200,6 +206,27 @@ export function useConfirmationChecking(
         clearTimeout(timer);
       } else void poll();
     }
+    bind.current = (window) => {
+      if (!active) return;
+      // Checkout context and confirmation share the same server-owned window.
+      // Bind it before exposing checkout, even when the first status read is
+      // still pending. Neither a late context nor another tab may extend it.
+      const shared = windowFor(attemptId);
+      budget = {
+        deadline: Math.min(budget.deadline, shared.deadline, window.deadlineMs),
+        next: Math.max(budget.next, shared.next, window.nextCheckMs),
+        count: Math.max(budget.count, shared.count),
+      };
+      save(attemptId, budget);
+      if (!terminal && Date.now() >= budget.deadline) {
+        terminal = true;
+        generation++;
+        controller?.abort();
+        busy = false;
+        show("unresolved");
+      }
+      schedule();
+    };
     refresh.current = () => void poll();
     document.addEventListener("visibilitychange", visibility);
     window.addEventListener("focus", visibility);
@@ -210,6 +237,7 @@ export function useConfirmationChecking(
       controller?.abort();
       clearTimeout(timer);
       refresh.current = () => {};
+      bind.current = () => {};
       document.removeEventListener("visibilitychange", visibility);
       window.removeEventListener("focus", visibility);
     };
@@ -224,5 +252,6 @@ export function useConfirmationChecking(
         ? result.busy
         : false,
     check,
+    bindWindow,
   };
 }
