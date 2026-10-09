@@ -2,10 +2,10 @@ import type { Session, Slot } from "@/domain/booking";
 import {
   CLOSING_MINUTE,
   OPENING_MINUTE,
-  SESSION_MINUTES,
   SESSION_STARTS,
   type InstructorId,
-} from "@/domain/catalog";
+} from "@/domain/demo-catalog";
+import { SESSION_MINUTES } from "@/domain/booking-policy";
 import { clock, clockMinutes } from "@/domain/dates";
 const ROTATION: InstructorId[] = [
   "faisal",

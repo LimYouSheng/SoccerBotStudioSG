@@ -106,3 +106,9 @@ export interface ProtectedCheckoutService {
     signal: AbortSignal;
   }): Promise<CheckoutContext>;
 }
+
+export interface CatalogueService {
+  read(
+    input: BookingRequest,
+  ): Promise<import("@/domain/catalog").ProviderCatalogue>;
+}

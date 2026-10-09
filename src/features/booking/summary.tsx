@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { Icon } from "@/components/icon";
-import { INSTRUCTORS, PRICE_CENTS, SERVICE_NAME } from "@/domain/catalog";
+import { INSTRUCTORS, PRICE_CENTS, SERVICE_NAME } from "@/domain/demo-catalog";
 import {
   orderedSlots,
   isElapsed,

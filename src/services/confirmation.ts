@@ -1,3 +1,4 @@
+import { MAX_PLAYERS } from "@/domain/booking-policy";
 import { isNativeCheckoutUrl } from "@/domain/native-checkout";
 import { z } from "zod";
 import type { ProtectedCheckoutService } from "./contracts";
@@ -31,14 +32,14 @@ const contextSchema = z.strictObject({
     }),
   ]),
   summary: z.strictObject({
-    players: z.number().int().min(1).max(4),
+    players: z.number().int().min(1).max(MAX_PLAYERS),
     totalMinor: instant,
     currency: z.literal("SGD"),
     sessions: z
       .array(
         z.strictObject({
           startMs: instant,
-          players: z.number().int().min(1).max(4),
+          players: z.number().int().min(1).max(MAX_PLAYERS),
         }),
       )
       .min(1)

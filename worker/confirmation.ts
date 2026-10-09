@@ -1,3 +1,7 @@
+import {
+  START_INTERVAL_MINUTES,
+  SESSION_MINUTES,
+} from "../src/domain/booking-policy";
 import { storedNativeCheckout } from "./native-adapter";
 import { verifyConfirmation } from "../src/domain/confirmation";
 import { authenticate, type Access } from "./access";
@@ -128,9 +132,9 @@ export function decideStoredConfirmation(
         serviceId: s.serviceId,
         instructorId: s.instructorId,
         startMs: s.startMs,
-        playEndMs: s.startMs + 40 * 60000,
+        playEndMs: s.startMs + SESSION_MINUTES * 60000,
         occupiedStartMs: s.startMs,
-        occupiedEndMs: s.startMs + 50 * 60000,
+        occupiedEndMs: s.startMs + START_INTERVAL_MINUTES * 60000,
       },
       money: {
         currency: intent.currency,

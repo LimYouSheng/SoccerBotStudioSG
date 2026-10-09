@@ -36,7 +36,19 @@ export function nativeBookFields(client: unknown, additional: unknown) {
     throw new ApiError(503, "native_request_fields_invalid");
   return { client: a.data, additional: b.data };
 }
+export type NativeExchange = (
+  request: NativeRequest,
+  signal?: AbortSignal,
+) => Promise<{ body: unknown; receivedAtMs: number }>;
 export type NativeRequest =
+  | { kind: "catalogue-services" }
+  | { kind: "catalogue-instructors" }
+  | {
+      kind: "eligible-instructors";
+      serviceId: string;
+      date: string;
+      time: string;
+    }
   | { kind: "required-fields"; serviceId: string }
   | {
       kind: "availability";
@@ -148,7 +160,26 @@ export async function providerRequest(
       method = "POST";
       rpc = true;
       let rpcMethod: string, params: unknown[];
-      if (native.kind === "booking-read") {
+      if (
+        native.kind === "catalogue-services" ||
+        native.kind === "catalogue-instructors"
+      ) {
+        rpcMethod =
+          native.kind === "catalogue-services" ? "getEventList" : "getUnitList";
+        params = [true, false];
+      } else if (native.kind === "eligible-instructors") {
+        if (
+          !/^\d{4}-\d{2}-\d{2}$/.test(native.date) ||
+          !/^([01]\d|2[0-3]):[0-5]\d:00$/.test(native.time)
+        )
+          throw new ApiError(503, "provider_date_invalid");
+        rpcMethod = "getAvailableUnits";
+        params = [
+          Number(providerId(native.serviceId)),
+          `${native.date} ${native.time}`,
+          1,
+        ];
+      } else if (native.kind === "booking-read") {
         if (!/^[a-f0-9]{32}$/.test(native.signature))
           throw new ApiError(503, "provider_signature_invalid");
         rpcMethod = "getBookingDetails";
@@ -289,7 +320,7 @@ export async function providerRequest(
           !("id" in value) ||
           value.id !== rpcId ||
           !("result" in value) ||
-          "error" in value
+          ("error" in value && value.error !== null)
         )
           throw new ApiError(503, "provider_rpc_failed");
         return value.result;

@@ -1,3 +1,4 @@
+import { MAX_PLAYERS } from "../src/domain/booking-policy";
 import { z } from "zod";
 import { authenticate } from "./access";
 import { ApiError, digest } from "./policy";
@@ -20,7 +21,7 @@ const acceptedSession = z.strictObject({
   serviceId: reference,
   instructorId: reference,
   startMs: z.number().int().safe(),
-  players: z.number().int().min(1).max(4),
+  players: z.number().int().min(1).max(MAX_PLAYERS),
   currency: z.literal("SGD"),
   totalMinor: z.number().int().nonnegative().safe(),
   taxMinor: z.number().int().nonnegative().safe(),

@@ -58,6 +58,8 @@ export function checkWorker(root) {
             ![
               "../src/domain/confirmation",
               "../src/domain/native-checkout",
+              "../src/domain/booking-policy",
+              "../src/domain/catalog",
             ].includes(spec)
           )
             errors.push(`Forbidden Worker layer: ${name} -> ${spec}`);

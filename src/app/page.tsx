@@ -3,7 +3,7 @@ import { Arena } from "@/components/arena";
 import { BookingLink } from "@/components/booking-navigation";
 import { Icon } from "@/components/icon";
 import { homeMedia } from "@/content/media";
-import { SERVICE_NAME } from "@/domain/catalog";
+import { SERVICE_NAME } from "@/domain/demo-catalog";
 export default function Home() {
   return (
     <>

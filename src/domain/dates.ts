@@ -1,3 +1,4 @@
+import { SESSION_MINUTES } from "./booking-policy";
 export function todaySG(now = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Singapore",
@@ -43,7 +44,7 @@ export function clockMinutes(value: string) {
 export function clock(value: number) {
   return `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
 }
-export function endTime(start: string, duration = 40) {
+export function endTime(start: string, duration = SESSION_MINUTES) {
   return clock(clockMinutes(start) + duration);
 }
 export function isDate(value: string) {

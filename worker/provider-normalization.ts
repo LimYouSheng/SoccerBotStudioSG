@@ -1,3 +1,8 @@
+import {
+  START_INTERVAL_MINUTES,
+  SESSION_MINUTES,
+  CHANGEOVER_MINUTES,
+} from "../src/domain/booking-policy";
 import type { ConfirmationInput } from "../src/domain/confirmation";
 import { ApiError } from "./policy";
 import { intentSchema, associationSchema } from "./journal";
@@ -194,9 +199,9 @@ function invoiceEvidence(raw: unknown, context: NativeReadContext) {
   );
   equal(
     bookingWallTime(nested.end_datetime, context.timezone),
-    expected.startMs + 50 * 60000,
+    expected.startMs + START_INTERVAL_MINUTES * 60000,
   );
-  equal(providerId(nested.duration), "40");
+  equal(providerId(nested.duration), String(SESSION_MINUTES));
   const nestedConfirmed = flag(nested.is_confirmed);
   equal(invoice.currency, intent.currency);
   equal(line.currency, intent.currency);
@@ -302,16 +307,16 @@ export function normalizeNativeReads(
   equal(booking.company_login, context.companyLogin);
   equal(providerId(booking.event_id), expected.serviceId);
   equal(providerId(booking.unit_id), expected.instructorId);
-  equal(providerId(booking.event_duration), "40");
+  equal(providerId(booking.event_duration), String(SESSION_MINUTES));
   equal(decimal(booking.event_buffertime_before), 0);
-  equal(decimal(booking.event_buffertime_after), 1000);
+  equal(decimal(booking.event_buffertime_after), CHANGEOVER_MINUTES * 100);
   equal(
     bookingWallTime(booking.start_date_time, context.timezone),
     expected.startMs,
   );
   equal(
     bookingWallTime(booking.end_date_time, context.timezone),
-    expected.startMs + 50 * 60000,
+    expected.startMs + START_INTERVAL_MINUTES * 60000,
   );
   equal(decimal(booking.event_price), expected.totalMinor);
   equal(decimal(booking.invoice_line_amount), expected.totalMinor);
@@ -347,9 +352,9 @@ export function normalizeNativeReads(
           serviceId: expected.serviceId,
           instructorId: expected.instructorId,
           startMs: expected.startMs,
-          playEndMs: expected.startMs + 40 * 60000,
+          playEndMs: expected.startMs + SESSION_MINUTES * 60000,
           occupiedStartMs: expected.startMs,
-          occupiedEndMs: expected.startMs + 50 * 60000,
+          occupiedEndMs: expected.startMs + START_INTERVAL_MINUTES * 60000,
         },
         status,
       },
@@ -385,7 +390,7 @@ export function normalizeNativeCreation(
   );
   equal(
     bookingWallTime(booking.end_date_time, context.timezone),
-    expected.startMs + 50 * 60000,
+    expected.startMs + START_INTERVAL_MINUTES * 60000,
   );
   if (
     typeof booking.hash !== "string" ||

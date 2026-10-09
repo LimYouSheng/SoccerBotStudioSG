@@ -180,6 +180,28 @@ export function checkSource(root) {
     }
     visit(source);
   }
+  // Worker-shared domain roots may never acquire a transitive Preview dependency.
+  for (const shared of [
+    "catalog",
+    "booking-policy",
+    "confirmation",
+    "native-checkout",
+  ]) {
+    const seen = new Set();
+    function inspectShared(file) {
+      if (seen.has(file)) return;
+      seen.add(file);
+      if (
+        /src[/\\]domain[/\\](?:demo-catalog|booking)\.ts$/.test(file) ||
+        /src[/\\]services[/\\]demo[/\\]/.test(file)
+      )
+        errors.push(
+          `Preview dependency in shared domain: ${shared} -> ${path.relative(root, file)}`,
+        );
+      for (const child of graph.get(file) || []) inspectShared(child);
+    }
+    inspectShared(path.join(root, "src/domain", shared + ".ts"));
+  }
   const inventoryFile = files.find((file) =>
     file.endsWith("/scripts/test-inventory.json"),
   );

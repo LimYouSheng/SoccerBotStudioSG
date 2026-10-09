@@ -293,3 +293,19 @@ test("rejects a frontend import of a Worker owner", () =>
         errors.some((error) => error.includes("Forbidden server import")),
       ),
   ));
+
+test("rejects a transitive preview dependency in Worker-shared catalogue", () =>
+  fixture(
+    {
+      "src/app/page.tsx": "import '../domain/catalog'; export default 1;",
+      "src/domain/catalog.ts": "import './bridge'; export const value=1;",
+      "src/domain/bridge.ts": "import './demo-catalog';",
+      "src/domain/demo-catalog.ts": "export const value=1;",
+    },
+    (errors) =>
+      assert.ok(
+        errors.some((error) =>
+          error.includes("Preview dependency in shared domain"),
+        ),
+      ),
+  ));

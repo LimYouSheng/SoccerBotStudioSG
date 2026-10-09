@@ -1,10 +1,12 @@
 # North Star: Cloudflare developer integration
 
-## Current preparation — supported native checkout adapter
+## Current preparation — SimplyBook-owned dynamic data
 
-Build on reviewed7b83a8b / draft PR12 (both final CI jobs passed), which is still unmerged. Main49000e6 is unchanged. New branch feat/native-checkout-adapter-2026-10-09 is stacked on PR12; preserve its completed readiness/deadline repairs. Implement supported normalization, native request boundaries, one-session association, protected link custody and targeted readback using the user-supplied historical bodies and token-free native path. Manual return is acceptable. All source/synthetic work is preparation only; no remote provider/management action or merge is authorized.
+Routine supported instructor, service, name, price and schedule changes belong in SimplyBook, not source code. Preserve PR13's native normalization, protected checkout, expiry and readback. PR12 is owner-merged on main e91fb12; continue PR13's existing branch based on main. Completed8a4226b passed both CI jobs37890214635. The dynamic-data revision needs its own final checks/artifact.
 
-PROGRESS owns current candidate, evidence and unchanged accounting. Service Contracts owns adapter inputs, historical provenance, remaining concrete live bindings and the twelve-call trial proposal. Rules owns the exact release artifact, unchanged0006→0007 sequence and additive rollback. No automatic return, autonomous reconciliation, multi-session, M1/M2.5/M3.4 or production acceptance follows.
+Catalogue IDs and current relationships come from supported complete provider lists and exact eligibility/slot reads. Approved40+10/players/shared-studio policy is separate from explicit preview fixtures and security/environment controls. Pre-booking refreshes current data, returns review changes without rewriting approved history, and refuses unsupported player/customer/tax/capacity mappings. No runtime demo fallback or new live authority. Provider access stays disabled/end0.
+
+PROGRESS owns the six-hour task ledger. Rules owns the hardcoding findings matrix and release/rollback. Service Contracts owns supported data/authentication paths and the current phased operation budget. Source/synthetic/CI preparation and draft updates only; no remote action or merge. No production, autonomous reconciliation, multi-session, M1/M2.5/M3.4 or owner/device acceptance follows.
 
 Historical Experiment1 was the source/synthetic exception before queued M3.4: separate checkout with protected bounded status checking. Live native preparation remains unavailable; native return and no-return reconciliation remain separate. PROGRESS owns final receipts and unchanged accounting. M3.3, M1/M2.5/owner acceptance and Resend prerequisites remain preserved.
 

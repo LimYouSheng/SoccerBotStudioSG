@@ -10,11 +10,8 @@ import {
   type BookingDraft,
 } from "../domain/booking";
 import { contactErrors, blankContact } from "../domain/contact";
-import {
-  SESSION_STARTS,
-  STUDIOS,
-  START_INTERVAL_MINUTES,
-} from "../domain/catalog";
+import { SESSION_STARTS, STUDIOS } from "../domain/demo-catalog";
+import { START_INTERVAL_MINUTES } from "../domain/booking-policy";
 import { addDays, todaySG, clock } from "../domain/dates";
 import { demoBookingModel as service } from "@/services/demo/booking";
 import {

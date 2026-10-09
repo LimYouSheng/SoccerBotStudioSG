@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/icon";
-import { CONTACT, SERVICE_NAME } from "@/domain/catalog";
+import { CONTACT } from "@/domain/catalog";
+import { SERVICE_NAME } from "@/domain/demo-catalog";
 import { totalCents } from "@/domain/booking";
 import { money } from "@/domain/dates";
 import { useBooking } from "./provider";

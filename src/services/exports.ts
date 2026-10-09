@@ -1,4 +1,5 @@
-import { ADDRESS, INSTRUCTORS, SERVICE_NAME } from "@/domain/catalog";
+import { ADDRESS } from "@/domain/catalog";
+import { INSTRUCTORS, SERVICE_NAME } from "@/domain/demo-catalog";
 import { dateLabel, endTime, money } from "@/domain/dates";
 import type { Booking } from "@/domain/booking";
 function download(blob: Blob, filename: string) {

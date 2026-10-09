@@ -1,5 +1,5 @@
 // Explicit composition. The approved customer journey remains Preview; no runtime mode toggle.
-import { liveBookingService } from "./booking";
+import { liveBookingService, liveCatalogueService } from "./booking";
 import { demoBookingService } from "./demo/booking";
 import { demoIdentityService } from "./demo/identity";
 import { demoEnquiryService } from "./demo/enquiry";
@@ -16,3 +16,5 @@ export const bookingAdapters = {
   demo: demoBookingService,
   live: liveBookingService,
 } as const;
+
+export const catalogueService = liveCatalogueService;

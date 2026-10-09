@@ -206,7 +206,10 @@ const harness = {
               phone: "00000000",
             },
             additional: { handle_invoice: true },
-            revalidate: async (value) => value,
+            prebooking: {
+              revalidate: async (value) => value,
+              invalidate: () => {},
+            },
             hasRecoveryCapacity: async () => true,
             db: env.STATE,
           });

@@ -1,3 +1,4 @@
+import type { NativePrebooking } from "./prebooking";
 import { isNativeCheckoutUrl } from "../src/domain/native-checkout";
 import { z } from "zod";
 import { ApiError, digest } from "./policy";
@@ -9,17 +10,11 @@ import {
   bookingWallTime,
 } from "./provider-normalization";
 import type { BookingOperations } from "./orchestration";
-import { nativeBookFields, type NativeRequest } from "./provider-transport";
+import { nativeBookFields, type NativeExchange } from "./provider-transport";
 
 // A trusted server composition supplies authenticated, admitted dispatch and
 // pre-write validation. No HTTP route accepts this contract from a customer.
-export type NativeExchange = (
-  request: NativeRequest,
-  signal?: AbortSignal,
-) => Promise<{
-  body: unknown;
-  receivedAtMs: number;
-}>;
+export type { NativeExchange } from "./provider-transport";
 export type NativeScope = {
   attemptId: string;
   companyLogin: string;
@@ -55,7 +50,7 @@ export function nativeBookingOperations(options: {
   additional: unknown;
   // Required-fields, eligibility/shared availability, current price/tax, customer
   // and player mapping remain trusted pre-write checks, not response guesses.
-  revalidate: BookingOperations["revalidate"];
+  prebooking: Pick<NativePrebooking, "revalidate" | "invalidate">;
   hasRecoveryCapacity: BookingOperations["hasRecoveryCapacity"];
   db: D1Database;
 }): BookingOperations {
@@ -78,7 +73,7 @@ export function nativeBookingOperations(options: {
       await matches(value, context.attemptId);
       if (context.sessionIndex !== 0)
         throw new ApiError(409, "native_single_session_only");
-      return options.revalidate(value, context);
+      return options.prebooking.revalidate(value);
     },
     async createSession(session, value, context) {
       await matches(value, context.attemptId);
@@ -88,15 +83,18 @@ export function nativeBookingOperations(options: {
         throw new ApiError(409, "native_write_not_replayable");
       dispatched = true;
       const wall = new Date(session.startMs + 8 * 3600000).toISOString();
-      const response = await options.exchange({
-        kind: "book",
-        serviceId: session.serviceId,
-        instructorId: session.instructorId,
-        date: wall.slice(0, 10),
-        time: wall.slice(11, 19),
-        client: fields.client,
-        additional: fields.additional,
-      });
+      options.prebooking.invalidate();
+      const response = await options
+        .exchange({
+          kind: "book",
+          serviceId: session.serviceId,
+          instructorId: session.instructorId,
+          date: wall.slice(0, 10),
+          time: wall.slice(11, 19),
+          client: fields.client,
+          additional: fields.additional,
+        })
+        .finally(() => options.prebooking.invalidate());
       created = normalizeNativeCreation(response.body, {
         ...options.scope,
         bookingObservedAtMs: response.receivedAtMs,
