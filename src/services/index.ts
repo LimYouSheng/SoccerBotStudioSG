@@ -1,12 +1,19 @@
-// Explicit composition. The approved customer journey remains Preview; no runtime mode toggle.
+// Build-time composition only. No URL, browser storage or failed request can select Preview.
 import { liveBookingService, liveCatalogueService } from "./booking";
+import { liveCustomerIdentity } from "./identity";
+import { demoCustomerIdentity } from "./demo/identity";
 import { demoBookingService } from "./demo/booking";
 import { demoIdentityService } from "./demo/identity";
 import { demoEnquiryService } from "./demo/enquiry";
 import { demoAssistantService } from "./demo/assistant";
+const mode = process.env.NEXT_PUBLIC_BOOKING_MODE ?? "demo";
+if (mode !== "demo" && mode !== "live")
+  throw new Error("Unsupported booking mode");
 export const services = {
-  booking: demoBookingService,
+  booking: mode === "live" ? liveBookingService : demoBookingService,
   identity: demoIdentityService,
+  customerIdentity:
+    mode === "live" ? liveCustomerIdentity : demoCustomerIdentity,
   enquiry: demoEnquiryService,
   assistant: demoAssistantService,
 };

@@ -100,6 +100,7 @@ export function checkWorker(root) {
     config.name !== "soccerbot-dev" ||
     config.account_id !== "517f4f85eb8f982b483dbc05b797fd88" ||
     config.main !== "worker/index.ts" ||
+    config.version_metadata?.binding !== "CF_VERSION_METADATA" ||
     config.vars.DEPLOYMENT_ACCOUNT_ID !== config.account_id ||
     config.vars.STATE_DATABASE_ID !== "297a991b-70a7-438d-a0e3-39fa3a7f2cee" ||
     config.vars.APP_ORIGIN !==

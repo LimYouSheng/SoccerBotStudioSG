@@ -112,3 +112,28 @@ export interface CatalogueService {
     input: BookingRequest,
   ): Promise<import("@/domain/catalog").ProviderCatalogue>;
 }
+
+export type CustomerChallenge = {
+  email: string;
+  expiresAt: number;
+  challengeId: string;
+  resendAfter: number;
+};
+export interface CustomerIdentityService {
+  readonly mode: "demo" | "live";
+  current(): VerifiedIdentity | null;
+  refresh(signal: AbortSignal): Promise<VerifiedIdentity | null>;
+  guest(signal: AbortSignal): Promise<void>;
+  challenge(email: string, signal: AbortSignal): Promise<CustomerChallenge>;
+  verify(
+    challenge: CustomerChallenge,
+    code: string,
+    remember: boolean,
+    signal: AbortSignal,
+  ): Promise<VerifiedIdentity>;
+  profile(
+    email: string,
+    signal: AbortSignal,
+  ): Promise<BookingDraft["contact"] | null>;
+  signOut(signal: AbortSignal): Promise<void>;
+}

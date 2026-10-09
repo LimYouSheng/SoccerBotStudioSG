@@ -168,6 +168,14 @@
     "title": "the assistant stops handling Escape when closed or unmounted"
   },
   {
+    "file": "src/features/booking/account-lifecycle.test.tsx",
+    "title": "account leaving email challenge ignores delayed completion and live mode never displays demo code"
+  },
+  {
+    "file": "src/features/booking/account-lifecycle.test.tsx",
+    "title": "account waits for owned guest access and duplicate click cannot navigate early"
+  },
+  {
     "file": "src/features/booking/account-step.test.tsx",
     "title": "email form rejects a wrong verification code and accepts the corrected code"
   },
@@ -290,6 +298,14 @@
   {
     "file": "src/features/booking/instructor.test.tsx",
     "title": "instructor profile renders supplied display data without a fixed roster lookup"
+  },
+  {
+    "file": "src/features/booking/live-catalogue.test.tsx",
+    "title": "live catalogue discards delayed previous service replies after environment composition changes"
+  },
+  {
+    "file": "src/features/booking/live-catalogue.test.tsx",
+    "title": "live catalogue displays mutable provider labels and empty failure states without Preview records"
   },
   {
     "file": "src/features/booking/protected-confirmation.test.tsx",
@@ -518,6 +534,26 @@
   {
     "file": "src/services/confirmation.test.ts",
     "title": "keeps unsupported live checkout unavailable without synthetic fallback"
+  },
+  {
+    "file": "src/services/customer-catalogue.test.ts",
+    "title": "customer catalogue accepts current mutable provider data only through protected same-origin reads"
+  },
+  {
+    "file": "src/services/customer-catalogue.test.ts",
+    "title": "customer catalogue rejects stale future partial foreign oversized and unavailable data without fallback"
+  },
+  {
+    "file": "src/services/identity.test.ts",
+    "title": "live identity authenticates guest and verifies through same-origin server reads without browser storage"
+  },
+  {
+    "file": "src/services/identity.test.ts",
+    "title": "live identity discards verification arriving after signout and never pre-fills unbound provider records"
+  },
+  {
+    "file": "src/services/identity.test.ts",
+    "title": "live identity rejects stale mismatched oversized and unavailable responses without demo success"
   },
   {
     "file": "tests/customer.spec.ts",

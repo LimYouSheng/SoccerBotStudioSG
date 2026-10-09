@@ -19,6 +19,12 @@
   "foundation bounds stalled bodies with a fixed one-second deadline",
   "foundation invalid customer access never reaches attempt or operator data",
   "foundation concurrent requests isolate correlations and redact injected failures",
+  "identity stores no plaintext code and consumes one concurrent redemption without renewing guest expiry",
+  "identity rejects wrong expired reused and foreign email or guest codes",
+  "identity rejects bot denial expiry purpose mismatch and durable token replay before email",
+  "identity resend supersedes previous challenge and preserves unknown delivery without retry across restart",
+  "identity concurrent sends and subject limits cannot be bypassed by a new guest",
+  "identity guest revocation denies verified session and ambiguous contacts never prefill",
   "native supplied unpaid and paid shapes use stable invoice identity and canonical decisions",
   "native scalar normalization rejects truthiness rounding malformed and unsafe values",
   "native creation does not treat require_payment false as paid and uses complete returned invoice",
@@ -67,6 +73,11 @@
   "discovery counts failed authentication and never retries or resumes a consumed grant",
   "discovery rejects malformed duplicate paginated and oversized metadata without retaining raw values",
   "discovery unknown dispatch remains counted across eviction and cannot replay",
+  "customer catalogue joins authenticated guest to one finite six-call read without exposing company binding",
+  "customer catalogue denies closed wrong-accounting unowned and unknown scopes without replay",
+  "scheduled native recovery confirms from authoritative reads without browser and consumes one window",
+  "scheduled recovery rejects closed expired future unknown and unsigned windows without provider calls",
+  "scheduled native recovery preserves conflicting paid evidence for manual review",
   "recovery scheduling is atomic with dispatch and duplicate logical intent stays unique",
   "concurrent recovery workers acquire one claim and advance the original attempt fence",
   "expired recovery claims reject late completion before and after fenced reclaim",
@@ -129,5 +140,7 @@
   "expired or foreign access cannot consume another attempt checking allowance",
   "checking exhaustion survives runtime restart and cannot extend the immutable attempt deadline",
   "elapsed checking deadline returns unresolved without modifying recovery or dispatch state",
-  "synthetic fixture awaits evidence without a stale pending snapshot and reuses its attempt"
+  "synthetic fixture awaits evidence without a stale pending snapshot and reuses its attempt",
+  "readiness reports effective expiry served identity and bounded nonce without provider calls",
+  "single statement discovery closure returns expiry then independent D1 read preserves evidence"
 ]

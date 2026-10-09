@@ -1,9 +1,18 @@
+import { runScheduledRecovery } from "./scheduled-recovery";
+import { customerCatalogue } from "./customer-catalogue";
+import { readVerifiedIdentity } from "./identity";
 import { createAccess, authenticate, revokeAccess } from "./access";
 import { confirmation, checkoutContext } from "./confirmation";
 import { ApiError, policy } from "./policy";
 import { verifyBindings } from "./bindings";
 import { traced, instrumentStorage, traceStatus } from "./diagnostics";
 import { developerOperation } from "./developer-operation";
+export {
+  requestIdentityChallenge,
+  verifyIdentityChallenge,
+  readVerifiedIdentity,
+  verifiedContact,
+} from "./identity";
 export { SoccerBotAccountCoordinator } from "./coordinator";
 export {
   claimRecovery,
@@ -33,6 +42,16 @@ const headers = {
   "Referrer-Policy": "no-referrer",
 };
 export default {
+  async scheduled(event: ScheduledController, env: Env) {
+    event.noRetry();
+    try {
+      await runScheduledRecovery(env);
+    } catch {
+      console.error(
+        JSON.stringify({ event: "scheduled_recovery_unavailable" }),
+      );
+    }
+  },
   async fetch(request: Request, env: Env): Promise<Response> {
     const correlationId = crypto.randomUUID(),
       url = new URL(request.url),
@@ -57,7 +76,7 @@ export default {
     return traced(correlationId, "http", async () => {
       try {
         if (!url.pathname.startsWith("/api")) return env.ASSETS.fetch(request);
-        policy(env);
+        const configuration = policy(env);
         if (url.protocol !== "https:")
           throw new ApiError(400, "secure_transport_required");
         if (url.origin !== env.APP_ORIGIN)
@@ -73,6 +92,16 @@ export default {
           request.headers.get("origin") !== url.origin
         )
           throw new ApiError(403, "origin_denied");
+        // Delivery/bot composition is deliberately absent until its concrete
+        // external scope is approved; arbitrary payloads cannot activate it.
+        if (
+          ["/api/identity/challenges", "/api/identity/verify"].includes(
+            url.pathname,
+          )
+        ) {
+          await authenticate(request, env, now);
+          throw new ApiError(503, "identity_unavailable");
+        }
         // These initial named operations accept no payload at all.
         if (request.body !== null) {
           const reader = request.body.getReader();
@@ -105,6 +134,19 @@ export default {
             environment: "developer",
             providerAccess: env.PROVIDER_ACCESS,
             revision: env.SOURCE_REVISION,
+            versionId: env.CF_VERSION_METADATA?.id ?? null,
+            origin: env.APP_ORIGIN,
+            campaignEndMs: Number(env.CAMPAIGN_END_MS),
+            effectiveProviderAccess:
+              configuration.PROVIDER_ACCESS === "trusted-reads" &&
+              now < Number(env.CAMPAIGN_END_MS)
+                ? "trusted-reads"
+                : "disabled",
+            readinessNonce: /^[a-f0-9]{32}$/.test(
+              request.headers.get("X-Readiness-Nonce") ?? "",
+            )
+              ? request.headers.get("X-Readiness-Nonce")
+              : null,
             providerCredentialsPresent: [
               "SIMPLYBOOK_DEV_COMPANY_LOGIN",
               "SIMPLYBOOK_DEV_ADMIN_LOGIN",
@@ -152,6 +194,10 @@ export default {
               now,
             ),
           });
+        if (url.pathname === "/api/catalogue" && request.method === "GET")
+          return json(await customerCatalogue(request, env, now));
+        if (url.pathname === "/api/identity" && request.method === "GET")
+          return json(await readVerifiedIdentity(request, env, now));
         const match = /^\/api\/attempts\/([a-f0-9-]{36})\/confirmation$/.exec(
           url.pathname,
         );

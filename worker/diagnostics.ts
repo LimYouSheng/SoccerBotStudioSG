@@ -51,7 +51,7 @@ export function measure<T>(span: Span, operation: () => T): T {
 }
 export async function traced<T>(
   correlationId: string,
-  boundary: "http" | "coordinator",
+  boundary: "http" | "coordinator" | "scheduled",
   operation: () => Promise<T>,
 ): Promise<T> {
   if (!/^[a-f0-9-]{36}$/.test(correlationId))

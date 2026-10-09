@@ -3,9 +3,17 @@ import Link from "next/link";
 import { Icon } from "@/components/icon";
 import { MAX_PLAYERS } from "@/domain/booking-policy";
 import { SERVICE_NAME } from "@/domain/demo-catalog";
+import { LiveCatalogue } from "./live-catalogue";
 import { useBooking } from "./provider";
 export function SessionStep() {
-  const { draft, update } = useBooking();
+  const { draft, update, bookingService } = useBooking();
+  if (bookingService.mode === "live")
+    return (
+      <>
+        <h1 className="page-title">Your session</h1>
+        <LiveCatalogue />
+      </>
+    );
   return (
     <>
       <h1 className="page-title">Your session</h1>

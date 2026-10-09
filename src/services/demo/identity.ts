@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { blankContact, normalizeContact, validEmail } from "@/domain/contact";
-import type { IdentityService } from "../contracts";
+import type {
+  IdentityService,
+  CustomerIdentityService,
+  AuthChallenge,
+} from "../contracts";
 import { safeRead, safeRemove, safeWrite } from "../storage";
 const KEY = "soccerbot-next-demo-identity";
 const PROFILES = "soccerbot-next-demo-profiles";
@@ -70,5 +74,37 @@ export const demoIdentityService: IdentityService = {
       ...(parsed.success ? parsed.data : {}),
       [draft.accountEmail]: { name: contact.name, phone: contact.phone },
     });
+  },
+};
+
+// Preview remains explicitly separate; no demo code enters the live adapter.
+const previewChallenges = new Map<string, AuthChallenge>();
+export const demoCustomerIdentity: CustomerIdentityService = {
+  mode: "demo",
+  current: demoIdentityService.read,
+  refresh: async () => demoIdentityService.read(),
+  guest: async () => {},
+  challenge: async (email) => {
+    const value = demoIdentityService.challenge(email),
+      id = crypto.randomUUID();
+    previewChallenges.clear();
+    previewChallenges.set(id, value);
+    return {
+      email: value.email,
+      expiresAt: value.expiresAt,
+      challengeId: id,
+      resendAfter: 0,
+    };
+  },
+  verify: async (challenge, code, remember) => {
+    const value = previewChallenges.get(challenge.challengeId);
+    if (!value || value.email !== challenge.email)
+      throw new Error("Request a new verification code.");
+    return demoIdentityService.verify(value, code, remember);
+  },
+  profile: async (email) => demoIdentityService.profile(email),
+  signOut: async () => {
+    previewChallenges.clear();
+    demoIdentityService.signOut();
   },
 };

@@ -1,12 +1,14 @@
-# North Star: Cloudflare developer integration
+# North Star: connected developer booking integration
 
-## Current outcome — discovery stopped and closed
+## Governing continuation — 9 October 2026
 
-Resolve only the remaining player/customer/quote/shared-studio/priority/signing-and-sandbox mappings, beginning with the smallest useful read-only inspection. PR12 and PR13 are owner-merged; main757fd28 passed both required jobs in37896841542 and the existing Pages deployment. New feature branch starts at that main. Preserve native checkout, dynamic SimplyBook-owned catalogue, fresh validation and explicit Preview/live separation.
+Deliver frontend → protected backend → current SimplyBook data → server-validated bookings → native SimplyBook/SBPay/HitPay checkout → authoritative reconciliation → protected confirmation. All agreed flows must work without Preview fallback, operator-injected success, browser payment hints or hardcoded provider records. SimplyBook owns routine supported catalogue/schedule changes. Separate checkout tab/manual return is accepted; automatic return is a separate enhancement. Reconciliation must eventually run without the browser.
 
-Service Contracts owns the gap matrix, documented evidence, configuration proposals and exact five-request field-discovery packet. Rules owns the approved existing-pipeline release/enable/close/rollback boundary. YS approved discovery only: remote migrations and sealed release succeeded, but a management/health disagreement stopped the operation before provider dispatch. Worker closed and grant expired; PROGRESS owns exact consumption and failure receipts. No field metadata or checkout acceptance was obtained. Prepare a revised bounded operator packet; no automatic new remote window. Full trial remains unavailable until its remaining exact operations are known.
+One working agent;24 aggregate active hours,72 elapsed hours from2026-10-09T08:18:56Z,60 substantive loops,6 evidence-based repairs per root cause. PROGRESS records cumulative usage; no reset at checkpoint/resumption. Continue the next authorized ready task after every result/answer/failure. Stop only at completion, genuine external dependency with no independent work, unavailable execution capability, material risk or exhausted budget. No standing service or claim of work after runtime stops.
 
-Historical Experiment1 was the source/synthetic exception before queued M3.4: separate checkout with protected bounded status checking. Live native preparation remains unavailable; native return and no-return reconciliation remain separate. PROGRESS owns final receipts and unchanged accounting. M3.3, M1/M2.5/owner acceptance and Resend prerequisites remain preserved.
+Source/research/offline/synthetic testing/scoped Cloud verification/docs/feature publication are authorized. Existing external budgets do not expand:238/248 management,13/14 deployments,8/80 provider;8 management and one deployment reserved for rollback. Exact external packages require approval, including read-only provider discovery, configuration, deployment, payment, email and background activation. No merge/main push, real-money payment/refund, production cutover or paid upgrade.
+
+Preserve last closed deployed source661cbf54/versiona0b4befb, applied0001–0008 and natural grant expiry; do not reapply migrations. Readiness mismatch/failed closure evidence remains. PR14 stays draft/unmerged; main757fd28. First priority is evidence-based readiness repair, then supported identity/live frontend/recovery work while native mapping facts are resolved. Service Contracts owns one end-to-end acceptance matrix; Rules owns engineering/deployment policy; Journey retains chronology. Developer completion, owner/device acceptance, client staging and production are separate.
 
 ## Historical foundation outcome and authorization — 9 October 2026
 

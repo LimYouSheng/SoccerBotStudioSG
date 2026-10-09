@@ -64,6 +64,7 @@ const receipt = {
   sourceFingerprint: baseline,
   gitHead: git.status === 0 ? git.stdout.trim() : null,
   basePath: siteBasePath,
+  bookingMode: process.env.NEXT_PUBLIC_BOOKING_MODE || "demo",
   browserExecuted: false,
   status: "running",
   commands: [],
