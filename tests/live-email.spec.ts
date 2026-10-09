@@ -96,7 +96,7 @@ test("live guest denial stays on account without Preview fallback", async ({
 }) => {
   const evidence = await fixture(page);
   await page.getByRole("button", { name: "Continue as guest" }).click();
-  await expect(page.getByRole("alert")).toHaveText(
+  await expect(page.getByRole("main").getByRole("alert")).toHaveText(
     "Email verification is unavailable. You can continue as a guest.",
   );
   await expect(page).toHaveURL(/\/book\/account\/$/);
@@ -125,7 +125,7 @@ test("live email requires the supplied widget proof before protected requests", 
   await page
     .getByRole("button", { name: "Continue with email", exact: true })
     .click();
-  await expect(page.getByRole("alert")).toHaveText(
+  await expect(page.getByRole("main").getByRole("alert")).toHaveText(
     "Email verification is unavailable. You can continue as a guest.",
   );
   expect(evidence.calls.filter((c) => c.method === "POST")).toEqual([]);
@@ -160,7 +160,7 @@ test("synthetic live verification reads server identity and keeps native booking
     .getByRole("button", { name: "Verify and continue", exact: true })
     .click();
   await expect(page).toHaveURL(/\/book\/session\/$/);
-  await expect(page.getByRole("alert")).toHaveText(
+  await expect(page.getByRole("main").getByRole("alert")).toHaveText(
     "Session information is unavailable. Your details have been kept.",
   );
   await expect(
