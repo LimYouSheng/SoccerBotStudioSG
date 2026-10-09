@@ -1,3 +1,4 @@
+import { emailSitekey } from "./release-profile.mjs";
 const mainOnly =
   "github.ref == 'refs/heads/main' && github.event_name != 'pull_request'";
 const releaseCommand =
@@ -17,6 +18,7 @@ export function checkPagesPolicy(doc) {
     "backend",
     "deploy",
     "frontend",
+    "live-email",
   ]), "Unexpected or missing workflow job");
   require(!doc.env &&
     !doc.defaults, "Workflow environment redirection refused");
@@ -68,6 +70,24 @@ export function checkPagesPolicy(doc) {
             : !step.env) &&
           !step["working-directory"])), "Backend step bypass refused");
   const frontend = doc.jobs?.frontend || {};
+  const expectedLive = structuredClone(backend);
+  expectedLive.name = "verify / live-email";
+  expectedLive.env = {
+    NEXT_PUBLIC_BASE_PATH: "",
+    RELEASE_PROFILE: "live-email",
+    NEXT_PUBLIC_BOOKING_MODE: "live",
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: emailSitekey,
+    WRANGLER_SEND_METRICS: "false",
+    WRANGLER_LOG_PATH: "test-results/wrangler-logs",
+  };
+  for (const step of expectedLive.steps || [])
+    if (step.uses?.startsWith("actions/upload-artifact@"))
+      step.with.name =
+        "live-email-evidence-${{ github.run_id }}-${{ github.run_attempt }}";
+  require(same(
+    doc.jobs?.["live-email"],
+    expectedLive,
+  ), "Live email requires independent root browser/runtime/sealed-release gates with exact public binding and no activation");
   require(same(frontend.env, { NEXT_PUBLIC_BASE_PATH: "/SoccerBotStudioSG" }) &&
     !frontend.defaults &&
     !frontend.strategy &&

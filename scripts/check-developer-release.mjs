@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { Miniflare, convertV4MiniflareOptions, Log, LogLevel } from "miniflare";
 import { exportInventory, checkExport } from "./check-export.mjs";
+import { releaseProfile } from "./release-profile.mjs";
+const profile = releaseProfile();
 const directory = "test-results/developer-release";
 const read = (file) => JSON.parse(readFileSync(`${directory}/${file}`, "utf8"));
 const manifest = read("manifest.json"),
@@ -13,7 +15,10 @@ const files = exportInventory(directory);
 delete files["manifest.json"];
 assert.deepEqual(files, manifest.files);
 assert.equal(config.no_bundle, true);
-assert.equal(manifest.bookingMode, "demo");
+assert.equal(manifest.bookingMode, profile.bookingMode);
+assert.equal(manifest.releaseProfile, profile.name);
+assert.equal(manifest.turnstileSitekey, profile.sitekey);
+assert.equal(manifest.identityDelivery, "disabled");
 assert.equal(config.vars.SOURCE_REVISION, manifest.sourceRevision);
 assert.equal(config.vars.PROVIDER_ACCESS, "disabled");
 assert.equal(config.vars.CAMPAIGN_END_MS, "0");
@@ -251,7 +256,8 @@ try {
         checks: [
           "file hashes",
           "root export",
-          "0001–0008 compatibility and pending0009–0010 preserve all existing columns identities unknown effects and operator grants",
+          "0001–0008 compatibility and pending0009–0011 preserve all existing columns identities unknown effects and operator grants",
+          "empty identity delivery authority and default-closed HTTP",
           "exact Worker revision",
           "protected checkout unavailable",
           "durable pending confirmation",
@@ -259,6 +265,7 @@ try {
         ],
         providerRequests: outbound,
         remoteOperations: 0,
+        releaseProfile: profile.name,
       },
       null,
       2,

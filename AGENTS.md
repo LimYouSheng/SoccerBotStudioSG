@@ -2,7 +2,7 @@
 
 ## 1. Start
 
-- Current Resend continuation: new branch feat/resend-composition-20261009 from PR14 at5673e79. Default delivery disabled; empty source-only0011 window, no external execution. Owner suppliedauth.app404.ai sender/recipient; no Turnstile widget exists. Use Service Contracts finite email section and PROGRESS carried accounting. Preserve isolated PR15 artifact/source. Current user reserves browser execution for CI/user; do not launch assistant browsers.
+- Current Resend continuation: new branch feat/resend-composition-20261009 from PR14 at5673e79. Default delivery disabled; empty source-only0011 window, no external execution. Owner suppliedauth.app404.ai sender/recipient and reports Turnstile ready; public sitekey is bound only by the separate live-email release profile. Worker secret installation and activation remain unapproved. Use Service Contracts finite email section and PROGRESS carried accounting. Preserve isolated PR15 artifact/source. Current user reserves browser execution for CI/user; do not launch assistant browsers.
 
 - Read NORTH_STAR and PROGRESS (the one current task ledger), then relevant sections of the three canonical owners.
 - Current main is owner-merged PR13 at757fd288084d0e76c7cb7b766e33c4724d6988d0. Actual main CI37896841542 passed both required jobs; existing Pages deployment succeeded. Work on new feat/native-discovery-2026-10-09, never main; preserve prior work/Mac stash.
@@ -35,7 +35,7 @@ The 9 October Experiment1 instruction permits only source/local synthetic/CI wor
 
 ## 4. Verify
 
-- Run focused checks while iterating. Codex may prepare browsers, run Playwright and inspect internal previews.
+- Run focused non-browser checks while iterating. Browser execution belongs to YS and CI; Codex must not launch browsers, Playwright, screenshots or browser-running verification/installers.
 - Require the exact GitHub Actions check `verify / frontend`, including desktop Chromium, phone WebKit and tablet WebKit. Require `verify / backend` for Workers runtime and independent root-path browser gates. A fresh Cloud setup also needs its own scoped execution evidence.
 - Never weaken assertions, skip coverage, lower required counts, add retries, raise timeouts or alter runner settings to obtain green results.
 - Record SHA, command, environment and result. Separate cloud/CI, visual/device and live-provider evidence; blocked is not passed.

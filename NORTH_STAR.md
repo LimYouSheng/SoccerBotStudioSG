@@ -2,7 +2,7 @@
 
 ## Governing continuation — 9 October 2026
 
-Resumed email preparation: real fixed Resend/Turnstile source composition and durable finite admission remain closed by default. Environment Resend readiness and exact PR15 artifact import are now verified; widget, Worker secret bindings, live-mode artifact, migrations/setup allowance and actual delivery remain pending. No private prefill or North Star completion follows.
+Resumed email preparation: real fixed Resend/Turnstile source composition and durable finite admission remain closed by default. Environment Resend readiness and exact PR15 artifact import are now verified; owner now reports Turnstile ready and supplied its public sitekey. Exact widget settings, Worker secret bindings, verified live-mode artifact, migrations/setup allowance and actual delivery remain pending. The separate live-email CI profile prepares closed delivery only. No private prefill or North Star completion follows.
 
 Deliver frontend → protected backend → current SimplyBook data → server-validated bookings → native SimplyBook/SBPay/HitPay checkout → authoritative reconciliation → protected confirmation. All agreed flows must work without Preview fallback, operator-injected success, browser payment hints or hardcoded provider records. SimplyBook owns routine supported catalogue/schedule changes. Separate checkout tab/manual return is accepted; automatic return is a separate enhancement. Reconciliation must eventually run without the browser.
 

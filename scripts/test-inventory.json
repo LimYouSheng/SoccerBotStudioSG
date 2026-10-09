@@ -658,5 +658,17 @@
   {
     "file": "tests/experiment.spec.ts",
     "title": "the Payment preview entry and temporary checking failure retain customer selections and contact"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "live email requires the supplied widget proof before protected requests"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "live guest denial stays on account without Preview fallback"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "synthetic live verification reads server identity and keeps native booking unavailable"
   }
 ]

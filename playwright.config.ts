@@ -1,7 +1,11 @@
 import { sitePath } from "./src/content/site-path";
 import { defineConfig, devices } from "@playwright/test";
+const liveEmail = process.env.RELEASE_PROFILE === "live-email";
 export default defineConfig({
   testDir: "./tests",
+  testMatch: liveEmail
+    ? "live-email.spec.ts"
+    : ["customer.spec.ts", "experiment.spec.ts"],
   outputDir: "test-results/browser-artifacts",
   fullyParallel: true,
   forbidOnly: true,

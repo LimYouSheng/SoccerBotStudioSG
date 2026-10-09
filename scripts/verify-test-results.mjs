@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { releaseProfile } from "./release-profile.mjs";
 export function validateEngines(projects) {
   const expected = [
     {
@@ -16,7 +17,13 @@ export function validateEngines(projects) {
     ? []
     : ["Actual browser engine/retry matrix differs"];
 }
-export function validateResults(kind, report, inventory, root = process.cwd()) {
+export function validateResults(
+  kind,
+  report,
+  inventory,
+  root = process.cwd(),
+  suite = "demo",
+) {
   const errors = [],
     seen = [],
     files = new Set();
@@ -27,8 +34,12 @@ export function validateResults(kind, report, inventory, root = process.cwd()) {
   const expected = inventory.filter((item) =>
     kind === "unit"
       ? /\.test\.tsx?$/.test(item.file)
-      : /\.spec\.ts$/.test(item.file),
+      : /\.spec\.ts$/.test(item.file) &&
+        (suite === "live-email"
+          ? item.file === "tests/live-email.spec.ts"
+          : item.file !== "tests/live-email.spec.ts"),
   );
+  if (!["demo", "live-email"].includes(suite)) return ["Unknown browser suite"];
   if (!expected.length) return ["Expected inventory is empty"];
   if (kind === "unit") {
     if (
@@ -146,6 +157,8 @@ if (
       kind,
       JSON.parse(readFileSync(`test-results/${kind}.json`, "utf8")),
       JSON.parse(readFileSync("scripts/test-inventory.json", "utf8")),
+      process.cwd(),
+      releaseProfile().browserSuite,
     );
     if (kind === "browser")
       errors.push(

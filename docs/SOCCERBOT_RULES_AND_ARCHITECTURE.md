@@ -12,6 +12,12 @@ Target is the actual customer frontend connected to supported developer provider
 
 Current budget238/248 management,13/14 deployments,8/80 provider; historical closed80 separate;8 management and final deployment reserved for rollback. No new remote call/setup/deployment/email/write/background activation is implied. Prepare complete exact finite packages and bundle needed amendments after independent preparation. No merge/main push/production/real funds/refund/paid upgrade.0001–0008 are remotely applied and immutable. Earlier dated instructions and totals below are historical where superseded by this section.
 
+## Live-email candidate preparation — 9 October 2026
+
+The root live-email release is a distinct candidate from PR16's accepted Demo artifact. The existing packaging/check owners accept only explicit `closed-demo` or `live-email` profiles; the latter binds root path, live composition and the supplied public Turnstile sitekey. Receipt and manifest record that identity. Existing frontend/backend Demo gates remain complete; an additional read-only CI job runs the actual Worker gate and three synthetic live-browser cases on all three existing browser projects, then seals/checks its own bytes. No assistant browser execution. CI stubs all external browser requests; this is not widget, mailbox or native-provider acceptance.
+
+Both profiles retain provider disabled/end0, identity delivery disabled, empty delivery authority, unchanged migrations and no cron. Neither the public key nor a live frontend permits external calls, private prefill, native booking or activation. Worker binding/setup allowance, the pending0009–0011 sequence, a finite email window and separately verified close/rollback remain external dependencies. The238/248 management,13/14 deployment and8/80 provider counters and rollback reserves are unchanged.
+
 ## M3.2 exception — 9 October 2026
 
 The owner authorizes one six-hour M3.2 build on verified M3.1 while formal M1/M2.5 remain pending: named async customer booking contracts, guarded UI state, synthetic tests, canonical docs, feature-branch publication and final CI. A developer deployment is conditional on necessary changed-behavior evidence; no routine deployment is required. Provider disabled/end0 and closed grants remain mandatory. No provider-account calls, settings, business writes, new resources, applied migration edits, main/merge or production changes. PROGRESS is the sole current ledger and consumption owner.

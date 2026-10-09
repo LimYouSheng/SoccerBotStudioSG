@@ -10,6 +10,8 @@ import {
 } from "node:fs";
 import ts from "typescript";
 import { checkExport, exportInventory } from "./check-export.mjs";
+import { releaseProfile } from "./release-profile.mjs";
+const profile = releaseProfile();
 
 const read = (file) => JSON.parse(readFileSync(file, "utf8"));
 const git = (...args) => execFileSync("git", args, { encoding: "utf8" }).trim();
@@ -30,9 +32,12 @@ assert.equal(browser.gitHead, checkout);
 assert.equal(browser.basePath, "");
 assert.equal(
   browser.bookingMode,
-  "demo",
-  "Current release acceptance covers Preview composition only",
+  profile.bookingMode,
+  "Browser evidence must cover the exact release composition",
 );
+assert.equal(browser.releaseProfile, profile.name);
+assert.equal(browser.turnstileSitekey, profile.sitekey);
+assert.equal(browser.browserSuite, profile.browserSuite);
 assert.equal(browser.browserExecuted, true);
 assert.equal(backend.status, "passed");
 assert.deepEqual(exportInventory("out"), browser.export.files);
@@ -88,6 +93,9 @@ const manifest = {
   testedTree: git("rev-parse", "HEAD^{tree}"),
   basePath: "",
   bookingMode: browser.bookingMode,
+  releaseProfile: profile.name,
+  turnstileSitekey: profile.sitekey,
+  identityDelivery: "disabled",
   providerAccess: "disabled",
   campaignEndMs: 0,
   pendingRemoteMigrations: [
@@ -96,7 +104,10 @@ const manifest = {
     "0011_identity_delivery.sql",
   ],
   priorWorkerVersion: "a0b4befb-079b-4836-9967-b1f5fe101bd7",
-  acceptance: "closed foundation only; native integration remains unavailable",
+  acceptance:
+    profile.name === "live-email"
+      ? "synthetic live-email frontend; delivery closed; no provider or mailbox acceptance"
+      : "closed foundation only; native integration remains unavailable",
   files: exportInventory(directory),
 };
 writeFileSync(
