@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { providerId } from "./provider-normalization";
 import { measure } from "./diagnostics";
 import { ApiError } from "./policy";
@@ -11,6 +12,30 @@ export type ProviderOperation =
   | "historical-booking"
   | "historical-invoice"
   | "native";
+// Retained request-builder shape, not a raw HTTP capture. Bounds are local policy.
+const contactText = z
+  .string()
+  .min(1)
+  .max(256)
+  .refine((value) => value.trim() === value && !/[\x00-\x1f\x7f]/.test(value));
+export const nativeClientSchema = z
+  .object({
+    name: contactText,
+    email: contactText.pipe(z.email()),
+    phone: contactText,
+  })
+  .strict();
+// Invoice handling is a control, not a discovered custom intake answer.
+export const nativeAdditionalSchema = z
+  .object({ handle_invoice: z.literal(true) })
+  .strict();
+export function nativeBookFields(client: unknown, additional: unknown) {
+  const a = nativeClientSchema.safeParse(client);
+  const b = nativeAdditionalSchema.safeParse(additional);
+  if (!a.success || !b.success)
+    throw new ApiError(503, "native_request_fields_invalid");
+  return { client: a.data, additional: b.data };
+}
 export type NativeRequest =
   | { kind: "required-fields"; serviceId: string }
   | {
@@ -25,8 +50,8 @@ export type NativeRequest =
       instructorId: string;
       date: string;
       time: string;
-      client: Record<string, unknown>;
-      intake: Record<string, unknown>;
+      client: z.infer<typeof nativeClientSchema>;
+      additional: z.infer<typeof nativeAdditionalSchema>;
     }
   | { kind: "booking-read"; bookingId: string; signature: string }
   | { kind: "invoice-read"; invoiceId: string }
@@ -143,14 +168,15 @@ export async function providerRequest(
           } else {
             if (!/^([01]\d|2[0-3]):[0-5]\d:00$/.test(native.time))
               throw new ApiError(503, "provider_time_invalid");
+            const fields = nativeBookFields(native.client, native.additional);
             rpcMethod = "book";
             params = [
               service,
               provider,
               native.date,
               native.time,
-              native.client,
-              { ...native.intake, handle_invoice: true },
+              fields.client,
+              fields.additional,
               1,
               null,
               null,

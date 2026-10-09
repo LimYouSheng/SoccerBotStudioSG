@@ -386,8 +386,12 @@ test("native fixed requests reserve each dispatch and reject malformed signature
         instructorId: "14",
         date: "2026-10-10",
         time: "09:00:00",
-        client: { synthetic: true },
-        intake: { handle_invoice: false },
+        client: {
+          name: "Synthetic Test Guest",
+          email: "guest@example.invalid",
+          phone: "00000000",
+        },
+        additional: { handle_invoice: true },
       },
       "book",
       [
@@ -395,7 +399,11 @@ test("native fixed requests reserve each dispatch and reject malformed signature
         14,
         "2026-10-10",
         "09:00:00",
-        { synthetic: true },
+        {
+          name: "Synthetic Test Guest",
+          email: "guest@example.invalid",
+          phone: "00000000",
+        },
         { handle_invoice: true },
         1,
         null,
@@ -406,6 +414,35 @@ test("native fixed requests reserve each dispatch and reject malformed signature
     assert.equal((await call("transport", { operation })).status, 200);
     assert.equal(calls.at(-1).body.method, method);
     assert.deepEqual(calls.at(-1).body.params, params);
+  }
+  const validBook = {
+    kind: "book",
+    serviceId: "12",
+    instructorId: "14",
+    date: "2026-10-10",
+    time: "09:00:00",
+    client: {
+      name: "Synthetic Test Guest",
+      email: "guest@example.invalid",
+      phone: "00000000",
+    },
+    additional: { handle_invoice: true },
+  };
+  for (const patch of [
+    { client: { ...validBook.client, players: 1 } },
+    { client: { ...validBook.client, email: "invalid" } },
+    { client: { name: "Synthetic" } },
+    { additional: { handle_invoice: false } },
+    { additional: { handle_invoice: true, consent: true } },
+    { additional: {} },
+  ]) {
+    const before = calls.length;
+    const rejected = await call("transport", {
+      operation: { ...validBook, ...patch },
+    });
+    assert.equal(rejected.status, 409);
+    assert.equal(rejected.reserved, 0);
+    assert.equal(calls.length, before);
   }
   for (const kind of ["invoice-read", "payment-link"]) {
     assert.equal(
@@ -471,6 +508,64 @@ test("native orchestration consumes one booking response and cannot replay lost 
   assert.equal((await call("orchestrate", lost)).requests, 0);
 });
 test("native link effect preserves one capability on reopen and never regenerates lost replies", async () => {
+  const now = Date.parse("2026-10-08T01:00:00+08:00");
+  const timing = {
+    invoiceId: "901",
+    dueDatetime: "2026-10-08 01:08:30",
+    supervisionDeadlineMs: now + 1800000,
+    handoffAtMs: now,
+  };
+  for (const dueDatetime of [
+    timing.dueDatetime,
+    "2026-10-08T01:08:30+08:00",
+    "2026-10-07T17:08:30Z",
+    "2026-10-07T12:08:30-05:00",
+  ])
+    assert.equal(
+      (await call("deadline", { now, value: { ...timing, dueDatetime } }))
+        .result,
+      Date.parse("2026-10-08T01:08:00+08:00"),
+    );
+  for (const dueDatetime of [
+    null,
+    "",
+    "2026-02-30 01:08:30",
+    "2026-10-08 01:00:00",
+    "2026-10-08 01:02:59",
+    "2026-10-08T01:08:30+25:00",
+  ])
+    assert.equal(
+      (await call("deadline", { now, value: { ...timing, dueDatetime } }))
+        .status,
+      409,
+    );
+  assert.equal(
+    (
+      await call("deadline", {
+        now,
+        value: { ...timing, supervisionDeadlineMs: now + 180000 },
+      })
+    ).result,
+    now + 180000,
+  );
+  assert.equal(
+    (
+      await call("deadline", {
+        now,
+        value: { ...timing, dueDatetime: "2026-10-08 02:00:00" },
+      })
+    ).result,
+    now + 600000,
+  );
+  assert.equal(
+    (
+      await call("deadline", {
+        now,
+        value: { ...timing, supervisionDeadlineMs: now + 179999 },
+      })
+    ).status,
+    409,
+  );
   const data = await prepared();
   await call("orchestrate", data);
   data.value = {

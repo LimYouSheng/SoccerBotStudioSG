@@ -6,9 +6,10 @@ import {
   normalizeNativeCreation,
   normalizeNativeReads,
   providerId,
+  bookingWallTime,
 } from "./provider-normalization";
 import type { BookingOperations } from "./orchestration";
-import type { NativeRequest } from "./provider-transport";
+import { nativeBookFields, type NativeRequest } from "./provider-transport";
 
 // A trusted server composition supplies authenticated, admitted dispatch and
 // pre-write validation. No HTTP route accepts this contract from a customer.
@@ -50,8 +51,8 @@ function validateScope(scope: NativeScope) {
 export function nativeBookingOperations(options: {
   scope: NativeScope;
   exchange: NativeExchange;
-  client: Record<string, unknown>;
-  intake: Record<string, unknown>;
+  client: unknown;
+  additional: unknown;
   // Required-fields, eligibility/shared availability, current price/tax, customer
   // and player mapping remain trusted pre-write checks, not response guesses.
   revalidate: BookingOperations["revalidate"];
@@ -59,6 +60,7 @@ export function nativeBookingOperations(options: {
   db: D1Database;
 }): BookingOperations {
   const intent = validateScope(options.scope);
+  const fields = nativeBookFields(options.client, options.additional);
   let created: ReturnType<typeof normalizeNativeCreation> | undefined;
   let dispatched = false;
   const matches = async (value: unknown, attemptId: string) => {
@@ -92,8 +94,8 @@ export function nativeBookingOperations(options: {
         instructorId: session.instructorId,
         date: wall.slice(0, 10),
         time: wall.slice(11, 19),
-        client: options.client,
-        intake: options.intake,
+        client: fields.client,
+        additional: fields.additional,
       });
       created = normalizeNativeCreation(response.body, {
         ...options.scope,
@@ -173,6 +175,52 @@ export async function readNativeAttempt(options: {
     }),
   };
 }
+// Attempt03 local checkout guards; this does not establish provider TTL or cancellation.
+export type NativeCheckoutTiming = {
+  invoiceId: string;
+  dueDatetime: unknown;
+  supervisionDeadlineMs: number;
+  handoffAtMs: number;
+};
+export function nativeCheckoutDeadline(
+  timing: NativeCheckoutTiming,
+  now: number,
+) {
+  const match =
+    typeof timing.dueDatetime === "string" &&
+    /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})(Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)?$/.exec(
+      timing.dueDatetime,
+    );
+  if (
+    !match ||
+    ![now, timing.supervisionDeadlineMs, timing.handoffAtMs].every(
+      Number.isSafeInteger,
+    ) ||
+    timing.handoffAtMs > now
+  )
+    throw new ApiError(503, "native_checkout_expiry_unverified");
+  const offset = match[3];
+  const offsetMinutes = !offset
+    ? 480
+    : offset === "Z"
+      ? 0
+      : (offset[0] === "-" ? -1 : 1) *
+        (Number(offset.slice(1, 3)) * 60 + Number(offset.slice(4)));
+  const due =
+    bookingWallTime(`${match[1]} ${match[2]}`, "Asia/Singapore") +
+    (480 - offsetMinutes) * 60000;
+  const deadline = Math.min(
+    timing.supervisionDeadlineMs,
+    timing.handoffAtMs + 600000,
+    due - 30000,
+  );
+  if (
+    Math.min(due, timing.supervisionDeadlineMs) - now < 180000 ||
+    deadline <= now
+  )
+    throw new ApiError(503, "native_checkout_expiry_unverified");
+  return deadline;
+}
 // Reserve the potentially stateful GET before dispatch. Lost/malformed replies
 // remain unknown, and a new adapter instance cannot regenerate the link.
 export async function prepareNativeLink(
@@ -180,16 +228,12 @@ export async function prepareNativeLink(
   scope: NativeScope,
   exchange: NativeExchange,
   configured = true,
-  expiresAtMs?: number,
+  timing?: NativeCheckoutTiming,
 ) {
   const intent = validateScope(scope);
-  if (
-    !configured ||
-    !Number.isSafeInteger(expiresAtMs) ||
-    expiresAtMs! < Date.now() + 180000 ||
-    expiresAtMs! > Date.now() + 600000
-  )
+  if (!configured || !timing)
     throw new ApiError(503, "native_checkout_expiry_unverified");
+  nativeCheckoutDeadline(timing, Date.now());
   const row = await db
     .withSession("first-primary")
     .prepare(
@@ -211,6 +255,18 @@ export async function prepareNativeLink(
   const refs = associationSchema.parse(JSON.parse(row.association_json));
   if (refs.bookingIds.length !== 1)
     throw new ApiError(409, "native_single_session_only");
+  if (providerId(timing.invoiceId) !== refs.invoiceId)
+    throw new ApiError(409, "native_association_missing");
+  const expiresAtMs = nativeCheckoutDeadline(
+    {
+      ...timing,
+      supervisionDeadlineMs: Math.min(
+        timing.supervisionDeadlineMs,
+        row.deadline_ms,
+      ),
+    },
+    Date.now(),
+  );
   // A native-link effect's opaque reference is private capability metadata.
   // Protected context is its only customer read; logs/results omit it.
   const reserved = await db

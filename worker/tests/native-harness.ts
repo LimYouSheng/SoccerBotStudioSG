@@ -9,6 +9,8 @@ import {
 import {
   nativeBookingOperations,
   nativeCheckoutLink,
+  nativeCheckoutDeadline,
+  type NativeCheckoutTiming,
   prepareNativeLink,
   nativeBookingSignature,
   storedNativeCheckout,
@@ -136,6 +138,12 @@ const harness = {
             input.scenario || "Asia/Singapore",
           );
           break;
+        case "deadline":
+          result = nativeCheckoutDeadline(
+            input.value as NativeCheckoutTiming,
+            input.now,
+          );
+          break;
         case "link":
           result = nativeCheckoutLink(
             input.value,
@@ -192,8 +200,12 @@ const harness = {
           const operations = nativeBookingOperations({
             scope: input.scope,
             exchange,
-            client: { synthetic: true },
-            intake: {},
+            client: {
+              name: "Synthetic Test Guest",
+              email: "guest@example.invalid",
+              phone: "00000000",
+            },
+            additional: { handle_invoice: true },
             revalidate: async (value) => value,
             hasRecoveryCapacity: async () => true,
             db: env.STATE,
@@ -226,7 +238,15 @@ const harness = {
             true,
             input.scenario === "expiry-unknown"
               ? undefined
-              : input.now + 300000,
+              : {
+                  invoiceId: "901",
+                  dueDatetime: new Date(input.now + 330000)
+                    .toISOString()
+                    .replace(".000", "")
+                    .replace(/\.\d{3}Z$/, "Z"),
+                  supervisionDeadlineMs: input.now + 600000,
+                  handoffAtMs: input.now,
+                },
           );
           break;
         case "stored-link":
