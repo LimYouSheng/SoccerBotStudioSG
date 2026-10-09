@@ -38,6 +38,8 @@ export default defineConfig([
     },
   },
   globalIgnores([
+    "worker/runtime.d.ts",
+    ".wrangler/**",
     ".next/**",
     "out/**",
     "test-results/**",

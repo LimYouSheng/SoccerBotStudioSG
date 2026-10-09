@@ -9,7 +9,7 @@ import { ReviewStep } from "./review-step";
 import { BookingProvider } from "./provider";
 import { demoSession } from "@/services/demo/schedule";
 import { ConfirmationStep } from "./confirmation-step";
-import { demoBookingService } from "@/services/demo/booking";
+import { demoBookingModel } from "@/services/demo/booking";
 import { loadBooking, saveBooking } from "@/services/storage";
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
@@ -42,6 +42,7 @@ test("booking page restores a future Tuesday on Wednesday before selecting and r
       <BookingPage step="time" />
     </BookingProvider>,
   );
+  await act(async () => {});
   expect(todaySG()).toBe("2026-10-07");
   const calendar = screen.getByRole("region", { name: "Booking calendar" });
   expect(
@@ -77,12 +78,13 @@ test("booking page restores a future Tuesday on Wednesday before selecting and r
   expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
   expect(screen.queryByText("Preview controls")).not.toBeInTheDocument();
 });
-test("crossing notices persist in the basket and review before payment", () => {
+test("crossing notices persist in the basket and review before payment", async () => {
   const basket = render(
     <BookingProvider>
       <Summary basket />
     </BookingProvider>,
   );
+  await act(async () => {});
   expect(
     within(screen.getByRole("complementary")).getByText(/Crosses the 12:00/),
   ).toHaveTextContent("stays for the full session");
@@ -104,7 +106,7 @@ test("crossing notices persist in the basket and review before payment", () => {
   ).toBeDisabled();
 });
 
-test("confirmation shows each contact and location once with all five sections expanded", () => {
+test("confirmation shows each contact and location once with all five sections expanded", async () => {
   const stored = loadBooking();
   const draft = {
     ...stored.draft,
@@ -120,11 +122,11 @@ test("confirmation shows each contact and location once with all five sections e
       demoSession({ date: stored.draft.slots[0].date, start: "12:20" })!,
     ],
   };
-  const checking = demoBookingService.pay(
-    demoBookingService.checkout(draft, null),
+  const checking = demoBookingModel.pay(
+    demoBookingModel.checkout(draft, null),
     "success",
   );
-  const attempt = demoBookingService.resolve(checking, checking.checkUntil);
+  const attempt = demoBookingModel.resolve(checking, checking.checkUntil);
   saveBooking({ version: 2, draft, attempt });
   const view = render(
     <BookingProvider>
@@ -154,7 +156,7 @@ test("confirmation shows each contact and location once with all five sections e
   ).toBeVisible();
 });
 
-test("an open booking page expires a selected slot at its start and keeps it removable", () => {
+test("an open booking page expires a selected slot at its start and keeps it removable", async () => {
   vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
   vi.setSystemTime(new Date("2026-10-06T08:59:59.999+08:00"));
   const draft = { ...blankDraft(), mode: "guest" as const };
@@ -164,14 +166,16 @@ test("an open booking page expires a selected slot at its start and keeps it rem
       <BookingPage step="time" />
     </BookingProvider>,
   );
+  await act(async () => {});
   const slot = screen.getByRole("button", { name: /09:00–09:40/ });
   expect(slot).toBeEnabled();
   fireEvent.click(slot);
   expect(screen.getByRole("link", { name: "Continue" })).toBeInTheDocument();
-  act(() => {
+  await act(async () => {
     vi.advanceTimersByTime(1);
   });
   expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+  await act(async () => {});
   expect(
     within(screen.getByRole("complementary")).getByText(/Session has started/),
   ).toBeVisible();
@@ -180,11 +184,11 @@ test("an open booking page expires a selected slot at its start and keeps it rem
     screen.getByRole("button", { name: "Remove 2026-10-06 at 09:00" }),
   );
   expect(loadBooking().draft.slots).toHaveLength(0);
-  expect(slot).toBeDisabled();
+  expect(screen.getByRole("button", { name: /09:00–09:40/ })).toBeDisabled();
   view.unmount();
 });
 
-test("restored elapsed sessions remain labelled and removable alongside valid future sessions", () => {
+test("restored elapsed sessions remain labelled and removable alongside valid future sessions", async () => {
   vi.setSystemTime(new Date("2027-01-01T00:00:00+08:00"));
   const stale = demoSession({ date: "2026-12-31", start: "19:50" })!;
   const future = demoSession({ date: "2027-01-01", start: "09:00" })!;
@@ -198,6 +202,7 @@ test("restored elapsed sessions remain labelled and removable alongside valid fu
       <BookingPage step="time" />
     </BookingProvider>,
   );
+  await act(async () => {});
   const basket = within(screen.getByRole("complementary"));
   expect(basket.getByText(/Session has started/)).toBeVisible();
   expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
@@ -205,11 +210,12 @@ test("restored elapsed sessions remain labelled and removable alongside valid fu
   fireEvent.click(
     screen.getByRole("button", { name: "Remove 2026-12-31 at 19:50" }),
   );
+  await act(async () => {});
   expect(loadBooking().draft.slots).toEqual([future]);
   expect(basket.queryByText(/Session has started/)).not.toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Continue" })).toBeInTheDocument();
 });
-test("selection rechecks time before dispatch and refreshes after a suspended tab resumes", () => {
+test("selection rechecks time before dispatch and refreshes after a suspended tab resumes", async () => {
   vi.setSystemTime(new Date("2026-10-06T08:59:59+08:00"));
   saveBooking({
     version: 2,
@@ -221,17 +227,22 @@ test("selection rechecks time before dispatch and refreshes after a suspended ta
       <BookingPage step="time" />
     </BookingProvider>,
   );
+  await act(async () => {});
   const slot = screen.getByRole("button", { name: /09:00–09:40/ });
   expect(slot).toBeEnabled();
   // Move Date only, without delivering the scheduled UI timer.
   vi.setSystemTime(new Date("2026-10-06T09:00:00+08:00"));
   fireEvent.click(slot);
   expect(loadBooking().draft.slots).toEqual([]);
-  fireEvent.focus(window);
-  expect(slot).toBeDisabled();
-  expect(slot).toHaveTextContent("Session has started");
+  await act(async () => {
+    fireEvent.focus(window);
+  });
+  expect(screen.getByRole("button", { name: /09:00–09:40/ })).toBeDisabled();
+  expect(screen.getByRole("button", { name: /09:00–09:40/ })).toHaveTextContent(
+    "Session has started",
+  );
 });
-test("an open calendar follows Singapore year rollover without deleting its draft", () => {
+test("an open calendar follows Singapore year rollover without deleting its draft", async () => {
   vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
   vi.setSystemTime(new Date("2026-12-31T23:59:59.999+08:00"));
   const slot = demoSession({ date: "2027-01-01", start: "09:00" })!;
@@ -245,7 +256,7 @@ test("an open calendar follows Singapore year rollover without deleting its draf
       <BookingPage step="time" />
     </BookingProvider>,
   );
-  act(() => {
+  await act(async () => {
     vi.advanceTimersByTime(1);
   });
   expect(todaySG()).toBe("2027-01-01");

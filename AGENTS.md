@@ -2,13 +2,20 @@
 
 ## 1. Start
 
-- Read `NORTH_STAR.md` and `PROGRESS.md`; confirm repository, branch, HEAD and existing changes.
-- YS merged PR #9 while the offline confirmation task was underway. Refreshed main is `6bce457dbc7a3c7700d1f4c545554210b9de406c`, with the same tree as reviewed PR candidate `262a69e17ea610e08c1f4c987546ad2484cb0590`. Preserve newer work and use `feat/offline-protected-confirmation-2026-10-08` for the new draft PR. Main visual inspection is pending; CLOUD-01 preview acceptance remains blocked.
-- GitHub is canonical for the reconciled source. Preserve unknown edits and keep experiment acceptance separate. Routine Cloud work does not require a Mac installer or user-run browser tests.
-- Search relevant sections of `docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md` and `docs/SERVICE_CONTRACTS.md`; do not load all history.
-- Current checkpoint — 8 October: `src/domain/confirmation.ts` implements the offline evidence verifier under the owner's narrow dependency exception before M2.5. It has no UI/service-composition, authentication, persistence, provider or HTTP wiring. M1 review and remaining gates are in Rules; actual contract in Service Contracts; validation and next task in PROGRESS. Publish reviewed code/docs to a new draft PR because PR#9 is merged; no force push, merge, auto-merge or deployment.
-- Provider continuation stays closed at **80 direct requests (2 owner-reported + 78 journaled)**. This implementation makes zero provider calls. Preserve Card23 correlation, timeout21/22, owner-reconciled cancellation24, original receipts and closed one-use journals. Unused53 calls below133 within outer243 do not authorize relaunch; old capacity/NR04 reserves were absorbed, not stacked. No settings/network-policy change. Preserve CLOUD-01 and all unproved M2 gates.
-- Commands/cutover: `docs/CODEX_CLOUD.md`. Provider findings: Service Contracts and the latest Journey entry.
+- Read NORTH_STAR and PROGRESS (the one current task ledger), then relevant sections of the three canonical owners.
+- Current base is owner-merged PR #10, main `3bf8e3b45b0d771bc76e9087932c0180000d83d0`, tree `bccdba4883eb2a4c0bd616fb81caa7613dbd7e4d`. Main CI [37743098312](https://github.com/LimYouSheng/SoccerBotStudioSG/actions/runs/37743098312) passed. Preserve the historical experiment checkout.
+- Use `feat/cloudflare-dev-foundation-2026-10-08`. The 8 October instruction authorizes the narrow development foundation/integration exception before M1/M2/M2.5 closure: code, compatible development migrations, named development resources, isolated development deployment, commits/push and draft PR. No main push, merge, auto-merge, production, client writes, paid upgrades, DNS or app404 changes.
+- M3.1 technical handover is recorded in PROGRESS. The 9 October owner instruction explicitly authorizes the bounded M3.2 async service/UI exception; its current source/evidence and stop boundary are in PROGRESS. Provider calls/bookings/payments remain prohibited; disabled/end0 and closed operator grants must be preserved. M1/M2.5 and owner acceptance remain separate.
+- One working agent; no automatic campaign restart. Six-hour ceiling, three repair cycles per distinct issue, 200 Cloudflare management requests, 12 development deployments, 80 new provider calls with 16 reserved for recovery, four accepted new developer bookings and two sandbox payment submissions. PROGRESS records actual totals and remaining gates. Historical provider80 is closed and separate.
+- Keep provider access disabled until supported contracts, secrets, account identity and persistent admission are verified. Never copy Codex network-secret placeholders to Worker secrets. Do not print/hash/persist credentials. Preserve native SimplyBook → SBPay → HitPay routing.
+- BookingProvider owns asynchronous availability/action revisions; screens consume named services and never call the synchronous demo model or fetch during render. Demo/live adapters cannot silently substitute each other.
+- Existing `src/domain/confirmation.ts` remains the single confirmation decision owner. Worker HTTP/access/journal/coordinator code lives in `worker/`; D1 is the only durable identity/attempt owner.
+- Physical fetch belongs only to `worker/provider-transport.ts`; operator grants are one-use, operation-scoped D1 records. Historical diagnostics cannot manufacture approved intent. Defaults remain closed. No authentication retry, grant replay or new campaign ID may reset consumption. Preserve unknown reservations and native-contract blockers.
+- Commands and browser-only secret installation: docs/CODEX_CLOUD. Provider/evidence representations: Service Contracts. No Google Drive or other external evidence upload.
+
+- The 9 October M3.3 instruction authorizes only source/isolated-runtime/CI durable recovery work. No provider call, deployment, remote migration, management recheck, activated scheduler, email sending or setup. Recovery metadata stays in D1; expired access never deletes unresolved evidence, and claiming recovery never permits write replay. PROGRESS owns this task's deadline, gaps and unchanged budgets.
+
+The 9 October Experiment1 instruction permits only source/local synthetic/CI work and draft PR publication, ahead of queued M3.4. Zero new provider/management calls, deployment or remote migration; preserve M3.3 and migrations0001–0006. Additive0007 remains source-only. Service Contracts owns the separate checkout/checking contract and finite next-live proposal; PROGRESS owns evidence and unchanged consumption.
 
 ## 2. Build
 
@@ -27,7 +34,7 @@
 ## 4. Verify
 
 - Run focused checks while iterating. Codex may prepare browsers, run Playwright and inspect internal previews.
-- Require the exact GitHub Actions check `verify / frontend`, including desktop Chromium, phone WebKit and tablet WebKit. A fresh Cloud setup also needs its own scoped execution evidence.
+- Require the exact GitHub Actions check `verify / frontend`, including desktop Chromium, phone WebKit and tablet WebKit. Require `verify / backend` for Workers runtime and independent root-path browser gates. A fresh Cloud setup also needs its own scoped execution evidence.
 - Never weaken assertions, skip coverage, lower required counts, add retries, raise timeouts or alter runner settings to obtain green results.
 - Record SHA, command, environment and result. Separate cloud/CI, visual/device and live-provider evidence; blocked is not passed.
 
@@ -35,7 +42,7 @@
 
 - Update affected docs/progress; review the diff and stage exact intended paths.
 - Commit/push the task branch and open/update its PR when access permits. Reuse existing CI; require green checks for the final commit.
-- Stop at PR-ready. Provide the PR, evidence, preview or blocker, and next action. Never merge, enable auto-merge, push to `main`, deploy or alter protection in the loop. Every merge needs explicit user approval for that specific PR; requests to continue, synchronize main, publish a PR or obtain green CI are not merge approval.
+- Stop at PR-ready. Provide the PR, evidence, preview or blocker, and next action. Never merge, enable auto-merge, push to `main`, deploy production or alter protection. Only the explicitly scoped isolated development deployment is authorized. Every merge needs explicit user approval for that specific PR; requests to continue, synchronize main, publish a PR or obtain green CI are not merge approval.
 
 ## 6. Boundaries
 

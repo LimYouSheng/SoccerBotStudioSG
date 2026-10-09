@@ -6,12 +6,47 @@ import type {
   Session,
 } from "@/domain/booking";
 export type AvailableSlot = Session & { available: boolean };
+export type BookingMode = "demo" | "live";
+export type BookingOperation =
+  "availability" | "checkout" | "pay" | "check" | "resolve";
+export type BookingRequest = { signal?: AbortSignal };
+export type AvailabilityInput = BookingRequest & {
+  date: string;
+  players: number;
+};
+export type CheckoutInput = BookingRequest & {
+  draft: BookingDraft;
+  previous: Attempt | null;
+};
+export type PayInput = BookingRequest & { attempt: Attempt; outcome: Outcome };
+export type AttemptInput = BookingRequest & { attempt: Attempt };
+export type ResolveInput = AttemptInput & { now?: number };
 export interface BookingService {
-  availability(date: string): AvailableSlot[];
-  checkout(draft: BookingDraft, previous: Attempt | null): Attempt;
-  pay(attempt: Attempt, outcome: Outcome): Attempt;
-  check(attempt: Attempt): Attempt;
-  resolve(attempt: Attempt, now?: number): Attempt;
+  readonly mode: BookingMode;
+  readonly operations: Readonly<
+    Record<BookingOperation, "demo" | "unavailable">
+  >;
+  availability(input: AvailabilityInput): Promise<AvailableSlot[]>;
+  checkout(input: CheckoutInput): Promise<Attempt>;
+  pay(input: PayInput): Promise<Attempt>;
+  check(input: AttemptInput): Promise<Attempt>;
+  resolve(input: ResolveInput): Promise<Attempt>;
+}
+export type BookingErrorCode =
+  | "invalid_request"
+  | "invalid_response"
+  | "conflict"
+  | "unavailable"
+  | "temporarily_unavailable"
+  | "cancelled";
+export class BookingServiceError extends Error {
+  constructor(
+    public readonly code: BookingErrorCode,
+    message: string,
+  ) {
+    super(message);
+    this.name = "BookingServiceError";
+  }
 }
 export interface EnquiryService {
   submit(values: Enquiry): Promise<{ email: string; delivered: false }>;
@@ -48,4 +83,24 @@ export interface IdentityService {
 }
 export interface AssistantService {
   reply(text: string, booking: Booking | null): string;
+}
+
+export type CheckoutContext = {
+  attemptId: string;
+  mode: "synthetic" | "live";
+  checkout: { state: "unavailable" } | { state: "available"; url: string };
+  summary: {
+    players: number;
+    totalMinor: number;
+    currency: "SGD";
+    sessions: { startMs: number; players: number }[];
+  };
+  checking: { deadlineMs: number; nextCheckMs: number; pollAfterMs: number };
+};
+export interface ProtectedCheckoutService {
+  context(input: {
+    attemptId: string;
+    mode: "synthetic" | "live";
+    signal: AbortSignal;
+  }): Promise<CheckoutContext>;
 }

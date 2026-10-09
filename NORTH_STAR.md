@@ -1,20 +1,39 @@
-# North Star: offline protected-confirmation verification
+# North Star: Cloudflare developer integration
 
-## Current outcome — implemented component; draft PR and final-candidate verification
+Experiment1 is the current source/synthetic exception before queued M3.4: separate checkout with protected bounded status checking. Live native preparation remains unavailable; native return and no-return reconciliation remain separate. PROGRESS owns final receipts and unchanged accounting. M3.3, M1/M2.5/owner acceptance and Resend prerequisites remain preserved.
 
-Build and verify reusable decision logic for protected payment/booking confirmation. `src/domain/confirmation.ts` now validates runtime inputs and returns Confirmed only for matching account/environment, verified-access scope, immutable approved attempt, complete booking/invoice relationships, sessions, integer minor-unit totals/tax/currency, paid invoice and valid bookings. Missing, malformed, stale, unknown or conflicting evidence cannot confirm. It performs no I/O, writes, polling or hidden-clock reads; the demo composition, UI and service interface remain unchanged.
 
-The owner explicitly approved this narrow offline dependency exception before M2.5. M1 source and test controls were reviewed; settings re-verification, advisory disposition, full release controls and physical/visual acceptance remain open. Pending visual acceptance is nonblocking for this no-UI component. Rules owns that decision; Service Contracts owns the actual signature, trusted-caller assumptions and limitations. Authentication, trusted persistence, provider normalization and protected HTTP transport remain future responsibilities. Synthetic fixtures do not prove any live provider behavior.
+## Current outcome and authorization — 9 October 2026
 
-Acceptance evidence:29 new focused domain tests and9 new source-boundary regressions; local `verify:code` passes92 tooling,27 guarded-update,29 installer and81 application tests, strict receipts and production export. All52 previous application cases and15 browser identities remain. Final pushed-SHA CI must also pass45 browser executions; its exact SHA/run is recorded in the new draft PR and private publication receipt. No unchanged local browser suite was repeated. The first local gate's sandbox EPERM failure is retained; permitting local process/socket operations fixed execution without changing tests or application behavior.
+M3.3 adds minimal durable recovery scheduling/claims and retention safeguards under the explicit dependency exception. Reuse existing journal/coordinator/confirmation owners; no native reconciliation contract or automatic write replay is inferred. Source/local-runtime/CI only: no deployment, remote migration, provider calls, background activation or email setup. Exact acceptance/evidence is in PROGRESS; formal M1/M2.5 and owner acceptance remain pending.
 
-PR#9 was owner-merged during this task. New main `6bce457dbc7a3c7700d1f4c545554210b9de406c` has the reviewed262a69e tree. The implementation continues on `feat/offline-protected-confirmation-2026-10-08` for a new draft PR. Commit/push and draft publication are authorized; merge, auto-merge, deployment, infrastructure, provider-account requests and settings/network-policy changes are not.
+M3.2 implements named asynchronous booking services and guarded customer interaction state under the explicit 9 October dependency exception. All live booking operations remain unavailable; final technical evidence and candidate/deployment identities are in PROGRESS. No provider/account calls are authorized.
 
-Provider accounting is unchanged: **80 = 2 owner-reported + 78 journaled**, zero calls in this task. Preserve Card23 correlation, timeout21/22, owner-reconciled cancellation24 and every original receipt. The previous continuation used7/60 from73, leaving53 unused below133 within outer243; it is closed and cannot automatically resume. Earlier capacity19/NR0414 were absorbed, never stacked. The separate public3/3 allowance stays exhausted.
+M3.1 task closed: technical foundation scope verified under the approved dependency exception; formal M1/M2.5 closure and owner acceptance remain pending. Deployed log retrieval is unverified after403. Zero new provider calls/bookings/payments. PROGRESS owns the requirement/evidence/gap/action matrix; M1/M2.5 and owner acceptance remain open.
 
-The intended customer journey remains frontend “Checking your payment and booking…” → protected authoritative verification → Confirmed only after every required check. Supported native return to our frontend and correct payment/booking updating without browser return remain separate unproved obligations. URL parameters never establish payment. Native-return, batch/recovery, player mapping, independent-client capacity and durable recovery contracts remain blocked; no M2/M2.5, full M3.1 or live confirmation acceptance follows.
+Frontend → protected Cloudflare Worker → native SimplyBook/SBPay HitPay checkout → authoritative booking/payment verification → protected confirmation. Show “Checking your payment and booking…” until complete relationships, exact amount/currency/tax and valid bookings are verified. Native frontend return, no-return reconciliation and notification delivery are separate acceptance proofs.
 
-Next bounded development proposal: a protected confirmation read orchestrator consuming this verifier through injected access, immutable-attempt and normalized-evidence ports. Before implementing it, approve those trust/storage contracts and freshness/deadline policy, and satisfy full M1/M2.5 dependencies or explicitly authorize the next narrow exception. No guessed authentication, provider mapping or endpoint is ready. PROGRESS owns the exact next task and evidence paths.
+The owner authorizes implementation now under a narrow M1/M2/M2.5 dependency exception. This does not complete those milestones. One finite campaign may create only soccerbot-dev, soccerbot-dev-state and SQLite-backed SoccerBotAccountCoordinator in account517f4f85eb8f982b483dbc05b797fd88. Preserve app404, existing callbacks, production, client data and GitHub Pages. No paid upgrade, DNS, merge or auto-merge. One agent and PROGRESS ledger; bounded budgets and recovery are canonical in Rules.
+
+PR #10 is owner-merged at3bf8e3b; its verifier and81 application/45 browser proofs are the baseline, not evidence for this new candidate. Historical provider80, Card23, timeout21/22 and owner-reconciled24 stay preserved.
+
+## Implemented candidate and evidence boundaries
+
+- Continuation is closed: campaign complete; North Star incomplete. Provider credentials and developer transport passed; native checkout/reconciliation and live write prerequisites remain blocked. PROGRESS owns exact evidence and next steps.
+- Continuation adds guarded named provider identity transport and a one-use operator grant. Actual dispatch/token negative tests remain separate from provider validity; no customer booking/payment route is enabled. PROGRESS records the new finite window and cumulative consumption.
+- Internal multi-session composition now has per-effect durable claims, revalidation and partial/unknown recovery tests. No live provider adapter supplies its unsupported booking contract; full native acceptance remains open.
+
+- Guest capability access/revocation, D1 immutable intent/idempotency/dispatch fencing, protected confirmation orchestration, account admission and refresh generation claims.
+- Actual Workers runtime/D1/SQLite coordinator tests use synthetic data and zero provider traffic. Root static export uses existing Next.js presentation; Pages subpath remains intact.
+- Initial named endpoints: health, guest access/revocation, protected confirmation and an explicitly unavailable booking operation. A separate /confirmation/ page polls only protected durable status; the existing demo remains labelled Preview. Historical read-only normalization is now implemented. Returning-customer prefill, live payment initiation and native notification handling remain unavailable.
+- Native return, player mapping, independently controlled capacity fixtures, complete multi-session finalization/recovery and notification authenticity/delivery remain blocked. Internal journal tests do not satisfy them.
+- Deployment and CI identities belong in the draft PR and private receipts. Do not label this foundation the completed North Star.
+
+## Acceptance
+
+Use the owner's A–E continuation loops. Require actual final-candidate frontend and backend CI; root and subpath builds; deployed revision/protected HTTP checks; separately authenticated provider observations; actual native return/no-return/notification proofs; supported write recovery and safe sandbox payment controls. Physical-device, client-account and production acceptance remain separate.
+
+Stop without merge or production deployment. If external gates remain, report campaign complete; North Star incomplete, with exact blocked paths and executable next steps.
 
 ## Deferred CLOUD-01 — incomplete
 

@@ -11,10 +11,14 @@ import {
   totalCents,
   type Slot,
   type Session,
+  type Attempt,
+  type BookingDraft,
+  type Outcome,
 } from "@/domain/booking";
 import { clock, clockMinutes } from "@/domain/dates";
 import { SESSION_MINUTES, SESSION_STARTS, STUDIOS } from "@/domain/catalog";
-import type { BookingService } from "../contracts";
+import { BookingServiceError } from "../contracts";
+import { defineBookingService } from "../booking";
 import { safeRead, safeWrite, upgradeBooking } from "../storage";
 import { demoSession } from "./schedule";
 const RECEIPTS = "soccerbot-next-demo-receipts";
@@ -58,8 +62,9 @@ function assign(slots: Session[]) {
   }
   return assigned;
 }
-export const demoBookingService: BookingService = {
-  availability(date) {
+// Synchronous simulation model only; UI consumes the validated async adapter below.
+export const demoBookingModel = {
+  availability(date: string) {
     return SESSION_STARTS.map((minute) => {
       const slot = demoSession({ date, start: clock(minute) })!;
       return {
@@ -68,13 +73,14 @@ export const demoBookingService: BookingService = {
       };
     });
   },
-  checkout(draft, previous) {
+  checkout(draft: BookingDraft, previous: Attempt | null): Attempt {
     if (paymentLocked(previous))
-      throw new Error(
+      throw new BookingServiceError(
+        "conflict",
         "A payment is already in progress. Check its status before starting another.",
       );
     const error = draftError(draft);
-    if (error) throw new Error(error);
+    if (error) throw new BookingServiceError("conflict", error);
     if (
       draft.slots.some((slot) => {
         const assigned = demoSession(slot);
@@ -85,13 +91,21 @@ export const demoBookingService: BookingService = {
         );
       })
     )
-      throw new Error(
+      throw new BookingServiceError(
+        "conflict",
         "An instructor assignment has changed. Review your selected sessions.",
       );
     if (!draft.slots.every((slot) => availableStudios(slot).length > 0))
-      throw new Error(
+      throw new BookingServiceError(
+        "conflict",
         "A selected session is no longer available. No sessions were booked. Please review your selections.",
       );
+    if (
+      previous?.status === "ready" &&
+      JSON.stringify(snapshot(previous.draft)) ===
+        JSON.stringify(snapshot(draft))
+    )
+      return previous;
     return {
       id: `SB360-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
       status: "ready",
@@ -101,10 +115,10 @@ export const demoBookingService: BookingService = {
       booking: null,
     };
   },
-  pay(attempt, outcome) {
+  pay(attempt: Attempt, outcome: Outcome): Attempt {
     if (!["ready", "declined"].includes(attempt.status)) return attempt;
     const errors = selectionErrors(attempt.draft.slots);
-    if (errors.length) throw new Error(errors[0]);
+    if (errors.length) throw new BookingServiceError("conflict", errors[0]);
     return {
       ...attempt,
       status: "checking",
@@ -112,7 +126,7 @@ export const demoBookingService: BookingService = {
       checkUntil: Date.now() + 5000,
     };
   },
-  check(attempt) {
+  check(attempt: Attempt): Attempt {
     if (attempt.status !== "pending") return attempt;
     return {
       ...attempt,
@@ -121,7 +135,7 @@ export const demoBookingService: BookingService = {
       checkUntil: Date.now() + 5000,
     };
   },
-  resolve(attempt, now = Date.now()) {
+  resolve(attempt: Attempt, now = Date.now()): Attempt {
     if (attempt.status !== "checking" || now < attempt.checkUntil)
       return attempt;
     if (attempt.outcome !== "success")
@@ -148,3 +162,29 @@ export const demoBookingService: BookingService = {
     return { ...attempt, status: "paid", booking };
   },
 };
+
+export const demoBookingService = defineBookingService({
+  mode: "demo",
+  operations: {
+    availability: "demo",
+    checkout: "demo",
+    pay: "demo",
+    check: "demo",
+    resolve: "demo",
+  },
+  async availability({ date }) {
+    return demoBookingModel.availability(date);
+  },
+  async checkout({ draft, previous }) {
+    return demoBookingModel.checkout(draft, previous);
+  },
+  async pay({ attempt, outcome }) {
+    return demoBookingModel.pay(attempt, outcome);
+  },
+  async check({ attempt }) {
+    return demoBookingModel.check(attempt);
+  },
+  async resolve({ attempt, now }) {
+    return demoBookingModel.resolve(attempt, now);
+  },
+});

@@ -2,7 +2,25 @@
 
 Canonical current contract. `SERVICE_CONTRACTS.md` owns service inputs, results, errors, authority and demo/live availability. `SOCCERBOT_JOURNEY.md` owns chronology, audits and receipts. These are the three canonical documents; README, AGENTS, diagrams and generated receipts orient or provide evidence.
 
-Project/package name: **SoccerBotStudioSG**; npm identifier: `soccerbotstudiosg`. Repository: [LimYouSheng/SoccerBotStudioSG](https://github.com/LimYouSheng/SoccerBotStudioSG). Current verified main is `6bce457dbc7a3c7700d1f4c545554210b9de406c`, tree `efc756d3e136914342a29751fd06a35555214f6a`, after YS merged PR#9. The reviewed PR candidate262a69e passed required CI run37738237155; its tree matches this main. Historical main97b42c7/run37589441392 and earlier protected-main observation remain retained evidence. Fresh protection read on8October returned403; current settings are not independently reverified. Required `verify / frontend` from GitHub Actions remains the canonical gate. Baseline PR #4 preserved the uploaded Mac source but was merged without explicit user approval; Journey records that failure. New work uses a new feature branch; the merged experiment’s Cloud-preview gate remains incomplete. The app remains a frontend demo; live provider, Cloudflare production and physical-device acceptance are separate gates.
+Project/package name: **SoccerBotStudioSG**; npm identifier: `soccerbotstudiosg`. Repository: [LimYouSheng/SoccerBotStudioSG](https://github.com/LimYouSheng/SoccerBotStudioSG). Current verified main is `3bf8e3b45b0d771bc76e9087932c0180000d83d0`, tree `bccdba4883eb2a4c0bd616fb81caa7613dbd7e4d`, after YS merged PR#10; main CI37743098312 passed. The reviewed PR candidate262a69e passed required CI run37738237155; its tree matches this main. Historical main97b42c7/run37589441392 and earlier protected-main observation remain retained evidence. Fresh protection read on8October returned403; current settings are not independently reverified. Required `verify / frontend` from GitHub Actions remains the canonical gate. Baseline PR #4 preserved the uploaded Mac source but was merged without explicit user approval; Journey records that failure. New work uses a new feature branch; the merged experiment’s Cloud-preview gate remains incomplete. The app remains a frontend demo; live provider, Cloudflare production and physical-device acceptance are separate gates.
+
+## M3.2 exception — 9 October 2026
+
+The owner authorizes one six-hour M3.2 build on verified M3.1 while formal M1/M2.5 remain pending: named async customer booking contracts, guarded UI state, synthetic tests, canonical docs, feature-branch publication and final CI. A developer deployment is conditional on necessary changed-behavior evidence; no routine deployment is required. Provider disabled/end0 and closed grants remain mandatory. No provider-account calls, settings, business writes, new resources, applied migration edits, main/merge or production changes. PROGRESS is the sole current ledger and consumption owner.
+
+## Development foundation exception — 8 October 2026
+
+The current direct instruction authorizes application/Worker/persistence/tooling, compatible development-only migrations, the named development resources and deployment, bounded synthetic/provider work after prerequisites, commits/push and draft PR. This explicitly supersedes prior no-implementation/no-deployment task wording only within this scope. M1/M2/M2.5, client staging, production and device acceptance remain incomplete. No main push, merge/auto-merge, protection changes, paid upgrades, DNS, app404 changes, client writes, real funds, native callback/security/financial changes or native-route replacement.
+
+Development hosting serves the existing Next.js static export and `/api` from soccerbot-dev under the existing limyousheng-94.workers.dev subdomain. Account517f4f85eb8f982b483dbc05b797fd88 only; D1 soccerbot-dev-state owns identity, immutable attempts and recovery; SQLite SoccerBotAccountCoordinator owns admission/cooldown/refresh control, never a second booking database. Pages subpath demo and future production hosting remain separate. Free-supported features only; management billing inspection was denied, so plan is owner-reported, not independently certified. Initial usage: one unrelated Worker, zero D1 databases and zero DO namespaces; documented Free limits support the proposed one of each. No plan setting changes.
+
+One working agent and PROGRESS ledger; maximum6hours/window, three repairs per distinct issue,200 management requests,12 development deployments,80 new physical provider requests including auth/failures/callback read-back with16 reserved for recovery, four accepted bookings and two sandbox submissions. Existing provider80 remains historical and closed; no old allowance stacks. Unknown writes reconcile original identities, never blind replay, cancellation or replacement. Shipped provider access is disabled and campaign end0; synthetic admissions cannot trigger network effects. An enabled transport is not yet implemented.
+
+Backend owners: worker/access.ts (opaque256-bit guest capability, digest-only D1 lookup, expiry/revocation), worker/journal.ts (server-approved immutable intent/idempotency/CAS dispatch/association/recovery), worker/confirmation.ts (authorization before record lookup, existing domain verifier), worker/coordinator.ts (persistent2-active/4-starts-per-rolling-second/80-total/16-reserve/cooldown and fenced shared refresh claims), worker/index.ts (explicit same-origin HTTPS endpoints, no payload/proxy). No account prefill without verified identity. Provider normalization, actual token lifecycle, physical transport and independent scheduled reconciliation remain unimplemented and gated.
+
+Development policies:30-minute guest capability (bounded session exposure);15-second observation freshness (conservative confirmation);5-second client polling guidance (durable status, not upstream per-tab traffic);10-minute local checking deadline (bounded UI waiting, never provider cancellation). Configuration is runtime validated with documented bounds in Service Contracts. These provisional development policies do not freeze M2.5 latency budgets or prove PERF percentiles.
+
+Require existing verify / frontend and new read-only verify / backend; backend runs real workerd/D1/SQLite tests plus independent root-path browser gates. Preserve all81 prior frontend cases and45 browser executions per path; the new protected confirmation slice adds3 component cases and1 browser identity (current84/48 per path). No deployment credentials or deploy commands in PR jobs. Source/layer checks and negative fixtures cover the Worker entry/resources/API routing; generated platform types come from pinned Wrangler. Isolated authorized development deployment may precede merge; production still consumes the verified main artifact after reviewed merge/main gates.
 
 ## Authority and current scope
 
@@ -16,7 +34,7 @@ Attempt03 proves one API-created developer booking, native SimplyBook/SBPay chec
 
 The focused continuation closed at80 requests (2 owner-reported +78 journaled), with no new booking/payment and no unresolved new record. Booking24 is resolved by later owner-supplied native Cancelled / Cancelled by timeout findings, preserving its earlier confirmed/new/unpaid API observation. Exact cancellation time is unknown; cancellation is not refund. Preserve historical21/22 and paid23.
 
-PR#9 published the documentation and was owner-merged. The owner now authorizes the isolated offline verifier and a new draft feature PR under the narrow exception below; merge, auto-merge and deployment by this task remain unauthorized. Earlier dated no-publication and43/73 accounting checkpoints are historical. Current accounting/next task belong to PROGRESS; exact provider contracts and development test assignments belong to Service Contracts. Do not restart closed journals or spend unused allowance without a bound future scope/window. M2.5, performance, CLOUD-01, client-production and physical-device gates remain open.
+PR#9 published the documentation and was owner-merged. PR#10 subsequently delivered the offline verifier and was owner-merged. The development foundation exception above now governs this task; merge, auto-merge and production deployment remain unauthorized. Earlier dated no-publication and43/73 accounting checkpoints are historical. Current accounting/next task belong to PROGRESS; exact provider contracts and development test assignments belong to Service Contracts. Do not restart closed journals or spend unused allowance without a bound future scope/window. M2.5, performance, CLOUD-01, client-production and physical-device gates remain open.
 
 ## Historical work boundary and standing source rules — 7 October 2026
 
@@ -179,7 +197,7 @@ flowchart TD
 5. Payment: keep the approved native SimplyBook → SBPay → HitPay route. Reuse the original protected attempt on return/reload. Verified callbacks wake reconciliation when supported; otherwise use the proved status read. Customer polling reads our protected journal and does not automatically trigger another upstream call. No five-second artificial delay in the future live adapter; the existing demo simulation remains unchanged.
 6. Confirmation: read one protected verified snapshot for the existing nonduplicated detail order and exports. No separate provider request per card/field. A successful browser return, cached calendar or missing callback cannot establish payment.
 
-`TimeStep` currently calls synchronous demo availability during render. M3.2/M4.2 must introduce one asynchronous query owner behind the service boundary, with in-flight sharing, lifecycle cleanup and request/revision correlation. Do not turn that render-time call into network I/O or duplicate fetching in instructor/summary components. Cancelling a UI subscription does not cancel a provider write or imply a shared read has stopped upstream. Preserve native navigation, approved loader/hero timing and reduced motion. Measure decorative time separately AND include it in user-visible entry time; never hide it from reports. Start data work during the animation without changing accepted presentation in this planning task.
+`TimeStep` and the basket now consume one asynchronous availability owner in BookingProvider (M3.2). It deduplicates dates within the current input revision, aborts disposed work and rejects stale results; exact keys and invalidation are in Service Contracts. Do not turn that render-time call into network I/O or duplicate fetching in instructor/summary components. Cancelling a UI subscription does not cancel a provider write or imply a shared read has stopped upstream. Preserve native navigation, approved loader/hero timing and reduced motion. Measure decorative time separately AND include it in user-visible entry time; never hide it from reports. Start data work during the animation without changing accepted presentation in this planning task.
 
 ### PERF-03 — Cache, freshness and invalidation
 
@@ -624,6 +642,14 @@ Performance addition: introduce the single account coordinator and outbound gove
 
 Exit evidence: Missing/wrong account bindings fail closed. Secrets do not appear in browser bundles or logs. Runtime/configuration negative tests pass.
 
+M3.1 foundation audit (8 October): runtime API policy pins the developer Cloudflare account, database identity and campaign; origin is explicit and checked against the request host. A management-provisioned, immutable D1 foundation identity binds the actual coordinator singleton ID. Missing/mismatched manifests fail before guest/attempt/operator reads; the Worker never self-registers against an unknown database. Deployment inspection separately validates physical bindings. Compatible migration0005 adds only this metadata; applied0001–0004 remain unchanged.
+
+No-payload routes accept an empty transport stream but read at most one chunk with a fixed1000ms deadline; nonempty/unfinished streams fail safely. Request-generated correlation IDs join whitelisted HTTP and coordinator telemetry. Storage, admission, shared-call wait, provider transport (including body read/parse), and RPC envelope spans are separate. Spans can overlap and cannot be summed as exclusive stage timings. There is no application dispatch queue: saturation rejects; shared work is awaited and timed. Cloudflare platform scheduling/network within the RPC envelope is not separately observable here. No hosting placement change or production percentile acceptance follows from synthetic pilots.
+
+M3.1 technical scope is verified under the approved exception, with67 backend cases, exact-artifact boundary tests, populated compatible migration and eight deployed HTTP checks. Formal closure remains pending M1/M2.5 and owner acceptance. Live observability query access returned403; deployed log retrieval is unverified, separately from synthetic span/redaction proof.
+
+The new M3.1 task permits zero provider calls, bookings or payments. Historical credential acceptance is reused. Technical evidence, formal M1/M2.5 dependency clearance and owner acceptance remain distinct; PROGRESS owns the acceptance matrix and current receipts.
+
 Depends on: M1 closure and M2.5.
 
 ### M3.2 — Named asynchronous service contracts
@@ -634,7 +660,11 @@ Performance addition: define the planned logical operations in Service Contracts
 
 Exit evidence: Contract and component tests cover delay, failure, reordered replies and unavailable live operations. No silent mock fallback.
 
-Depends on: M3.1.
+M3.2 implementation (9 October): all five existing booking interactions now use named validated async contracts. The Preview adapter alone uses the existing simulation model; live booking methods explicitly refuse execution, with no fallback or demo-storage authority. Query and action lifecycle owners preserve selection/contact input, gate navigation on validated success, reject old session/attempt replies and retain interrupted status recovery. Existing protected confirmation and Worker foundation are unchanged. Service Contracts owns exact inputs/errors/availability and query revision keys. Synthetic component and contract evidence is recorded in PROGRESS; final-source CI belongs in PR11.
+
+The owner explicitly authorizes this bounded M3.2 dependency exception while M1/M2.5 remain open. Zero provider calls/bookings/payments. Technical criteria, formal closure and owner/device acceptance are separate. No live uncached-provider B2 measurement or completed native checkout is claimed; those require separately authorized supported operations. Next independent task is the existing M3.3 minimal-state/recovery gap review under an explicit scope, reusing D1 and applied0001–0005 rather than rebuilding them.
+
+Depends on: M3.1 (technically verified under the approved exception); formal M1/M2.5 closure still pending.
 
 ### M3.3 — Minimal durable state and migrations
 
@@ -644,13 +674,17 @@ Performance addition: implement the sole D1 attempt journal with durable claims/
 
 Exit evidence: Populated-state upgrade and interrupted-operation tests pass. Provider scheduling/payment records are not cloned into a second authority.
 
-Depends on: M3.1 and M2.5.
+M3.3 implementation (9 October, explicit dependency exception): additive0006 extends the existing D1 journal with one recovery record per original dispatch, bounded indexed selection, atomic claimant/generation/attempt fencing and expiry, finite safe-read deferral and explicit manual-review disposition. It preserves original effect identity and every unknown reservation. The canonical confirmation decision is reused; no live reconciliation/booking/payment adapter is supplied. Access expiry denies customers without erasing internal recovery evidence. Retention cleanup stays disabled pending an approved duration/disposition; bounded access dry-run inspection is not deletion authority. No deployment, remote migration, management recheck, cron/alarm, public trigger or provider call is authorized. Source/runtime/CI evidence and unchanged budgets belong in PROGRESS; M1/M2.5 and owner acceptance remain pending. This technical slice does not prove native no-return reconciliation.
+
+Depends on: technically verified M3.1/M3.2 under the explicit exception; formal M1/M2.5 remain open.
 
 ### M3.4 — Email challenge and abuse controls
 
 Deliver verification through the approved sender. Use single-use expiring challenges, bounded attempts, rate limits and verified Turnstile where applicable.
 
 Exit evidence: Wrong/expired/reused challenges and concurrent redemption reject. Enumeration and abuse tests pass. Authorized test recipient receives the actual email.
+
+M3.4 handover: reuse D1/access/policy and the named async boundaries. Resend remains the planned verification provider; exact verified developer From domain/address/account, recipient, secret binding and finite sending authority are still needed. Service Contracts owns the single-use/concurrent redemption, resend, expiry, enumeration, abuse, Turnstile and failure acceptance checklist. No speculative challenge schema, sender setup or email sending occurred in M3.3.
 
 Depends on: M3.2–M3.3; sender setup.
 
@@ -1026,8 +1060,24 @@ Open prerequisites: clickable candidate preview (C3 runtime restoration is verif
 
 ## Developer evidence campaign invariants — 8 October 2026
 
+Continuation adds a one-use, management-provisioned operator grant for named developer identity reads. D1 owns the grant/result; the existing account coordinator owns physical outbound reservations and memory-only tokens. Each request flushes its reservation before transport; unknown responses retain capacity and never replay automatically. Defaults stay closed. Temporary read admission requires a reviewed bounded configuration and does not enable customer booking/payment writes. The transport is the only outbound-fetch owner; rejection fixtures preserve exact hosts, redirect refusal and reservation ownership. No applied migration is edited.
+
+Internal session orchestration now reserves each effect under the original immutable attempt and rechecks access/fence before every write. The server adapter contract remains unsupported in production. Complete invoice association is distinct from native checkout availability and paid confirmation. Migration0003 adds only minimal effect references; it does not replace provider booking state. Never resume an uncertain step by issuing a replacement booking or new idempotency key.
+
 The bounded campaign is an evidence effort, not production implementation. Service Contracts owns the A–G results and exact operation gaps. Current new evidence verifies40-minute service plus10-minute occupied buffer, one accepted allocation atSGD88/zero tax, and a single same-instructor duplicate-slot refusal with a shared-contact limitation. It does not complete simultaneous contention, independent-client capacity, four-player persistence or multi-session atomicity. One studio with nonoverlapping instructors remains the owner scope; cross-instructor resource work is deferred.
 
 Retain the intended confirmation design: frontend → supported native checkout return → frontend “Checking your payment and booking…” → protected backend verification of correct customer, booking/invoice association, amount/currency, paid state and valid booking → Confirmed. Browser parameters and notification hints are not authority. Bound pending checks; use an honest unresolved/recovery state; never automatically book again or request another payment. Reconciliation must work without browser return. Supported native return and browser-independent payment updating remain separate open proof obligations. No callback setting, receiver or production backend was changed.
 
 Booking24 remained confirmed with a new unpaid invoice at its earlier bounded due+60 observation; later owner-supplied native findings establish cancellation by timeout. The observations coexist, without proving the exact transition time. Elapsed time alone remains insufficient cancellation evidence. Late payment on an invalid booking requires review, never automatic reinstatement; cancellation never implies refund. Unknown operations remain non-replayable. Preserve historical successful Card23 and timeout21/22 without claiming uniform outcomes.
+
+Historical diagnostics use two fixed read URLs under the existing transport/account budget. Migration0004 extends only the operator operation vocabulary and preserves completed grants/results; apply with admission closed. Customer routes cannot grant or dispatch these operations. Historical evidence cannot create an attempt or establish the new booking/payment path.
+
+The continuation closes with provider admission disabled/end0, expired operation grants and preserved D1 records/budget. Fresh authentication does not authorize customer writes. Unknown current historical field paths cannot become a confirmed booking through fallback parsing. Resumption requires the next finite authorization and refreshed source/deployment evidence; remaining numeric budget is not an automatic restart.
+
+## Experiment 1 — separate checkout scope exception, 9 October 2026
+
+The owner places this bounded source/synthetic experiment before M3.4. It reuses Payment/ProtectedConfirmation, named service contracts, the D1 attempt journal, canonical decision and M3.3 recovery; it does not create a second live booking/payment subsystem. Keep the original page open, prepare first, then present a normal direct-user-gesture link with target blank, noopener and noreferrer. Reopen the same attempt/link. Browser layout, tab closure, return parameters and messages are never payment evidence.
+
+Protected confirmation reads only durable evidence. Browser lifecycle coordination is an optimization; atomic server cooldown/count and the immutable attempt deadline govern effective checking across tabs. Terminal, denied and deadline outcomes stop automatic checking; local expiry never cancels provider effects. Session/attempt/unmount changes abort or discard stale replies. The synthetic fixture is opt-in, loopback-only, labelled, outbound-denied and excluded from the deployed Worker. Live native preparation remains explicitly unavailable; Service Contracts owns the missing URL/host/association contract and the finite next-proof proposal.
+
+No provider/management calls, deployment, remote migration, email, callback/DNS/settings/resource change, recovery activation or cleanup is permitted in this task. Source-only additive0007 follows preserved0006; keep all applied migrations unchanged and use compatible code rollback without reversing data. M3.3 claims/fences/effect identities and unresolved reservations remain intact. M3.4 is queued; Resend prerequisites, M1/M2.5 closure and owner/device acceptance remain open. PROGRESS owns current receipts, budgets and final CI; the historical deployment does not contain this experiment.
