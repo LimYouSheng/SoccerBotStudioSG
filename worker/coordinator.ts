@@ -118,8 +118,10 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     };
   }
   async providerRead(
-    operation: "provider_identity" | "historical_comparison",
+    operation:
+      "provider_identity" | "historical_comparison" | "native_field_discovery",
     correlationId: string,
+    expiresMs?: number,
   ) {
     return traced(correlationId, "coordinator", async () => {
       policy(this.env);
@@ -128,10 +130,47 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       try {
         if (
           operation !== "provider_identity" &&
-          operation !== "historical_comparison"
+          operation !== "historical_comparison" &&
+          operation !== "native_field_discovery"
         )
           throw new ApiError(503, "provider_operation_unavailable");
         const control = this.providerControl();
+        if (operation === "native_field_discovery") {
+          const now = Date.now();
+          if (
+            !Number.isSafeInteger(expiresMs) ||
+            !expiresMs ||
+            expiresMs <= now ||
+            expiresMs > now + 180000
+          )
+            throw new ApiError(503, "discovery_window_invalid");
+          const initial = this.providerAccounting();
+          if (initial.used !== 8 || initial.active !== 0)
+            throw new ApiError(503, "discovery_accounting_changed");
+          let reserved = 0;
+          let lastDispatch = 0;
+          const bounded = {
+            ...control,
+            reserve: async () => {
+              const delay = Math.max(0, lastDispatch + 300 - Date.now());
+              if (delay)
+                await new Promise((resolve) => setTimeout(resolve, delay));
+              if (
+                Date.now() + 15000 >= expiresMs ||
+                reserved >= 5 ||
+                this.providerAccounting().used >= 13
+              )
+                throw new ApiError(503, "discovery_limit_reached");
+              reserved++;
+              lastDispatch = Date.now();
+              return control.reserve();
+            },
+          };
+          const result = await this.provider.discoverFields(this.env, bounded);
+          if (Date.now() >= expiresMs)
+            throw new ApiError(503, "discovery_expired");
+          return { ...result, accounting: this.providerAccounting() };
+        }
         const result =
           operation === "provider_identity"
             ? await this.provider.identity(this.env, control)
@@ -148,6 +187,10 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         };
       }
     });
+  }
+  discoveryAccounting() {
+    policy(this.env);
+    return this.providerAccounting();
   }
   private providerAccounting() {
     const used =

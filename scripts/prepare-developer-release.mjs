@@ -86,6 +86,7 @@ const manifest = {
   pendingRemoteMigrations: [
     "0006_recovery_work.sql",
     "0007_confirmation_checking.sql",
+    "0008_native_field_discovery.sql",
   ],
   priorWorkerVersion: "9d0a3c9f-b9a7-41df-907f-ba69f179cc68",
   acceptance: "closed foundation only; native integration remains unavailable",

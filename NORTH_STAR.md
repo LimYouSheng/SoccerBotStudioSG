@@ -1,12 +1,10 @@
 # North Star: Cloudflare developer integration
 
-## Current preparation — SimplyBook-owned dynamic data
+## Current preparation — precise native discovery
 
-Routine supported instructor, service, name, price and schedule changes belong in SimplyBook, not source code. Preserve PR13's native normalization, protected checkout, expiry and readback. PR12 is owner-merged on main e91fb12; continue PR13's existing branch based on main. Completed8a4226b passed both CI jobs37890214635. The dynamic-data revision needs its own final checks/artifact.
+Resolve only the remaining player/customer/quote/shared-studio/priority/signing-and-sandbox mappings, beginning with the smallest useful read-only inspection. PR12 and PR13 are owner-merged; main757fd28 passed both required jobs in37896841542 and the existing Pages deployment. New feature branch starts at that main. Preserve native checkout, dynamic SimplyBook-owned catalogue, fresh validation and explicit Preview/live separation.
 
-Catalogue IDs and current relationships come from supported complete provider lists and exact eligibility/slot reads. Approved40+10/players/shared-studio policy is separate from explicit preview fixtures and security/environment controls. Pre-booking refreshes current data, returns review changes without rewriting approved history, and refuses unsupported player/customer/tax/capacity mappings. No runtime demo fallback or new live authority. Provider access stays disabled/end0.
-
-PROGRESS owns the six-hour task ledger. Rules owns the hardcoding findings matrix and release/rollback. Service Contracts owns supported data/authentication paths and the current phased operation budget. Source/synthetic/CI preparation and draft updates only; no remote action or merge. No production, autonomous reconciliation, multi-session, M1/M2.5/M3.4 or owner/device acceptance follows.
+Service Contracts owns the gap matrix, documented evidence, configuration proposals and exact five-request field-discovery packet. Rules owns the conditional existing-pipeline release/enable/close/rollback sequence and separate budget amendment. PROGRESS owns one agent's six-hour ledger. Source/synthetic/CI/new draft PR only; no provider call, remote migration, deployment, settings change or checkout authorized. Discovery may be approved before all checkout mappings are resolved; full trial remains unavailable until its remaining exact operations are known.
 
 Historical Experiment1 was the source/synthetic exception before queued M3.4: separate checkout with protected bounded status checking. Live native preparation remains unavailable; native return and no-return reconciliation remain separate. PROGRESS owns final receipts and unchanged accounting. M3.3, M1/M2.5/owner acceptance and Resend prerequisites remain preserved.
 

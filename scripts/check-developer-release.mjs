@@ -123,7 +123,28 @@ try {
     .run();
   const before = await db.prepare("SELECT * FROM attempts").first();
   const effects = await db.prepare("SELECT * FROM dispatches").all();
+  await db
+    .prepare(
+      "INSERT INTO developer_operations VALUES('synthetic-retained','historical_comparison',1,'running',NULL)",
+    )
+    .run();
+  const grants = (await db.prepare("SELECT * FROM developer_operations").all())
+    .results;
+  assert.deepEqual(manifest.pendingRemoteMigrations, [
+    "0006_recovery_work.sql",
+    "0007_confirmation_checking.sql",
+    "0008_native_field_discovery.sql",
+  ]);
   for (const name of manifest.pendingRemoteMigrations) await migrate(name);
+  assert.deepEqual(
+    (await db.prepare("SELECT * FROM developer_operations").all()).results,
+    grants,
+  );
+  await db
+    .prepare(
+      "INSERT INTO developer_operations VALUES('synthetic-discovery','native_field_discovery',1,'blocked',NULL)",
+    )
+    .run();
   const after = await db.prepare("SELECT * FROM attempts").first();
   const { confirmation_next_ms, confirmation_checks, ...retained } = after;
   assert.deepEqual(retained, before);
@@ -179,7 +200,7 @@ try {
         checks: [
           "file hashes",
           "root export",
-          "0006 then 0007 preserve existing identity and unknown effects",
+          "0006 then 0007 then 0008 preserve identity unknown effects and operator grants",
           "exact Worker revision",
           "protected checkout unavailable",
           "durable pending confirmation",

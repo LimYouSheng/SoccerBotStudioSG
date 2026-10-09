@@ -149,7 +149,9 @@ async function fixture({
     for (const name of [
       "0001_developer_journal.sql",
       "0002_developer_operations.sql",
-      ...(!legacy ? ["0004_operator_read_scopes.sql"] : []),
+      ...(!legacy
+        ? ["0004_operator_read_scopes.sql", "0008_native_field_discovery.sql"]
+        : []),
     ])
       await db.exec(
         readFileSync("migrations/" + name, "utf8")
@@ -184,7 +186,9 @@ async function fixture({
       origin +
         (operation === "provider_identity"
           ? "/api/developer/provider-identity"
-          : "/api/developer/historical-comparison"),
+          : operation === "native_field_discovery"
+            ? "/api/developer/native-field-discovery"
+            : "/api/developer/historical-comparison"),
       { method, headers: { origin, authorization: "Bearer " + token } },
     );
     return {
@@ -763,5 +767,234 @@ test("provider missing credentials and client mapping refuse before authenticati
     } finally {
       await f.mf.dispose();
     }
+  }
+});
+
+// Synthetic metadata only. No retained account response or field identifier.
+const discoveryOperation = "native_field_discovery";
+const syntheticField = {
+  name: "synthetic_players",
+  title: "Number of players",
+  type: "select",
+  values: "1,2,3,4",
+  is_null: "0",
+  default: "must-not-escape",
+  value: "must-not-escape",
+  privateContact: "must-not-escape",
+};
+async function discoveryFixture(options = {}) {
+  const f = await fixture({
+    ...options,
+    respond: async (request, body, calls) => {
+      const custom = await options.respond?.(request, body, calls);
+      if (custom) return custom;
+      if (new URL(request.url).pathname === "/") {
+        assert.equal(request.headers.get("X-Token"), "synthetic-public-token");
+        assert.equal(body.method, "getAdditionalFields");
+        assert.deepEqual(body.params, [2]);
+        return Response.json({
+          id: body.id,
+          result: [syntheticField],
+          error: null,
+        });
+      }
+    },
+  });
+  await f.sql(
+    "INSERT OR REPLACE INTO budget(campaign,used,cooldown_ms) VALUES('developer-20261008',8,0)",
+  );
+  return f;
+}
+test("discovery uses exactly five fixed requests and projects metadata without answers or secrets", async () => {
+  const f = await discoveryFixture();
+  try {
+    const token = await f.grant(Date.now() + 180000, discoveryOperation);
+    const before = await f.call(token, "GET", discoveryOperation);
+    assert.equal(before.body.accounting.used, 8);
+    assert.equal(f.calls.length, 0);
+    const result = await f.call(token, "POST", discoveryOperation);
+    assert.equal(result.body.state, "complete");
+    assert.equal(result.body.result.accounting.used, 13);
+    assert.equal(result.body.result.persistenceVerified, false);
+    assert.deepEqual(result.body.result.fields, [
+      {
+        identifier: "synthetic_players",
+        playerTitleMatches: true,
+        type: "select",
+        required: true,
+        playerOptions: ["1", "2", "3", "4"],
+        optionCount: 4,
+        playerCandidate: true,
+      },
+    ]);
+    assert.deepEqual(
+      f.calls.map((v) => [new URL(v.url).pathname, v.method]),
+      [
+        ["/login", "POST"],
+        ["/admin/auth", "POST"],
+        ["/admin/company/info", "GET"],
+        ["/admin/tariff/current", "GET"],
+        ["/", "POST"],
+      ],
+    );
+    assert.doesNotMatch(
+      JSON.stringify(result) + JSON.stringify(f.logs),
+      /must-not-escape|synthetic-public-token|synthetic-admin-secret/,
+    );
+    await f.call(token, "POST", discoveryOperation);
+    assert.equal(f.calls.length, 5);
+    const after = await f.call(token, "GET", discoveryOperation);
+    assert.equal(after.body.accounting.used, 13);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("discovery denies closed expired foreign and wrong-scope grants with zero dispatch", async () => {
+  for (const mode of ["disabled", "trusted-reads"]) {
+    const f = await discoveryFixture({
+      mode,
+      end: mode === "disabled" ? Date.now() + 180000 : 0,
+    });
+    try {
+      assert.equal(
+        (await f.call("f".repeat(64), "POST", discoveryOperation)).status,
+        401,
+      );
+      assert.equal(
+        (await f.call(await f.grant(), "POST", discoveryOperation)).status,
+        401,
+      );
+      assert.equal(
+        (
+          await f.call(
+            await f.grant(Date.now() - 1, discoveryOperation),
+            "POST",
+            discoveryOperation,
+          )
+        ).status,
+        401,
+      );
+      const token = await f.grant(Date.now() + 60000, discoveryOperation);
+      const result = await f.call(token, "POST", discoveryOperation);
+      assert.ok(result.status === 503 || result.body.state === "blocked");
+      assert.equal(f.calls.length, 0);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+test("discovery stops before dispatch on changed durable usage unknown reservations or oversized window", async () => {
+  for (const cause of ["usage", "unknown", "window", "short"]) {
+    const f = await discoveryFixture();
+    try {
+      if (cause === "usage") await f.sql("UPDATE budget SET used=9");
+      if (cause === "unknown")
+        await f.sql(
+          "INSERT INTO admissions VALUES('unknown','developer-20261008',1,0)",
+        );
+      const token = await f.grant(
+        Date.now() +
+          (cause === "window" ? 240000 : cause === "short" ? 10000 : 60000),
+        discoveryOperation,
+      );
+      assert.equal(
+        (await f.call(token, "POST", discoveryOperation)).body.state,
+        "blocked",
+      );
+      assert.equal(f.calls.length, 0);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+test("discovery counts failed authentication and never retries or resumes a consumed grant", async () => {
+  const f = await discoveryFixture({
+    respond: () => new Response(null, { status: 403 }),
+  });
+  try {
+    const token = await f.grant(Date.now() + 180000, discoveryOperation);
+    const result = await f.call(token, "POST", discoveryOperation);
+    assert.equal(result.body.state, "blocked");
+    assert.equal(result.body.result.accounting.used, 9);
+    assert.equal(result.body.result.accounting.active, 0);
+    assert.equal(f.calls.length, 1);
+    await f.call(token, "POST", discoveryOperation);
+    assert.equal(f.calls.length, 1);
+    const persisted = await f.db
+      .prepare("SELECT state,result_json FROM developer_operations")
+      .first();
+    assert.equal(persisted.state, "blocked");
+    assert.doesNotMatch(persisted.result_json, /token|secret|password/);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("discovery rejects malformed duplicate paginated and oversized metadata without retaining raw values", async () => {
+  const bundled = (
+    await build({
+      entryPoints: ["worker/field-discovery.ts"],
+      bundle: true,
+      write: false,
+      format: "esm",
+      platform: "node",
+    })
+  ).outputFiles[0].text;
+  const { discoveryFields } = await import(
+    "data:text/javascript;base64," + Buffer.from(bundled).toString("base64")
+  );
+  for (const body of [
+    { data: [] },
+    [syntheticField, syntheticField],
+    Array(65).fill(syntheticField),
+    [{ ...syntheticField, is_null: "false" }],
+    [{ ...syntheticField, values: [1, 2, 3, 4] }],
+  ]) {
+    assert.throws(() => discoveryFields(body), /discovery_fields_unrecognized/);
+  }
+  assert.deepEqual(discoveryFields([]), []);
+  const result = discoveryFields([
+    {
+      ...syntheticField,
+      title: "private@example.invalid",
+      values: "private@example.invalid",
+      is_null: null,
+      type: "unknown-secret",
+    },
+  ]);
+  assert.equal(result[0].required, null);
+  assert.equal(result[0].playerCandidate, false);
+  assert.equal(result[0].type, "unsupported");
+  assert.equal(result[0].playerOptions, null);
+  assert.doesNotMatch(
+    JSON.stringify(result),
+    /private@|unknown-secret|must-not-escape/,
+  );
+});
+test("discovery unknown dispatch remains counted across eviction and cannot replay", async () => {
+  const f = await discoveryFixture({ respond: () => new Promise(() => {}) });
+  try {
+    const token = await f.grant(Date.now() + 180000, discoveryOperation);
+    const result = await f.call(token, "POST", discoveryOperation);
+    assert.equal(result.body.state, "blocked");
+    assert.equal(result.body.result.reason, "provider_transport_uncertain");
+    assert.equal(result.body.result.accounting.used, 9);
+    assert.equal(result.body.result.accounting.active, 1);
+    await f.mf.unsafeEvictDurableObject(
+      "provider-test",
+      "SoccerBotAccountCoordinator",
+      { name: "simplybook-developer-account" },
+    );
+    const retained = await f.call(token, "GET", discoveryOperation);
+    assert.equal(retained.body.accounting.used, 9);
+    assert.equal(retained.body.accounting.active, 1);
+    await f.call(token, "POST", discoveryOperation);
+    const other = await f.grant(Date.now() + 60000, discoveryOperation);
+    assert.equal(
+      (await f.call(other, "POST", discoveryOperation)).body.result.reason,
+      "discovery_accounting_changed",
+    );
+    assert.equal(f.calls.length, 1);
+  } finally {
+    await f.mf.dispose();
   }
 });

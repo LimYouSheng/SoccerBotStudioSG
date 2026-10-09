@@ -1,3 +1,4 @@
+import { discoveryFields } from "./field-discovery";
 import { CatalogueReads } from "./catalogue";
 import { NativePrebooking } from "./prebooking";
 import { measure } from "./diagnostics";
@@ -72,6 +73,29 @@ export class ProviderSession {
       this.catalogueReads,
       (request, signal) => this.nativeRead(env, control, request, signal),
     );
+  }
+  // One named discovery only. Caller supplies the existing durable admission owner,
+  // never a URL, method, service ID or a browser assertion of verification.
+  async discoverFields(env: Env, control: ProviderControl) {
+    const p = policy(env);
+    if (
+      p.PROVIDER_ACCESS !== "trusted-reads" ||
+      p.CAMPAIGN_END_MS <= Date.now()
+    )
+      throw new ApiError(503, "provider_access_disabled");
+    await this.identity(env, control);
+    const receipt = await this.nativeRead(env, control, {
+      kind: "required-fields",
+      serviceId: "2",
+    });
+    return {
+      verified: true,
+      evidence: "field_configuration_only",
+      serviceId: "2",
+      observedAtMs: receipt.receivedAtMs,
+      fields: discoveryFields(receipt.body),
+      persistenceVerified: false,
+    };
   }
   private tokens = new Map<ProviderFamily, { value: string; until: number }>();
   private authentication = new Map<ProviderFamily, Promise<string>>();
