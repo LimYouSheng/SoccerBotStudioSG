@@ -13,17 +13,23 @@ export const readGrantSql =
 // substitution can hide a changed recovery/checking counter.
 export function fingerprintRows(rows, key) {
   assert(Array.isArray(rows));
+  const keys = Array.isArray(key) ? key : [key];
+  assert(keys.length > 0 && keys.every((k) => typeof k === "string"));
+  const identity = (row) => JSON.stringify(keys.map((k) => row[k]));
   const normalized = rows.map((row) => {
     assert(row && typeof row === "object" && !Array.isArray(row));
-    assert(Object.hasOwn(row, key));
+    for (const k of keys) {
+      assert(Object.hasOwn(row, k));
+      assert(typeof row[k] === "string" || Number.isSafeInteger(row[k]));
+    }
     return Object.fromEntries(
       Object.keys(row)
         .sort()
         .map((k) => [k, row[k]]),
     );
   });
-  assert.equal(new Set(normalized.map((r) => r[key])).size, rows.length);
-  normalized.sort((a, b) => String(a[key]).localeCompare(String(b[key])));
+  assert.equal(new Set(normalized.map(identity)).size, rows.length);
+  normalized.sort((a, b) => identity(a).localeCompare(identity(b)));
   return createHash("sha256").update(JSON.stringify(normalized)).digest("hex");
 }
 
@@ -127,6 +133,9 @@ export function curlHealth(origin, nonce) {
     const child = spawn(
       "curl",
       [
+        "--disable",
+        "--proto",
+        "=https",
         "--silent",
         "--show-error",
         "--max-time",
@@ -161,55 +170,67 @@ export function curlHealth(origin, nonce) {
       if (failed || code !== 0)
         return reject(new Error("health_transport_unknown"));
       try {
-        const raw = Buffer.concat(chunks).toString("utf8");
-        // curl may include a proxy CONNECT header block; use final HTTP block.
-        const blocks = raw.split(/\r?\n\r?\n/);
-        const body = blocks.pop();
-        const header = blocks.pop();
-        const status = Number(/^HTTP\/\S+ (\d{3})/m.exec(header)?.[1]);
-        assert(Number.isInteger(status) && status >= 100);
-        const safeHeaders = {};
-        for (const line of header.split(/\r?\n/).slice(1)) {
-          const i = line.indexOf(":");
-          const key = line.slice(0, i).toLowerCase();
-          if (
-            [
-              "date",
-              "cf-ray",
-              "cf-cache-status",
-              "age",
-              "x-request-id",
-              "cache-control",
-            ].includes(key)
-          )
-            safeHeaders[key] = line
-              .slice(i + 1)
-              .trim()
-              .slice(0, 256);
-        }
-        const health = JSON.parse(body);
-        resolve({
-          status,
-          headers: safeHeaders,
-          health: Object.fromEntries(
-            [
-              "environment",
-              "providerAccess",
-              "effectiveProviderAccess",
-              "revision",
-              "versionId",
-              "origin",
-              "campaignEndMs",
-              "providerCredentialsPresent",
-              "readinessNonce",
-            ]
-              .filter((k) => Object.hasOwn(health, k))
-              .map((k) => [k, health[k]]),
-          ),
-        });
+        resolve(parseCurlHealth(Buffer.concat(chunks).toString("utf8")));
       } catch {
         reject(new Error("health_representation_invalid"));
       }
     });
   });
+}
+
+// Parse final headers without splitting blank lines inside a formatted JSON body.
+// Denial bodies and unrelated response headers never enter retained evidence.
+export function parseCurlHealth(raw) {
+  assert(Buffer.byteLength(raw) <= 32768);
+  let remaining = raw,
+    header;
+  do {
+    const match = /^HTTP\/[^\r\n]+(?:\r?\n[^\r\n]+)*\r?\n\r?\n/.exec(remaining);
+    assert(match, "health_headers_invalid");
+    header = match[0];
+    remaining = remaining.slice(header.length);
+  } while (remaining.startsWith("HTTP/"));
+  const status = Number(/^HTTP\/\S+ (\d{3})/.exec(header)?.[1]);
+  assert(Number.isInteger(status) && status >= 100 && status <= 599);
+  const safeHeaders = {};
+  for (const line of header.split(/\r?\n/).slice(1)) {
+    const i = line.indexOf(":"),
+      key = line.slice(0, i).toLowerCase();
+    if (
+      i > 0 &&
+      [
+        "date",
+        "cf-ray",
+        "cf-cache-status",
+        "age",
+        "x-request-id",
+        "cache-control",
+      ].includes(key)
+    )
+      safeHeaders[key] = line
+        .slice(i + 1)
+        .trim()
+        .slice(0, 256);
+  }
+  let health = null;
+  if (status === 200) {
+    const parsed = JSON.parse(remaining);
+    assert(parsed && typeof parsed === "object" && !Array.isArray(parsed));
+    health = Object.fromEntries(
+      [
+        "environment",
+        "providerAccess",
+        "effectiveProviderAccess",
+        "revision",
+        "versionId",
+        "origin",
+        "campaignEndMs",
+        "providerCredentialsPresent",
+        "readinessNonce",
+      ]
+        .filter((k) => Object.hasOwn(parsed, k))
+        .map((k) => [k, parsed[k]]),
+    );
+  }
+  return { status, headers: safeHeaders, health };
 }
