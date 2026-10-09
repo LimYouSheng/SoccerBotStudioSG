@@ -23,6 +23,7 @@ const harness = {
       intent: unknown;
       now: number;
       id: string;
+      attemptId?: string;
       fence: number;
       observation: unknown;
       references: unknown;
@@ -72,6 +73,7 @@ const harness = {
               {
                 claimant: input.owner,
                 limit: input.limit,
+                attemptId: input.attemptId,
                 now: () => input.now,
               },
               {

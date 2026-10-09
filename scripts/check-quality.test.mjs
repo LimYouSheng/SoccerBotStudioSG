@@ -46,6 +46,22 @@ for (const [name, mutate] of [
     (p) => (p.workflow = p.workflow.replace("npm ci", "npm ci || true")),
   ],
   [
+    "release gate bypass",
+    (p) =>
+      (p.workflow = p.workflow.replace(
+        "node scripts/check-developer-release.mjs",
+        "echo release-passed",
+      )),
+  ],
+  [
+    "release source redirection",
+    (p) =>
+      (p.workflow = p.workflow.replace(
+        "${{ github.event.pull_request.head.sha || github.sha }}",
+        "main",
+      )),
+  ],
+  [
     "unversioned action",
     (p) =>
       (p.workflow = p.workflow.replace(

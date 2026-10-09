@@ -1,5 +1,7 @@
 const mainOnly =
   "github.ref == 'refs/heads/main' && github.event_name != 'pull_request'";
+const releaseCommand =
+  "node scripts/prepare-developer-release.mjs\nnode scripts/check-developer-release.mjs\n";
 export function checkPagesPolicy(doc) {
   const errors = [];
   const require = (condition, message) => {
@@ -23,6 +25,13 @@ export function checkPagesPolicy(doc) {
     doc.concurrency?.["cancel-in-progress"] ===
       "${{ github.event_name == 'pull_request' }}", "Main deployments must be serialized without cancellation");
   const backend = doc.jobs?.backend || {};
+  const backendCheckout = (backend.steps || []).filter((s) =>
+    s.uses?.startsWith("actions/checkout@"),
+  );
+  require(backendCheckout.length === 1 &&
+    same(backendCheckout[0].with, { "fetch-depth": 2 }) &&
+    !backendCheckout[0].if &&
+    !backendCheckout[0].env, "Backend release checkout identity changed");
   require(backend.name === "verify / backend" &&
     backend["runs-on"] === "ubuntu-latest" &&
     backend["timeout-minutes"] === 20 &&
@@ -44,13 +53,19 @@ export function checkPagesPolicy(doc) {
       "npm run verify:worker",
       "npx playwright install --with-deps chromium webkit",
       "npm run verify:browser",
+      releaseCommand,
     ],
   ), "Backend runtime/root browser gates changed");
   for (const step of backend.steps || [])
     require(!step["continue-on-error"] &&
       (!step.run ||
         (!step.if &&
-          !step.env &&
+          (step.run === releaseCommand
+            ? same(step.env, {
+                RELEASE_SOURCE_REVISION:
+                  "${{ github.event.pull_request.head.sha || github.sha }}",
+              })
+            : !step.env) &&
           !step["working-directory"])), "Backend step bypass refused");
   const frontend = doc.jobs?.frontend || {};
   require(same(frontend.env, { NEXT_PUBLIC_BASE_PATH: "/SoccerBotStudioSG" }) &&

@@ -549,6 +549,10 @@
   },
   {
     "file": "tests/experiment.spec.ts",
+    "title": "checkout stays unavailable while its protected context is pending"
+  },
+  {
+    "file": "tests/experiment.spec.ts",
     "title": "reload and duplicate tabs retain one checking window with a shared server allowance"
   },
   {
