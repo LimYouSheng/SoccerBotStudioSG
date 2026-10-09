@@ -1,3 +1,4 @@
+import { createExperimentPreview } from "../../scripts/experiment-preview.mjs";
 import { seedFoundation } from "./foundation-fixture.mjs";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
@@ -873,4 +874,63 @@ test("elapsed checking deadline returns unresolved without modifying recovery or
     .bind(a.id)
     .first();
   assert.deepEqual(after, before);
+});
+
+test("synthetic fixture awaits evidence without a stale pending snapshot and reuses its attempt", async () => {
+  const fixture = await createExperimentPreview();
+  try {
+    const start = await fixture.mf.dispatchFetch(
+      origin + "/__experiment/attempts",
+      { method: "POST", headers: { origin } },
+    );
+    assert.equal(start.status, 200);
+    const { attemptId } = await start.json();
+    const cookie = start.headers.get("set-cookie").split(";")[0];
+    const before = await fixture.db
+      .prepare("SELECT * FROM attempts WHERE id=?")
+      .bind(attemptId)
+      .first();
+    assert.equal(before.observation_json, null);
+    assert.ok(before.association_json);
+    const pending = await fixture.mf.dispatchFetch(
+      origin + `/api/attempts/${attemptId}/confirmation`,
+      { headers: { cookie } },
+    );
+    assert.equal((await pending.json()).status, "pending");
+    const again = await fixture.mf.dispatchFetch(
+      origin + "/__experiment/attempts",
+      { method: "POST", headers: { origin, cookie } },
+    );
+    assert.deepEqual(await again.json(), { attemptId });
+    assert.equal(
+      (await fixture.db.prepare("SELECT COUNT(*) AS n FROM attempts").first())
+        .n,
+      1,
+    );
+    const outcome = await fixture.mf.dispatchFetch(
+      origin + `/__experiment/outcome/${attemptId}`,
+      {
+        method: "POST",
+        headers: {
+          origin,
+          cookie,
+          "content-type": "application/x-www-form-urlencoded",
+        },
+        body: "outcome=confirmed",
+      },
+    );
+    assert.equal(outcome.status, 200);
+    const after = await fixture.db
+      .prepare("SELECT * FROM attempts WHERE id=?")
+      .bind(attemptId)
+      .first();
+    assert.equal(
+      JSON.parse(after.observation_json).invoice.paymentReceived,
+      true,
+    );
+    assert.equal(after.deadline_ms, before.deadline_ms);
+    assert.equal(after.association_json, before.association_json);
+  } finally {
+    await fixture.close();
+  }
 });

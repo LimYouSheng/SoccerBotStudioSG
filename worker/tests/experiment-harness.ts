@@ -118,17 +118,12 @@ const experimentHarness = {
           id = a.id;
           if (a.state === "prepared") {
             const claim = await claimDispatch(env.STATE, id, a.version, now);
-            const fence = await bindAssociation(env.STATE, id, claim.fence, {
+            await bindAssociation(env.STATE, id, claim.fence, {
               invoiceId: `invoice-${id}`,
               bookingIds: [`booking-${id}`],
             });
-            await recordObservation(
-              env.STATE,
-              id,
-              fence,
-              evidence(id, intent.sessions[0].startMs, now, "pending"),
-              now,
-            );
+            // Await evidence; a synthetic pending snapshot would become stale
+            // after 15 seconds while the customer is still in checkout.
           }
         }
         return Response.json(
@@ -154,7 +149,7 @@ const experimentHarness = {
         .bind(match[2], access.owner_id)
         .first<{
           intent_json: string;
-          observation_json: string;
+          observation_json: string | null;
           version: number;
         }>();
       if (!row) return new Response(null, { status: 404 });
@@ -165,7 +160,10 @@ const experimentHarness = {
         if (!["confirmed", "recovery", "expired"].includes(String(outcome)))
           return new Response(null, { status: 400 });
         if (outcome === "expired") await revokeAccess(env, access, now);
-        else if (!JSON.parse(row.observation_json).invoice.paymentReceived) {
+        else if (
+          !row.observation_json ||
+          !JSON.parse(row.observation_json).invoice.paymentReceived
+        ) {
           const start = JSON.parse(row.intent_json).sessions[0]
             .startMs as number;
           await recordObservation(
@@ -197,7 +195,7 @@ function evidence(
   id: string,
   start: number,
   now: number,
-  outcome: "pending" | "confirmed" | "recovery",
+  outcome: "confirmed" | "recovery",
 ) {
   const scope = {
       accountId: "synthetic-account",
@@ -229,8 +227,8 @@ function evidence(
       invoiceId: `invoice-${id}`,
       money,
       lines: [{ bookingId: `booking-${id}`, money }],
-      status: outcome === "pending" ? "pending" : "paid",
-      paymentReceived: outcome !== "pending",
+      status: "paid",
+      paymentReceived: true,
     },
   };
 }
