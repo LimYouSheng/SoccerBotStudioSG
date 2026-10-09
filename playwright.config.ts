@@ -32,7 +32,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "node scripts/serve-export.mjs",
+    command: "node scripts/serve-export.mjs --experiment",
     url: `http://127.0.0.1:4173${sitePath("/")}`,
     reuseExistingServer: false,
   },

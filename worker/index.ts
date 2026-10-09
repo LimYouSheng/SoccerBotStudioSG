@@ -1,5 +1,5 @@
 import { createAccess, authenticate, revokeAccess } from "./access";
-import { confirmation } from "./confirmation";
+import { confirmation, checkoutContext } from "./confirmation";
 import { ApiError, policy } from "./policy";
 import { verifyBindings } from "./bindings";
 import { traced, instrumentStorage, traceStatus } from "./diagnostics";
@@ -31,6 +31,7 @@ export default {
     const correlationId = crypto.randomUUID(),
       url = new URL(request.url),
       now = Date.now();
+    const checkingHeaders: Record<string, string> = {};
     const json = (
       body: unknown,
       status = 200,
@@ -39,7 +40,12 @@ export default {
       traceStatus(status);
       return new Response(JSON.stringify(body), {
         status,
-        headers: { ...headers, "X-Request-ID": correlationId, ...extra },
+        headers: {
+          ...headers,
+          ...checkingHeaders,
+          "X-Request-ID": correlationId,
+          ...extra,
+        },
       });
     };
     return traced(correlationId, "http", async () => {
@@ -141,7 +147,20 @@ export default {
           url.pathname,
         );
         if (match && request.method === "GET")
-          return json(await confirmation(request, env, match[1], now));
+          return json(
+            await confirmation(request, env, match[1], now, (window) => {
+              checkingHeaders["X-Checking-Deadline"] = String(
+                window.deadlineMs,
+              );
+              checkingHeaders["X-Next-Check"] = String(window.nextCheckMs);
+              checkingHeaders["X-Checks-Remaining"] = String(window.remaining);
+            }),
+          );
+        const checkout = /^\/api\/attempts\/([a-f0-9-]{36})\/checkout$/.exec(
+          url.pathname,
+        );
+        if (checkout && request.method === "GET")
+          return json(await checkoutContext(request, env, checkout[1], now));
         if (url.pathname === "/api/attempts" && request.method === "POST") {
           await authenticate(request, env, now);
           throw new ApiError(503, "booking_prerequisites_blocked");

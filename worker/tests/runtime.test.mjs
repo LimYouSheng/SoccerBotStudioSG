@@ -195,6 +195,11 @@ before(async () => {
       .replace(/^--.*$/gm, "")
       .replace(/\n/g, " "),
   );
+  await db.exec(
+    readFileSync("migrations/0007_confirmation_checking.sql", "utf8")
+      .replace(/^--.*$/gm, "")
+      .replace(/\n/g, " "),
+  );
 });
 after(async () => {
   if (mf) await mf.dispose();
@@ -775,4 +780,97 @@ test("concurrent orchestration requests have one durable winner and no duplicate
     2,
   );
   assert.equal((await effects(a)).length, 3);
+});
+
+test("confirmation checking is atomically bounded across concurrent tabs and retains its deadline", async () => {
+  const a = await prepared();
+  const before = await db
+    .prepare("SELECT deadline_ms FROM attempts WHERE id=?")
+    .bind(a.id)
+    .first();
+  const replies = await Promise.all([read(a), read(a), read(a)]);
+  assert.deepEqual(replies.map((r) => r.status).sort(), [200, 429, 429]);
+  for (const reply of replies) {
+    assert.equal(reply.headers.get("cache-control"), "no-store");
+    assert.equal(
+      Number(reply.headers.get("x-checking-deadline")),
+      before.deadline_ms,
+    );
+    assert.equal(reply.headers.get("x-checks-remaining"), "119");
+  }
+  const row = await db
+    .prepare("SELECT confirmation_checks,deadline_ms FROM attempts WHERE id=?")
+    .bind(a.id)
+    .first();
+  assert.equal(row.confirmation_checks, 1);
+  assert.equal(row.deadline_ms, before.deadline_ms);
+});
+test("checkout context requires ownership and exposes no unproved live checkout link", async () => {
+  const a = await prepared(),
+    other = await guest();
+  const route = origin + `/api/attempts/${a.id}/checkout`;
+  assert.equal((await mf.dispatchFetch(route)).status, 401);
+  assert.equal(
+    (await mf.dispatchFetch(route, { headers: { cookie: other.cookie } }))
+      .status,
+    404,
+  );
+  const response = await mf.dispatchFetch(route, {
+    headers: { cookie: a.cookie },
+  });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  const body = await response.json();
+  assert.equal(body.attemptId, a.id);
+  assert.equal(body.mode, "live");
+  assert.deepEqual(body.checkout, { state: "unavailable" });
+  assert.equal(body.summary.totalMinor, 8800);
+  assert.equal(JSON.stringify(body).includes("customerId"), false);
+});
+test("expired or foreign access cannot consume another attempt checking allowance", async () => {
+  const a = await prepared(),
+    other = await guest();
+  assert.equal((await read({ ...a, cookie: other.cookie })).status, 404);
+  await db
+    .prepare("UPDATE guest_access SET expires_ms=? WHERE owner_id=?")
+    .bind(Date.now() - 1, a.owner)
+    .run();
+  assert.equal((await read(a)).status, 401);
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT confirmation_checks FROM attempts WHERE id=?")
+        .bind(a.id)
+        .first()
+    ).confirmation_checks,
+    0,
+  );
+});
+test("checking exhaustion survives runtime restart and cannot extend the immutable attempt deadline", async () => {
+  const a = await prepared();
+  await db
+    .prepare("UPDATE attempts SET confirmation_checks=120 WHERE id=?")
+    .bind(a.id)
+    .run();
+  await mf.dispose();
+  await start();
+  const r = await read(a);
+  assert.equal(r.status, 429);
+  assert.equal(r.headers.get("x-checks-remaining"), "0");
+  assert.deepEqual(await r.json(), { error: "checking_limit_reached" });
+});
+test("elapsed checking deadline returns unresolved without modifying recovery or dispatch state", async () => {
+  const a = await prepared(undefined, 700000);
+  const before = await db
+    .prepare("SELECT * FROM attempts WHERE id=?")
+    .bind(a.id)
+    .first();
+  const r = await read(a);
+  assert.equal(r.status, 200);
+  assert.equal((await r.json()).status, "unresolved");
+  const after = await db
+    .prepare("SELECT * FROM attempts WHERE id=?")
+    .bind(a.id)
+    .first();
+  assert.deepEqual(after, before);
 });

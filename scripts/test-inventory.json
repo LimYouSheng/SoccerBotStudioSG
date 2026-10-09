@@ -256,6 +256,22 @@
     "title": "unsupported live mode exposes unavailable state and cannot restore a paid demo receipt"
   },
   {
+    "file": "src/features/booking/confirmation-checking.test.tsx",
+    "title": "aborts stale session reads and cannot reuse their confirmed result"
+  },
+  {
+    "file": "src/features/booking/confirmation-checking.test.tsx",
+    "title": "coalesces manual and duplicate-page reads and preserves the deadline across reload"
+  },
+  {
+    "file": "src/features/booking/confirmation-checking.test.tsx",
+    "title": "pauses hidden checking and permits only one eligible foreground refresh"
+  },
+  {
+    "file": "src/features/booking/confirmation-checking.test.tsx",
+    "title": "stops a hung read at the original deadline without claiming cancellation"
+  },
+  {
     "file": "src/features/booking/details-step.test.tsx",
     "title": "details contains only the five contact fields and validates them before review"
   },
@@ -265,11 +281,19 @@
   },
   {
     "file": "src/features/booking/protected-confirmation.test.tsx",
+    "title": "access denial hides a previously loaded checkout context"
+  },
+  {
+    "file": "src/features/booking/protected-confirmation.test.tsx",
     "title": "denied and malformed responses cannot show confirmation or protected details"
   },
   {
     "file": "src/features/booking/protected-confirmation.test.tsx",
     "title": "shows checking before the protected server result and confirms only verified evidence"
+  },
+  {
+    "file": "src/features/booking/protected-confirmation.test.tsx",
+    "title": "temporary checking failure preserves the protected summary and repeat checkout uses the same link"
   },
   {
     "file": "src/features/booking/time-step.test.tsx",
@@ -452,6 +476,14 @@
     "title": "validates all required contact fields and their length limits"
   },
   {
+    "file": "src/services/confirmation.test.ts",
+    "title": "accepts only the protected synthetic checkout bound to the requested attempt"
+  },
+  {
+    "file": "src/services/confirmation.test.ts",
+    "title": "keeps unsupported live checkout unavailable without synthetic fallback"
+  },
+  {
     "file": "tests/customer.spec.ts",
     "title": "50-minute cadence, automatic instructors, contact validation and final-slot conflict"
   },
@@ -514,5 +546,25 @@
   {
     "file": "tests/customer.spec.ts",
     "title": "public routes remove staff access and fit the viewport"
+  },
+  {
+    "file": "tests/experiment.spec.ts",
+    "title": "reload and duplicate tabs retain one checking window with a shared server allowance"
+  },
+  {
+    "file": "tests/experiment.spec.ts",
+    "title": "synthetic access revocation hides protected details and stops checking"
+  },
+  {
+    "file": "tests/experiment.spec.ts",
+    "title": "synthetic checkout opens separately and only canonical evidence confirms the preserved attempt"
+  },
+  {
+    "file": "tests/experiment.spec.ts",
+    "title": "synthetic paid but invalid booking needs recovery instead of claiming success"
+  },
+  {
+    "file": "tests/experiment.spec.ts",
+    "title": "the Payment preview entry and temporary checking failure retain customer selections and contact"
   }
 ]

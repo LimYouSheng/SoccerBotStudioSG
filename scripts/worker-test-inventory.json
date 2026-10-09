@@ -87,5 +87,10 @@
   "orchestration stale generation cannot dispatch a subsequent session",
   "orchestration rejects duplicate booking references and incomplete invoice associations",
   "orchestration unknown finalization survives restart and is never replayed",
-  "concurrent orchestration requests have one durable winner and no duplicate effects"
+  "concurrent orchestration requests have one durable winner and no duplicate effects",
+  "confirmation checking is atomically bounded across concurrent tabs and retains its deadline",
+  "checkout context requires ownership and exposes no unproved live checkout link",
+  "expired or foreign access cannot consume another attempt checking allowance",
+  "checking exhaustion survives runtime restart and cannot extend the immutable attempt deadline",
+  "elapsed checking deadline returns unresolved without modifying recovery or dispatch state"
 ]

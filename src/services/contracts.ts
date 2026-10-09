@@ -84,3 +84,23 @@ export interface IdentityService {
 export interface AssistantService {
   reply(text: string, booking: Booking | null): string;
 }
+
+export type CheckoutContext = {
+  attemptId: string;
+  mode: "synthetic" | "live";
+  checkout: { state: "unavailable" } | { state: "available"; url: string };
+  summary: {
+    players: number;
+    totalMinor: number;
+    currency: "SGD";
+    sessions: { startMs: number; players: number }[];
+  };
+  checking: { deadlineMs: number; nextCheckMs: number; pollAfterMs: number };
+};
+export interface ProtectedCheckoutService {
+  context(input: {
+    attemptId: string;
+    mode: "synthetic" | "live";
+    signal: AbortSignal;
+  }): Promise<CheckoutContext>;
+}

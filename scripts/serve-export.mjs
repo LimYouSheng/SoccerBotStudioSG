@@ -15,10 +15,11 @@ const types = {
   ".txt": "text/plain",
   ".xml": "application/xml",
 };
-export function exportServer(directory, basePath) {
+export function exportServer(directory, basePath, handler) {
   const root = resolve(directory);
   return createServer(async (request, response) => {
     try {
+      if (handler && (await handler(request, response))) return;
       const pathname = decodeURIComponent(
         new URL(request.url, "http://localhost").pathname,
       );
@@ -47,7 +48,21 @@ export function exportServer(directory, basePath) {
     }
   });
 }
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
-  exportServer("out", siteBasePath).listen(4173, "127.0.0.1", () =>
-    console.log(`Static preview: http://127.0.0.1:4173${siteBasePath}/`),
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
+  const fixture = process.argv.includes("--experiment")
+    ? await (await import("./experiment-preview.mjs")).createExperimentPreview()
+    : null;
+  for (const signal of ["SIGINT", "SIGTERM"])
+    process.once(signal, async () => {
+      await fixture?.close();
+      process.exit(0);
+    });
+  exportServer("out", siteBasePath, fixture?.handle).listen(
+    4173,
+    "127.0.0.1",
+    () => console.log(`Static preview: http://127.0.0.1:4173${siteBasePath}/`),
   );
+}

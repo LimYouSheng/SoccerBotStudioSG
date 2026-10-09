@@ -589,9 +589,7 @@ test("populated migration preserves immutable intent unknown effects completed p
   await mf.dispose();
   rmSync(persistence, { recursive: true, force: true });
   await start();
-  for (const name of migrations.filter(
-    (n) => !n.startsWith("0005") && !n.startsWith("0006"),
-  ))
+  for (const name of migrations.filter((n) => Number(n.slice(0, 4)) < 5))
     await migrate(name);
   await seedFoundation(mf, db);
   const a = await dispatched();
@@ -659,6 +657,31 @@ test("populated migration preserves immutable intent unknown effects completed p
       ),
     ),
     snapshot.map((r) => r.results),
+  );
+  const recoveryBefore = (await db.prepare("SELECT * FROM recovery_work").all())
+    .results;
+  await migrate("0007_confirmation_checking.sql");
+  const afterChecking = await Promise.all(
+    tables.map((t) =>
+      db
+        .prepare(`SELECT * FROM ${t}`)
+        .all()
+        .then((r) => r.results),
+    ),
+  );
+  for (const record of afterChecking[tables.indexOf("attempts")]) {
+    assert.equal(record.confirmation_next_ms, 0);
+    assert.equal(record.confirmation_checks, 0);
+    delete record.confirmation_next_ms;
+    delete record.confirmation_checks;
+  }
+  assert.deepEqual(
+    afterChecking,
+    snapshot.map((r) => r.results),
+  );
+  assert.deepEqual(
+    (await db.prepare("SELECT * FROM recovery_work").all()).results,
+    recoveryBefore,
   );
   assert.equal((await row(a)).state, "due");
   assert.equal(

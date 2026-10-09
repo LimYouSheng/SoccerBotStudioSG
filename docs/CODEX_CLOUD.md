@@ -229,3 +229,18 @@ Cloud policy still omits `soccerbotstudiosg.simplybook.asia`, `app.sbpay.me` and
 That documentation-only publication staged seven documents and required their format/source/policy/preservation checks plus final-SHA CI, without repeating unchanged local suites. It completed as PR#9, later owner-merged. It is not the current implementation staging instruction: the offline verifier uses the new branch and code gate described above. Future PR verification still skips main-only deployment and requires draft/unmerged delivery without auto-merge.
 
 Preserve archives outside Git. Owner explicitly forbids Google Drive/other external evidence uploads. Retain sanitized ZIP plus manifest in the workspace and state that this is not durable external retention. Use a supported chat attachment only if actually available; never present a workspace path as a working download. Current case status/accounting stays in PROGRESS.
+
+## Experiment 1 local synthetic demonstration
+
+Use this PR branch and the repository's pinned Node24.19.0/dependencies. No credentials are needed. In a prepared checkout:
+
+```sh
+npm run build
+npm run preview -- --experiment
+```
+
+Open `http://127.0.0.1:4173/SoccerBotStudioSG/experiment/`. Dismiss the existing player-app prompt, then choose **Start synthetic checkout**. The fixture uses a fixed two-player SGD88 session; existing booking selections/contact remain stored separately. Choose **Open checkout**, keep the original page open, then choose **Simulate successful payment** in the separate simulated page. Return to the original page; its next eligible protected read shows **Booking confirmed**. Closing the simulated tab without an outcome does not confirm. **Open checkout again** reuses the same attempt/link.
+
+Use a fresh private browser context for the second case (the same owner intentionally reuses its original attempt): start again, choose **Simulate payment needing review**, and return to see **Your booking needs review**. A third fresh context can choose **Expire synthetic access**. Wait for the next eligible five-second check; repeat clicks/reload do not bypass the server window. The simulator collects no payment data and executes no real booking/payment/provider request. Stop the server to dispose its ephemeral local state. It listens only on loopback; do not expose this fixture publicly.
+
+For a root export, consistently set `NEXT_PUBLIC_BASE_PATH=''` for both build and preview. Do not reuse a Pages build for a root-path check. The existing Playwright configuration starts this opt-in fixture for actual synthetic browser tests; its original projects, retries, timeouts and workers are unchanged. CI checks both root and Pages paths. Hosted preview forwarding is not established by these instructions; the older deployed Worker is not this candidate. Physical-device acceptance remains with the owner.

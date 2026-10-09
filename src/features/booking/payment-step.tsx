@@ -157,6 +157,9 @@ export function PaymentStep() {
           <p className="payment-foot">
             Payment preview · No money will be charged.
           </p>
+          <Link className="text-link" href="/experiment/">
+            Try separate checkout · Synthetic Preview
+          </Link>
         </section>
       </div>
     </div>

@@ -15,6 +15,8 @@
 
 - The 9 October M3.3 instruction authorizes only source/isolated-runtime/CI durable recovery work. No provider call, deployment, remote migration, management recheck, activated scheduler, email sending or setup. Recovery metadata stays in D1; expired access never deletes unresolved evidence, and claiming recovery never permits write replay. PROGRESS owns this task's deadline, gaps and unchanged budgets.
 
+The 9 October Experiment1 instruction permits only source/local synthetic/CI work and draft PR publication, ahead of queued M3.4. Zero new provider/management calls, deployment or remote migration; preserve M3.3 and migrations0001–0006. Additive0007 remains source-only. Service Contracts owns the separate checkout/checking contract and finite next-live proposal; PROGRESS owns evidence and unchanged consumption.
+
 ## 2. Build
 
 - Use one cloud feature branch. Edit canonical owners; remove superseded logic and avoid duplicate implementations.
