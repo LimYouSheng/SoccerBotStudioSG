@@ -1,5 +1,17 @@
 # SoccerBotStudioSG current progress
 
+## Resend composition continuation — 9 October 2026
+
+Recovered PR14 source5673e79 and PR15 sourcea43ffb8, both draft/open/unmerged. Independently re-read both required successful CI jobs37909399171/37909424450. New source branch feat/resend-composition-20261009 is based on PR14; PR15 and the old clean experiment checkout are untouched. The earlier private worktrees/ledger/receipts were absent. Reconstructed private campaign.json explicitly carries5 loops/3632seconds from handover and matching PR receipts, without claiming recovery of the missing files. Current loop6 uses conservative12:50UTC accounting anchor (earlier than first recorded12:58:40 clock), retaining original12October08:18:56UTC deadline and all caps. Final elapsed accounting belongs in the PR receipt.
+
+Environment initially reported unknown readiness; subsequent current observation reports RESEND_API_KEY ready and enforced network policy. Both requested hosts are configured. No key value was read/printed or tested by sending. An expired artifact URL returned403; a fresh connector URL downloaded successfully using unchanged proxy/TLS controls. Verified readiness ZIP85644fd2429a8bcc9985b1a08ed3fbeead5a1216484e349198714b612936e649, sourcea43ffb84d9afec5cf23d4b3425109513a7256203, tested merge21bfb1bfb806f9d2b2b935be0bc453e632e612e6/treee09aef91b5eba37234f8ac2de7784c69f97964b7, all135 files, unchanged migration bytes and empty pending-migration list. No rebuild or deployment.
+
+Owner supplied verified sending domainauth.app404.ai, FromSoccerBotStudioSG Dev <noreply@auth.app404.ai>, recipientsheng@app404.ai and confirmed no existing Turnstile widget. Implemented fixed Resend/siteverify transports in the existing physical transport owner; public protected bounded identity composition; additive source-only0011 finite window/dispatch accounting; frontend proof handoff. Default IDENTITY_DELIVERY=disabled; no durable window provisioned. Existing OTP/identity owner retains hashing, replay, attempt and concurrency rules. No private provider prefill is introduced. Pending remote0009–0011 remain separate from immutable/applied0001–0008.
+
+Evidence checkpoint: original144 Worker cases plus11 new passed complete verify:worker; two additional closure/timestamp cases require final focused run. Ten affected component/service cases and nine Worker boundary checker cases passed. New binding/decoder typing errors corrected once; first logs retained. Full non-browser code gate and final CI status will be recorded in the new draft PR. No browser launched by the assistant. Existing browser projects/assertions/timeouts/retries remain unchanged.
+
+Consumption unchanged:238/248 management,13/14 deployments,8/80 current provider; historical80 separate,8 management/one deployment reserved for rollback. Zero emails/siteverify/provider/management calls, migrations, deployments, secret installs, widget/DNS/settings changes, cron, merge/main push. Service Contracts owns the concrete conditional20-minute/3-send/5-siteverify test and exact remaining activation dependencies. No approval to execute has been requested or inferred.
+
 Final operator review 09:08:49UTC: cumulative active2993seconds/24hours;5/60 loops, same elapsed deadline. Readiness checkpointc825ea35 passed both required CI jobs37908374064 and sealed release check. Subsequent operator-only hardening retains final403/proxy response identity, supports formatted JSON and composite effect keys while retaining all columns; five focused utility cases pass. Both final published heads need their own CI; final exact receipts are attached to their draft PRs. No external execution/counter change.
 
 ## Main integration campaign — active 9 October 2026
@@ -473,3 +485,5 @@ YS's deployed-main application inspection is separately pending. The original no
 - Keep one current ledger, not a transcript. Move completed milestone summaries to Journey.
 - Retain source identity, command, environment, result/count, log/workflow reference and limitations.
 - Carry diagnoses and next actions forward. Revisit only when relevant evidence changes.
+
+Verification follow-up: all13 new delivery cases passed, including closure during bot validation and invalid timestamp rejection; final inventory157 Worker/142 application/unchanged69 browser executions per path. First full code command set passed but its final receipt correctly refused because source changed while it ran (additional regressions/release metadata). Original failed receipt/log retained; freeze source before final verification. No assertion or fingerprint guard was bypassed.

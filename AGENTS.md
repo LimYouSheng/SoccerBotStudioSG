@@ -2,6 +2,8 @@
 
 ## 1. Start
 
+- Current Resend continuation: new branch feat/resend-composition-20261009 from PR14 at5673e79. Default delivery disabled; empty source-only0011 window, no external execution. Owner suppliedauth.app404.ai sender/recipient; no Turnstile widget exists. Use Service Contracts finite email section and PROGRESS carried accounting. Preserve isolated PR15 artifact/source. Current user reserves browser execution for CI/user; do not launch assistant browsers.
+
 - Read NORTH_STAR and PROGRESS (the one current task ledger), then relevant sections of the three canonical owners.
 - Current main is owner-merged PR13 at757fd288084d0e76c7cb7b766e33c4724d6988d0. Actual main CI37896841542 passed both required jobs; existing Pages deployment succeeded. Work on new feat/native-discovery-2026-10-09, never main; preserve prior work/Mac stash.
 - Current outcome: YS approved discovery-only execution; migrations0006→0007→0008 and exact tested release661cbf54 deployed. Enabled health disagreed with management settings, so no provider POST occurred. Worker verified closed, grant expired; PROGRESS owns the complete failure/closure receipt.

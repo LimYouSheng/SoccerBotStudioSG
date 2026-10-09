@@ -17,6 +17,7 @@ assert.equal(manifest.bookingMode, "demo");
 assert.equal(config.vars.SOURCE_REVISION, manifest.sourceRevision);
 assert.equal(config.vars.PROVIDER_ACCESS, "disabled");
 assert.equal(config.vars.CAMPAIGN_END_MS, "0");
+assert.equal(config.vars.IDENTITY_DELIVERY, "disabled");
 checkExport(`${directory}/assets`, "");
 let outbound = 0;
 const temporary = mkdtempSync(path.join(tmpdir(), "soccerbot-release-"));

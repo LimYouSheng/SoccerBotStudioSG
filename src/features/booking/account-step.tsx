@@ -6,6 +6,7 @@ import { blankContact } from "@/domain/contact";
 import { DEMO_CODE } from "@/services/demo/identity";
 import type { CustomerChallenge } from "@/services/contracts";
 import { useBooking } from "./provider";
+import { EmailBotProof } from "./email-bot-proof";
 export function AccountStep() {
   const { update, identityService } = useBooking(),
     router = useRouter();
@@ -17,6 +18,8 @@ export function AccountStep() {
     [challenge, setChallenge] = useState<CustomerChallenge | null>(null);
   const [identity, setIdentity] = useState(() => identityService.current());
   const [busy, setBusy] = useState(false);
+  const [botToken, setBotToken] = useState("");
+  const [botGeneration, setBotGeneration] = useState(0);
   const active = useRef<AbortController | null>(null);
   useEffect(() => {
     const controller = new AbortController();
@@ -37,6 +40,8 @@ export function AccountStep() {
     active.current?.abort();
     active.current = null;
     setBusy(false);
+    setBotToken("");
+    setBotGeneration((value) => value + 1);
   }
   async function perform(work: (signal: AbortSignal) => Promise<void>) {
     if (active.current) return;
@@ -74,7 +79,13 @@ export function AccountStep() {
   }
   function request() {
     void perform(async (signal) => {
-      const next = await identityService.challenge(email, signal);
+      let next: CustomerChallenge;
+      try {
+        next = await identityService.challenge(email, signal, botToken);
+      } finally {
+        setBotToken("");
+        setBotGeneration((value) => value + 1);
+      }
       if (signal.aborted) return;
       setChallenge(next);
       setCode("");
@@ -235,6 +246,9 @@ export function AccountStep() {
           <p role="alert" className="field-error auth-error">
             {error}
           </p>
+        )}
+        {identityService.mode === "live" && (
+          <EmailBotProof key={botGeneration} onToken={setBotToken} />
         )}
         <div className="actions">
           <button type="submit" className="button" disabled={busy}>

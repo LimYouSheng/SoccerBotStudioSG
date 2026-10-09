@@ -124,7 +124,11 @@ export interface CustomerIdentityService {
   current(): VerifiedIdentity | null;
   refresh(signal: AbortSignal): Promise<VerifiedIdentity | null>;
   guest(signal: AbortSignal): Promise<void>;
-  challenge(email: string, signal: AbortSignal): Promise<CustomerChallenge>;
+  challenge(
+    email: string,
+    signal: AbortSignal,
+    botToken?: string,
+  ): Promise<CustomerChallenge>;
   verify(
     challenge: CustomerChallenge,
     code: string,

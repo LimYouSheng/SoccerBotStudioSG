@@ -1,6 +1,7 @@
 import { runScheduledRecovery } from "./scheduled-recovery";
 import { customerCatalogue } from "./customer-catalogue";
 import { readVerifiedIdentity } from "./identity";
+import { identityDelivery } from "./identity-delivery";
 import { createAccess, authenticate, revokeAccess } from "./access";
 import { confirmation, checkoutContext } from "./confirmation";
 import { ApiError, policy } from "./policy";
@@ -92,15 +93,13 @@ export default {
           request.headers.get("origin") !== url.origin
         )
           throw new ApiError(403, "origin_denied");
-        // Delivery/bot composition is deliberately absent until its concrete
-        // external scope is approved; arbitrary payloads cannot activate it.
+        // Empty durable window and disabled deployment default keep delivery closed.
         if (
           ["/api/identity/challenges", "/api/identity/verify"].includes(
             url.pathname,
           )
         ) {
-          await authenticate(request, env, now);
-          throw new ApiError(503, "identity_unavailable");
+          return json(await identityDelivery(request, env));
         }
         // These initial named operations accept no payload at all.
         if (request.body !== null) {

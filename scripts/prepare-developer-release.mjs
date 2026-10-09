@@ -45,6 +45,7 @@ assert.equal(config.name, "soccerbot-dev");
 assert.equal(config.account_id, "517f4f85eb8f982b483dbc05b797fd88");
 assert.equal(config.vars.PROVIDER_ACCESS, "disabled");
 assert.equal(config.vars.CAMPAIGN_END_MS, "0");
+assert.equal(config.vars.IDENTITY_DELIVERY, "disabled");
 const directory = "test-results/developer-release";
 assert.equal(
   existsSync(directory),
@@ -92,6 +93,7 @@ const manifest = {
   pendingRemoteMigrations: [
     "0009_identity_challenges.sql",
     "0010_customer_read_scopes.sql",
+    "0011_identity_delivery.sql",
   ],
   priorWorkerVersion: "a0b4befb-079b-4836-9967-b1f5fe101bd7",
   acceptance: "closed foundation only; native integration remains unavailable",

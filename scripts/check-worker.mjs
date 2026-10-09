@@ -19,8 +19,8 @@ export function checkWorker(root) {
     );
     if (name === "provider-transport.ts") {
       if (
-        (text.match(/\bfetch\(/g) || []).length !== 1 ||
-        !text.includes('redirect: "manual"') ||
+        (text.match(/\bfetch\(/g) || []).length !== 2 ||
+        (text.match(/redirect: "manual"/g) || []).length !== 2 ||
         !text.includes("await dispatch.reserve()") ||
         !text.includes("signal: controller.signal")
       )
@@ -30,6 +30,8 @@ export function checkWorker(root) {
         JSON.stringify(urls.sort()) !==
         JSON.stringify(
           [
+            "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+            "https://api.resend.com/emails",
             "https://user-api.simplybook.me/login",
             "https://user-api.simplybook.me/",
             "https://user-api-v2.simplybook.me/admin/invoices/",
@@ -106,6 +108,7 @@ export function checkWorker(root) {
     config.vars.APP_ORIGIN !==
       "https://soccerbot-dev.limyousheng-94.workers.dev" ||
     config.vars.PROVIDER_ACCESS !== "disabled" ||
+    config.vars.IDENTITY_DELIVERY !== "disabled" ||
     config.vars.CAMPAIGN_ID !== "developer-20261008" ||
     config.vars.CAMPAIGN_END_MS !== "0"
   )

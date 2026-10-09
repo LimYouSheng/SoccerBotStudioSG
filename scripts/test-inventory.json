@@ -296,6 +296,14 @@
     "title": "details contains only the five contact fields and validates them before review"
   },
   {
+    "file": "src/features/booking/email-bot-proof.test.tsx",
+    "title": "email bot widget binds purpose clears expired proof and ignores callbacks after disposal"
+  },
+  {
+    "file": "src/features/booking/email-bot-proof.test.tsx",
+    "title": "email bot widget is unavailable without a bound public sitekey"
+  },
+  {
     "file": "src/features/booking/instructor.test.tsx",
     "title": "instructor profile renders supplied display data without a fixed roster lookup"
   },
@@ -554,6 +562,10 @@
   {
     "file": "src/services/identity.test.ts",
     "title": "live identity rejects stale mismatched oversized and unavailable responses without demo success"
+  },
+  {
+    "file": "src/services/identity.test.ts",
+    "title": "live identity requires a fresh bot proof and sends it only after guest access"
   },
   {
     "file": "tests/customer.spec.ts",
