@@ -1,3 +1,4 @@
+import { storedNativeCheckout } from "./native-adapter";
 import { verifyConfirmation } from "../src/domain/confirmation";
 import { authenticate, type Access } from "./access";
 import { intentSchema, associationSchema } from "./journal";
@@ -181,7 +182,17 @@ export async function checkoutContext(
   return {
     attemptId: id,
     mode: "live" as const,
-    checkout: { state: "unavailable" as const },
+    checkout:
+      row.association_json &&
+      row.deadline_ms > now &&
+      String(env.PROVIDER_ACCESS) === "trusted-reads"
+        ? await storedNativeCheckout(
+            env.STATE,
+            id,
+            JSON.parse(row.association_json),
+            now,
+          )
+        : { state: "unavailable" as const },
     summary: {
       players: intent.sessions[0].players,
       totalMinor: intent.totalMinor,

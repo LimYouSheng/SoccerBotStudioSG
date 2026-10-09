@@ -27,6 +27,7 @@ const commands = [
       "--test-reporter=tap",
       "worker/tests/foundation.test.mjs",
       "worker/tests/provider.test.mjs",
+      "worker/tests/native.test.mjs",
       "worker/tests/runtime.test.mjs",
       "worker/tests/recovery.test.mjs",
     ],

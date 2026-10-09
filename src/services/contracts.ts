@@ -88,7 +88,9 @@ export interface AssistantService {
 export type CheckoutContext = {
   attemptId: string;
   mode: "synthetic" | "live";
-  checkout: { state: "unavailable" } | { state: "available"; url: string };
+  checkout:
+    | { state: "unavailable" }
+    | { state: "available"; url: string; expiresAtMs?: number };
   summary: {
     players: number;
     totalMinor: number;

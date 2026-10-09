@@ -1,13 +1,12 @@
 # North Star: Cloudflare developer integration
 
-## Current preparation — one native sandbox checkout
+## Current preparation — supported native checkout adapter
 
-Continue merged Experiment1 from main49000e6 on a new draft PR. Prepare SoccerBot → native SimplyBook/SBPay → HitPay sandbox → original protected confirmation; manual return is acceptable. Repair the saved main phone-WebKit failure, reuse exact provider evidence, prepare supported source and an immutable closed developer release. Live execution is a later bounded authorization, not this task. Main CI remains failed until its own future merged-revision run passes. The owner reported the Mac synthetic Preview looked good; specific outcomes/device acceptance remain unrecorded.
+Build on reviewed7b83a8b / draft PR12 (both final CI jobs passed), which is still unmerged. Main49000e6 is unchanged. New branch feat/native-checkout-adapter-2026-10-09 is stacked on PR12; preserve its completed readiness/deadline repairs. Implement supported normalization, native request boundaries, one-session association, protected link custody and targeted readback using the user-supplied historical bodies and token-free native path. Manual return is acceptable. All source/synthetic work is preparation only; no remote provider/management action or merge is authorized.
 
-PROGRESS owns current source, CI, unchanged accounting and remaining evidence. Service Contracts owns the exact missing native envelopes, request allocation and gated trial; Rules owns release/migration/rollback. All previous “current” milestone sections below are retained history. No autonomous reconciliation, automatic return, multi-session, M1/M2.5/M3.4 or production closure follows from this single-session preparation.
+PROGRESS owns current candidate, evidence and unchanged accounting. Service Contracts owns adapter inputs, historical provenance, remaining concrete live bindings and the twelve-call trial proposal. Rules owns the exact release artifact, unchanged0006→0007 sequence and additive rollback. No automatic return, autonomous reconciliation, multi-session, M1/M2.5/M3.4 or production acceptance follows.
 
 Historical Experiment1 was the source/synthetic exception before queued M3.4: separate checkout with protected bounded status checking. Live native preparation remains unavailable; native return and no-return reconciliation remain separate. PROGRESS owns final receipts and unchanged accounting. M3.3, M1/M2.5/owner acceptance and Resend prerequisites remain preserved.
-
 
 ## Current outcome and authorization — 9 October 2026
 

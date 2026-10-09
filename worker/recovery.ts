@@ -1,3 +1,9 @@
+import { verifyBindings } from "./bindings";
+import {
+  readNativeAttempt,
+  type NativeScope,
+  type NativeExchange,
+} from "./native-adapter";
 import { z } from "zod";
 import { ApiError, policy } from "./policy";
 import { decideStoredConfirmation, type StoredAttempt } from "./confirmation";
@@ -28,8 +34,8 @@ type RecoveryInput = StoredAttempt & {
   owner_id: string;
   effects: { step: string; outcome: string; reference_id: string | null }[];
 };
-// No live implementation exists. The only supplied adapter is an isolated test
-// fixture. Reconciliation is a read; this interface has no booking/payment write.
+// Generic live labels carry no authority. Only the supervised entry below can
+// register a native reader for one targeted, durably reserved invocation.
 export type RecoveryReader = {
   mode: "synthetic" | "live" | "unavailable";
   read: (input: RecoveryInput, signal: AbortSignal) => Promise<unknown>;
@@ -223,7 +229,7 @@ async function boundedRead(reader: RecoveryReader, input: RecoveryInput) {
   }
 }
 
-export async function runRecoveryBatch(
+async function runSelectedRecovery(
   env: Env,
   options: {
     claimant: string;
@@ -232,6 +238,7 @@ export async function runRecoveryBatch(
     now?: () => number;
   },
   reader?: RecoveryReader,
+  nativeAuthorized = false,
 ) {
   owner.parse(options.claimant);
   limitSchema.parse(options.limit);
@@ -279,7 +286,14 @@ export async function runRecoveryBatch(
       };
     } else if (claim.tries > maxReads) {
       result = { kind: "retry" };
-    } else if (reader?.mode === "synthetic") {
+    } else if (
+      reader &&
+      (reader.mode === "synthetic" ||
+        (reader.mode === "live" &&
+          nativeAuthorized &&
+          options.attemptId === item.attempt_id &&
+          String(env.PROVIDER_ACCESS) === "trusted-reads"))
+    ) {
       const effects = await env.STATE.prepare(
         "SELECT step,outcome,reference_id FROM session_effects WHERE attempt_id=? ORDER BY step LIMIT 13",
       )
@@ -294,8 +308,7 @@ export async function runRecoveryBatch(
         result = { kind: "retry" };
       }
     }
-    // Live recovery contracts/admission are unavailable, even if a caller labels
-    // a reader live or flips provider settings. No fallback to synthetic reads.
+    // Unregistered live readers remain unavailable; no mode-flag bypass.
     try {
       completionSchema.parse(result);
     } catch {
@@ -307,6 +320,19 @@ export async function runRecoveryBatch(
     });
   }
   return outcomes;
+}
+
+export async function runRecoveryBatch(
+  env: Env,
+  options: {
+    claimant: string;
+    limit: number;
+    attemptId?: string;
+    now?: () => number;
+  },
+  reader?: RecoveryReader,
+) {
+  return runSelectedRecovery(env, options, reader);
 }
 
 export async function retentionPreview(
@@ -340,4 +366,85 @@ export async function retentionPreview(
     ],
     reason: "retention_decision_required",
   };
+}
+
+// Internal supervised trigger only; no HTTP route, scheduler, or draining loop.
+// A trusted operator composition must bind the grant and admitted exchange.
+export async function runNativeReadback(
+  env: Env,
+  options: {
+    scope: NativeScope;
+    claimant: string;
+    phase: "initial" | "reserve";
+    grantExpiresMs: number;
+    exchange: NativeExchange;
+    signature: (bookingId: string) => Promise<string>;
+  },
+) {
+  policy(env);
+  if (
+    String(env.PROVIDER_ACCESS) !== "trusted-reads" ||
+    Date.now() >= Number(env.CAMPAIGN_END_MS) ||
+    !Number.isSafeInteger(options.grantExpiresMs) ||
+    options.grantExpiresMs <= Date.now() ||
+    options.grantExpiresMs > Date.now() + 1800000
+  )
+    throw new ApiError(503, "native_readback_closed");
+  z.enum(["initial", "reserve"]).parse(options.phase);
+  z.string().uuid().parse(options.scope.attemptId);
+  await verifyBindings(env);
+  const step = `native-readback:${options.phase}`;
+  const reserved = await env.STATE.prepare(
+    "INSERT INTO session_effects(attempt_id,step,outcome) SELECT id,?,'unknown' FROM attempts WHERE id=? AND association_json IS NOT NULL AND state IN ('dispatching','observed','recovery_required')",
+  )
+    .bind(step, options.scope.attemptId)
+    .run();
+  if (reserved.meta.changes !== 1)
+    throw new ApiError(409, "native_readback_not_claimed");
+  let reads = 0;
+  const reader: RecoveryReader = {
+    mode: "live",
+    read: async (input, signal) => {
+      if (
+        input.id !== options.scope.attemptId ||
+        !input.association_json ||
+        JSON.stringify(JSON.parse(input.intent_json)) !==
+          JSON.stringify(options.scope.intent)
+      )
+        throw new ApiError(409, "native_readback_scope_mismatch");
+      return readNativeAttempt({
+        scope: options.scope,
+        association: JSON.parse(input.association_json),
+        signature: options.signature,
+        signal,
+        exchange: async (operation, abort) => {
+          if (
+            reads >= 2 ||
+            Date.now() >= options.grantExpiresMs ||
+            (operation.kind !== "booking-read" &&
+              operation.kind !== "invoice-read")
+          )
+            throw new ApiError(503, "native_readback_limit");
+          reads++;
+          return options.exchange(operation, abort);
+        },
+      });
+    },
+  };
+  const result = await runSelectedRecovery(
+    env,
+    {
+      attemptId: options.scope.attemptId,
+      claimant: options.claimant,
+      limit: 1,
+    },
+    reader,
+    true,
+  );
+  await env.STATE.prepare(
+    "UPDATE session_effects SET outcome='observed' WHERE attempt_id=? AND step=? AND outcome='unknown'",
+  )
+    .bind(options.scope.attemptId, step)
+    .run();
+  return { outcomes: result, reads };
 }

@@ -21,6 +21,7 @@ export function ProtectedConfirmation({
     value: CheckoutContext;
     revision: number;
   } | null>(null);
+  const [expiredLink, setExpiredLink] = useState<string | null>(null);
   const [opened, setOpened] = useState<string | null>(null);
   const [preparation, setPreparation] = useState("loading");
   useEffect(() => {
@@ -53,8 +54,19 @@ export function ProtectedConfirmation({
     view !== "denied"
       ? context.value
       : null;
+  const link =
+    current?.checkout.state === "available" ? current.checkout : null;
+  useEffect(() => {
+    if (!link?.expiresAtMs) return;
+    const timer = setTimeout(
+      () => setExpiredLink(link.url),
+      Math.max(0, link.expiresAtMs - Date.now()),
+    );
+    return () => clearTimeout(timer);
+  }, [link]);
   const showLink =
     current?.checkout.state === "available" &&
+    current.checkout.url !== expiredLink &&
     !["confirmed", "denied", "unresolved"].includes(view);
   return (
     <div className="status-shell">
@@ -123,7 +135,12 @@ export function ProtectedConfirmation({
                 target="_blank"
                 rel="noopener noreferrer"
                 referrerPolicy="no-referrer"
-                onClick={() => setOpened(attemptId)}
+                onClick={(event) => {
+                  if (link?.expiresAtMs && Date.now() >= link.expiresAtMs) {
+                    event.preventDefault();
+                    setExpiredLink(link.url);
+                  } else setOpened(attemptId);
+                }}
               >
                 {opened === attemptId ? "Open checkout again" : "Open checkout"}
               </a>

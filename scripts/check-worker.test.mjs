@@ -60,6 +60,11 @@ test("rejects provider redirects alternate hosts and unreserved dispatch", () =>
   for (const [from, to] of [
     ['redirect: "manual"', 'redirect: "follow"'],
     ["user-api-v2.simplybook.me/admin/auth", "other.invalid/admin/auth"],
+    ['https://user-api.simplybook.me/"', 'https://other.invalid/"'],
+    [
+      'https://user-api-v2.simplybook.me/admin/invoices/"',
+      'https://other.invalid/invoices/"',
+    ],
     ["await dispatch.reserve()", 'Promise.resolve("unreserved")'],
   ])
     assert.ok(

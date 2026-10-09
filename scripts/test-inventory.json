@@ -273,6 +273,10 @@
   },
   {
     "file": "src/features/booking/confirmation-checking.test.tsx",
+    "title": "hides the native payment capability at its expiry without claiming payment cancellation"
+  },
+  {
+    "file": "src/features/booking/confirmation-checking.test.tsx",
     "title": "pauses hidden checking and permits only one eligible foreground refresh"
   },
   {
@@ -482,6 +486,10 @@
   {
     "file": "src/services/booking.test.ts",
     "title": "validates all required contact fields and their length limits"
+  },
+  {
+    "file": "src/services/confirmation.test.ts",
+    "title": "accepts only the backend-issued native path for the matching protected attempt"
   },
   {
     "file": "src/services/confirmation.test.ts",

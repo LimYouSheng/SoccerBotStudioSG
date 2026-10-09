@@ -5,6 +5,7 @@ import {
   providerRequest,
   providerSecrets,
   type ProviderFamily,
+  type NativeRequest,
 } from "./provider-transport";
 
 export type ProviderControl = {
@@ -70,6 +71,45 @@ export class ProviderSession {
     } finally {
       this.comparisonRead = undefined;
     }
+  }
+
+  // Internal adapter transport. No customer route or operator grant exposes it.
+  // Current admission permits reads only; native writes remain unavailable until
+  // a separately reviewed finite write grant is installed.
+  async nativeRead(
+    env: Env,
+    control: ProviderControl,
+    request: NativeRequest,
+    signal?: AbortSignal,
+  ) {
+    if (
+      String(env.PROVIDER_ACCESS) !== "trusted-reads" ||
+      Number(env.CAMPAIGN_END_MS) <= Date.now()
+    )
+      throw new ApiError(503, "provider_access_disabled");
+    if (request.kind === "book" || request.kind === "payment-link")
+      throw new ApiError(503, "native_write_grant_unavailable");
+    signal?.throwIfAborted();
+    const secrets = providerSecrets(env);
+    if (secrets.company.toLowerCase() === "soccerbotstudio")
+      throw new ApiError(503, "client_account_forbidden");
+    // Only previously authenticated, identity-verified sessions may read; no
+    // automatic reauthentication may consume the two-read recovery reserve.
+    if (!this.cachedIdentity || this.cachedIdentity.until <= Date.now())
+      throw new ApiError(503, "provider_identity_expired");
+    const family = request.kind === "invoice-read" ? "admin" : "public";
+    const token = this.tokens.get(family);
+    if (!token || token.until <= Date.now())
+      throw new ApiError(503, "provider_auth_expired");
+    const body = await providerRequest(
+      "native",
+      secrets,
+      token.value,
+      control,
+      request,
+      signal,
+    );
+    return { body, receivedAtMs: Date.now() };
   }
 
   private async token(

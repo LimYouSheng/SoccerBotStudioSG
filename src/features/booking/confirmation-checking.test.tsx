@@ -1,5 +1,12 @@
+import { ProtectedConfirmation } from "./protected-confirmation";
 import { afterEach, expect, it, vi } from "vitest";
-import { act, cleanup, renderHook } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  renderHook,
+  render,
+  screen,
+} from "@testing-library/react";
 import { useConfirmationChecking } from "./confirmation-checking";
 const id = "00000000-0000-4000-8000-000000000001";
 const pending = () =>
@@ -143,4 +150,48 @@ it("an elapsed protected checkout window aborts checking without resetting its a
   expect(
     JSON.parse(localStorage.getItem(`soccerbot-checking:${id}`)!).count,
   ).toBe(1);
+});
+
+it("hides the native payment capability at its expiry without claiming payment cancellation", async () => {
+  vi.useFakeTimers();
+  const now = Date.now();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (path: string) =>
+      path.endsWith("/checkout")
+        ? Response.json({
+            attemptId: id,
+            mode: "live",
+            checkout: {
+              state: "available",
+              url: "https://soccerbotstudiosg.simplybook.asia/v2/client/pay-later/id/synthetic-id/hash/synthetic-hash",
+              expiresAtMs: now + 1000,
+            },
+            summary: {
+              players: 1,
+              totalMinor: 8800,
+              currency: "SGD",
+              sessions: [{ startMs: now + 86400000, players: 1 }],
+            },
+            checking: {
+              deadlineMs: now + 60000,
+              nextCheckMs: 0,
+              pollAfterMs: 5000,
+            },
+          })
+        : pending(),
+    ),
+  );
+  render(<ProtectedConfirmation attemptId={id} checkoutMode="live" />);
+  await act(async () => {});
+  expect(screen.getByRole("link", { name: "Open checkout" })).toBeVisible();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1000);
+  });
+  expect(
+    screen.queryByRole("link", { name: "Open checkout" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByRole("heading", { name: "Checking your payment and booking…" }),
+  ).toBeVisible();
 });

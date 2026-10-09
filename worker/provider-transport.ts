@@ -1,3 +1,4 @@
+import { providerId } from "./provider-normalization";
 import { measure } from "./diagnostics";
 import { ApiError } from "./policy";
 
@@ -8,7 +9,28 @@ export type ProviderOperation =
   | "identity"
   | "tariff"
   | "historical-booking"
-  | "historical-invoice";
+  | "historical-invoice"
+  | "native";
+export type NativeRequest =
+  | { kind: "required-fields"; serviceId: string }
+  | {
+      kind: "availability";
+      serviceId: string;
+      instructorId: string;
+      date: string;
+    }
+  | {
+      kind: "book";
+      serviceId: string;
+      instructorId: string;
+      date: string;
+      time: string;
+      client: Record<string, unknown>;
+      intake: Record<string, unknown>;
+    }
+  | { kind: "booking-read"; bookingId: string; signature: string }
+  | { kind: "invoice-read"; invoiceId: string }
+  | { kind: "payment-link"; invoiceId: string };
 export type ProviderSecrets = {
   company: string;
   login: string;
@@ -44,9 +66,12 @@ export async function providerRequest(
     reserve: () => Promise<string>;
     finish: (id: string, cooldown: number) => void;
   },
+  native?: NativeRequest,
+  signal?: AbortSignal,
 ): Promise<unknown> {
   const rpcId = crypto.randomUUID();
   let url: string, method: string, body: string | undefined;
+  let rpc = operation === "public-auth";
   switch (operation) {
     case "public-auth":
       url = "https://user-api.simplybook.me/login";
@@ -83,6 +108,64 @@ export async function providerRequest(
       url = "https://user-api-v2.simplybook.me/admin/invoices/23";
       method = "GET";
       break;
+    case "native": {
+      if (!native) throw new ApiError(503, "provider_operation_unavailable");
+      if (native.kind === "invoice-read" || native.kind === "payment-link") {
+        const invoiceId = providerId(native.invoiceId);
+        url =
+          "https://user-api-v2.simplybook.me/admin/invoices/" +
+          invoiceId +
+          (native.kind === "payment-link" ? "/payment-link" : "");
+        method = "GET";
+        break;
+      }
+      url = "https://user-api.simplybook.me/";
+      method = "POST";
+      rpc = true;
+      let rpcMethod: string, params: unknown[];
+      if (native.kind === "booking-read") {
+        if (!/^[a-f0-9]{32}$/.test(native.signature))
+          throw new ApiError(503, "provider_signature_invalid");
+        rpcMethod = "getBookingDetails";
+        params = [providerId(native.bookingId), native.signature];
+      } else {
+        const service = Number(providerId(native.serviceId));
+        if (native.kind === "required-fields") {
+          rpcMethod = "getAdditionalFields";
+          params = [service];
+        } else {
+          const provider = Number(providerId(native.instructorId));
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(native.date))
+            throw new ApiError(503, "provider_date_invalid");
+          if (native.kind === "availability") {
+            rpcMethod = "getStartTimeMatrix";
+            params = [native.date, native.date, service, provider, 1];
+          } else {
+            if (!/^([01]\d|2[0-3]):[0-5]\d:00$/.test(native.time))
+              throw new ApiError(503, "provider_time_invalid");
+            rpcMethod = "book";
+            params = [
+              service,
+              provider,
+              native.date,
+              native.time,
+              native.client,
+              { ...native.intake, handle_invoice: true },
+              1,
+              null,
+              null,
+            ];
+          }
+        }
+      }
+      body = JSON.stringify({
+        jsonrpc: "2.0",
+        id: rpcId,
+        method: rpcMethod,
+        params,
+      });
+      break;
+    }
     default:
       throw new ApiError(503, "provider_operation_unavailable");
   }
@@ -95,9 +178,13 @@ export async function providerRequest(
     headers["X-Company-Login"] = secrets.company;
     headers["X-Token"] = token;
   }
+  signal?.throwIfAborted();
   const id = await dispatch.reserve();
   // Reservation is durable before fetch; uncertain transport keeps the slot held.
   const controller = new AbortController();
+  const abort = () => controller.abort();
+  signal?.addEventListener("abort", abort, { once: true });
+  if (signal?.aborted) controller.abort();
   const timer = setTimeout(() => controller.abort(), 15000);
   let complete = false;
   let cooldown = 0;
@@ -169,7 +256,7 @@ export async function providerRequest(
           bytes,
         ),
       );
-      if (operation === "public-auth") {
+      if (rpc) {
         if (
           !value ||
           typeof value !== "object" ||
@@ -193,6 +280,7 @@ export async function providerRequest(
       );
     } finally {
       clearTimeout(timer);
+      signal?.removeEventListener("abort", abort);
       if (complete) dispatch.finish(id, cooldown);
     }
   });
