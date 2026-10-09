@@ -1,0 +1,199 @@
+// Inspect the exact packaged bytes with isolated workerd/D1. No remote bindings.
+import assert from "node:assert/strict";
+import { readFileSync, writeFileSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { Miniflare, convertV4MiniflareOptions, Log, LogLevel } from "miniflare";
+import { exportInventory, checkExport } from "./check-export.mjs";
+const directory = "test-results/developer-release";
+const read = (file) => JSON.parse(readFileSync(`${directory}/${file}`, "utf8"));
+const manifest = read("manifest.json"),
+  config = read("wrangler.json");
+const files = exportInventory(directory);
+delete files["manifest.json"];
+assert.deepEqual(files, manifest.files);
+assert.equal(config.no_bundle, true);
+assert.equal(config.vars.SOURCE_REVISION, manifest.sourceRevision);
+assert.equal(config.vars.PROVIDER_ACCESS, "disabled");
+assert.equal(config.vars.CAMPAIGN_END_MS, "0");
+checkExport(`${directory}/assets`, "");
+let outbound = 0;
+const temporary = mkdtempSync(path.join(tmpdir(), "soccerbot-release-"));
+const mf = new Miniflare({
+  ...convertV4MiniflareOptions({
+    name: "release-check",
+    modules: true,
+    script: readFileSync(`${directory}/worker/index.js`, "utf8"),
+    cf: false,
+    compatibilityDate: config.compatibility_date,
+    compatibilityFlags: config.compatibility_flags,
+    bindings: config.vars,
+    d1Databases: { STATE: "synthetic-state" },
+    durableObjects: {
+      COORDINATOR: {
+        className: "SoccerBotAccountCoordinator",
+        useSQLite: true,
+      },
+    },
+    serviceBindings: { ASSETS: () => new Response(null, { status: 404 }) },
+    outboundService: () => {
+      outbound++;
+      throw new Error("No outbound release verification");
+    },
+  }),
+  log: new Log(LogLevel.ERROR),
+  resourcePersistencePath: temporary,
+  isolatedResourcePersistencePath: temporary,
+});
+try {
+  await mf.ready;
+  const db = await mf.getD1Database("STATE");
+  const migrate = async (name) =>
+    db.exec(
+      readFileSync(`${directory}/migrations/${name}`, "utf8")
+        .replace(/^--.*$/gm, "")
+        .replace(/\n/g, " "),
+    );
+  const names = Object.keys(manifest.files)
+    .filter((f) => f.startsWith("migrations/"))
+    .map((f) => f.slice(11))
+    .sort();
+  for (const name of names.slice(0, 5)) await migrate(name);
+  const ns = await mf.getDurableObjectNamespace("COORDINATOR");
+  await db
+    .prepare("INSERT INTO foundation_identity VALUES(1,?,?,?,?)")
+    .bind(
+      config.account_id,
+      "developer",
+      config.vars.STATE_DATABASE_ID,
+      ns.idFromName("simplybook-developer-account").toString(),
+    )
+    .run();
+  const identity = await db
+    .prepare("SELECT * FROM foundation_identity")
+    .first();
+  const id = crypto.randomUUID(),
+    now = Date.now();
+  const intent = JSON.stringify({
+    accountId: "synthetic-account",
+    environmentId: "developer",
+    customerId: "synthetic-customer",
+    currency: "SGD",
+    totalMinor: 8800,
+    taxMinor: 0,
+    sessions: [
+      {
+        serviceId: "2",
+        instructorId: "2",
+        startMs: now + 86400000,
+        players: 1,
+        totalMinor: 8800,
+        taxMinor: 0,
+      },
+    ],
+  });
+  const origin = config.vars.APP_ORIGIN;
+  const access = await mf.dispatchFetch(`${origin}/api/access`, {
+    method: "POST",
+    headers: { origin },
+  });
+  assert.equal(access.status, 201);
+  const cookie = access.headers.get("set-cookie").split(";")[0];
+  const owner = (await db.prepare("SELECT owner_id FROM guest_access").first())
+    .owner_id;
+  await db
+    .prepare(
+      "INSERT INTO attempts(id,owner_id,idempotency_key,intent_json,intent_hash,created_ms,deadline_ms,state) VALUES(?,?,?,?,?,?,?,'dispatching')",
+    )
+    .bind(
+      id,
+      owner,
+      "synthetic-release-0001",
+      intent,
+      "synthetic-hash",
+      now,
+      now + 600000,
+    )
+    .run();
+  await db
+    .prepare(
+      "INSERT INTO dispatches VALUES(?,?,'booking.create',1,?,'unknown')",
+    )
+    .bind(crypto.randomUUID(), id, now)
+    .run();
+  const before = await db.prepare("SELECT * FROM attempts").first();
+  const effects = await db.prepare("SELECT * FROM dispatches").all();
+  for (const name of manifest.pendingRemoteMigrations) await migrate(name);
+  const after = await db.prepare("SELECT * FROM attempts").first();
+  const { confirmation_next_ms, confirmation_checks, ...retained } = after;
+  assert.deepEqual(retained, before);
+  assert.equal(confirmation_next_ms, 0);
+  assert.equal(confirmation_checks, 0);
+  assert.deepEqual(
+    await db.prepare("SELECT * FROM foundation_identity").first(),
+    identity,
+  );
+  assert.deepEqual(
+    (await db.prepare("SELECT * FROM dispatches").all()).results,
+    effects.results,
+  );
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT state FROM recovery_work WHERE attempt_id=?")
+        .bind(id)
+        .first()
+    ).state,
+    "due",
+  );
+  const health = await mf.dispatchFetch(`${origin}/api/health`);
+  assert.equal(health.status, 200);
+  assert.equal((await health.json()).revision, manifest.sourceRevision);
+  const url = `${origin}/api/attempts/${id}/checkout`;
+  assert.equal((await mf.dispatchFetch(url)).status, 401);
+  const context = await mf.dispatchFetch(url, { headers: { cookie } });
+  assert.equal(context.status, 200);
+  assert.deepEqual((await context.json()).checkout, { state: "unavailable" });
+  const confirmation = await mf.dispatchFetch(
+    `${origin}/api/attempts/${id}/confirmation`,
+    { headers: { cookie } },
+  );
+  assert.equal(confirmation.status, 200);
+  assert.equal((await confirmation.json()).status, "pending");
+  await mf.dispatchFetch(`${origin}/api/access`, {
+    method: "DELETE",
+    headers: { origin, cookie },
+  });
+  assert.equal(
+    (await mf.dispatchFetch(url, { headers: { cookie } })).status,
+    401,
+  );
+  assert.equal(outbound, 0);
+  writeFileSync(
+    "test-results/developer-release-check.json",
+    JSON.stringify(
+      {
+        status: "passed",
+        sourceRevision: manifest.sourceRevision,
+        testedCheckout: manifest.testedCheckout,
+        checks: [
+          "file hashes",
+          "root export",
+          "0006 then 0007 preserve existing identity and unknown effects",
+          "exact Worker revision",
+          "protected checkout unavailable",
+          "durable pending confirmation",
+          "revoked access denied",
+        ],
+        providerRequests: outbound,
+        remoteOperations: 0,
+      },
+      null,
+      2,
+    ) + "\n",
+  );
+} finally {
+  await mf.dispose();
+  rmSync(temporary, { recursive: true, force: true });
+}
+console.log("Exact developer release passed isolated checks; not deployed.");

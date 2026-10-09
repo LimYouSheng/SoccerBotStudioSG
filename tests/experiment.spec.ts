@@ -8,10 +8,30 @@ async function start(page: Page) {
   await expect(prompt).toBeVisible();
   await prompt.getByRole("button", { name: "Not now", exact: true }).click();
   await expect(prompt).toHaveCount(0);
-  await page.getByRole("button", { name: "Start synthetic checkout" }).click();
+  await prepare(page);
   const link = page.getByRole("link", { name: "Open checkout", exact: true });
   await expect(link).toBeVisible();
   return link;
+}
+async function prepare(page: Page) {
+  // Click completion is not server preparation completion. Arm before clicking
+  // so fast responses cannot be missed; retain the normal test/action timeout
+  // and the unchanged five-second UI assertions after the protected response.
+  const [response] = await Promise.all([
+    page.waitForResponse((r) =>
+      /^\/api\/attempts\/[a-f0-9-]{36}\/checkout$/.test(
+        new URL(r.url()).pathname,
+      ),
+    ),
+    page.getByRole("button", { name: "Start synthetic checkout" }).click(),
+  ]);
+  expect(response.status()).toBe(200);
+  const context = await response.json();
+  expect(context.attemptId).toBe(
+    new URL(page.url()).searchParams.get("attempt"),
+  );
+  expect(context.mode).toBe("synthetic");
+  expect(context.checkout.state).toBe("available");
 }
 async function outcome(page: Page, label: string) {
   const popupPromise = page.waitForEvent("popup");
@@ -215,7 +235,7 @@ test("the Payment preview entry and temporary checking failure retain customer s
       body: '{"error":"temporarily_unavailable"}',
     }),
   );
-  await page.getByRole("button", { name: "Start synthetic checkout" }).click();
+  await prepare(page);
   await expect(
     page.getByRole("heading", { name: "Confirmation unavailable" }),
   ).toBeVisible();
@@ -227,4 +247,76 @@ test("the Payment preview entry and temporary checking failure retain customer s
       JSON.parse(sessionStorage.getItem("soccerbot-next-demo-v2")!),
     ),
   ).toEqual(before);
+});
+
+test("checkout stays unavailable while its protected context is pending", async ({
+  page,
+}) => {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let reached!: () => void;
+  const requested = new Promise<void>((resolve) => {
+    reached = resolve;
+  });
+  await page.route("**/api/attempts/*/checkout", async (route) => {
+    reached();
+    await gate;
+    await route.continue();
+  });
+  const starting = start(page);
+  try {
+    await requested;
+    await expect(
+      page.getByText("Preparing checkout…", { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: /Open checkout/ })).toHaveCount(
+      0,
+    );
+    release();
+    await starting;
+    await expect(
+      page.getByRole("region", { name: "Current booking summary" }),
+    ).toBeVisible();
+  } finally {
+    release();
+    await starting.catch(() => {});
+  }
+});
+
+test("checkout binds its server deadline while the first confirmation response is pending", async ({
+  page,
+}) => {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(
+    "**/api/attempts/*/confirmation",
+    async (route) => {
+      await gate;
+      await route.continue();
+    },
+    { times: 1 },
+  );
+  const contextResponse = page.waitForResponse((r) =>
+    /\/api\/attempts\/[^/]+\/checkout$/.test(r.url()),
+  );
+  const confirmationResponse = page.waitForResponse((r) =>
+    /\/api\/attempts\/[^/]+\/confirmation$/.test(r.url()),
+  );
+  try {
+    await start(page);
+    const context = await (await contextResponse).json();
+    const deadline = await page.evaluate(
+      (id) =>
+        JSON.parse(localStorage.getItem(`soccerbot-checking:${id}`)!).deadline,
+      context.attemptId,
+    );
+    expect(deadline).toBe(context.checking.deadlineMs);
+  } finally {
+    release();
+    await confirmationResponse;
+  }
 });

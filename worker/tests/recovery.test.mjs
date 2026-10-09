@@ -126,6 +126,7 @@ async function run(
   completion = { kind: "retry" },
   scenario = "synthetic",
   limit = 10,
+  attemptId,
 ) {
   return result("recovery-run", {
     now: at,
@@ -133,6 +134,7 @@ async function run(
     limit,
     completion,
     scenario,
+    attemptId,
   });
 }
 function observation(a, at, status = "paid") {
@@ -488,6 +490,63 @@ test("closed live admission never invokes the reader and unsupported reconciliat
     headers: { origin },
   });
   assert.equal(noRoute.status, 404);
+});
+test("supervised recovery targets only the original attempt and never substitutes other due work", async () => {
+  const other = await dispatched();
+  const target = await dispatched();
+  await associate(target);
+  const otherBefore = await row(other);
+  const at = now + 60000;
+  const completed = await run(
+    at,
+    { kind: "observation", observation: observation(target, at) },
+    "synthetic",
+    1,
+    target.id,
+  );
+  assert.equal(completed.reads, 1);
+  assert.deepEqual(
+    completed.outcomes.map((o) => [o.attemptId, o.state]),
+    [[target.id, "complete"]],
+  );
+  assert.deepEqual(await row(other), otherBefore);
+  for (const id of [target.id, crypto.randomUUID()]) {
+    const empty = await run(at, undefined, "synthetic", 1, id);
+    assert.deepEqual(empty, { outcomes: [], reads: 0 });
+  }
+  assert.deepEqual(await row(other), otherBefore);
+  assert.equal(outbound, 0);
+});
+test("supervised recovery preserves due time scope validation and closed live admission", async () => {
+  const a = await dispatched();
+  const original = await row(a);
+  assert.deepEqual(await run(now, undefined, "synthetic", 1, a.id), {
+    outcomes: [],
+    reads: 0,
+  });
+  for (const [id, limit] of [
+    ["", 1],
+    ["not-an-attempt", 1],
+    [a.id, 2],
+  ]) {
+    assert.notEqual(
+      (
+        await call("recovery-run", {
+          now: now + 60000,
+          owner: claimant,
+          limit,
+          attemptId: id,
+        })
+      ).status,
+      200,
+    );
+    assert.deepEqual(await row(a), original);
+  }
+  const closed = await run(now + 60000, undefined, "live", 1, a.id);
+  assert.equal(closed.reads, 0);
+  assert.equal(closed.outcomes[0].state, "manual_review");
+  assert.equal((await row(a)).reason, "reconciliation_unsupported");
+  assert.equal(outbound, 0);
 });
 test("synthetic transport failure defers only a read while malformed replies become manual review", async () => {
   const a = await dispatched();

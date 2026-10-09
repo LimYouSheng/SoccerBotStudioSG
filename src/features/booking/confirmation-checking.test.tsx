@@ -100,3 +100,47 @@ it("aborts stale session reads and cannot reuse their confirmed result", async (
   expect(signal.aborted).toBe(true);
   expect(hook.result.current.view).toBe("checking");
 });
+it("binds the server checkout deadline before a pending status read and preserves it across reload", async () => {
+  vi.useFakeTimers();
+  const fetch = vi.fn(() => new Promise<Response>(() => {}));
+  vi.stubGlobal("fetch", fetch);
+  const deadline = Date.now() + 590000;
+  const first = renderHook(() => useConfirmationChecking(id));
+  await act(async () => {
+    first.result.current.bindWindow({ deadlineMs: deadline, nextCheckMs: 0 });
+  });
+  const saved = JSON.parse(localStorage.getItem(`soccerbot-checking:${id}`)!);
+  expect(saved.deadline).toBe(deadline);
+  expect(saved.count).toBe(1);
+  first.unmount();
+  const second = renderHook(() => useConfirmationChecking(id));
+  await act(async () => {
+    second.result.current.bindWindow({
+      deadlineMs: deadline + 5000,
+      nextCheckMs: 0,
+    });
+  });
+  expect(JSON.parse(localStorage.getItem(`soccerbot-checking:${id}`)!)).toEqual(
+    saved,
+  );
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+it("an elapsed protected checkout window aborts checking without resetting its allowance", async () => {
+  vi.useFakeTimers();
+  const fetch = vi.fn(() => new Promise<Response>(() => {}));
+  vi.stubGlobal("fetch", fetch);
+  const hook = renderHook(() => useConfirmationChecking(id));
+  await act(async () => {
+    hook.result.current.bindWindow({ deadlineMs: Date.now(), nextCheckMs: 0 });
+  });
+  expect(hook.result.current.view).toBe("unresolved");
+  expect(hook.result.current.busy).toBe(false);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(20000);
+    hook.result.current.check();
+  });
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(
+    JSON.parse(localStorage.getItem(`soccerbot-checking:${id}`)!).count,
+  ).toBe(1);
+});

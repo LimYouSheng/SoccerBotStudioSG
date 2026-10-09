@@ -45,6 +45,8 @@
   "malformed foreign or unassociated recovery evidence stays unresolved without persisting raw results",
   "checking deadline never converts unknown or unpaid recovery into provider cancellation",
   "closed live admission never invokes the reader and unsupported reconciliation is explicit",
+  "supervised recovery targets only the original attempt and never substitutes other due work",
+  "supervised recovery preserves due time scope validation and closed live admission",
   "synthetic transport failure defers only a read while malformed replies become manual review",
   "storage failure rolls back claim and completion without losing eligible recovery",
   "late effect completion after recovery ownership cannot bind references or create another effect",

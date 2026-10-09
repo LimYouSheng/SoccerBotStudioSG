@@ -225,20 +225,39 @@ async function boundedRead(reader: RecoveryReader, input: RecoveryInput) {
 
 export async function runRecoveryBatch(
   env: Env,
-  options: { claimant: string; limit: number; now?: () => number },
+  options: {
+    claimant: string;
+    limit: number;
+    attemptId?: string;
+    now?: () => number;
+  },
   reader?: RecoveryReader,
 ) {
   owner.parse(options.claimant);
   limitSchema.parse(options.limit);
+  if (options.attemptId !== undefined) {
+    z.string().uuid().parse(options.attemptId);
+    if (options.limit !== 1) throw new ApiError(400, "invalid_recovery_scope");
+  }
   const clock = options.now ?? Date.now;
   const now = instant.parse(clock());
   // One indexed bounded selection per invocation; no draining loop or wake-up.
-  const selected = await env.STATE.withSession("first-primary")
-    .prepare(
-      "SELECT attempt_id FROM recovery_work INDEXED BY recovery_due WHERE state IN ('due','claimed') AND ready_ms<=? ORDER BY ready_ms,attempt_id LIMIT ?",
-    )
-    .bind(now, options.limit)
-    .all<{ attempt_id: string }>();
+  const session = env.STATE.withSession("first-primary");
+  // A supervised single-attempt invocation must never drain another owner's
+  // due work. Missing/not-due/terminal targets return empty, without fallback.
+  const selection =
+    options.attemptId === undefined
+      ? session
+          .prepare(
+            "SELECT attempt_id FROM recovery_work INDEXED BY recovery_due WHERE state IN ('due','claimed') AND ready_ms<=? ORDER BY ready_ms,attempt_id LIMIT ?",
+          )
+          .bind(now, options.limit)
+      : session
+          .prepare(
+            "SELECT attempt_id FROM recovery_work WHERE attempt_id=? AND state IN ('due','claimed') AND ready_ms<=? LIMIT 1",
+          )
+          .bind(options.attemptId, now);
+  const selected = await selection.all<{ attempt_id: string }>();
   const outcomes = [];
   for (const item of selected.results) {
     const claim = await claimRecovery(
