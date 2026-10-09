@@ -12,6 +12,8 @@ Implemented strict single-session normalization, fixed native request transport,
 
 PR13 first candidate94d7d523a26c83137ef9be45b78039c7b4ce3db2 passed both jobs37888257406; deploy skipped. Final code review tightened the supported non-recurring/full-price profile to reject linked deposit/recurring references, required recurring payment methods, tips and nonzero recurring/package/discount/tax-ratio fields. Supplied field shapes retained with synthetic values; regression cases added within the existing money-profile test. This is a new candidate requiring its own two-job CI, not reuse of the first pass. No additional external action or budget usage.
 
+Final test-maintenance review also replaced the new orchestration fixture's absolute historical future date with an explicitly synthetic future slot. Pure historical response/receipt-clock normalization tests remain fixed; runtime writes cannot depend on10October remaining in the future. No production logic, time guard, assertion or browser setting changed. This test-only revision requires final-head CI; preserve preceding checkpoints.
+
 ## Historical native preparation checkpoint (completed in PR12)
 
 ### Preparation history

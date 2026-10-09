@@ -125,6 +125,21 @@ async function call(action, values = {}) {
   });
   return { status: response.status, ...(await response.json()) };
 }
+// Runtime orchestration needs a future synthetic slot; historical parser cases
+// above retain their fixed 8 October receipt clock and unchanged sample times.
+function runtimeSlot(data, startMs) {
+  data.scope.intent.sessions[0].startMs = startMs;
+  const wall = (ms) =>
+    new Date(ms + 8 * 3600000).toISOString().slice(0, 19).replace("T", " ");
+  for (const booking of [data.booking, data.creation.bookings[0]]) {
+    booking.start_date_time = wall(startMs);
+    booking.end_date_time = wall(startMs + 50 * 60000);
+  }
+  for (const invoice of [data.invoice, data.creation.invoice]) {
+    invoice.lines[0].bookings[0].start_datetime = wall(startMs);
+    invoice.lines[0].bookings[0].end_datetime = wall(startMs + 50 * 60000);
+  }
+}
 async function prepared() {
   const res = await mf.dispatchFetch(origin + "/api/access", {
     method: "POST",
@@ -140,6 +155,10 @@ async function prepared() {
   ).owner_id;
   const data = input(false);
   data.now = Date.now();
+  runtimeSlot(
+    data,
+    Math.floor(data.now / 86400000) * 86400000 + 3 * 86400000 + 3600000,
+  );
   const a = await call("prepare", { ...data, owner });
   assert.equal(a.status, 200);
   data.scope.attemptId = a.result.id;
@@ -497,8 +516,9 @@ test("native targeted readback persists canonical evidence and leaves other due 
     .prepare("SELECT * FROM recovery_work WHERE attempt_id=?")
     .bind(other.scope.attemptId)
     .first();
-  data.booking = fixtures.bookingAfter;
-  data.invoice = fixtures.invoiceAfter;
+  data.booking = structuredClone(fixtures.bookingAfter);
+  data.invoice = structuredClone(fixtures.invoiceAfter);
+  runtimeSlot(data, data.scope.intent.sessions[0].startMs);
   data.now = Date.now();
   const result = await call("readback", data);
   assert.equal(result.status, 200);
