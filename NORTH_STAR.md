@@ -1,5 +1,9 @@
 # North Star: quick rebooking through a connected customer website
 
+## Merged identity and next finite proof — 10 October 2026
+
+PR18 merged atfe179d2; main CI38044816610 passed frontend/backend/live-email and Pages demo publication. Remembered identity is merged source, not deployed/accepted identity. Next authorized source task prepares additive0014 and a separately reviewed60-minute identity-proof gate/packet. Both older windows stay closed; no remote execution is authorized. Correct provider prefill remains a separate prerequisite for quick rebooking. PROGRESS is the current ledger; Service Contracts owns the new packet.
+
 ## Authorized source continuation — 10 October 2026
 
 A returning customer on a remembered device can resume with a server-verified identity, review the correct current SimplyBook name/phone, choose sessions, and complete supported native payment with authoritative confirmation. New-device, expired-session and signed-out customers verify again. No demo fallback, guessed customer match or browser payment claim can produce success.
