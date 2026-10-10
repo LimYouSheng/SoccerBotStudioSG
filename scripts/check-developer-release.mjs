@@ -5,6 +5,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { Miniflare, convertV4MiniflareOptions, Log, LogLevel } from "miniflare";
 import { exportInventory, checkExport } from "./check-export.mjs";
+import { releaseProfile } from "./release-profile.mjs";
+const profile = releaseProfile();
 const directory = "test-results/developer-release";
 const read = (file) => JSON.parse(readFileSync(`${directory}/${file}`, "utf8"));
 const manifest = read("manifest.json"),
@@ -13,10 +15,14 @@ const files = exportInventory(directory);
 delete files["manifest.json"];
 assert.deepEqual(files, manifest.files);
 assert.equal(config.no_bundle, true);
-assert.equal(manifest.bookingMode, "demo");
+assert.equal(manifest.bookingMode, profile.bookingMode);
+assert.equal(manifest.releaseProfile, profile.name);
+assert.equal(manifest.turnstileSitekey, profile.sitekey);
+assert.equal(manifest.identityDelivery, "disabled");
 assert.equal(config.vars.SOURCE_REVISION, manifest.sourceRevision);
 assert.equal(config.vars.PROVIDER_ACCESS, "disabled");
 assert.equal(config.vars.CAMPAIGN_END_MS, "0");
+assert.equal(config.vars.IDENTITY_DELIVERY, "disabled");
 checkExport(`${directory}/assets`, "");
 let outbound = 0;
 const temporary = mkdtempSync(path.join(tmpdir(), "soccerbot-release-"));
@@ -134,6 +140,8 @@ try {
   assert.deepEqual(manifest.pendingRemoteMigrations, [
     "0009_identity_challenges.sql",
     "0010_customer_read_scopes.sql",
+    "0011_identity_delivery.sql",
+    "0012_identity_replacement_window.sql",
   ]);
   // Old-state compatibility remains tested locally, never re-applied remotely.
   for (const name of names.slice(5, 8)) await migrate(name);
@@ -147,6 +155,22 @@ try {
     ).results,
   };
   for (const name of manifest.pendingRemoteMigrations) await migrate(name);
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT COUNT(*) AS n FROM identity_delivery_window")
+        .first()
+    ).n,
+    0,
+  );
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT COUNT(*) AS n FROM identity_delivery_dispatches")
+        .first()
+    ).n,
+    0,
+  );
   assert.deepEqual(
     (await db.prepare("SELECT * FROM attempts ORDER BY id").all()).results,
     appliedEight.attempts,
@@ -193,6 +217,16 @@ try {
   const health = await mf.dispatchFetch(`${origin}/api/health`);
   assert.equal(health.status, 200);
   assert.equal((await health.json()).revision, manifest.sourceRevision);
+  const delivery = await mf.dispatchFetch(`${origin}/api/identity/challenges`, {
+    method: "POST",
+    headers: { cookie, origin, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: "sheng@app404.ai",
+      botToken: "synthetic-unused",
+    }),
+  });
+  assert.equal(delivery.status, 503);
+  assert.deepEqual(await delivery.json(), { error: "identity_unavailable" });
   const url = `${origin}/api/attempts/${id}/checkout`;
   assert.equal((await mf.dispatchFetch(url)).status, 401);
   const context = await mf.dispatchFetch(url, { headers: { cookie } });
@@ -223,7 +257,8 @@ try {
         checks: [
           "file hashes",
           "root export",
-          "0001–0008 compatibility and pending0009–0010 preserve all existing columns identities unknown effects and operator grants",
+          "0001–0008 compatibility and pending0009–0011 preserve all existing columns identities unknown effects and operator grants",
+          "empty identity delivery authority and default-closed HTTP",
           "exact Worker revision",
           "protected checkout unavailable",
           "durable pending confirmation",
@@ -231,6 +266,7 @@ try {
         ],
         providerRequests: outbound,
         remoteOperations: 0,
+        releaseProfile: profile.name,
       },
       null,
       2,

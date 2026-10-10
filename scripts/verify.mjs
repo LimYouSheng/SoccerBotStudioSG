@@ -10,6 +10,8 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { exportInventory } from "./check-export.mjs";
 import { siteBasePath } from "../src/content/site-path.ts";
+import { releaseProfile } from "./release-profile.mjs";
+const profile = releaseProfile();
 const mode = process.argv[2];
 if (!["code", "browser", "all"].includes(mode))
   throw new Error("Use code, browser or all verification scope");
@@ -64,7 +66,10 @@ const receipt = {
   sourceFingerprint: baseline,
   gitHead: git.status === 0 ? git.stdout.trim() : null,
   basePath: siteBasePath,
-  bookingMode: process.env.NEXT_PUBLIC_BOOKING_MODE || "demo",
+  bookingMode: profile.bookingMode,
+  releaseProfile: profile.name,
+  turnstileSitekey: profile.sitekey,
+  browserSuite: profile.browserSuite,
   browserExecuted: false,
   status: "running",
   commands: [],

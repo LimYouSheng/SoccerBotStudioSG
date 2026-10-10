@@ -11,6 +11,36 @@ const challenge = {
   expiresAt: identity.expiresAt,
   resendAfter: 0,
 };
+it("live identity requires a fresh bot proof and sends it only after guest access", async () => {
+  const request = vi.fn();
+  vi.stubGlobal("fetch", request);
+  const service = createLiveIdentityService(),
+    signal = new AbortController().signal;
+  await expect(service.challenge(identity.email, signal)).rejects.toThrow(
+    "unavailable",
+  );
+  expect(request).not.toHaveBeenCalled();
+  request
+    .mockResolvedValueOnce(Response.json({ access: "guest" }))
+    .mockResolvedValueOnce(
+      Response.json({
+        challengeId: challenge.challengeId,
+        expiresAt: challenge.expiresAt,
+        resendAfter: 0,
+      }),
+    );
+  expect(
+    await service.challenge(identity.email, signal, "synthetic-token"),
+  ).toEqual(challenge);
+  expect(request.mock.calls.map((c) => c[0])).toEqual([
+    "/api/access",
+    "/api/identity/challenges",
+  ]);
+  expect(JSON.parse(request.mock.calls[1][1].body)).toEqual({
+    email: identity.email,
+    botToken: "synthetic-token",
+  });
+});
 it("live identity authenticates guest and verifies through same-origin server reads without browser storage", async () => {
   const request = vi
     .fn()

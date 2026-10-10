@@ -60,6 +60,11 @@ test("rejects direct provider fetch and suppression", () => {
 test("rejects provider redirects alternate hosts and unreserved dispatch", () => {
   for (const [from, to] of [
     ['redirect: "manual"', 'redirect: "follow"'],
+    ["https://api.resend.com/emails", "https://other.invalid/emails"],
+    [
+      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+      "https://other.invalid/siteverify",
+    ],
     ["user-api-v2.simplybook.me/admin/auth", "other.invalid/admin/auth"],
     ['https://user-api.simplybook.me/"', 'https://other.invalid/"'],
     [
@@ -76,6 +81,16 @@ test("rejects provider redirects alternate hosts and unreserved dispatch", () =>
         writeFileSync(p, source.replace(from, to));
       }).some((e) => e.includes("Provider transport")),
     );
+});
+test("rejects enabled identity delivery in the committed deployment", () => {
+  assert.ok(
+    fixture((root) => {
+      const p = path.join(root, "wrangler.jsonc"),
+        c = ts.parseConfigFileTextToJson(p, readFileSync(p, "utf8")).config;
+      c.vars.IDENTITY_DELIVERY = "finite-test";
+      writeFileSync(p, JSON.stringify(c));
+    }).some((e) => e.includes("deployment boundary")),
+  );
 });
 test("rejects production account alternate entry and enabled providers", () => {
   for (const [key, value] of [

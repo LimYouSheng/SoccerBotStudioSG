@@ -37,7 +37,7 @@ export type IdentityDelivery = {
 function denied() {
   return new ApiError(400, "verification_unavailable");
 }
-async function keyedHash(pepper: string, parts: string[]) {
+export async function keyedHash(pepper: string, parts: string[]) {
   if (pepper.length < 32 || pepper.length > 512)
     throw new ApiError(503, "identity_unavailable");
   const key = await crypto.subtle.importKey(

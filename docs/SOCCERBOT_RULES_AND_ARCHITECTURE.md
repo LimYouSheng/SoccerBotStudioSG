@@ -1,8 +1,20 @@
 # SoccerBotStudio — Rules & Architecture
 
-Canonical current contract. `SERVICE_CONTRACTS.md` owns service inputs, results, errors, authority and demo/live availability. `SOCCERBOT_JOURNEY.md` owns chronology, audits and receipts. These are the three canonical documents; README, AGENTS, diagrams and generated receipts orient or provide evidence.
+## A3 quick rebooking and remembered-device decision — 10 October 2026
 
-Project/package name: **SoccerBotStudioSG**; npm identifier: **soccerbotstudiosg**. Current main is owner-merged PR13 at757fd288084d0e76c7cb7b766e33c4724d6988d0. PR14 remains draft/unmerged; PROGRESS owns current source, deployment and CI identities.
+Source re-read: uploaded APP404-SBS-Q-WEB-001.pdf, dated4October2026,p3 A3, SHA256 `808f6aaad7c33e156db554cd43826d3d7d82a267a90319c9366b1db99d2557fa`. It requires email verification before approved SimplyBook name/phone prefill, customer review/correction, safe duplicate/shared-email handling, expiring single-use verification and rate limits. It does not specify a remembered-session duration or mandate verification on every visit. Keep quotation requirements distinct from engineering policy; no commercial amendment or signed-contract claim.
+
+Owner confirmed quick rebooking is core and selected **90 days absolute from successful email verification, with no silent extension**, on10October. Proposed implementation is explicit opt-in Remember me on this device, default off; the selected duration is approved, implementation/acceptance remain open. A server-revocable remembered credential can restore a short verified session on the same device until that fixed end. Cookie expiry and server expiry agree; routine use/rotation cannot move it. Guest checkout capabilities keep their short lifetime and cannot become90-day authorizations over booking/payment records. Browser state or cached contact fields never establish identity.
+
+A3 requires both M3.5 persistent identity and M3.6 provider-backed prefill. Email receipt/redemption/sign-out alone does not complete it. Keep the existing private lookup boundary: exact authorized customer/account relationship, minimum approved fields, no directory scan, no guessing among shared-email matches. Customer corrections are booking contact input, not permission for silent SimplyBook profile writes. No implementation here extends sessions, enables email/providers or provisions retention cleanup. A3 acceptance and proposed operation details belong in Service Contracts; current evidence/budgets in PROGRESS; dated rationale in Journey. NORTH_STAR is the proposed next sequence, with stable milestone IDs.
+
+## Developer email acceptance checkpoint — 10 October 2026
+
+The replacement developer email window is explicitly closed; email/provider modes are disabled and both window records and previous data are preserved. Owner demonstrated two email receipts, latest-code verification and sign-out; durable evidence confirms one verified identity with revoked access. This accepts only the controlled developer happy path. Live superseded-code rejection and replay rejection remain unconfirmed, and no booking/provider, private prefill, client-production or broader device acceptance is implied. PROGRESS owns exact identities and counters; Service Contracts owns remaining evidence limits. No further window or counter reset is authorized.
+
+## Unused email window replacement — 10 October 2026
+
+The original email window is explicitly closed with zero dispatches; database and website remain online. PROGRESS owns exact deployed identity and accounting. Owner requested a replacement test. Source-only0012 preserves closed history and permits exactly one second window only if no prior dispatch was charged. Worker and reservation admission select the latest window, retaining source/origin, recipient,20-minute and global3-email/5-bot guards. No third window, expiry edit, reopening or counter reset. Applied0001–0011 stay immutable. Require a new CI-sealed candidate and costed execution allowance; owner readiness precedes the replacement timer.
 
 ## Governing main integration continuation — 9 October 2026
 
@@ -10,7 +22,13 @@ The latest MAIN INTEGRATION NORTH STAR supersedes six-hour/three-repair engineer
 
 Target is the actual customer frontend connected to supported developer provider contracts, with separate native checkout tab/manual return and browser-independent authoritative reconciliation. Native automatic return is separate. Resume M3.4 offline work with Resend; concrete sender/secrets/recipients/live send/abuse tests remain external gates. Existing native notifications stay separate. Preserve SimplyBook-owned catalogue, one shared studio, players1–4,40+10 occupancy, approved ID-bound instructor priority and reviewed money. Unknown provider mappings remain unavailable, never demo success. The single acceptance matrix is in Service Contracts.
 
-Current budget238/248 management,13/14 deployments,8/80 provider; historical closed80 separate;8 management and final deployment reserved for rollback. No new remote call/setup/deployment/email/write/background activation is implied. Prepare complete exact finite packages and bundle needed amendments after independent preparation. No merge/main push/production/real funds/refund/paid upgrade.0001–0008 are remotely applied and immutable. Earlier dated instructions and totals below are historical where superseded by this section.
+Current accounting:243 measured management requests plus unknown owner Dashboard activity; original ceiling248 is not a reliable remaining allowance. Deployments at least14 versus original14, with no reserved rollback deployment remaining. Provider8/80 and historical closed80 remain separate. PROGRESS owns the reconciled receipts; the additional email packet is not authorized. No new remote call/setup/deployment/email/write/background activation is implied. Prepare complete exact finite packages and bundle needed amendments after independent preparation. No merge/main push/production/real funds/refund/paid upgrade.0001–0008 are remotely applied and immutable. Earlier dated instructions and totals below are historical where superseded by this section.
+
+## Live-email candidate preparation — 9 October 2026
+
+The root live-email release is a distinct candidate from PR16's accepted Demo artifact. The existing packaging/check owners accept only explicit `closed-demo` or `live-email` profiles; the latter binds root path, live composition and the supplied public Turnstile sitekey. Receipt and manifest record that identity. Existing frontend/backend Demo gates remain complete; an additional read-only CI job runs the actual Worker gate and three synthetic live-browser cases on all three existing browser projects, then seals/checks its own bytes. No assistant browser execution. CI stubs all external browser requests; this is not widget, mailbox or native-provider acceptance.
+
+Both profiles retain provider disabled/end0, identity delivery disabled, empty delivery authority, unchanged migrations and no cron. Neither the public key nor a live frontend permits external calls, private prefill, native booking or activation. Worker binding/setup allowance, the pending0009–0011 sequence, a finite email window and separately verified close/rollback remain external dependencies. The historical238/248 and13/14 figures were superseded by owner setup and five approved read-only checks; current accounting is in PROGRESS. Three encrypted binding types and owner-confirmed widget settings are now established, without key-validity or live acceptance proof.
 
 ## M3.2 exception — 9 October 2026
 
@@ -692,25 +710,25 @@ Deliver verification through the approved sender. Use single-use expiring challe
 
 Exit evidence: Wrong/expired/reused challenges and concurrent redemption reject. Enumeration and abuse tests pass. Authorized test recipient receives the actual email.
 
-M3.4 handover: reuse D1/access/policy and the named async boundaries. Resend remains the planned verification provider; exact verified developer From domain/address/account, recipient, secret binding and finite sending authority are still needed. Service Contracts owns the single-use/concurrent redemption, resend, expiry, enumeration, abuse, Turnstile and failure acceptance checklist. No speculative challenge schema, sender setup or email sending occurred in M3.3.
+M3.4 checkpoint10October: real developer emailA/B receipt, latest-code verification and sign-out passed; encrypted bindings and exact deployed artifact were verified. Both finite windows are closed. Live superseded-code and successful-code replay rejection remain unconfirmed despite synthetic coverage. Service Contracts owns the remaining abuse/verification evidence; any new live proof needs a separately bounded approval. This does not accept M3.5 persistence or M3.6 prefill.
 
 Depends on: M3.2–M3.3; sender setup.
 
 ### M3.5 — Protected sessions and guest checkout capability
 
-Derive authority server-side. Define secure session/capability transport, expiry, revocation, origin/CSRF protection and safe guest attempt ownership.
+Implement the owner-selected opt-in90-day remembered-device policy separately from existing short verified/guest access. Reuse identity/access/D1 owners, server-only random-token digests, Secure/HttpOnly/SameSite cookies, exact origin/CSRF checks, explicit absolute expiry, revocation and rotation/reuse handling. Remember me defaults off. Design concurrency-safe rotation and sign-out/all-device revocation before code; do not extend financial/guest attempt capabilities or erase unresolved attempt history. A fresh email verification is required for a new90-day lifetime after expiry/revocation/new-device entry. Durable cookie alone is insufficient without a valid server record.
 
-Exit evidence: Forged browser storage, guessed attempt IDs, stale sessions and cross-customer reads fail. Logout/replacement-session races preserve the new identity.
+Exit evidence: same-device browser close/reopen restores identity without OTP while valid; opt-out remains short-lived. Synthetic clocks test just before/at/after90-day expiry and demonstrate rotation does not slide it. Forged storage, revoked/expired/stolen token replay and cross-customer reads fail. Concurrent tabs/rotation, logout/new-login races and storage failure preserve the correct current identity. Sign out this device and all devices revoke server authority; clean/new devices require verification. User-operated desktop/mobile tests and cookie-policy behavior are retained separately from CI. An agreed retention disposition is required before cleanup activation.
 
-Depends on: M3.3–M3.4.
+Depends on: M3.3–M3.4; approved90-day policy. Status: design/planned implementation, not provided by the current30-minute guest-bound verified session.
 
 ### M3.6 — Safe returning customer prefill
 
-Query approved name/phone only after verification. Handle zero, unique, duplicate and shared-email matches without exposing unrelated records; allow customer corrections.
+After fresh or remembered verified identity, use the supported exact SimplyBook customer/account binding to retrieve only approved name/phone. Prove the provider lookup/private signature and entitlements under M2.5 before live calls; no directory scan or local replacement customer database. Unique authorized match can prefill; missing, ambiguous/shared, malformed, foreign and unavailable results must expose no unrelated details. Let customers review/correct booking contacts; no automatic provider-profile mutation. Keep profile results correlated to the current session so late replies cannot repopulate another account after sign-out/switch.
 
-Exit evidence: Provider-backed prefill cases and Cloud browser flow pass. Ambiguous matches require safe manual entry, not guessed identity.
+Exit evidence: authorized provider-backed unique/no-match/duplicate/shared-email fixtures and failure cases, no pre-verification disclosure, browser restart with valid remembered identity, editable correct prefill, sign-out/new-device/expiry challenges and preserved guest flow. A remembered login without real name/phone lookup does not complete A3. Synthetic ambiguous-match coverage is not actual provider acceptance; user/CI operate browser checks.
 
-Depends on: M3.2 and M3.5.
+Depends on: M3.2, M3.5 and M2.5's exact customer lookup/binding; still OPEN.
 
 Recovery and demonstration: Keep live writes disabled until configuration and authority gates pass. Use compatible additive migrations and revoke invalid sessions without deleting unrelated records. Retain the milestone demonstration and apply the common completion gates to every item.
 
@@ -1189,3 +1207,7 @@ Later coherent sequence: discovery → inspect results and obtain only the remai
 ## Main integration composition checkpoint — 9 October 2026
 
 Current source extends the existing D1 identity/attempt and coordinator owners; it does not replace them. Build-time live mode uses named protected guest/catalogue reads and explicit unavailable core operations. Identity challenges are server-owned; browser state never grants verified access. Resend is not set up, so real challenge transport/private prefill remains unavailable. Scheduled native reconciliation has an implementation but no configured trigger; every possible read requires a separately installed finite window and existing ordinary provider admission. No new callback receiver, replay, refund, cleanup or reservation source is created. Service Contracts owns the current acceptance matrix and exact proposed activation packages. Source-only0009/0010 must not accompany the isolated readiness-only PR15 deployment. All0001–0008 remain immutable and already applied. Current default tested frontend is demo; runtime flags, URLs or browser storage cannot switch it to live.
+
+## Resend source preparation — 9 October continuation
+
+Identity delivery shares the existing backend, D1 and physical transport owner. No second identity database or sender service. Committed delivery mode remains disabled and source-only0011 contains no live grant. Its singleton finite window is immutable except closure, with globally capped durable bot/send reservations. Browser proof, API acceptance, mailbox receipt, verified identity, provider customer binding and production acceptance are separate evidence. Applied0001–0008 and PR15 readiness-only artifact remain unchanged; broader pending0009–0011 must never be substituted into readiness diagnosis. The demo sealed artifact is not a live email release. Service Contracts owns exact sender, recipient, bot/binding dependencies and conditional test; PROGRESS owns carried budget/verification.
