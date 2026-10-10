@@ -1,5 +1,13 @@
 # SoccerBotStudio — Service Contracts
 
+## PR19 proof execution outcome — closed, 10 October 2026
+
+The exact packet below was subsequently owner-approved and executed using sealed source4a10133/CI38045722099/artifact11667384145. Applied0013/0014 preserved the pre-existing schema-owned data; row3 opened19:03:28SGT and closed about19:39:44SGT. The final exact-version settings/readiness confirm identity/provider disabled/end0. D1 confirms six responded email and six responded bot reservations, no unknown/reserved proof dispatches and zero unrevoked proof families/sessions. Post-close identity503 and isolated guest rejection/revocation passed. No SimplyBook, payment, scheduler or production action occurred.
+
+Owner-operated acceptance passed opt-out/access-only cookie, old original B challenge rejection after C, remembered C issuance, restart/two tabs, phone D independent from computer and fresh E all-device sign-out. F was verified before explicit closure. Pending: successful-code replay (original request absent from retained Network log), more-than30-minute idle restoration (did not fit the immutable window), exact expiry/rotation attributes, restored-only all-device denial, prior booking capability isolation ; final browser closure reload subsequently passed (Account shows Continue with email, no Welcome back). Do not collapse source/CI coverage into live acceptance. The120-owner-request ceiling is not independently audited because a complete sanitized browser request count was unavailable.
+
+Packet actually charged28 management/3 deployments/13 direct checks/6 emails/6 bot checks; closed-version and safety reserves remain unspent authority only for their original scope, not a successor test. Current schema forbids row4 and reopening row3. Any future live proof needs separately reviewed source/policy and a concrete finite approval; current source/docs review can proceed. The original prepared payloads and failure receipts remain unchanged in PR19/private execution evidence.
+
 ## M3.4–M3.5 identity-proof execution packet — prepared, not authorized, 10 October 2026
 
 Owner merged PR18 atfe179d2; main CI38044816610 passed all three verification jobs and Pages publication. This packet targets the new finite-proof candidate, not the prior deployed Worker or PR18 artifact. The offline `scripts/prepare-identity-proof.mjs <verified-release> <new-output-directory>` requires matching sealed hashes, live-email profile and passed Worker/browser/release receipts. It emits source/checksum-bound `packet.json` without HTTP, SQL execution or a running timer. Final PR/CI, original artifact ZIP hash and packet hash identify the actual candidate; never rebuild after acceptance.

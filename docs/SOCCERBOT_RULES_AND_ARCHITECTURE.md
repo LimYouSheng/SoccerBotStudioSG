@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Current accepted state — finite identity proof closed, 10 October 2026
+
+The owner-approved PR19 packet executed source4a10133, applied additive0013/0014 and explicitly closed proof row3. All three windows are closed; source4a10133/version6c2730a6-9591-4c06-8830-803cb6d30790 is deployed with identity/provider disabled/end0. This supersedes the preparation-only authority statements in the historical sections below. Applied0001–0014 are now immutable. No fourth row, reopening, expiry extension, reset or spare-budget activation is authorized.
+
+Owner browser evidence covers opt-out cookie absence, original-code supersession rejection, opt-in cookie presence, restart/two tabs, independent phone verification and fresh all-device sign-out. Server evidence confirms six responded email/six bot dispatches and atomic closure with zero unrevoked proof families/sessions. Replay rejection and real30-minute idle restoration were not completed; the final closure browser reload passed with the owner-provided Account screenshot. This is partial M3.5 acceptance, not90-day elapsed proof, provider prefill, A3 completion or native booking/payment acceptance. PROGRESS owns the current task/counters; Service Contracts owns remaining gates; Journey owns exact execution failures and evidence.
+
 ## Finite remembered-identity proof preparation — 10 October 2026
 
 PR18 is owner-merged atfe179d2; main CI38044816610 passed all verification jobs and Pages demo publication. No Cloudflare Worker migration/deployment is implied. The owner authorized preparing the next gate and exact packet, not executing live actions. Existing one-agent/campaign limits and unknown accounting remain in PROGRESS.
