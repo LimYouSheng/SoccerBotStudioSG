@@ -1,5 +1,13 @@
 # SoccerBotStudio — Rules & Architecture
 
+## A3 quick rebooking and remembered-device decision — 10 October 2026
+
+Source re-read: uploaded APP404-SBS-Q-WEB-001.pdf, dated4October2026,p3 A3, SHA256 `808f6aaad7c33e156db554cd43826d3d7d82a267a90319c9366b1db99d2557fa`. It requires email verification before approved SimplyBook name/phone prefill, customer review/correction, safe duplicate/shared-email handling, expiring single-use verification and rate limits. It does not specify a remembered-session duration or mandate verification on every visit. Keep quotation requirements distinct from engineering policy; no commercial amendment or signed-contract claim.
+
+Owner confirmed quick rebooking is core and selected **90 days absolute from successful email verification, with no silent extension**, on10October. Proposed implementation is explicit opt-in Remember me on this device, default off; the selected duration is approved, implementation/acceptance remain open. A server-revocable remembered credential can restore a short verified session on the same device until that fixed end. Cookie expiry and server expiry agree; routine use/rotation cannot move it. Guest checkout capabilities keep their short lifetime and cannot become90-day authorizations over booking/payment records. Browser state or cached contact fields never establish identity.
+
+A3 requires both M3.5 persistent identity and M3.6 provider-backed prefill. Email receipt/redemption/sign-out alone does not complete it. Keep the existing private lookup boundary: exact authorized customer/account relationship, minimum approved fields, no directory scan, no guessing among shared-email matches. Customer corrections are booking contact input, not permission for silent SimplyBook profile writes. No implementation here extends sessions, enables email/providers or provisions retention cleanup. A3 acceptance and proposed operation details belong in Service Contracts; current evidence/budgets in PROGRESS; dated rationale in Journey. NORTH_STAR is the proposed next sequence, with stable milestone IDs.
+
 ## Developer email acceptance checkpoint — 10 October 2026
 
 The replacement developer email window is explicitly closed; email/provider modes are disabled and both window records and previous data are preserved. Owner demonstrated two email receipts, latest-code verification and sign-out; durable evidence confirms one verified identity with revoked access. This accepts only the controlled developer happy path. Live superseded-code rejection and replay rejection remain unconfirmed, and no booking/provider, private prefill, client-production or broader device acceptance is implied. PROGRESS owns exact identities and counters; Service Contracts owns remaining evidence limits. No further window or counter reset is authorized.
@@ -702,25 +710,25 @@ Deliver verification through the approved sender. Use single-use expiring challe
 
 Exit evidence: Wrong/expired/reused challenges and concurrent redemption reject. Enumeration and abuse tests pass. Authorized test recipient receives the actual email.
 
-M3.4 handover: reuse D1/access/policy and the named async boundaries. Resend remains the planned verification provider; exact verified developer From domain/address/account, recipient, secret binding and finite sending authority are still needed. Service Contracts owns the single-use/concurrent redemption, resend, expiry, enumeration, abuse, Turnstile and failure acceptance checklist. No speculative challenge schema, sender setup or email sending occurred in M3.3.
+M3.4 checkpoint10October: real developer emailA/B receipt, latest-code verification and sign-out passed; encrypted bindings and exact deployed artifact were verified. Both finite windows are closed. Live superseded-code and successful-code replay rejection remain unconfirmed despite synthetic coverage. Service Contracts owns the remaining abuse/verification evidence; any new live proof needs a separately bounded approval. This does not accept M3.5 persistence or M3.6 prefill.
 
 Depends on: M3.2–M3.3; sender setup.
 
 ### M3.5 — Protected sessions and guest checkout capability
 
-Derive authority server-side. Define secure session/capability transport, expiry, revocation, origin/CSRF protection and safe guest attempt ownership.
+Implement the owner-selected opt-in90-day remembered-device policy separately from existing short verified/guest access. Reuse identity/access/D1 owners, server-only random-token digests, Secure/HttpOnly/SameSite cookies, exact origin/CSRF checks, explicit absolute expiry, revocation and rotation/reuse handling. Remember me defaults off. Design concurrency-safe rotation and sign-out/all-device revocation before code; do not extend financial/guest attempt capabilities or erase unresolved attempt history. A fresh email verification is required for a new90-day lifetime after expiry/revocation/new-device entry. Durable cookie alone is insufficient without a valid server record.
 
-Exit evidence: Forged browser storage, guessed attempt IDs, stale sessions and cross-customer reads fail. Logout/replacement-session races preserve the new identity.
+Exit evidence: same-device browser close/reopen restores identity without OTP while valid; opt-out remains short-lived. Synthetic clocks test just before/at/after90-day expiry and demonstrate rotation does not slide it. Forged storage, revoked/expired/stolen token replay and cross-customer reads fail. Concurrent tabs/rotation, logout/new-login races and storage failure preserve the correct current identity. Sign out this device and all devices revoke server authority; clean/new devices require verification. User-operated desktop/mobile tests and cookie-policy behavior are retained separately from CI. An agreed retention disposition is required before cleanup activation.
 
-Depends on: M3.3–M3.4.
+Depends on: M3.3–M3.4; approved90-day policy. Status: design/planned implementation, not provided by the current30-minute guest-bound verified session.
 
 ### M3.6 — Safe returning customer prefill
 
-Query approved name/phone only after verification. Handle zero, unique, duplicate and shared-email matches without exposing unrelated records; allow customer corrections.
+After fresh or remembered verified identity, use the supported exact SimplyBook customer/account binding to retrieve only approved name/phone. Prove the provider lookup/private signature and entitlements under M2.5 before live calls; no directory scan or local replacement customer database. Unique authorized match can prefill; missing, ambiguous/shared, malformed, foreign and unavailable results must expose no unrelated details. Let customers review/correct booking contacts; no automatic provider-profile mutation. Keep profile results correlated to the current session so late replies cannot repopulate another account after sign-out/switch.
 
-Exit evidence: Provider-backed prefill cases and Cloud browser flow pass. Ambiguous matches require safe manual entry, not guessed identity.
+Exit evidence: authorized provider-backed unique/no-match/duplicate/shared-email fixtures and failure cases, no pre-verification disclosure, browser restart with valid remembered identity, editable correct prefill, sign-out/new-device/expiry challenges and preserved guest flow. A remembered login without real name/phone lookup does not complete A3. Synthetic ambiguous-match coverage is not actual provider acceptance; user/CI operate browser checks.
 
-Depends on: M3.2 and M3.5.
+Depends on: M3.2, M3.5 and M2.5's exact customer lookup/binding; still OPEN.
 
 Recovery and demonstration: Keep live writes disabled until configuration and authority gates pass. Use compatible additive migrations and revoke invalid sessions without deleting unrelated records. Retain the milestone demonstration and apply the common completion gates to every item.
 

@@ -1,5 +1,13 @@
 # SoccerBotStudio — Journey
 
+## 2026-10-10 — Quotation A3 and next quick-rebooking North Star
+
+Owner clarified that quick rebooking is a core requirement, then supplied APP404-SBS-Q-WEB-001.pdf. Read p3 A3 directly: verified approved SimplyBook name/phone prefill, customer review/correction, safe duplicate/shared-email handling and expiring single-use verification/rate limits. SHA256808f6aaad7c33e156db554cd43826d3d7d82a267a90319c9366b1db99d2557fa; private original retained outside Git. The quotation specifies no remembered-session duration. Owner subsequently selected90days from verification with no silent extension; recorded as engineering policy, not quoted wording or contract-signature evidence.
+
+Documented A3 as open despite successful two-email/verification/sign-out test. Planned work remains under stable M3.5 persistent identity and M3.6 supported private prefill, with M3.4 security-proof gaps retained. NORTH_STAR orders quick-rebooking acceptance before broader native booking/payment completion while preserving M2 mapping prerequisites, guest flow, one shared studio, native checkout/recovery and client UAT. No code, session lifetime, secret, migration, live call or deployment changed in this update.
+
+Corrected prior PR summary after remote inspection: PR14 merged to main544b3f4, but PR16 merge991a777 targeted PR14's already-merged branch, not main. PR17 contains those changes and was retargeted from the closed PR16 branch to main as the single remaining review path; no merge performed. PR15 remains closed as superseded. Current email windows remain closed. Existing campaign budget/deadline and unknown historical usage were carried forward, not restarted by the proposed North Star.
+
 ## 2026-10-10 — Owner email test and explicit closure
 
 Replacement sourcef2795a1 passed all three CI jobs and local139-file seal plus17 compiled-Worker cases. Approved0012 preserved the original closed record and every baseline table fingerprint. Owner-ready window2 opened16:34:21SGT. Browser Turnstile600010 initially blocked progress; it succeeded in the owner's clean session without key/widget changes, leaving the precise environmental cause unproved. Owner receivedA thenB, redeemedB to Session/unavailable catalogue, returned to Account and signed out. Console old-code attempt lacked a visible HTTP result; old-code/replay live proof remains unconfirmed.

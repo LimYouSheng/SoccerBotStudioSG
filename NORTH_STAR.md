@@ -1,50 +1,47 @@
-# North Star: connected developer booking integration
+# North Star: quick rebooking through a connected customer website
 
-## Governing continuation — 9 October 2026
+## Proposed next campaign — 10 October 2026
 
-10October update: PR17 live artifact and three Worker secret binding types are verified; real delivery and deployed candidate remain pending. PROGRESS supersedes older setup/counter statements below. Service Contracts owns the concrete proposed additional38 management requests/four deployments, including closure and rollback; no remote allowance is implicit in preparation.
+A returning customer on a remembered device can resume with a server-verified identity, review the correct current SimplyBook name/phone, choose sessions, and complete supported native payment with authoritative confirmation. New-device, expired-session and signed-out customers verify again. No demo fallback, guessed customer match or browser payment claim can produce success.
 
-Resumed email preparation: real fixed Resend/Turnstile source composition and durable finite admission remain closed by default. Environment Resend readiness and exact PR15 artifact import are now verified; owner now reports Turnstile ready and supplied its public sitekey. Exact widget settings, Worker secret bindings, verified live-mode artifact, migrations/setup allowance and actual delivery remain pending. The separate live-email CI profile prepares closed delivery only. No private prefill or North Star completion follows.
+The immediate vertical slice is **A3 quick rebooking**, using existing M3.4–M3.6. The wider North Star still includes A2/A4–A7 booking, capacity, multi-session acceptance, native SimplyBook/SBPay/HitPay payment and protected confirmation. A3 success alone is not end-to-end completion.
 
-Deliver frontend → protected backend → current SimplyBook data → server-validated bookings → native SimplyBook/SBPay/HitPay checkout → authoritative reconciliation → protected confirmation. All agreed flows must work without Preview fallback, operator-injected success, browser payment hints or hardcoded provider records. SimplyBook owns routine supported catalogue/schedule changes. Separate checkout tab/manual return is accepted; automatic return is a separate enhancement. Reconciliation must eventually run without the browser.
+## Source and current baseline
 
-One working agent;24 aggregate active hours,72 elapsed hours from2026-10-09T08:18:56Z,60 substantive loops,6 evidence-based repairs per root cause. PROGRESS records cumulative usage; no reset at checkpoint/resumption. Continue the next authorized ready task after every result/answer/failure. Stop only at completion, genuine external dependency with no independent work, unavailable execution capability, material risk or exhausted budget. No standing service or claim of work after runtime stops.
+- Uploaded APP404-SBS-Q-WEB-001,4October2026,p3 A3: verify email before approved SimplyBook name/phone prefill; permit review/correction; handle duplicate/shared emails safely; use expiring single-use verification and rate limits. Rules records the source hash and distinguishes quotation terms from owner decisions.
+- Owner decision10October: opt-in Remember me lasts **90 days from successful email verification**, absolute expiry with no silent sliding extension. This duration is an implementation choice, not wording in the quotation. The current30-minute guest-bound verified session does not implement it.
+- Proved in the controlled developer test: two email receipts, codeB redemption and sign-out; server evidence confirms revoked verified access. Both delivery windows closed; provider access disabled. Old-code/replay live rejection and full device acceptance remain open.
+- Not implemented/accepted: persistent remembered-device sessions, live SimplyBook customer prefill, complete native booking/payment/reconciliation journey. Developer happy-path evidence does not close A3.
 
-Source/research/offline/synthetic testing/scoped Cloud verification/docs/feature publication are authorized. Existing external budgets do not expand:238/248 management,13/14 deployments,8/80 provider;8 management and one deployment reserved for rollback. Exact external packages require approval, including read-only provider discovery, configuration, deployment, payment, email and background activation. No merge/main push, real-money payment/refund, production cutover or paid upgrade.
+## Ordered game plan
 
-Preserve last closed deployed source661cbf54/versiona0b4befb, applied0001–0008 and natural grant expiry; do not reapply migrations. Readiness mismatch/failed closure evidence remains. PR14 stays draft/unmerged; main757fd28. First priority is evidence-based readiness repair, then supported identity/live frontend/recovery work while native mapping facts are resolved. Service Contracts owns one end-to-end acceptance matrix; Rules owns engineering/deployment policy; Journey retains chronology. Developer completion, owner/device acceptance, client staging and production are separate.
+| Order | Existing milestones  | Outcome and gate                                                                                                                                                                                                                                                                                    |
+| ----- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1     | M3.4–M3.5            | Design and implement opt-in90-day remembered identity separately from short access/guest capability. Preserve revocation, rotation/concurrency, absolute expiry, CSRF and guest attempt ownership. Complete synthetic/session tests and remaining identity live proofs under a new finite approval. |
+| 2     | M2.5, M3.6           | Establish the supported exact verified-email/customer binding and authorized minimal name/phone read. Handle no match, unique match, ambiguous/shared email and provider failure without disclosure or scans. Compose into the existing account/details UI.                                         |
+| 3     | M3.5–M3.6, M7.2      | Demonstrate quick rebooking after closing/reopening the browser, correct prefill/review/correction, sign-out/all-devices revocation and expiry/new-device verification. Synthetic time advancement proves90-day boundaries; owner browser/physical-device checks prove actual UX.                   |
+| 4     | M2.2–M2.5, M4.1–M4.6 | Resolve player/required-field/customer/quote/shared-studio/instructor mappings; connect authoritative availability and all-session booking with partial/unknown recovery. No independent HitPay substitute.                                                                                         |
+| 5     | M5.1–M5.5, M6.1–M6.2 | Prove native invoice/payment associations, sandbox outcomes, manual return and browser-independent reconciliation, protected confirmation/exports and native notifications.                                                                                                                         |
+| 6     | M6.3–M6.6, M7–M8     | Client-account mappings, full UAT/device/recovery evidence, reviewed production release and handover. M9 warranty/optional support remains governed by the quotation.                                                                                                                               |
 
-## Historical foundation outcome and authorization — 9 October 2026
+Provider contract research may proceed alongside the session design within the single-agent budget; it is not a reason to invent a lookup or activate unsupported calls. Start with the one ready task in PROGRESS, then continue only authorized work.
 
-M3.3 adds minimal durable recovery scheduling/claims and retention safeguards under the explicit dependency exception. Reuse existing journal/coordinator/confirmation owners; no native reconciliation contract or automatic write replay is inferred. Source/local-runtime/CI only: no deployment, remote migration, provider calls, background activation or email setup. Exact acceptance/evidence is in PROGRESS; formal M1/M2.5 and owner acceptance remain pending.
+## Quick-rebooking completion evidence
 
-M3.2 implements named asynchronous booking services and guarded customer interaction state under the explicit 9 October dependency exception. All live booking operations remain unavailable; final technical evidence and candidate/deployment identities are in PROGRESS. No provider/account calls are authorized.
+- First verified visit offers a clear opt-in. Without opt-in, existing short-session behavior remains.
+- Same remembered browser after restart restores identity and approved current details without another code during the absolute90-day lifetime. It still validates current booking eligibility/price/capacity server-side.
+- At expiry, after sign-out/revocation, or on a different device, verification is required before private details appear. Ordinary use and token rotation cannot extend the original90-day end.
+- Server-side customer binding is unique and correct; ambiguous or missing matches expose no other person's name/phone. Customer can correct booking contact details without an implicit provider-profile write.
+- Session races/replay, forged browser state, cross-customer reads and storage/provider errors fail safely. Retain guest checkout and durable attempt/recovery records.
+- Local non-browser tests, exact PR/main CI, tested artifact, controlled deployed proof and owner/device acceptance are recorded separately. Synthetic90-day evidence is not a claim of90 elapsed days in production.
 
-M3.1 task closed: technical foundation scope verified under the approved dependency exception; formal M1/M2.5 closure and owner acceptance remain pending. Deployed log retrieval is unverified after403. Zero new provider calls/bookings/payments. PROGRESS owns the requirement/evidence/gap/action matrix; M1/M2.5 and owner acceptance remain open.
+## Authority, budgets and release path
 
-Frontend → protected Cloudflare Worker → native SimplyBook/SBPay HitPay checkout → authoritative booking/payment verification → protected confirmation. Show “Checking your payment and booking…” until complete relationships, exact amount/currency/tax and valid bookings are verified. Native frontend return, no-return reconciliation and notification delivery are separate acceptance proofs.
+This is a documentation/planning update and proposed next implementation campaign, not a new live-execution grant. Existing authorizations persist only in their original scope. The31/4/24 replacement packet closed at27 management/3 deployments/11HTTP; the original packet closed at34/3/13. Preserve management311 plus unknown Dashboard activity, deployment lower bound21, email2, bot2, provider8/80 and historical80. No reset, third window, automatic retries or use of safety reserves for new setup. New external work requires a concrete tested packet, finite costs, closure/rollback and approval.
 
-The owner authorizes implementation now under a narrow M1/M2/M2.5 dependency exception. This does not complete those milestones. One finite campaign may create only soccerbot-dev, soccerbot-dev-state and SQLite-backed SoccerBotAccountCoordinator in account517f4f85eb8f982b483dbc05b797fd88. Preserve app404, existing callbacks, production, client data and GitHub Pages. No paid upgrade, DNS, merge or auto-merge. One agent and PROGRESS ledger; bounded budgets and recovery are canonical in Rules.
+One agent; existing24 active-hour/72 elapsed-hour/60-loop/6-repair bounds continue from9October08:18:56UTC, deadline12October16:18:56SGT. The next campaign's proposed scope does not restart that clock or conceal unmeasured active time. No browser execution by the assistant, secret installation, merge/main push, production, paid upgrade or real payment/refund is included.
 
-PR #10 is owner-merged at3bf8e3b; its verifier and81 application/45 browser proofs are the baseline, not evidence for this new candidate. Historical provider80, Card23, timeout21/22 and owner-reconciled24 stay preserved.
-
-## Implemented candidate and evidence boundaries
-
-- Continuation is closed: campaign complete; North Star incomplete. Provider credentials and developer transport passed; native checkout/reconciliation and live write prerequisites remain blocked. PROGRESS owns exact evidence and next steps.
-- Continuation adds guarded named provider identity transport and a one-use operator grant. Actual dispatch/token negative tests remain separate from provider validity; no customer booking/payment route is enabled. PROGRESS records the new finite window and cumulative consumption.
-- Internal multi-session composition now has per-effect durable claims, revalidation and partial/unknown recovery tests. No live provider adapter supplies its unsupported booking contract; full native acceptance remains open.
-
-- Guest capability access/revocation, D1 immutable intent/idempotency/dispatch fencing, protected confirmation orchestration, account admission and refresh generation claims.
-- Actual Workers runtime/D1/SQLite coordinator tests use synthetic data and zero provider traffic. Root static export uses existing Next.js presentation; Pages subpath remains intact.
-- Initial named endpoints: health, guest access/revocation, protected confirmation and an explicitly unavailable booking operation. A separate /confirmation/ page polls only protected durable status; the existing demo remains labelled Preview. Historical read-only normalization is now implemented. Returning-customer prefill, live payment initiation and native notification handling remain unavailable.
-- Native return, player mapping, independently controlled capacity fixtures, complete multi-session finalization/recovery and notification authenticity/delivery remain blocked. Internal journal tests do not satisfy them.
-- Deployment and CI identities belong in the draft PR and private receipts. Do not label this foundation the completed North Star.
-
-## Acceptance
-
-Use the owner's A–E continuation loops. Require actual final-candidate frontend and backend CI; root and subpath builds; deployed revision/protected HTTP checks; separately authenticated provider observations; actual native return/no-return/notification proofs; supported write recovery and safe sandbox payment controls. Physical-device, client-account and production acceptance remain separate.
-
-Stop without merge or production deployment. If external gates remain, report campaign complete; North Star incomplete, with exact blocked paths and executable next steps.
+PR14 is on main; PR16 merged into its already-merged feature branch and is **not** yet on main. PR15 is superseded/closed. PR17 contains the remaining code and now targets main; review its complete final diff/checks before any separately authorized merge. Deployed sourcef2795a1 remains distinct from subsequent documentation commits. Rules owns policy, Service Contracts owns operations/acceptance, Journey owns receipts; PROGRESS is the single current task ledger.
 
 ## Deferred CLOUD-01 — incomplete
 

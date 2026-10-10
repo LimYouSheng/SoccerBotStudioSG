@@ -1,18 +1,30 @@
 # SoccerBotStudioSG current progress
 
+## Current task — A3 quick-rebooking plan, 10 October 2026
+
+Documentation-only update after reviewing the uploaded quotation. A3 remains OPEN: verified provider name/phone prefill, review/correction and safe ambiguous-email handling are quoted; long-session duration is not. Owner selected90 days absolute from email verification, no silent extension, for opt-in Remember me. Current30-minute guest-bound identity is only a technical baseline. Rules owns policy/M3.5–M3.6, Service Contracts owns proposed session/profile operations and acceptance, NORTH_STAR owns the proposed ordering; no runtime/authentication change is made here.
+
+**One next ready task:** prepare the M3.5 remembered-device session design and acceptance fixtures against the existing identity/access owners, then implement only within the authorized campaign scope. Resolve the exact SimplyBook customer lookup/binding under M2.5/M3.6 before any live prefill. Do not reopen delivery, extend the guest capability to90 days, duplicate the customer directory or equate this plan with implementation approval. Old-code/replay live rejection remains pending.
+
+**PR/main reconciliation:** main544b3f4 includes PR14. PR16 merge991a777 targeted feat/native-discovery-2026-10-09 after PR14 had merged; its source is not on main. PR15 closed as superseded. PR17 contains PR16 and subsequent work and now targets main, the single remaining review path. Earlier wording merely saying14/16 merged was incomplete. No merge is performed in this update.
+
+**Source evidence:** uploaded APP404-SBS-Q-WEB-001.pdf,4October2026,p3 A3; SHA256808f6aaad7c33e156db554cd43826d3d7d82a267a90319c9366b1db99d2557fa. PDF retained as private attachment, not copied into Git. No prices/dates/warranty changes or claim of contract signature.
+
+**Budget:** all counters below and private campaign.json carry forward. Active-time subtotal has known gaps; do not invent/reset it. Existing campaign deadline12October16:18:56SGT remains. This plan does not activate a new campaign or replenish external allowance.
+
 ## Replacement email test closed — 10 October 2026
 
 Deployed sourcef2795a1ef9c54e06ac2335f824a59e20c3b17f5e passed all three CI38036772168 jobs. Artifact11663527637/SHA2569bfc92f07ce78b73ab63d4d08c0d136f7b3cc6c57aab70bb05714f3119c06254,139 sealed files and12 migration byte identities verified;17 exact compiled-Worker cases passed. Owner approved31 additional management/four deployments/24HTTP. Applied0012 preserving all existing table fingerprints and original closed window; deployed/readiness passed. Owner-ready window2 opened16:34:21SGT for20minutes. Owner received emailsA/B, redeemedB to reach Session and signed out. Closure D1 readback confirms2 responded bot and2 responded email dispatches, zero unknowns; one verified identity with revoked guest access. Explicit closure, identity/provider disabled/end0, served version3bb98b99-1fc7-4496-a534-c2e0285212fb, probe503/revocation401 and baseline preservation all passed. Both windows remain closed; database stays online.
 
 Replacement used27/31 management,3/4 deployments,11/24HTTP; original packet remains34/41,3/4,13/24. Measured campaign management311 plus unknown Dashboard activity; deployment lower bound21 plus unknown activity. Resend2/3 and siteverify2/5; provider8/80 and historical80 unchanged. Unused safety allowance does not authorize another window. Live old-code supersession and successful-code replay rejection remain unconfirmed; synthetic cases remain separate. Initial Turnstile600010 resolved in an owner clean browser session; exact environmental cause is unproved. PR14 and16 owner-merged;15 closed as superseded;17 remains the active PR. This documentation update does not replace deployed artifact identity.
 
+## Historical checkpoints — superseded by the current ledger
 
-## Unused email window replacement — 10 October 2026
+### Unused email window replacement — 10 October 2026
 
 The original window is explicitly closed with zero email/bot dispatches. Closure versiond84f025a-0217-4119-a284-82062f4d5caf serves pinned087576ed with identity/provider disabled/end0. Isolated guest revoked; all seven baseline table fingerprints preserved. Database and website remain online. Packet used34/41 management,3/4 deployments,13/24 directHTTP; measured total284 management plus unknown Dashboard activity, at least18 deployments. Provider8/80 and historical80 unchanged. No browser/mailbox acceptance; PR14–17 remain drafts.
 
 Owner requests restart. Source-only0012 copies every original window column/value and permits exactly one replacement record only after the original is closed and only if the durable dispatch ledger is empty. No old expiry edit, reopening, third window, counter refund or deletion. Worker and dispatch admission select the latest window; exact source/origin, recipient,20-minute bound and global3-email/5-bot limits remain. Applied0001–0011 are unchanged. Focused17 delivery cases, source/layer, Worker types and affected lint passed. New CI artifact verification and a costed incremental execution packet are required before applying0012 or deploying. Original remaining7 management/1 deployment cannot fund another complete cycle. Do not start a timer until renewed owner readiness.
-
 
 ## Email execution preparation — 10 October 2026
 
@@ -516,9 +528,7 @@ The resulting final commit and its matching `verify / frontend` run are recorded
 
 ## Next run
 
-**One next ready task:** prepare the revised finite operator packet described in the current execution ledger. The approved discovery stopped before provider dispatch and is closed; do not replay its expired grant. Existing non-secret field-definition export remains an alternative. No complete checkout-plan prerequisite is imposed on discovery. Other precise native configuration decisions remain in the gap matrix.
-
-YS's deployed-main application inspection is separately pending. The original no-forwarding/network-disabled ephemeral-container preview blocker and C3 receipts below remain unchanged. All 44 M1–M9 subiteration IDs and performance gates remain intact.
+Use the single next-ready task in the current ledger above and the proposed ordering in NORTH_STAR. Historical discovery/email setup instructions below are not fresh authority.
 
 ## Update discipline
 
