@@ -1,5 +1,12 @@
 # SoccerBotStudioSG current progress
 
+## Replacement email test closed — 10 October 2026
+
+Deployed sourcef2795a1ef9c54e06ac2335f824a59e20c3b17f5e passed all three CI38036772168 jobs. Artifact11663527637/SHA2569bfc92f07ce78b73ab63d4d08c0d136f7b3cc6c57aab70bb05714f3119c06254,139 sealed files and12 migration byte identities verified;17 exact compiled-Worker cases passed. Owner approved31 additional management/four deployments/24HTTP. Applied0012 preserving all existing table fingerprints and original closed window; deployed/readiness passed. Owner-ready window2 opened16:34:21SGT for20minutes. Owner received emailsA/B, redeemedB to reach Session and signed out. Closure D1 readback confirms2 responded bot and2 responded email dispatches, zero unknowns; one verified identity with revoked guest access. Explicit closure, identity/provider disabled/end0, served version3bb98b99-1fc7-4496-a534-c2e0285212fb, probe503/revocation401 and baseline preservation all passed. Both windows remain closed; database stays online.
+
+Replacement used27/31 management,3/4 deployments,11/24HTTP; original packet remains34/41,3/4,13/24. Measured campaign management311 plus unknown Dashboard activity; deployment lower bound21 plus unknown activity. Resend2/3 and siteverify2/5; provider8/80 and historical80 unchanged. Unused safety allowance does not authorize another window. Live old-code supersession and successful-code replay rejection remain unconfirmed; synthetic cases remain separate. Initial Turnstile600010 resolved in an owner clean browser session; exact environmental cause is unproved. PR14 and16 owner-merged;15 closed as superseded;17 remains the active PR. This documentation update does not replace deployed artifact identity.
+
+
 ## Unused email window replacement — 10 October 2026
 
 The original window is explicitly closed with zero email/bot dispatches. Closure versiond84f025a-0217-4119-a284-82062f4d5caf serves pinned087576ed with identity/provider disabled/end0. Isolated guest revoked; all seven baseline table fingerprints preserved. Database and website remain online. Packet used34/41 management,3/4 deployments,13/24 directHTTP; measured total284 management plus unknown Dashboard activity, at least18 deployments. Provider8/80 and historical80 unchanged. No browser/mailbox acceptance; PR14–17 remain drafts.

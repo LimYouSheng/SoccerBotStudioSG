@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Developer email acceptance checkpoint — 10 October 2026
+
+The replacement developer email window is explicitly closed; email/provider modes are disabled and both window records and previous data are preserved. Owner demonstrated two email receipts, latest-code verification and sign-out; durable evidence confirms one verified identity with revoked access. This accepts only the controlled developer happy path. Live superseded-code rejection and replay rejection remain unconfirmed, and no booking/provider, private prefill, client-production or broader device acceptance is implied. PROGRESS owns exact identities and counters; Service Contracts owns remaining evidence limits. No further window or counter reset is authorized.
+
 ## Unused email window replacement — 10 October 2026
 
 The original email window is explicitly closed with zero dispatches; database and website remain online. PROGRESS owns exact deployed identity and accounting. Owner requested a replacement test. Source-only0012 preserves closed history and permits exactly one second window only if no prior dispatch was charged. Worker and reservation admission select the latest window, retaining source/origin, recipient,20-minute and global3-email/5-bot guards. No third window, expiry edit, reopening or counter reset. Applied0001–0011 stay immutable. Require a new CI-sealed candidate and costed execution allowance; owner readiness precedes the replacement timer.

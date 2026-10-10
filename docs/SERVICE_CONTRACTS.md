@@ -1,5 +1,9 @@
 # SoccerBotStudio — Service Contracts
 
+## Replacement email test result — 10 October 2026
+
+Owner receivedA/B, redeemedB and reported sign-out. Durable closure readback: bot2 responded, email2 responded, zero reserved/unknown dispatches; one verified identity linked to revoked guest access. The unavailable catalogue screen is expected while SimplyBook remains disabled and does not constitute booking acceptance. The old-code Console attempt yielded no observable HTTP status, so live supersession proof is unconfirmed; successful-code replay was not demonstrated. Preserve those gaps despite synthetic coverage. Explicit window2 closure and disabled settings/served readiness passed; closed challenge503, isolated probe revoke200/read401 and all baseline fingerprints passed. Original window1 is retained closed. Any further external testing requires a new reviewed scope; remaining email/bot capacity is not a new window grant.
+
 ## Unused email window replacement — 10 October 2026
 
 Source-only0012 compatibly copies every original window column/value into the expanded table. Historical `singleton` now accepts only1 or2. Inserting2 requires closed1, a later opening time and an empty durable dispatch ledger. Any reserved/responded/unknown bot/email dispatch denies replacement. Both records remain immutable except open→closed; no deletion, expiry edit or third window. Latest record controls Worker and database reservation admission. Global3-email/5-bot ceilings, exact source/origin, sole recipient and20-minute duration remain unchanged. Closed older binaries remain safe because they only select closed1.
