@@ -3,10 +3,11 @@
 ## 1. Start
 
 - Read NORTH_STAR and PROGRESS (the one current task ledger), then relevant sections of the three canonical owners.
-- Current main is owner-merged PR12 at `e91fb125186c955fffe34e1d1c195645b1a9f79e`. PR13 remains draft/open on `feat/native-checkout-adapter-2026-10-09`, now based on main. Preserve completed PR13 checkpoint8a4226b and final CI37890214635; no main CI result was returned at task start.
-- Current 9 October scope is dynamic-data/hardcoding review and supported pre-booking implementation, final CI/artifact and draft PR13 update. SimplyBook owns routine instructor/service/name/price/schedule edits. Preview data is explicitly isolated; never reinterpret saved preview identities as provider IDs. PROGRESS owns the finite task window. No merge/main push, deployment, remote migration, provider/account/management calls, booking/payment/email, settings or resources.
-- One working agent, six-hour ceiling, three repairs per distinct issue. Carried totals: management182/200, deployments10/12, provider8/80; historical closed80 separate. Remaining allowance does not reopen grants. Keep provider disabled/end0, grants closed, retention/schedulers inactive.
-- Preserve native SimplyBook → SBPay → HitPay routing, original attempt/effect identities, migrations0001–0007,15-second freshness and M3.4 Resend prerequisites. Build only evidence-supported pieces; supplied historical native bodies and token-free initial URL now support strict adapter code; current player/customer/tax/shared-capacity mappings, downstream merchant binding and finite live write grant remain execution blockers. Read the current operation-budget section in Service Contracts; older10/12/14 estimates are historical. Complete independent work before any consolidated execution request. Never print/hash/persist credentials or install proxy placeholders as Worker secrets.
+- Current main is owner-merged PR13 at757fd288084d0e76c7cb7b766e33c4724d6988d0. Actual main CI37896841542 passed both required jobs; existing Pages deployment succeeded. Work on new feat/native-discovery-2026-10-09, never main; preserve prior work/Mac stash.
+- Current outcome: YS approved discovery-only execution; migrations0006→0007→0008 and exact tested release661cbf54 deployed. Enabled health disagreed with management settings, so no provider POST occurred. Worker verified closed, grant expired; PROGRESS owns the complete failure/closure receipt.
+- Governing continuation: MAIN INTEGRATION NORTH STAR. One agent,24 aggregate active hours/72 elapsed hours/60 substantive loops/6 evidence-based repairs per root cause; start and cumulative ledger in PROGRESS. Continue authorized ready work after each checkpoint; stop only at completion, genuine dependency with no independent work, unavailable capability, material risk or exhausted budget.
+- One agent; current consumption238/248 management,13/14 deployments,8/80 provider, historical80 separate. One rollback deployment reserved. No automatic new grant or enable/close cycle, settings/resources, booking/payment/email, merge/main push. Prepare a revised finite packet before seeking new execution authorization.
+- Preserve strict native adapter, dynamic catalogue, immutable intent, expiry, targeted readback and Preview/live separation. Original migrations0001–0008 unchanged; all eight now applied remotely. No player fallback, arbitrary proxy, public diagnostics or activation of retention/schedulers. M3.4 offline identity and finite catalogue/scheduled recovery composition are implemented in PR14; real Resend is not set up and all activation remains separately scoped. PR15 isolates readiness diagnosis with no migration.
 - BookingProvider owns asynchronous availability/action revisions; screens consume named services and never call the synchronous demo model or fetch during render. Demo/live adapters cannot silently substitute each other.
 - Existing `src/domain/confirmation.ts` remains the single confirmation decision owner. Worker HTTP/access/journal/coordinator code lives in `worker/`; D1 is the only durable identity/attempt owner.
 - Physical fetch belongs only to `worker/provider-transport.ts`; operator grants are one-use, operation-scoped D1 records. Historical diagnostics cannot manufacture approved intent. Defaults remain closed. No authentication retry, grant replay or new campaign ID may reset consumption. Preserve unknown reservations and native-contract blockers.
@@ -14,7 +15,7 @@
 
 - The 9 October M3.3 instruction authorizes only source/isolated-runtime/CI durable recovery work. No provider call, deployment, remote migration, management recheck, activated scheduler, email sending or setup. Recovery metadata stays in D1; expired access never deletes unresolved evidence, and claiming recovery never permits write replay. PROGRESS owns this task's deadline, gaps and unchanged budgets.
 
-The 9 October Experiment1 instruction permits only source/local synthetic/CI work and draft PR publication, ahead of queued M3.4. Zero new provider/management calls, deployment or remote migration; preserve M3.3 and migrations0001–0006. Additive0007 remains source-only. Service Contracts owns the separate checkout/checking contract and finite next-live proposal; PROGRESS owns evidence and unchanged consumption.
+The 9 October Experiment1 instruction permits only source/local synthetic/CI work and draft PR publication, ahead of queued M3.4. Zero new provider/management calls, deployment or remote migration; preserve M3.3 and migrations0001–0006. At that historical checkpoint additive0007 was source-only; the separately approved discovery execution has now applied it. Service Contracts owns the separate checkout/checking contract and finite next-live proposal; PROGRESS owns evidence and unchanged consumption.
 
 ## 2. Build
 
@@ -28,7 +29,7 @@ The 9 October Experiment1 instruction permits only source/local synthetic/CI wor
 - Choose one ready task serving the North Star; define completion evidence first.
 - Inspect → implement → run affected checks → diagnose → update progress → checkpoint.
 - Reuse findings/caches and read changed sections. Retry only with a new diagnosis or material fix.
-- Stop at task acceptance, a blocker, the run budget or PR readiness. No unattended relaunch without explicit finite limits.
+- Checkpoint at task acceptance and PR readiness, then continue the next authorized ready task within the campaign. No unrequested standing service or work claimed after runtime stops.
 
 ## 4. Verify
 
@@ -41,7 +42,7 @@ The 9 October Experiment1 instruction permits only source/local synthetic/CI wor
 
 - Update affected docs/progress; review the diff and stage exact intended paths.
 - Commit/push the task branch and open/update its PR when access permits. Reuse existing CI; require green checks for the final commit.
-- Stop at PR-ready. Provide the PR, evidence, preview or blocker, and next action. Never merge, enable auto-merge, push to `main`, deploy production or alter protection. Only the explicitly scoped isolated development deployment is authorized. Every merge needs explicit user approval for that specific PR; requests to continue, synchronize main, publish a PR or obtain green CI are not merge approval.
+- Publish PR-ready checkpoints with evidence, then continue authorized integration work; PR readiness is not campaign completion. Never merge, enable auto-merge, push to `main`, deploy production or alter protection. Only the explicitly scoped isolated development deployment is authorized. Every merge needs explicit user approval for that specific PR; requests to continue, synchronize main, publish a PR or obtain green CI are not merge approval.
 
 ## 6. Boundaries
 

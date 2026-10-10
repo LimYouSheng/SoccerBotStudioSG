@@ -1,7 +1,7 @@
 import { seedFoundation } from "./foundation-fixture.mjs";
 import { test, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync, mkdtempSync, rmSync } from "node:fs";
+import { readFileSync, mkdtempSync, rmSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createHash } from "node:crypto";
@@ -36,6 +36,7 @@ async function fixture({
   end = Date.now() + 3600000,
   persistence,
   legacy = false,
+  full = false,
   secrets = {},
 } = {}) {
   const root =
@@ -146,11 +147,20 @@ async function fixture({
   await mf.ready;
   const db = await mf.getD1Database("STATE");
   if (!persistence)
-    for (const name of [
-      "0001_developer_journal.sql",
-      "0002_developer_operations.sql",
-      ...(!legacy ? ["0004_operator_read_scopes.sql"] : []),
-    ])
+    for (const name of full
+      ? readdirSync("migrations")
+          .sort()
+          .filter((name) => !name.startsWith("0005"))
+      : [
+          "0001_developer_journal.sql",
+          "0002_developer_operations.sql",
+          ...(!legacy
+            ? [
+                "0004_operator_read_scopes.sql",
+                "0008_native_field_discovery.sql",
+              ]
+            : []),
+        ])
       await db.exec(
         readFileSync("migrations/" + name, "utf8")
           .replace(/^--.*$/gm, "")
@@ -184,7 +194,9 @@ async function fixture({
       origin +
         (operation === "provider_identity"
           ? "/api/developer/provider-identity"
-          : "/api/developer/historical-comparison"),
+          : operation === "native_field_discovery"
+            ? "/api/developer/native-field-discovery"
+            : "/api/developer/historical-comparison"),
       { method, headers: { origin, authorization: "Bearer " + token } },
     );
     return {
@@ -763,5 +775,592 @@ test("provider missing credentials and client mapping refuse before authenticati
     } finally {
       await f.mf.dispose();
     }
+  }
+});
+
+// Synthetic metadata only. No retained account response or field identifier.
+const discoveryOperation = "native_field_discovery";
+const syntheticField = {
+  name: "synthetic_players",
+  title: "Number of players",
+  type: "select",
+  values: "1,2,3,4",
+  is_null: "0",
+  default: "must-not-escape",
+  value: "must-not-escape",
+  privateContact: "must-not-escape",
+};
+async function discoveryFixture(options = {}) {
+  const f = await fixture({
+    ...options,
+    respond: async (request, body, calls) => {
+      const custom = await options.respond?.(request, body, calls);
+      if (custom) return custom;
+      if (new URL(request.url).pathname === "/") {
+        assert.equal(request.headers.get("X-Token"), "synthetic-public-token");
+        assert.equal(body.method, "getAdditionalFields");
+        assert.deepEqual(body.params, [2]);
+        return Response.json({
+          id: body.id,
+          result: [syntheticField],
+          error: null,
+        });
+      }
+    },
+  });
+  await f.sql(
+    "INSERT OR REPLACE INTO budget(campaign,used,cooldown_ms) VALUES('developer-20261008',8,0)",
+  );
+  return f;
+}
+test("discovery uses exactly five fixed requests and projects metadata without answers or secrets", async () => {
+  const f = await discoveryFixture();
+  try {
+    const token = await f.grant(Date.now() + 180000, discoveryOperation);
+    const before = await f.call(token, "GET", discoveryOperation);
+    assert.equal(before.body.accounting.used, 8);
+    assert.equal(f.calls.length, 0);
+    const result = await f.call(token, "POST", discoveryOperation);
+    assert.equal(result.body.state, "complete");
+    assert.equal(result.body.result.accounting.used, 13);
+    assert.equal(result.body.result.persistenceVerified, false);
+    assert.deepEqual(result.body.result.fields, [
+      {
+        identifier: "synthetic_players",
+        playerTitleMatches: true,
+        type: "select",
+        required: true,
+        playerOptions: ["1", "2", "3", "4"],
+        optionCount: 4,
+        playerCandidate: true,
+      },
+    ]);
+    assert.deepEqual(
+      f.calls.map((v) => [new URL(v.url).pathname, v.method]),
+      [
+        ["/login", "POST"],
+        ["/admin/auth", "POST"],
+        ["/admin/company/info", "GET"],
+        ["/admin/tariff/current", "GET"],
+        ["/", "POST"],
+      ],
+    );
+    assert.doesNotMatch(
+      JSON.stringify(result) + JSON.stringify(f.logs),
+      /must-not-escape|synthetic-public-token|synthetic-admin-secret/,
+    );
+    await f.call(token, "POST", discoveryOperation);
+    assert.equal(f.calls.length, 5);
+    const after = await f.call(token, "GET", discoveryOperation);
+    assert.equal(after.body.accounting.used, 13);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("discovery denies closed expired foreign and wrong-scope grants with zero dispatch", async () => {
+  for (const mode of ["disabled", "trusted-reads"]) {
+    const f = await discoveryFixture({
+      mode,
+      end: mode === "disabled" ? Date.now() + 180000 : 0,
+    });
+    try {
+      assert.equal(
+        (await f.call("f".repeat(64), "POST", discoveryOperation)).status,
+        401,
+      );
+      assert.equal(
+        (await f.call(await f.grant(), "POST", discoveryOperation)).status,
+        401,
+      );
+      assert.equal(
+        (
+          await f.call(
+            await f.grant(Date.now() - 1, discoveryOperation),
+            "POST",
+            discoveryOperation,
+          )
+        ).status,
+        401,
+      );
+      const token = await f.grant(Date.now() + 60000, discoveryOperation);
+      const result = await f.call(token, "POST", discoveryOperation);
+      assert.ok(result.status === 503 || result.body.state === "blocked");
+      assert.equal(f.calls.length, 0);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+test("discovery stops before dispatch on changed durable usage unknown reservations or oversized window", async () => {
+  for (const cause of ["usage", "unknown", "window", "short"]) {
+    const f = await discoveryFixture();
+    try {
+      if (cause === "usage") await f.sql("UPDATE budget SET used=9");
+      if (cause === "unknown")
+        await f.sql(
+          "INSERT INTO admissions VALUES('unknown','developer-20261008',1,0)",
+        );
+      const token = await f.grant(
+        Date.now() +
+          (cause === "window" ? 240000 : cause === "short" ? 10000 : 60000),
+        discoveryOperation,
+      );
+      assert.equal(
+        (await f.call(token, "POST", discoveryOperation)).body.state,
+        "blocked",
+      );
+      assert.equal(f.calls.length, 0);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+test("discovery counts failed authentication and never retries or resumes a consumed grant", async () => {
+  const f = await discoveryFixture({
+    respond: () => new Response(null, { status: 403 }),
+  });
+  try {
+    const token = await f.grant(Date.now() + 180000, discoveryOperation);
+    const result = await f.call(token, "POST", discoveryOperation);
+    assert.equal(result.body.state, "blocked");
+    assert.equal(result.body.result.accounting.used, 9);
+    assert.equal(result.body.result.accounting.active, 0);
+    assert.equal(f.calls.length, 1);
+    await f.call(token, "POST", discoveryOperation);
+    assert.equal(f.calls.length, 1);
+    const persisted = await f.db
+      .prepare("SELECT state,result_json FROM developer_operations")
+      .first();
+    assert.equal(persisted.state, "blocked");
+    assert.doesNotMatch(persisted.result_json, /token|secret|password/);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("discovery rejects malformed duplicate paginated and oversized metadata without retaining raw values", async () => {
+  const bundled = (
+    await build({
+      entryPoints: ["worker/field-discovery.ts"],
+      bundle: true,
+      write: false,
+      format: "esm",
+      platform: "node",
+    })
+  ).outputFiles[0].text;
+  const { discoveryFields } = await import(
+    "data:text/javascript;base64," + Buffer.from(bundled).toString("base64")
+  );
+  for (const body of [
+    { data: [] },
+    [syntheticField, syntheticField],
+    Array(65).fill(syntheticField),
+    [{ ...syntheticField, is_null: "false" }],
+    [{ ...syntheticField, values: [1, 2, 3, 4] }],
+  ]) {
+    assert.throws(() => discoveryFields(body), /discovery_fields_unrecognized/);
+  }
+  assert.deepEqual(discoveryFields([]), []);
+  const result = discoveryFields([
+    {
+      ...syntheticField,
+      title: "private@example.invalid",
+      values: "private@example.invalid",
+      is_null: null,
+      type: "unknown-secret",
+    },
+  ]);
+  assert.equal(result[0].required, null);
+  assert.equal(result[0].playerCandidate, false);
+  assert.equal(result[0].type, "unsupported");
+  assert.equal(result[0].playerOptions, null);
+  assert.doesNotMatch(
+    JSON.stringify(result),
+    /private@|unknown-secret|must-not-escape/,
+  );
+});
+test("discovery unknown dispatch remains counted across eviction and cannot replay", async () => {
+  const f = await discoveryFixture({ respond: () => new Promise(() => {}) });
+  try {
+    const token = await f.grant(Date.now() + 180000, discoveryOperation);
+    const result = await f.call(token, "POST", discoveryOperation);
+    assert.equal(result.body.state, "blocked");
+    assert.equal(result.body.result.reason, "provider_transport_uncertain");
+    assert.equal(result.body.result.accounting.used, 9);
+    assert.equal(result.body.result.accounting.active, 1);
+    await f.mf.unsafeEvictDurableObject(
+      "provider-test",
+      "SoccerBotAccountCoordinator",
+      { name: "simplybook-developer-account" },
+    );
+    const retained = await f.call(token, "GET", discoveryOperation);
+    assert.equal(retained.body.accounting.used, 9);
+    assert.equal(retained.body.accounting.active, 1);
+    await f.call(token, "POST", discoveryOperation);
+    const other = await f.grant(Date.now() + 60000, discoveryOperation);
+    assert.equal(
+      (await f.call(other, "POST", discoveryOperation)).body.result.reason,
+      "discovery_accounting_changed",
+    );
+    assert.equal(f.calls.length, 1);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+
+async function catalogueGuest(
+  f,
+  state = "granted",
+  scope = { startingUsed: 0, maxCalls: 6 },
+) {
+  await f.db.exec(
+    readFileSync("migrations/0010_customer_read_scopes.sql", "utf8")
+      .replace(/^--.*$/gm, "")
+      .replace(/\n/g, " "),
+  );
+  const response = await f.mf.dispatchFetch(origin + "/api/access", {
+    method: "POST",
+    headers: { origin },
+  });
+  const cookie = response.headers.get("set-cookie").split(";")[0];
+  const hash = createHash("sha256").update(cookie.split("=")[1]).digest("hex");
+  await f.db
+    .prepare(
+      "INSERT INTO developer_operations VALUES(?,'customer_catalogue',?,?,?)",
+    )
+    .bind(hash, Date.now() + 180000, state, JSON.stringify(scope))
+    .run();
+  return { cookie, hash };
+}
+test("customer catalogue joins authenticated guest to one finite six-call read without exposing company binding", async () => {
+  const f = await fixture({
+    respond: async (_request, body) => {
+      if (body?.method === "getEventList")
+        return Response.json({
+          jsonrpc: "2.0",
+          id: body.id,
+          result: {
+            12: {
+              id: 12,
+              name: "Current session",
+              duration: "40",
+              is_active: "1",
+              is_public: "1",
+              is_recurring: "0",
+              price: "91.0000",
+              currency: "SGD",
+              unit_map: [14],
+            },
+          },
+        });
+      if (body?.method === "getUnitList")
+        return Response.json({
+          jsonrpc: "2.0",
+          id: body.id,
+          result: {
+            14: { id: 14, name: "Current instructor", is_active: "1" },
+          },
+        });
+    },
+  });
+  try {
+    const { cookie, hash } = await catalogueGuest(f);
+    const requests = await Promise.all([
+      f.mf.dispatchFetch(origin + "/api/catalogue", { headers: { cookie } }),
+      f.mf.dispatchFetch(origin + "/api/catalogue", { headers: { cookie } }),
+    ]);
+    assert.equal(requests.filter((r) => r.status === 200).length, 1);
+    const value = await requests.find((r) => r.status === 200).json();
+    assert.equal(value.services[0].id, "12");
+    assert.equal(value.services[0].priceMinor, 9100);
+    assert.equal(value.instructors[0].name, "Current instructor");
+    assert.equal(value.environment, "developer");
+    assert.equal("binding" in value, false);
+    assert.equal(JSON.stringify(value).includes("synthetic-developer"), false);
+    assert.equal(f.calls.length, 6);
+    assert.equal(
+      (
+        await f.mf.dispatchFetch(origin + "/api/catalogue", {
+          headers: { cookie },
+        })
+      ).status,
+      200,
+    );
+    assert.equal(f.calls.length, 6);
+    await f.db
+      .prepare(
+        "UPDATE developer_operations SET expires_ms=0 WHERE capability_hash=?",
+      )
+      .bind(hash)
+      .run();
+    assert.equal(
+      (
+        await f.mf.dispatchFetch(origin + "/api/catalogue", {
+          headers: { cookie },
+        })
+      ).status,
+      503,
+    );
+    assert.equal(f.calls.length, 6);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("customer catalogue denies closed wrong-accounting unowned and unknown scopes without replay", async () => {
+  for (const mode of ["disabled", "trusted-reads"]) {
+    const f = await fixture({ mode });
+    try {
+      const { cookie } = await catalogueGuest(f, "granted", {
+        startingUsed: 1,
+        maxCalls: 6,
+      });
+      assert.equal(
+        (await f.mf.dispatchFetch(origin + "/api/catalogue")).status,
+        401,
+      );
+      assert.equal(
+        (
+          await f.mf.dispatchFetch(origin + "/api/catalogue", {
+            headers: { cookie },
+          })
+        ).status,
+        503,
+      );
+      assert.equal(
+        (
+          await f.mf.dispatchFetch(origin + "/api/catalogue", {
+            headers: { cookie },
+          })
+        ).status,
+        503,
+      );
+      assert.equal(f.calls.length, 0);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+
+const nativeResponses = JSON.parse(
+  readFileSync("worker/tests/native-fixtures.json", "utf8"),
+).responses;
+async function scheduledAttempt(f, options = {}) {
+  const now = Date.now(),
+    id = crypto.randomUUID(),
+    owner = crypto.randomUUID();
+  const intent = {
+    accountId: config.vars.DEPLOYMENT_ACCOUNT_ID,
+    environmentId: "developer",
+    customerId: "51",
+    currency: "SGD",
+    totalMinor: 8800,
+    taxMinor: 0,
+    sessions: [
+      {
+        serviceId: "12",
+        instructorId: "14",
+        startMs: Date.parse("2026-10-10T01:00:00Z"),
+        players: 1,
+        totalMinor: 8800,
+        taxMinor: 0,
+      },
+    ],
+  };
+  const json = JSON.stringify(intent);
+  await f.db
+    .prepare(
+      "INSERT INTO attempts(id,owner_id,idempotency_key,intent_json,intent_hash,created_ms,deadline_ms,version,state,association_json) VALUES(?,?,?,?,?,?,?,1,'dispatching',?)",
+    )
+    .bind(
+      id,
+      owner,
+      crypto.randomUUID(),
+      json,
+      createHash("sha256").update(json).digest("hex"),
+      now,
+      now + 600000,
+      JSON.stringify({ bookingIds: ["701"], invoiceId: "901" }),
+    )
+    .run();
+  await f.db
+    .prepare(
+      "INSERT INTO dispatches VALUES(?,?,'booking.create',1,?,'unknown')",
+    )
+    .bind(crypto.randomUUID(), id, now - 60001)
+    .run();
+  await f.db
+    .prepare(
+      "INSERT INTO session_effects VALUES(?,'native-booking-key','observed',?)",
+    )
+    .bind(
+      id,
+      JSON.stringify({ bookingId: "701", hash: "synthetic-booking-hash" }),
+    )
+    .run();
+  const key = createHash("sha256").update(crypto.randomUUID()).digest("hex");
+  const scope = {
+    attemptId: id,
+    notBeforeMs: now,
+    startingUsed: 0,
+    maximumUsed: 6,
+    ...options.scope,
+  };
+  await f.db
+    .prepare(
+      "INSERT INTO developer_operations VALUES(?,'native_recovery_window',?,?,?)",
+    )
+    .bind(
+      key,
+      options.expires ?? now + 180000,
+      options.state ?? "granted",
+      JSON.stringify(scope),
+    )
+    .run();
+  return { id, key };
+}
+function nativeReadResponse(_request, body) {
+  if (body?.method === "getBookingDetails")
+    return Response.json({
+      jsonrpc: "2.0",
+      id: body.id,
+      result: nativeResponses.bookingAfter,
+    });
+  if (new URL(_request.url).pathname === "/admin/invoices/901")
+    return Response.json(nativeResponses.invoiceAfter);
+}
+async function tick(f) {
+  return (await f.mf.getWorker()).scheduled({ cron: "* * * * *" });
+}
+
+test("scheduled native recovery confirms from authoritative reads without browser and consumes one window", async () => {
+  const f = await fixture({
+    full: true,
+    respond: nativeReadResponse,
+    secrets: { SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret" },
+  });
+  try {
+    const a = await scheduledAttempt(f);
+    await Promise.all([tick(f), tick(f)]);
+    const grant = await f.db
+      .prepare("SELECT * FROM developer_operations WHERE capability_hash=?")
+      .bind(a.key)
+      .first();
+    assert.equal(grant.state, "complete", JSON.stringify(grant));
+    assert.equal(f.calls.length, 6, JSON.stringify(grant));
+    const recovery = await f.db
+      .prepare("SELECT state,tries FROM recovery_work WHERE attempt_id=?")
+      .bind(a.id)
+      .first();
+    assert.equal(recovery.state, "complete");
+    assert.equal(recovery.tries, 1);
+    const observation = await f.db
+      .prepare("SELECT observation_json FROM attempts WHERE id=?")
+      .bind(a.id)
+      .first();
+    assert.equal(
+      JSON.parse(observation.observation_json).invoice.status,
+      "paid",
+    );
+    assert.equal(
+      (
+        await f.mf.dispatchFetch(
+          origin + "/api/attempts/" + a.id + "/confirmation",
+        )
+      ).status,
+      401,
+    );
+    await tick(f);
+    assert.equal(f.calls.length, 6);
+    const root = f.root;
+    await f.mf.dispose();
+    const restarted = await fixture({
+      persistence: root,
+      respond: nativeReadResponse,
+      secrets: { SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret" },
+    });
+    try {
+      await tick(restarted);
+      assert.equal(restarted.calls.length, 0);
+    } finally {
+      await restarted.mf.dispose();
+    }
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("scheduled recovery rejects closed expired future unknown and unsigned windows without provider calls", async () => {
+  for (const variant of [
+    "closed",
+    "expired",
+    "future",
+    "unknown",
+    "unsigned",
+    "budget",
+  ]) {
+    const f = await fixture({
+      full: true,
+      mode: variant === "closed" ? "disabled" : "trusted-reads",
+    });
+    try {
+      const a = await scheduledAttempt(f, {
+        ...(variant === "expired" ? { expires: Date.now() - 1 } : {}),
+        ...(variant === "future"
+          ? { scope: { notBeforeMs: Date.now() + 60000 } }
+          : {}),
+        ...(variant === "unknown" ? { state: "running" } : {}),
+        ...(variant === "budget"
+          ? { scope: { startingUsed: 59, maximumUsed: 65 } }
+          : {}),
+      });
+      await tick(f);
+      assert.equal(f.calls.length, 0, variant);
+      const grant = await f.db
+        .prepare(
+          "SELECT state FROM developer_operations WHERE capability_hash=?",
+        )
+        .bind(a.key)
+        .first();
+      assert.equal(
+        grant.state,
+        ["unsigned", "budget"].includes(variant)
+          ? "blocked"
+          : variant === "unknown"
+            ? "running"
+            : "granted",
+        variant,
+      );
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+test("scheduled native recovery preserves conflicting paid evidence for manual review", async () => {
+  const f = await fixture({
+    full: true,
+    secrets: { SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret" },
+    respond: (request, body) => {
+      if (new URL(request.url).pathname === "/admin/invoices/901")
+        return Response.json({
+          ...nativeResponses.invoiceAfter,
+          client_id: "foreign-customer",
+        });
+      return nativeReadResponse(request, body);
+    },
+  });
+  try {
+    const a = await scheduledAttempt(f);
+    await tick(f);
+    assert.equal(f.calls.length, 6);
+    const row = await f.db
+      .prepare(
+        "SELECT a.observation_json,r.state FROM attempts a JOIN recovery_work r ON r.attempt_id=a.id WHERE a.id=?",
+      )
+      .bind(a.id)
+      .first();
+    assert.equal(row.state, "manual_review");
+    assert.equal(row.observation_json, null);
+    await tick(f);
+    assert.equal(f.calls.length, 6);
+  } finally {
+    await f.mf.dispose();
   }
 });

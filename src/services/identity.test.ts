@@ -1,0 +1,80 @@
+import { afterEach, expect, it, vi } from "vitest";
+import { createLiveIdentityService } from "./identity";
+afterEach(() => vi.unstubAllGlobals());
+const identity = {
+  email: "synthetic@example.invalid",
+  expiresAt: Date.now() + 600000,
+};
+const challenge = {
+  email: identity.email,
+  challengeId: "11111111-1111-4111-8111-111111111111",
+  expiresAt: identity.expiresAt,
+  resendAfter: 0,
+};
+it("live identity authenticates guest and verifies through same-origin server reads without browser storage", async () => {
+  const request = vi
+    .fn()
+    .mockResolvedValueOnce(Response.json({ access: "guest" }))
+    .mockResolvedValueOnce(Response.json(identity))
+    .mockResolvedValueOnce(Response.json(identity));
+  vi.stubGlobal("fetch", request);
+  const service = createLiveIdentityService(),
+    signal = new AbortController().signal;
+  await service.guest(signal);
+  expect(await service.verify(challenge, "123456", false, signal)).toEqual(
+    identity,
+  );
+  expect(request.mock.calls.map((c) => c[0])).toEqual([
+    "/api/access",
+    "/api/identity/verify",
+    "/api/identity",
+  ]);
+  for (const [, options] of request.mock.calls)
+    expect(options).toMatchObject({
+      credentials: "same-origin",
+      cache: "no-store",
+      redirect: "error",
+    });
+  expect(service.current()).toEqual(identity);
+});
+it("live identity discards verification arriving after signout and never pre-fills unbound provider records", async () => {
+  let finish!: (value: Response) => void;
+  const request = vi
+    .fn()
+    .mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = resolve;
+        }),
+    )
+    .mockResolvedValueOnce(Response.json({ access: "revoked" }));
+  vi.stubGlobal("fetch", request);
+  const service = createLiveIdentityService(),
+    signal = new AbortController().signal;
+  const pending = service.verify(challenge, "123456", true, signal);
+  await service.signOut(signal);
+  finish(Response.json(identity));
+  await expect(pending).rejects.toThrow("unavailable");
+  expect(service.current()).toBeNull();
+  expect(await service.profile(identity.email, signal)).toBeNull();
+  expect(request).toHaveBeenCalledTimes(2);
+});
+it("live identity rejects stale mismatched oversized and unavailable responses without demo success", async () => {
+  const service = createLiveIdentityService(),
+    signal = new AbortController().signal;
+  const request = vi.fn();
+  vi.stubGlobal("fetch", request);
+  for (const response of [
+    Response.json({ ...identity, email: "foreign@example.invalid" }),
+    Response.json({ ...identity, expiresAt: 1 }),
+    new Response("x".repeat(4097)),
+    new Response(null, { status: 503 }),
+  ]) {
+    request.mockResolvedValueOnce(response);
+    await expect(
+      service.verify(challenge, "123456", false, signal),
+    ).rejects.toThrow();
+    expect(service.current()).toBeNull();
+  }
+  expect(request).toHaveBeenCalledTimes(4);
+});

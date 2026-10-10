@@ -75,21 +75,40 @@ export const catalogueSchema = z
       )
       .max(CATALOGUE_RECORD_LIMIT),
   })
-  .superRefine((value, ctx) => {
-    for (const list of [value.services, value.instructors])
-      if (new Set(list.map((item) => item.id)).size !== list.length)
-        ctx.addIssue({
-          code: "custom",
-          message: "duplicate provider identity",
-        });
-    for (const service of value.services)
-      if (
-        service.instructorIds &&
-        new Set(service.instructorIds).size !== service.instructorIds.length
-      )
-        ctx.addIssue({ code: "custom", message: "duplicate relationship" });
-  });
+  .superRefine(checkCatalogue);
+function checkCatalogue(
+  value: {
+    services: { id: string; instructorIds: string[] | null }[];
+    instructors: { id: string }[];
+  },
+  ctx: z.RefinementCtx,
+) {
+  for (const list of [value.services, value.instructors])
+    if (new Set(list.map((item) => item.id)).size !== list.length)
+      ctx.addIssue({
+        code: "custom",
+        message: "duplicate provider identity",
+      });
+  for (const service of value.services)
+    if (
+      service.instructorIds &&
+      new Set(service.instructorIds).size !== service.instructorIds.length
+    )
+      ctx.addIssue({ code: "custom", message: "duplicate relationship" });
+}
 export type ProviderCatalogue = z.infer<typeof catalogueSchema>;
+// Public projection excludes the credential/company binding used by the cache.
+export const customerCatalogueSchema = z
+  .strictObject({
+    environment: z.literal("developer"),
+    observedAtMs: catalogueSchema.shape.observedAtMs,
+    complete: catalogueSchema.shape.complete,
+    services: catalogueSchema.shape.services,
+    instructors: catalogueSchema.shape.instructors,
+  })
+  .superRefine(checkCatalogue);
+export type CustomerCatalogue = z.infer<typeof customerCatalogueSchema>;
+
 export type CatalogueBinding = z.infer<typeof catalogueBindingSchema>;
 export const providerSelectionSchema = z.strictObject({
   serviceId: providerIdentifier,

@@ -1,16 +1,16 @@
-# North Star: Cloudflare developer integration
+# North Star: connected developer booking integration
 
-## Current preparation — SimplyBook-owned dynamic data
+## Governing continuation — 9 October 2026
 
-Routine supported instructor, service, name, price and schedule changes belong in SimplyBook, not source code. Preserve PR13's native normalization, protected checkout, expiry and readback. PR12 is owner-merged on main e91fb12; continue PR13's existing branch based on main. Completed8a4226b passed both CI jobs37890214635. The dynamic-data revision needs its own final checks/artifact.
+Deliver frontend → protected backend → current SimplyBook data → server-validated bookings → native SimplyBook/SBPay/HitPay checkout → authoritative reconciliation → protected confirmation. All agreed flows must work without Preview fallback, operator-injected success, browser payment hints or hardcoded provider records. SimplyBook owns routine supported catalogue/schedule changes. Separate checkout tab/manual return is accepted; automatic return is a separate enhancement. Reconciliation must eventually run without the browser.
 
-Catalogue IDs and current relationships come from supported complete provider lists and exact eligibility/slot reads. Approved40+10/players/shared-studio policy is separate from explicit preview fixtures and security/environment controls. Pre-booking refreshes current data, returns review changes without rewriting approved history, and refuses unsupported player/customer/tax/capacity mappings. No runtime demo fallback or new live authority. Provider access stays disabled/end0.
+One working agent;24 aggregate active hours,72 elapsed hours from2026-10-09T08:18:56Z,60 substantive loops,6 evidence-based repairs per root cause. PROGRESS records cumulative usage; no reset at checkpoint/resumption. Continue the next authorized ready task after every result/answer/failure. Stop only at completion, genuine external dependency with no independent work, unavailable execution capability, material risk or exhausted budget. No standing service or claim of work after runtime stops.
 
-PROGRESS owns the six-hour task ledger. Rules owns the hardcoding findings matrix and release/rollback. Service Contracts owns supported data/authentication paths and the current phased operation budget. Source/synthetic/CI preparation and draft updates only; no remote action or merge. No production, autonomous reconciliation, multi-session, M1/M2.5/M3.4 or owner/device acceptance follows.
+Source/research/offline/synthetic testing/scoped Cloud verification/docs/feature publication are authorized. Existing external budgets do not expand:238/248 management,13/14 deployments,8/80 provider;8 management and one deployment reserved for rollback. Exact external packages require approval, including read-only provider discovery, configuration, deployment, payment, email and background activation. No merge/main push, real-money payment/refund, production cutover or paid upgrade.
 
-Historical Experiment1 was the source/synthetic exception before queued M3.4: separate checkout with protected bounded status checking. Live native preparation remains unavailable; native return and no-return reconciliation remain separate. PROGRESS owns final receipts and unchanged accounting. M3.3, M1/M2.5/owner acceptance and Resend prerequisites remain preserved.
+Preserve last closed deployed source661cbf54/versiona0b4befb, applied0001–0008 and natural grant expiry; do not reapply migrations. Readiness mismatch/failed closure evidence remains. PR14 stays draft/unmerged; main757fd28. First priority is evidence-based readiness repair, then supported identity/live frontend/recovery work while native mapping facts are resolved. Service Contracts owns one end-to-end acceptance matrix; Rules owns engineering/deployment policy; Journey retains chronology. Developer completion, owner/device acceptance, client staging and production are separate.
 
-## Current outcome and authorization — 9 October 2026
+## Historical foundation outcome and authorization — 9 October 2026
 
 M3.3 adds minimal durable recovery scheduling/claims and retention safeguards under the explicit dependency exception. Reuse existing journal/coordinator/confirmation owners; no native reconciliation contract or automatic write replay is inferred. Source/local-runtime/CI only: no deployment, remote migration, provider calls, background activation or email setup. Exact acceptance/evidence is in PROGRESS; formal M1/M2.5 and owner acceptance remain pending.
 

@@ -6,7 +6,8 @@ export async function developerOperation(
   request: Request,
   env: Env,
   now: number,
-  operation: "provider_identity" | "historical_comparison",
+  operation:
+    "provider_identity" | "historical_comparison" | "native_field_discovery",
 ) {
   const bearer = request.headers.get("authorization") || "";
   if (!/^Bearer [a-f0-9]{64}$/.test(bearer))
@@ -14,15 +15,23 @@ export async function developerOperation(
   const hash = await digest(bearer.slice(7));
   const row = await env.STATE.withSession("first-primary")
     .prepare(
-      "SELECT state,result_json FROM developer_operations WHERE capability_hash=? AND operation=? AND expires_ms>?",
+      "SELECT state,result_json,expires_ms FROM developer_operations WHERE capability_hash=? AND operation=? AND expires_ms>?",
     )
     .bind(hash, operation, now)
-    .first<{ state: string; result_json: string | null }>();
+    .first<{ state: string; result_json: string | null; expires_ms: number }>();
   if (!row) throw new ApiError(401, "operator_access_denied");
   if (request.method === "GET" || row.state !== "granted")
     return {
       state: row.state,
       result: row.result_json ? (JSON.parse(row.result_json) as unknown) : null,
+      ...(operation === "native_field_discovery"
+        ? {
+            accounting:
+              await env.COORDINATOR.getByName(
+                coordinatorName,
+              ).discoveryAccounting(),
+          }
+        : {}),
     };
   if (String(env.PROVIDER_ACCESS) !== "trusted-reads")
     throw new ApiError(503, "provider_access_disabled");
@@ -39,6 +48,7 @@ export async function developerOperation(
       env.COORDINATOR.getByName(coordinatorName).providerRead(
         operation,
         traceId(),
+        row.expires_ms,
       ),
     );
     if (

@@ -304,8 +304,17 @@ async function runSelectedRecovery(
           ...row,
           effects: effects.results,
         });
-      } catch {
-        result = { kind: "retry" };
+      } catch (error) {
+        // A known native representation mismatch is not a transient transport
+        // failure. Preserve the attempt for review instead of repeating reads.
+        result = {
+          kind:
+            nativeAuthorized &&
+            error instanceof ApiError &&
+            error.code === "native_representation_unverified"
+              ? "unsupported"
+              : "retry",
+        };
       }
     }
     // Unregistered live readers remain unavailable; no mode-flag bypass.
@@ -375,7 +384,8 @@ export async function runNativeReadback(
   options: {
     scope: NativeScope;
     claimant: string;
-    phase: "initial" | "reserve";
+    phase: "initial" | "reserve" | "background";
+    invocationId?: string;
     grantExpiresMs: number;
     exchange: NativeExchange;
     signature: (bookingId: string) => Promise<string>;
@@ -390,10 +400,14 @@ export async function runNativeReadback(
     options.grantExpiresMs > Date.now() + 1800000
   )
     throw new ApiError(503, "native_readback_closed");
-  z.enum(["initial", "reserve"]).parse(options.phase);
+  z.enum(["initial", "reserve", "background"]).parse(options.phase);
+  if (options.phase === "background")
+    z.string()
+      .regex(/^[a-f0-9]{64}$/)
+      .parse(options.invocationId);
   z.string().uuid().parse(options.scope.attemptId);
   await verifyBindings(env);
-  const step = `native-readback:${options.phase}`;
+  const step = `native-readback:${options.phase}${options.phase === "background" ? `:${options.invocationId}` : ""}`;
   const reserved = await env.STATE.prepare(
     "INSERT INTO session_effects(attempt_id,step,outcome) SELECT id,?,'unknown' FROM attempts WHERE id=? AND association_json IS NOT NULL AND state IN ('dispatching','observed','recovery_required')",
   )

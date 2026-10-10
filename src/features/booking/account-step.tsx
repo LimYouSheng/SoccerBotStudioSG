@@ -1,29 +1,70 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icon";
 import { blankContact } from "@/domain/contact";
-import { services } from "@/services";
 import { DEMO_CODE } from "@/services/demo/identity";
-import type { AuthChallenge } from "@/services/contracts";
+import type { CustomerChallenge } from "@/services/contracts";
 import { useBooking } from "./provider";
 export function AccountStep() {
-  const { update } = useBooking(),
+  const { update, identityService } = useBooking(),
     router = useRouter();
   const [view, setView] = useState<"choice" | "email" | "code">("choice"),
     [email, setEmail] = useState(""),
     [code, setCode] = useState(""),
     [remember, setRemember] = useState(true),
     [error, setError] = useState(""),
-    [challenge, setChallenge] = useState<AuthChallenge | null>(null);
-  const [identity, setIdentity] = useState(() => services.identity.read());
-  function proceed(verifiedEmail?: string) {
+    [challenge, setChallenge] = useState<CustomerChallenge | null>(null);
+  const [identity, setIdentity] = useState(() => identityService.current());
+  const [busy, setBusy] = useState(false);
+  const active = useRef<AbortController | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    void identityService
+      .refresh(controller.signal)
+      .then((value) => {
+        if (!controller.signal.aborted) setIdentity(value);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setIdentity(null);
+      });
+    return () => {
+      controller.abort();
+      active.current?.abort();
+    };
+  }, [identityService]);
+  function cancel() {
+    active.current?.abort();
+    active.current = null;
+    setBusy(false);
+  }
+  async function perform(work: (signal: AbortSignal) => Promise<void>) {
+    if (active.current) return;
+    const controller = new AbortController();
+    active.current = controller;
+    setBusy(true);
+    setError("");
+    try {
+      await work(controller.signal);
+    } catch (e) {
+      if (!controller.signal.aborted)
+        setError(e instanceof Error ? e.message : "Please try again.");
+    } finally {
+      if (active.current === controller) {
+        active.current = null;
+        setBusy(false);
+      }
+    }
+  }
+  async function proceed(signal: AbortSignal, verifiedEmail?: string) {
+    if (!verifiedEmail) await identityService.guest(signal);
     const contact = verifiedEmail
-      ? services.identity.profile(verifiedEmail) || {
+      ? (await identityService.profile(verifiedEmail, signal)) || {
           ...blankContact(),
           email: verifiedEmail,
         }
       : blankContact();
+    if (signal.aborted) return;
     update({
       mode: verifiedEmail ? "member" : "guest",
       accountEmail: verifiedEmail || "",
@@ -32,19 +73,19 @@ export function AccountStep() {
     router.push("/book/session/");
   }
   function request() {
-    try {
-      setChallenge(services.identity.challenge(email));
+    void perform(async (signal) => {
+      const next = await identityService.challenge(email, signal);
+      if (signal.aborted) return;
+      setChallenge(next);
       setCode("");
-      setError("");
       setView("code");
-    } catch (e) {
-      setError((e as Error).message);
-    }
+    });
   }
   if (view === "choice")
     return (
       <>
         <h1 className="page-title">Start your booking</h1>
+        {error && <p role="alert">{error}</p>}
         <div className="access-options">
           <section className="surface access-option">
             <span className="auth-mark">
@@ -52,7 +93,11 @@ export function AccountStep() {
             </span>
             <h2>Book as a guest</h2>
             <p className="text-muted">Book without creating an account.</p>
-            <button className="button wide" onClick={() => proceed()}>
+            <button
+              className="button wide"
+              disabled={busy}
+              onClick={() => void perform((signal) => proceed(signal))}
+            >
               Continue as guest <Icon name="arrow" />
             </button>
           </section>
@@ -69,7 +114,13 @@ export function AccountStep() {
             <button
               className="button wide"
               onClick={() =>
-                identity ? proceed(identity.email) : setView("email")
+                identity
+                  ? void perform(async (signal) => {
+                      const current = await identityService.refresh(signal);
+                      if (!current) throw new Error("Verify your email again.");
+                      await proceed(signal, current.email);
+                    })
+                  : setView("email")
               }
             >
               {identity ? "Continue signed in" : "Continue with email"}
@@ -79,8 +130,10 @@ export function AccountStep() {
               <button
                 className="text-link"
                 onClick={() => {
-                  services.identity.signOut();
-                  setIdentity(null);
+                  void perform(async (signal) => {
+                    await identityService.signOut(signal);
+                    if (!signal.aborted) setIdentity(null);
+                  });
                 }}
               >
                 Use another email
@@ -110,19 +163,17 @@ export function AccountStep() {
         onSubmit={(event) => {
           event.preventDefault();
           if (view === "email") request();
-          else {
-            try {
+          else
+            void perform(async (signal) => {
               if (!challenge) return;
-              const signedIn = services.identity.verify(
+              const signedIn = await identityService.verify(
                 challenge,
                 code,
                 remember,
+                signal,
               );
-              proceed(signedIn.email);
-            } catch (e) {
-              setError((e as Error).message);
-            }
-          }
+              await proceed(signal, signedIn.email);
+            });
         }}
       >
         <span className="auth-mark">
@@ -143,14 +194,16 @@ export function AccountStep() {
               onChange={(e) => setEmail(e.target.value)}
               maxLength={120}
             />
-            <label className="check-label auth-remember">
-              <input
-                type="checkbox"
-                checked={remember}
-                onChange={(e) => setRemember(e.target.checked)}
-              />
-              Keep me signed in on this browser for 30 days.
-            </label>
+            {identityService.mode === "demo" && (
+              <label className="check-label auth-remember">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                />
+                Keep me signed in on this browser for 30 days.
+              </label>
+            )}
           </>
         ) : (
           <>
@@ -170,10 +223,12 @@ export function AccountStep() {
                 setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
               }
             />
-            <p className="auth-demo-code">
-              Demo code <strong>{DEMO_CODE}</strong>
-              <span>No email sent · Code valid for 10 minutes</span>
-            </p>
+            {identityService.mode === "demo" && (
+              <p className="auth-demo-code">
+                Demo code <strong>{DEMO_CODE}</strong>
+                <span>No email sent · Code valid for 10 minutes</span>
+              </p>
+            )}
           </>
         )}
         {error && (
@@ -182,7 +237,7 @@ export function AccountStep() {
           </p>
         )}
         <div className="actions">
-          <button type="submit" className="button">
+          <button type="submit" className="button" disabled={busy}>
             {view === "email" ? "Continue with email" : "Verify and continue"}
             <Icon name="arrow" />
           </button>
@@ -196,7 +251,10 @@ export function AccountStep() {
               <button
                 type="button"
                 className="text-link"
-                onClick={() => setView("email")}
+                onClick={() => {
+                  cancel();
+                  setView("email");
+                }}
               >
                 Change email
               </button>
@@ -207,13 +265,14 @@ export function AccountStep() {
           type="button"
           className="text-link auth-back"
           onClick={() => {
+            cancel();
             setView("choice");
             setError("");
           }}
         >
           Back to booking options
         </button>
-        {view === "email" && (
+        {view === "email" && identityService.mode === "demo" && (
           <p className="auth-demo">
             Email sign-in preview · No email will be sent.
           </p>

@@ -28,6 +28,11 @@ const backend = read("test-results/verification-worker.json");
 assert.equal(browser.status, "passed");
 assert.equal(browser.gitHead, checkout);
 assert.equal(browser.basePath, "");
+assert.equal(
+  browser.bookingMode,
+  "demo",
+  "Current release acceptance covers Preview composition only",
+);
 assert.equal(browser.browserExecuted, true);
 assert.equal(backend.status, "passed");
 assert.deepEqual(exportInventory("out"), browser.export.files);
@@ -81,13 +86,14 @@ const manifest = {
   testedCheckout: checkout,
   testedTree: git("rev-parse", "HEAD^{tree}"),
   basePath: "",
+  bookingMode: browser.bookingMode,
   providerAccess: "disabled",
   campaignEndMs: 0,
   pendingRemoteMigrations: [
-    "0006_recovery_work.sql",
-    "0007_confirmation_checking.sql",
+    "0009_identity_challenges.sql",
+    "0010_customer_read_scopes.sql",
   ],
-  priorWorkerVersion: "9d0a3c9f-b9a7-41df-907f-ba69f179cc68",
+  priorWorkerVersion: "a0b4befb-079b-4836-9967-b1f5fe101bd7",
   acceptance: "closed foundation only; native integration remains unavailable",
   files: exportInventory(directory),
 };

@@ -31,9 +31,12 @@ const screens = {
   confirmation: ConfirmationStep,
 };
 export function BookingPage({ step }: { step: BookingStep }) {
-  const { ready, draft, attempt, now } = useBooking(),
+  const { ready, draft, attempt, now, bookingService } = useBooking(),
     router = useRouter();
-  const actual = guardedStep(step, draft, attempt, now),
+  const actual =
+      bookingService.mode === "live" && step !== "account"
+        ? "session"
+        : guardedStep(step, draft, attempt, now),
     current = progress.findIndex(([id]) => id === step);
   useEffect(() => {
     if (ready && actual !== step) router.replace(`/book/${actual}/`);
@@ -55,7 +58,9 @@ export function BookingPage({ step }: { step: BookingStep }) {
               <Icon name="back" />
               {current ? "Back" : "Back to home"}
             </Link>
-            <span className="eyebrow text-muted">Booking</span>
+            <span className="eyebrow text-muted">
+              {bookingService.mode === "live" ? "Developer booking" : "Booking"}
+            </span>
           </div>
           <ol className="progress" aria-label="Booking progress">
             {progress.map(([id, label], index) => (

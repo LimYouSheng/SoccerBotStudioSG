@@ -934,3 +934,81 @@ test("synthetic fixture awaits evidence without a stale pending snapshot and reu
     await fixture.close();
   }
 });
+
+test("readiness reports effective expiry served identity and bounded nonce without provider calls", async () => {
+  const nonce = "ab".repeat(16);
+  const before = outbound;
+  const response = await mf.dispatchFetch(origin + "/api/health", {
+    headers: { "X-Readiness-Nonce": nonce },
+  });
+  const value = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(value.origin, origin);
+  assert.equal(value.readinessNonce, nonce);
+  assert.equal(value.effectiveProviderAccess, "disabled");
+  assert.equal(typeof value.campaignEndMs, "number");
+  assert.equal(value.versionId, null);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  const malformed = await mf.dispatchFetch(origin + "/api/health", {
+    headers: { "X-Readiness-Nonce": "untrusted" },
+  });
+  assert.equal((await malformed.json()).readinessNonce, null);
+  assert.equal(outbound, before);
+});
+
+test("single statement discovery closure returns expiry then independent D1 read preserves evidence", async () => {
+  const { expireGrantSql, readGrantSql, fingerprintRows } =
+    await import("../../scripts/developer-readiness.mjs");
+  for (const name of [
+    "0002_developer_operations.sql",
+    "0004_operator_read_scopes.sql",
+    "0008_native_field_discovery.sql",
+  ])
+    await db.exec(
+      readFileSync(`migrations/${name}`, "utf8")
+        .replace(/^--.*$/gm, "")
+        .replace(/\n/g, " "),
+    );
+  const hash = "c".repeat(64),
+    other = "d".repeat(64);
+  await db
+    .prepare(
+      "INSERT INTO developer_operations VALUES(?,'native_field_discovery',?,'granted',NULL)",
+    )
+    .bind(hash, 2000)
+    .run();
+  await db
+    .prepare(
+      "INSERT INTO developer_operations VALUES(?,'native_field_discovery',?,'complete',?)",
+    )
+    .bind(other, 3000, '{"evidence":"retained"}')
+    .run();
+  const before = await db
+    .prepare("SELECT * FROM developer_operations WHERE capability_hash=?")
+    .bind(other)
+    .all();
+  const expired = await db.prepare(expireGrantSql).bind(999, hash).all();
+  assert.deepEqual(expired.results, [
+    { state: "granted", result_json: null, expires_ms: 999 },
+  ]);
+  assert.deepEqual(
+    (await db.prepare(readGrantSql).bind(hash).all()).results,
+    expired.results,
+  );
+  assert.equal(
+    (await db.prepare(expireGrantSql).bind(5000, hash).first()).expires_ms,
+    999,
+  );
+  assert.deepEqual(
+    (await db.prepare(expireGrantSql).bind(888, "e".repeat(64)).all()).results,
+    [],
+  );
+  const after = await db
+    .prepare("SELECT * FROM developer_operations WHERE capability_hash=?")
+    .bind(other)
+    .all();
+  assert.equal(
+    fingerprintRows(before.results, "capability_hash"),
+    fingerprintRows(after.results, "capability_hash"),
+  );
+});

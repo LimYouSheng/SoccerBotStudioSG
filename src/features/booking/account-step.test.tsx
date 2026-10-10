@@ -1,9 +1,15 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, test, vi } from "vitest";
+import { demoCustomerIdentity } from "@/services/demo/identity";
 import { AccountStep } from "./account-step";
 const mocks = vi.hoisted(() => ({ update: vi.fn(), push: vi.fn() }));
-vi.mock("./provider", () => ({ useBooking: () => ({ update: mocks.update }) }));
+vi.mock("./provider", () => ({
+  useBooking: () => ({
+    update: mocks.update,
+    identityService: demoCustomerIdentity,
+  }),
+}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
 beforeEach(() => {
   localStorage.clear();

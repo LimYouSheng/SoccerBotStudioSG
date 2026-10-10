@@ -13,6 +13,7 @@ const files = exportInventory(directory);
 delete files["manifest.json"];
 assert.deepEqual(files, manifest.files);
 assert.equal(config.no_bundle, true);
+assert.equal(manifest.bookingMode, "demo");
 assert.equal(config.vars.SOURCE_REVISION, manifest.sourceRevision);
 assert.equal(config.vars.PROVIDER_ACCESS, "disabled");
 assert.equal(config.vars.CAMPAIGN_END_MS, "0");
@@ -123,7 +124,50 @@ try {
     .run();
   const before = await db.prepare("SELECT * FROM attempts").first();
   const effects = await db.prepare("SELECT * FROM dispatches").all();
+  await db
+    .prepare(
+      "INSERT INTO developer_operations VALUES('synthetic-retained','historical_comparison',1,'running',NULL)",
+    )
+    .run();
+  const grants = (await db.prepare("SELECT * FROM developer_operations").all())
+    .results;
+  assert.deepEqual(manifest.pendingRemoteMigrations, [
+    "0009_identity_challenges.sql",
+    "0010_customer_read_scopes.sql",
+  ]);
+  // Old-state compatibility remains tested locally, never re-applied remotely.
+  for (const name of names.slice(5, 8)) await migrate(name);
+  const appliedEight = {
+    attempts: (await db.prepare("SELECT * FROM attempts ORDER BY id").all())
+      .results,
+    grants: (
+      await db
+        .prepare("SELECT * FROM developer_operations ORDER BY capability_hash")
+        .all()
+    ).results,
+  };
   for (const name of manifest.pendingRemoteMigrations) await migrate(name);
+  assert.deepEqual(
+    (await db.prepare("SELECT * FROM attempts ORDER BY id").all()).results,
+    appliedEight.attempts,
+  );
+  assert.deepEqual(
+    (
+      await db
+        .prepare("SELECT * FROM developer_operations ORDER BY capability_hash")
+        .all()
+    ).results,
+    appliedEight.grants,
+  );
+  assert.deepEqual(
+    (await db.prepare("SELECT * FROM developer_operations").all()).results,
+    grants,
+  );
+  await db
+    .prepare(
+      "INSERT INTO developer_operations VALUES('synthetic-discovery','native_field_discovery',1,'blocked',NULL)",
+    )
+    .run();
   const after = await db.prepare("SELECT * FROM attempts").first();
   const { confirmation_next_ms, confirmation_checks, ...retained } = after;
   assert.deepEqual(retained, before);
@@ -179,7 +223,7 @@ try {
         checks: [
           "file hashes",
           "root export",
-          "0006 then 0007 preserve existing identity and unknown effects",
+          "0001–0008 compatibility and pending0009–0010 preserve all existing columns identities unknown effects and operator grants",
           "exact Worker revision",
           "protected checkout unavailable",
           "durable pending confirmation",

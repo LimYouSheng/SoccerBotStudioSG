@@ -1,3 +1,8 @@
+import { z } from "zod";
+import { intentSchema, associationSchema } from "./journal";
+import { runNativeReadback } from "./recovery";
+import { storedNativeSignature } from "./native-adapter";
+import { providerSecrets } from "./provider-transport";
 import { DurableObject } from "cloudflare:workers";
 import { traced, measure, instrumentStorage } from "./diagnostics";
 import { ApiError, policy } from "./policy";
@@ -118,8 +123,10 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     };
   }
   async providerRead(
-    operation: "provider_identity" | "historical_comparison",
+    operation:
+      "provider_identity" | "historical_comparison" | "native_field_discovery",
     correlationId: string,
+    expiresMs?: number,
   ) {
     return traced(correlationId, "coordinator", async () => {
       policy(this.env);
@@ -128,10 +135,47 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       try {
         if (
           operation !== "provider_identity" &&
-          operation !== "historical_comparison"
+          operation !== "historical_comparison" &&
+          operation !== "native_field_discovery"
         )
           throw new ApiError(503, "provider_operation_unavailable");
         const control = this.providerControl();
+        if (operation === "native_field_discovery") {
+          const now = Date.now();
+          if (
+            !Number.isSafeInteger(expiresMs) ||
+            !expiresMs ||
+            expiresMs <= now ||
+            expiresMs > now + 180000
+          )
+            throw new ApiError(503, "discovery_window_invalid");
+          const initial = this.providerAccounting();
+          if (initial.used !== 8 || initial.active !== 0)
+            throw new ApiError(503, "discovery_accounting_changed");
+          let reserved = 0;
+          let lastDispatch = 0;
+          const bounded = {
+            ...control,
+            reserve: async () => {
+              const delay = Math.max(0, lastDispatch + 300 - Date.now());
+              if (delay)
+                await new Promise((resolve) => setTimeout(resolve, delay));
+              if (
+                Date.now() + 15000 >= expiresMs ||
+                reserved >= 5 ||
+                this.providerAccounting().used >= 13
+              )
+                throw new ApiError(503, "discovery_limit_reached");
+              reserved++;
+              lastDispatch = Date.now();
+              return control.reserve();
+            },
+          };
+          const result = await this.provider.discoverFields(this.env, bounded);
+          if (Date.now() >= expiresMs)
+            throw new ApiError(503, "discovery_expired");
+          return { ...result, accounting: this.providerAccounting() };
+        }
         const result =
           operation === "provider_identity"
             ? await this.provider.identity(this.env, control)
@@ -148,6 +192,170 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         };
       }
     });
+  }
+  async customerCatalogue(
+    scope: { startingUsed: number; maxCalls: number; expiresMs: number },
+    correlationId: string,
+  ) {
+    return traced(correlationId, "coordinator", async () => {
+      const p = policy(this.env),
+        initial = this.providerAccounting();
+      if (
+        p.PROVIDER_ACCESS !== "trusted-reads" ||
+        Date.now() >= p.CAMPAIGN_END_MS ||
+        !Number.isSafeInteger(scope.expiresMs) ||
+        scope.expiresMs <= Date.now() ||
+        scope.expiresMs > Date.now() + 180000 ||
+        scope.maxCalls !== 6 ||
+        !Number.isSafeInteger(scope.startingUsed) ||
+        scope.startingUsed < 0 ||
+        scope.startingUsed > 58 ||
+        initial.used !== scope.startingUsed ||
+        initial.active !== 0
+      )
+        throw new ApiError(503, "catalogue_scope_unavailable");
+      const control = this.providerControl();
+      let count = 0,
+        last = 0;
+      const bounded = {
+        ...control,
+        reserve: async () => {
+          const delay = Math.max(0, last + 300 - Date.now());
+          if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+          if (
+            Date.now() + 15000 >=
+              Math.min(scope.expiresMs, p.CAMPAIGN_END_MS) ||
+            count >= 6 ||
+            this.providerAccounting().used >= scope.startingUsed + 6
+          )
+            throw new ApiError(503, "catalogue_scope_exhausted");
+          count++;
+          last = Date.now();
+          return control.reserve();
+        },
+      };
+      await this.provider.identity(this.env, bounded);
+      const result = await this.provider.catalogue(this.env, bounded, true);
+      return {
+        environment: result.binding.environmentId,
+        observedAtMs: result.observedAtMs,
+        complete: result.complete,
+        services: result.services,
+        instructors: result.instructors,
+      };
+    });
+  }
+  async nativeRecovery(
+    scope: {
+      attemptId: string;
+      startingUsed: number;
+      maximumUsed: number;
+      expiresMs: number;
+      invocationId: string;
+    },
+    correlationId: string,
+  ) {
+    return traced(correlationId, "coordinator", async () => {
+      const p = policy(this.env),
+        initial = this.providerAccounting(),
+        now = Date.now();
+      z.string().uuid().parse(scope.attemptId);
+      z.string()
+        .regex(/^[a-f0-9]{64}$/)
+        .parse(scope.invocationId);
+      if (
+        p.PROVIDER_ACCESS !== "trusted-reads" ||
+        now >= p.CAMPAIGN_END_MS ||
+        !Number.isSafeInteger(scope.expiresMs) ||
+        scope.expiresMs <= now ||
+        scope.expiresMs > now + 180000 ||
+        !Number.isSafeInteger(scope.startingUsed) ||
+        !Number.isSafeInteger(scope.maximumUsed) ||
+        scope.startingUsed < 0 ||
+        scope.maximumUsed > 64 ||
+        scope.maximumUsed - scope.startingUsed > 30 ||
+        scope.maximumUsed - scope.startingUsed < 6 ||
+        initial.used < scope.startingUsed ||
+        initial.used + 6 > scope.maximumUsed ||
+        initial.active !== 0
+      )
+        throw new ApiError(503, "recovery_window_unavailable");
+      const row = await this.env.STATE.withSession("first-primary")
+        .prepare(
+          "SELECT a.intent_json,a.association_json FROM attempts a JOIN recovery_work r ON r.attempt_id=a.id WHERE a.id=? AND a.state IN ('dispatching','observed','recovery_required') AND r.state IN ('due','claimed') AND r.ready_ms<=? AND r.tries<5",
+        )
+        .bind(scope.attemptId, now)
+        .first<{ intent_json: string; association_json: string | null }>();
+      if (!row) return { outcomes: [], reads: 0 };
+      const intent = intentSchema.parse(JSON.parse(row.intent_json)),
+        refs = associationSchema.parse(
+          JSON.parse(row.association_json || "null"),
+        );
+      if (
+        intent.accountId !== p.DEPLOYMENT_ACCOUNT_ID ||
+        intent.environmentId !== p.ENVIRONMENT ||
+        intent.sessions.length !== 1 ||
+        refs.bookingIds.length !== 1
+      )
+        throw new ApiError(503, "native_recovery_scope_mismatch");
+      const secret: unknown = Reflect.get(
+        this.env,
+        "SIMPLYBOOK_DEV_SIGNING_SECRET",
+      );
+      if (typeof secret !== "string")
+        throw new ApiError(503, "native_signing_unavailable");
+      const signature = await storedNativeSignature(
+        this.env.STATE,
+        scope.attemptId,
+        refs.bookingIds[0],
+        secret,
+      );
+      const control = this.providerControl();
+      let count = 0,
+        last = 0;
+      const bounded = {
+        ...control,
+        reserve: async () => {
+          const delay = Math.max(0, last + 300 - Date.now());
+          if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+          if (
+            Date.now() + 15000 >=
+              Math.min(scope.expiresMs, p.CAMPAIGN_END_MS) ||
+            count >= 6 ||
+            this.providerAccounting().used >= scope.maximumUsed
+          )
+            throw new ApiError(503, "recovery_window_exhausted");
+          count++;
+          last = Date.now();
+          return control.reserve();
+        },
+      };
+      await this.provider.identity(this.env, bounded);
+      const company = providerSecrets(this.env).company;
+      return runNativeReadback(this.env, {
+        scope: {
+          attemptId: scope.attemptId,
+          companyLogin: company,
+          timezone: "Asia/Singapore",
+          intent,
+        },
+        claimant: `background-${scope.invocationId.slice(0, 32)}`,
+        phase: "background",
+        invocationId: scope.invocationId,
+        grantExpiresMs: scope.expiresMs,
+        exchange: (operation, signal) =>
+          this.provider.nativeRead(this.env, bounded, operation, signal),
+        signature: async (bookingId) => {
+          if (bookingId !== refs.bookingIds[0])
+            throw new ApiError(503, "native_recovery_scope_mismatch");
+          return signature;
+        },
+      });
+    });
+  }
+  discoveryAccounting() {
+    policy(this.env);
+    return this.providerAccounting();
   }
   private providerAccounting() {
     const used =

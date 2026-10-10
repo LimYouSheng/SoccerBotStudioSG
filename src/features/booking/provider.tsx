@@ -16,6 +16,7 @@ import {
   type BookingDraft,
   type Outcome,
 } from "@/domain/booking";
+import type { CustomerIdentityService } from "@/services/contracts";
 import { services } from "@/services";
 import { defineBookingService } from "@/services/booking";
 import {
@@ -43,6 +44,7 @@ interface BookingContextValue extends StoredBooking {
   now: number;
   revision: number;
   bookingService: BookingService;
+  identityService: CustomerIdentityService;
   action: ActionState;
   cancel: () => void;
   update: (change: Partial<BookingDraft>) => void;
@@ -56,9 +58,11 @@ const Context = createContext<BookingContextValue | null>(null);
 export function BookingProvider({
   children,
   bookingService = services.booking,
+  identityService = services.customerIdentity,
 }: {
   children: ReactNode;
   bookingService?: BookingService;
+  identityService?: CustomerIdentityService;
 }) {
   const service = useMemo(
     () => defineBookingService(bookingService),
@@ -100,9 +104,9 @@ export function BookingProvider({
   const sessionKey = useCallback(
     () =>
       value.draft.mode === "member"
-        ? JSON.stringify(services.identity.read())
+        ? JSON.stringify(identityService.current())
         : "guest",
-    [value.draft.mode],
+    [value.draft.mode, identityService],
   );
   const availability = useBookingAvailability(
     service,
@@ -193,7 +197,7 @@ export function BookingProvider({
       active.current = request; // Synchronous guard also catches same-turn double clicks.
       setAction({ status: "loading", operation });
       const identity = () =>
-        current.draft.mode === "member" ? services.identity.read() : null;
+        current.draft.mode === "member" ? identityService.current() : null;
       const session = identity();
       const sessionKey = JSON.stringify(session);
       const isCurrent = () =>
@@ -262,7 +266,7 @@ export function BookingProvider({
         if (active.current === request) active.current = null;
       }
     },
-    [service, commit, setAction],
+    [service, commit, setAction, identityService],
   );
   useEffect(() => {
     if (value.attempt?.status !== "checking") return;
@@ -280,6 +284,7 @@ export function BookingProvider({
         ...value,
         now,
         bookingService: service,
+        identityService,
         action,
         cancel,
         availability,
