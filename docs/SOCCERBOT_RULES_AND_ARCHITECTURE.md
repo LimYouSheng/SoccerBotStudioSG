@@ -1,6 +1,12 @@
 # SoccerBotStudio — Rules & Architecture
 
-## A3 quick rebooking and remembered-device decision — 10 October 2026
+## Remembered identity source checkpoint — 10 October 2026
+
+Owner authorized source implementation, synthetic checks and one new feature PR from merged main2f08b1c. M3.5 now has source implementation of explicit default-off90-day consent, digest-only remembered families, atomic bounded rotation, short identity restoration, device sign-out and freshly verified all-device revocation. Service Contracts owns the exact lifecycle/errors/recovery. Migration0013 is additive and source-only; applied0001–0012 remain byte-identical. Remembered credentials never return a previous guest/attempt capability or extend its lifetime. Existing booking/recovery records survive revocation.
+
+This is not A3 or North Star acceptance. M3.6 exact provider binding/prefill, live rejection/replay proof, browser/device acceptance and end-to-end A1–A7 remain open. Main2f08b1c independently passed CI38041760947; no new developer deployment followed that merge. Sourcef2795a1/version3bb98b99-1fc7-4496-a534-c2e0285212fb remains the last observed closed deployment. Both email windows stay closed, providers disabled/end0. Current source work grants no remote migration, activation, merge, production or payment authority. Campaign counters/unknown intervals continue in PROGRESS.
+
+## Historical A3 quick rebooking and remembered-device decision — 10 October 2026
 
 Source re-read: uploaded APP404-SBS-Q-WEB-001.pdf, dated4October2026,p3 A3, SHA256 `808f6aaad7c33e156db554cd43826d3d7d82a267a90319c9366b1db99d2557fa`. It requires email verification before approved SimplyBook name/phone prefill, customer review/correction, safe duplicate/shared-email handling, expiring single-use verification and rate limits. It does not specify a remembered-session duration or mandate verification on every visit. Keep quotation requirements distinct from engineering policy; no commercial amendment or signed-contract claim.
 
@@ -715,6 +721,8 @@ M3.4 checkpoint10October: real developer emailA/B receipt, latest-code verificat
 Depends on: M3.2–M3.3; sender setup.
 
 ### M3.5 — Protected sessions and guest checkout capability
+
+Source checkpoint10October: implemented and focused synthetic-tested; full CI/live/device acceptance remains open. The current lifecycle is in Service Contracts; the acceptance requirements below remain mandatory.
 
 Implement the owner-selected opt-in90-day remembered-device policy separately from existing short verified/guest access. Reuse identity/access/D1 owners, server-only random-token digests, Secure/HttpOnly/SameSite cookies, exact origin/CSRF checks, explicit absolute expiry, revocation and rotation/reuse handling. Remember me defaults off. Design concurrency-safe rotation and sign-out/all-device revocation before code; do not extend financial/guest attempt capabilities or erase unresolved attempt history. A fresh email verification is required for a new90-day lifetime after expiry/revocation/new-device entry. Durable cookie alone is insufficient without a valid server record.
 

@@ -93,6 +93,7 @@ beforeEach(async () => {
   for (const name of [
     "0001_developer_journal.sql",
     "0009_identity_challenges.sql",
+    "0013_remembered_identity.sql",
     "0011_identity_delivery.sql",
   ])
     await db.exec(

@@ -1,17 +1,17 @@
 # North Star: quick rebooking through a connected customer website
 
-## Proposed next campaign — 10 October 2026
+## Authorized source continuation — 10 October 2026
 
 A returning customer on a remembered device can resume with a server-verified identity, review the correct current SimplyBook name/phone, choose sessions, and complete supported native payment with authoritative confirmation. New-device, expired-session and signed-out customers verify again. No demo fallback, guessed customer match or browser payment claim can produce success.
 
-The immediate vertical slice is **A3 quick rebooking**, using existing M3.4–M3.6. The wider North Star still includes A2/A4–A7 booking, capacity, multi-session acceptance, native SimplyBook/SBPay/HitPay payment and protected confirmation. A3 success alone is not end-to-end completion.
+The complete objective is quoted A1–A7 together, written client acceptance and separately approved launch. The immediate vertical slice is **A3 quick rebooking**, using existing M3.4–M3.6. The wider North Star still includes A2/A4–A7 booking, capacity, multi-session acceptance, native SimplyBook/SBPay/HitPay payment and protected confirmation. A3 success alone is not end-to-end completion.
 
 ## Source and current baseline
 
 - Uploaded APP404-SBS-Q-WEB-001,4October2026,p3 A3: verify email before approved SimplyBook name/phone prefill; permit review/correction; handle duplicate/shared emails safely; use expiring single-use verification and rate limits. Rules records the source hash and distinguishes quotation terms from owner decisions.
 - Owner decision10October: opt-in Remember me lasts **90 days from successful email verification**, absolute expiry with no silent sliding extension. This duration is an implementation choice, not wording in the quotation. The current30-minute guest-bound verified session does not implement it.
 - Proved in the controlled developer test: two email receipts, codeB redemption and sign-out; server evidence confirms revoked verified access. Both delivery windows closed; provider access disabled. Old-code/replay live rejection and full device acceptance remain open.
-- Not implemented/accepted: persistent remembered-device sessions, live SimplyBook customer prefill, complete native booking/payment/reconciliation journey. Developer happy-path evidence does not close A3.
+- M3.5 persistent identity is now source-implemented with synthetic checks; live/device acceptance remains pending. Live SimplyBook customer prefill and the complete native booking/payment/reconciliation journey remain unaccepted. Developer happy-path evidence does not close A3.
 
 ## Ordered game plan
 
@@ -37,11 +37,11 @@ Provider contract research may proceed alongside the session design within the s
 
 ## Authority, budgets and release path
 
-This is a documentation/planning update and proposed next implementation campaign, not a new live-execution grant. Existing authorizations persist only in their original scope. The31/4/24 replacement packet closed at27 management/3 deployments/11HTTP; the original packet closed at34/3/13. Preserve management311 plus unknown Dashboard activity, deployment lower bound21, email2, bot2, provider8/80 and historical80. No reset, third window, automatic retries or use of safety reserves for new setup. New external work requires a concrete tested packet, finite costs, closure/rollback and approval.
+Source implementation, synthetic checks and one feature PR are authorized. This is not a new live-execution grant or budget reset. Existing authorizations persist only in their original scope. The31/4/24 replacement packet closed at27 management/3 deployments/11HTTP; the original packet closed at34/3/13. Preserve management311 plus unknown Dashboard activity, deployment lower bound21, email2, bot2, provider8/80 and historical80. No reset, third window, automatic retries or use of safety reserves for new setup. New external work requires a concrete tested packet, finite costs, closure/rollback and approval.
 
 One agent; existing24 active-hour/72 elapsed-hour/60-loop/6-repair bounds continue from9October08:18:56UTC, deadline12October16:18:56SGT. The next campaign's proposed scope does not restart that clock or conceal unmeasured active time. No browser execution by the assistant, secret installation, merge/main push, production, paid upgrade or real payment/refund is included.
 
-PR14 is on main; PR16 merged into its already-merged feature branch and is **not** yet on main. PR15 is superseded/closed. PR17 contains the remaining code and now targets main; review its complete final diff/checks before any separately authorized merge. Deployed sourcef2795a1 remains distinct from subsequent documentation commits. Rules owns policy, Service Contracts owns operations/acceptance, Journey owns receipts; PROGRESS is the single current task ledger.
+PR17 merged at2f08b1c; PR16 functionality reached main through it. PR14 merged and PR15 is superseded/closed. Main independently passed CI38041760947. New source work uses a new feature branch/PR; no further merge is authorized. Deployed sourcef2795a1 remains distinct from subsequent documentation commits. Rules owns policy, Service Contracts owns operations/acceptance, Journey owns receipts; PROGRESS is the single current task ledger.
 
 ## Deferred CLOUD-01 — incomplete
 

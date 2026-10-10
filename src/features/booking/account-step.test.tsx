@@ -47,3 +47,26 @@ test("email form rejects a wrong verification code and accepts the corrected cod
   );
   expect(mocks.push).toHaveBeenCalledWith("/book/session/");
 });
+test("remember me is explicit default off and opted in preview expiry stays ninety days from verification", async () => {
+  const user = userEvent.setup();
+  render(<AccountStep />);
+  await user.click(screen.getByRole("button", { name: "Continue with email" }));
+  const remember = screen.getByRole("checkbox", {
+    name: "Remember me on this device for 90 days.",
+  });
+  expect(remember).not.toBeChecked();
+  await user.click(remember);
+  await user.type(
+    screen.getByLabelText("Email address"),
+    "remember@example.invalid",
+  );
+  await user.click(screen.getByRole("button", { name: "Continue with email" }));
+  await user.type(screen.getByLabelText("Verification code"), "360360");
+  const before = Date.now();
+  await user.click(screen.getByRole("button", { name: "Verify and continue" }));
+  const saved = JSON.parse(
+    localStorage.getItem("soccerbot-next-demo-identity")!,
+  );
+  expect(saved.expiresAt).toBeGreaterThanOrEqual(before + 90 * 86400000);
+  expect(saved.expiresAt).toBeLessThanOrEqual(Date.now() + 90 * 86400000);
+});

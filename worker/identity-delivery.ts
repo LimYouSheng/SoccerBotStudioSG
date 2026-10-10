@@ -89,7 +89,11 @@ async function inputBody(request: Request): Promise<unknown> {
     void reader.cancel().catch(() => {});
   }
 }
-export async function identityDelivery(request: Request, env: Env) {
+export async function identityDelivery(
+  request: Request,
+  env: Env,
+  cookies: string[] = [],
+) {
   if (request.method !== "POST")
     throw new ApiError(405, "operation_unavailable");
   await verifyBindings(env);
@@ -103,7 +107,14 @@ export async function identityDelivery(request: Request, env: Env) {
   if (!email.success || email.data.email !== window.recipient)
     throw new ApiError(400, "verification_unavailable");
   if (new URL(request.url).pathname === "/api/identity/verify")
-    return verifyIdentityChallenge(request, env, raw, pepper);
+    return verifyIdentityChallenge(
+      request,
+      env,
+      raw,
+      pepper,
+      Date.now,
+      cookies,
+    );
   // CF-Connecting-IP is supplied by the Worker edge, never X-Forwarded-For or JSON.
   const source = request.headers.get("CF-Connecting-IP");
   if (!source || source.length > 64 || !/^[a-fA-F0-9:.]+$/.test(source))

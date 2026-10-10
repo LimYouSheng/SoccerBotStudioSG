@@ -138,10 +138,7 @@ try {
   const grants = (await db.prepare("SELECT * FROM developer_operations").all())
     .results;
   assert.deepEqual(manifest.pendingRemoteMigrations, [
-    "0009_identity_challenges.sql",
-    "0010_customer_read_scopes.sql",
-    "0011_identity_delivery.sql",
-    "0012_identity_replacement_window.sql",
+    "0013_remembered_identity.sql",
   ]);
   // Old-state compatibility remains tested locally, never re-applied remotely.
   for (const name of names.slice(5, 8)) await migrate(name);
@@ -154,7 +151,35 @@ try {
         .all()
     ).results,
   };
+  for (const name of names.slice(8, 12)) await migrate(name);
+  // Preserve every old table and column through the additive remembered schema.
+  const priorTables = (
+    await db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+      )
+      .all()
+  ).results.map((row) => row.name);
+  const snapshots = new Map();
+  for (const table of priorTables)
+    snapshots.set(
+      table,
+      (await db.prepare(`SELECT * FROM "${table}" ORDER BY rowid`).all())
+        .results,
+    );
   for (const name of manifest.pendingRemoteMigrations) await migrate(name);
+  for (const table of priorTables)
+    assert.deepEqual(
+      (await db.prepare(`SELECT * FROM "${table}" ORDER BY rowid`).all())
+        .results,
+      snapshots.get(table),
+    );
+  assert.equal(
+    (await db.prepare("SELECT COUNT(*) AS n FROM remembered_identity").first())
+      .n,
+    0,
+  );
+
   assert.equal(
     (
       await db
