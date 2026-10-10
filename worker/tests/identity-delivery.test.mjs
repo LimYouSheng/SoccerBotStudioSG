@@ -108,6 +108,7 @@ afterEach(async () => {
 });
 async function open(overrides = {}) {
   const w = {
+    singleton: 1,
     revision,
     origin,
     sender: "SoccerBotStudioSG Dev <noreply@auth.app404.ai>",
@@ -118,9 +119,9 @@ async function open(overrides = {}) {
   };
   await db
     .prepare(
-      "INSERT INTO identity_delivery_window VALUES(1,?,?,?,?,?,?,'open')",
+      "INSERT INTO identity_delivery_window VALUES(?,?,?,?,?,?,?,'open')",
     )
-    .bind(w.revision, w.origin, w.sender, w.email, w.start, w.end)
+    .bind(w.singleton, w.revision, w.origin, w.sender, w.email, w.start, w.end)
     .run();
 }
 async function guest() {
@@ -421,4 +422,139 @@ test("delivery rejects expired future and unparseable bot timestamps", async () 
   }
   assert.equal(await count("email"), 0);
   assert.equal(calls.length, 3);
+});
+
+async function replacementMigration() {
+  await db.exec(
+    readFileSync("migrations/0012_identity_replacement_window.sql", "utf8")
+      .replace(/^--.*$/gm, "")
+      .replace(/\n/g, " "),
+  );
+}
+test("delivery replacement preserves closed history and permits one unused replacement across restart", async () => {
+  await open();
+  await db.exec(
+    "UPDATE identity_delivery_window SET state='closed' WHERE singleton=1",
+  );
+  const original = await db
+    .prepare("SELECT * FROM identity_delivery_window")
+    .first();
+  await replacementMigration();
+  assert.deepEqual(
+    await db.prepare("SELECT * FROM identity_delivery_window").first(),
+    original,
+  );
+  await open({ singleton: 2, start: Date.now(), end: Date.now() + 1190000 });
+  await mf.dispose();
+  await start();
+  assert.equal((await challenge(await guest())).status, 200);
+  assert.equal(await count("bot"), 1);
+  assert.equal(await count("email"), 1);
+  assert.deepEqual(
+    await db
+      .prepare("SELECT * FROM identity_delivery_window WHERE singleton=1")
+      .first(),
+    original,
+  );
+  await db.exec(
+    "UPDATE identity_delivery_window SET state='closed' WHERE singleton=2",
+  );
+  assert.equal((await challenge(await guest())).status, 503);
+  await assert.rejects(open({ singleton: 3 }));
+  await assert.rejects(
+    db.exec(
+      "UPDATE identity_delivery_window SET state='open' WHERE singleton=2",
+    ),
+    /identity_window_immutable/,
+  );
+  await assert.rejects(
+    db.exec("DELETE FROM identity_delivery_window"),
+    /identity_window_preserve/,
+  );
+});
+test("delivery replacement rejects overlap missing predecessor and changed expiry", async () => {
+  await replacementMigration();
+  await assert.rejects(
+    open({ singleton: 2 }),
+    /identity_window_replacement_denied/,
+  );
+  await open();
+  await assert.rejects(
+    open({ singleton: 2 }),
+    /identity_window_replacement_denied/,
+  );
+  await assert.rejects(
+    db.exec(
+      "UPDATE identity_delivery_window SET expires_ms=expires_ms+1 WHERE singleton=1",
+    ),
+    /identity_window_immutable/,
+  );
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT COUNT(*) AS n FROM identity_delivery_window")
+        .first()
+    ).n,
+    1,
+  );
+  assert.equal(calls.length, 0);
+});
+test("delivery replacement preserves charged unknown dispatch and refuses a budget reset", async () => {
+  await open();
+  await db
+    .prepare(
+      "INSERT INTO identity_delivery_dispatches VALUES('retained','bot','synthetic','synthetic',?,'unknown')",
+    )
+    .bind(Date.now())
+    .run();
+  await db.exec(
+    "UPDATE identity_delivery_window SET state='closed' WHERE singleton=1",
+  );
+  const before = (
+    await db.prepare("SELECT * FROM identity_delivery_dispatches").all()
+  ).results;
+  await replacementMigration();
+  await assert.rejects(
+    open({ singleton: 2 }),
+    /identity_window_replacement_denied/,
+  );
+  assert.deepEqual(
+    (await db.prepare("SELECT * FROM identity_delivery_dispatches").all())
+      .results,
+    before,
+  );
+  assert.equal((await challenge(await guest())).status, 503);
+  assert.equal(calls.length, 0);
+});
+test("delivery replacement keeps global dispatch limits and denies a foreign release", async () => {
+  await open();
+  await db.exec(
+    "UPDATE identity_delivery_window SET state='closed' WHERE singleton=1",
+  );
+  await replacementMigration();
+  await open({
+    singleton: 2,
+    start: Date.now(),
+    end: Date.now() + 1190000,
+    revision: "b".repeat(40),
+  });
+  assert.equal((await challenge(await guest())).status, 503);
+  assert.equal(calls.length, 0);
+  for (let i = 0; i < 3; i++)
+    await db
+      .prepare(
+        "INSERT INTO identity_delivery_dispatches VALUES(?,'email','synthetic','synthetic',?,'unknown')",
+      )
+      .bind("limit-" + i, Date.now())
+      .run();
+  await assert.rejects(
+    db
+      .prepare(
+        "INSERT INTO identity_delivery_dispatches VALUES('excess','email','synthetic','synthetic',?,'unknown')",
+      )
+      .bind(Date.now())
+      .run(),
+    /identity_delivery_limited/,
+  );
+  assert.equal(await count("email"), 3);
 });

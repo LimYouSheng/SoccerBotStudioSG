@@ -1,5 +1,12 @@
 # SoccerBotStudioSG current progress
 
+## Unused email window replacement — 10 October 2026
+
+The original window is explicitly closed with zero email/bot dispatches. Closure versiond84f025a-0217-4119-a284-82062f4d5caf serves pinned087576ed with identity/provider disabled/end0. Isolated guest revoked; all seven baseline table fingerprints preserved. Database and website remain online. Packet used34/41 management,3/4 deployments,13/24 directHTTP; measured total284 management plus unknown Dashboard activity, at least18 deployments. Provider8/80 and historical80 unchanged. No browser/mailbox acceptance; PR14–17 remain drafts.
+
+Owner requests restart. Source-only0012 copies every original window column/value and permits exactly one replacement record only after the original is closed and only if the durable dispatch ledger is empty. No old expiry edit, reopening, third window, counter refund or deletion. Worker and dispatch admission select the latest window; exact source/origin, recipient,20-minute bound and global3-email/5-bot limits remain. Applied0001–0011 are unchanged. Focused17 delivery cases, source/layer, Worker types and affected lint passed. New CI artifact verification and a costed incremental execution packet are required before applying0012 or deploying. Original remaining7 management/1 deployment cannot fund another complete cycle. Do not start a timer until renewed owner readiness.
+
+
 ## Email execution preparation — 10 October 2026
 
 PR17 remains draft/open. Pinned deployment candidate is source `087576edbebe90bc60097d8655d6f758d91ab722`, successful CI37943447592, live artifact11622777711, ZIP SHA256 `14d31042f96a44f4b1d1124a1aa1104f84086ba8141de6a7e030bb60ab8e287c`. All138 sealed files were verified; original PR16 artifact verification is also complete. This documentation revision does not replace/rebuild the pinned release or claim its own deployed status.

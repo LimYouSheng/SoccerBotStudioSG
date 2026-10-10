@@ -1,6 +1,10 @@
 # SoccerBotStudio — Journey
 
-Chronological decisions and evidence. Current contract: `SOCCERBOT_RULES_AND_ARCHITECTURE.md`.
+## Unused email window replacement — 10 October 2026
+
+The first live-email candidate087576ed was deployed after preserving original asset202 and URL-check failures; corrected account HTML/sitekey JS matched sealed bytes. Source/version readiness passed. Owner missed the15:43:25SGT window and requested closure/restart. Closure returned zero bot/email dispatches, then disabled deployment/readiness passed on versiond84f025a-0217-4119-a284-82062f4d5caf. The isolated probe was revoked; all seven baseline table fingerprints matched. Usage34/41 management,3/4 deployments,13/24 directHTTP; no mailbox/device acceptance.
+
+Replacement preparation adds0012 and latest-window admission without editing applied migrations. All17 focused delivery cases pass, including populated history preservation, restart, overlap/missing predecessor, immutable expiry, charged unknown preservation, foreign source and unchanged email cap. Source/layer, Worker TypeScript and affected ESLint pass. An initial direct typecheck lacked generated runtime types; generating them with pinned Wrangler resolved tooling prerequisites without source changes. Final CI/artifact and remote replacement remain pending.
 
 ## 2026-10-10 — Email activation packet review
 

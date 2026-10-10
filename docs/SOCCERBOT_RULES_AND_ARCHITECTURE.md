@@ -1,8 +1,8 @@
 # SoccerBotStudio — Rules & Architecture
 
-Canonical current contract. `SERVICE_CONTRACTS.md` owns service inputs, results, errors, authority and demo/live availability. `SOCCERBOT_JOURNEY.md` owns chronology, audits and receipts. These are the three canonical documents; README, AGENTS, diagrams and generated receipts orient or provide evidence.
+## Unused email window replacement — 10 October 2026
 
-Project/package name: **SoccerBotStudioSG**; npm identifier: **soccerbotstudiosg**. Current main is owner-merged PR13 at757fd288084d0e76c7cb7b766e33c4724d6988d0. PR14 remains draft/unmerged; PROGRESS owns current source, deployment and CI identities.
+The original email window is explicitly closed with zero dispatches; database and website remain online. PROGRESS owns exact deployed identity and accounting. Owner requested a replacement test. Source-only0012 preserves closed history and permits exactly one second window only if no prior dispatch was charged. Worker and reservation admission select the latest window, retaining source/origin, recipient,20-minute and global3-email/5-bot guards. No third window, expiry edit, reopening or counter reset. Applied0001–0011 stay immutable. Require a new CI-sealed candidate and costed execution allowance; owner readiness precedes the replacement timer.
 
 ## Governing main integration continuation — 9 October 2026
 

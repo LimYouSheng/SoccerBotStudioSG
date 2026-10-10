@@ -35,7 +35,9 @@ async function windowFor(env: Env, now: number, reserve = false) {
   if (mode !== "finite-test") throw unavailable();
   const parsed = windowSchema.safeParse(
     await env.STATE.withSession("first-primary")
-      .prepare("SELECT * FROM identity_delivery_window WHERE singleton=1")
+      .prepare(
+        "SELECT * FROM identity_delivery_window ORDER BY singleton DESC LIMIT 1",
+      )
       .first(),
   );
   if (!parsed.success) throw unavailable();

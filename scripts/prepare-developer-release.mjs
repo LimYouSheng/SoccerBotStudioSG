@@ -102,6 +102,7 @@ const manifest = {
     "0009_identity_challenges.sql",
     "0010_customer_read_scopes.sql",
     "0011_identity_delivery.sql",
+    "0012_identity_replacement_window.sql",
   ],
   priorWorkerVersion: "a0b4befb-079b-4836-9967-b1f5fe101bd7",
   acceptance:

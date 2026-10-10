@@ -141,6 +141,7 @@ try {
     "0009_identity_challenges.sql",
     "0010_customer_read_scopes.sql",
     "0011_identity_delivery.sql",
+    "0012_identity_replacement_window.sql",
   ]);
   // Old-state compatibility remains tested locally, never re-applied remotely.
   for (const name of names.slice(5, 8)) await migrate(name);

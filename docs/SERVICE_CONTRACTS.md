@@ -1,8 +1,10 @@
 # SoccerBotStudio — Service Contracts
 
-Current provider checkpoint: see **Focused continuation contracts and disposition — 8 October 2026** below. Earlier dated experiment allocations, prerequisites and next-action statements are historical where superseded; original evidence remains intact. Implementation tables still distinguish demo, planned and provider-proved behavior.
+## Unused email window replacement — 10 October 2026
 
-Canonical boundary reference, introduced 4 October 2026 under the latest OneFitfinity process. Rules & Architecture owns product/security invariants; Journey owns changes and evidence. This document describes the actual initial interface and labels future requirements. It does not create HTTP endpoints.
+Source-only0012 compatibly copies every original window column/value into the expanded table. Historical `singleton` now accepts only1 or2. Inserting2 requires closed1, a later opening time and an empty durable dispatch ledger. Any reserved/responded/unknown bot/email dispatch denies replacement. Both records remain immutable except open→closed; no deletion, expiry edit or third window. Latest record controls Worker and database reservation admission. Global3-email/5-bot ceilings, exact source/origin, sole recipient and20-minute duration remain unchanged. Closed older binaries remain safe because they only select closed1.
+
+Restart execution requires a reviewed incremental allowance beyond the original packet: baseline/settings/version/history reads; one exact0012 migration and preservation readback; sealed artifact installation with finite asset-upload cap; mode/readiness; one window2 insert/readback; explicit closure/disabled deployment/readiness/preservation; rollback reserve. No original unused category funds another full cycle. Nothing activates before CI/artifact validation and approval. The new timer waits for renewed owner readiness.
 
 ## Corrected readiness and discovery package — prepared, not authorized
 
