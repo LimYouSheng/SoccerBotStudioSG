@@ -76,11 +76,14 @@ export function createLiveIdentityService(): CustomerIdentityService {
     guest: async (signal) => {
       await identityRequest("/api/access", "POST", signal);
     },
-    challenge: async (email, signal) => {
+    challenge: async (email, signal, botToken) => {
       const normalized = z.email().parse(email.trim().toLowerCase());
+      if (!botToken || botToken.length > 2048) throw unavailable();
+      await identityRequest("/api/access", "POST", signal);
       const response = challengeSchema.parse(
         await identityRequest("/api/identity/challenges", "POST", signal, {
           email: normalized,
+          botToken,
         }),
       );
       if (signal.aborted || response.expiresAt <= Date.now())

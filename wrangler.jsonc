@@ -35,6 +35,7 @@
     "APP_ORIGIN": "https://soccerbot-dev.limyousheng-94.workers.dev",
     "ENVIRONMENT": "developer",
     "PROVIDER_ACCESS": "disabled",
+    "IDENTITY_DELIVERY": "disabled",
     "SOURCE_REVISION": "unpublished",
     "ACCESS_LIFETIME_MS": "1800000",
     "OBSERVATION_MAX_AGE_MS": "15000",

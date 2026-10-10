@@ -3,6 +3,87 @@ import { providerId } from "./provider-normalization";
 import { measure } from "./diagnostics";
 import { ApiError } from "./policy";
 
+// Fixed identity endpoints share the physical transport owner. Their durable
+// admission is owned by identity-delivery, separately from SimplyBook accounting.
+export async function identityRequest(
+  kind: "bot" | "email",
+  secret: string,
+  payload: Record<string, string>,
+  signal: AbortSignal,
+): Promise<unknown> {
+  signal.throwIfAborted();
+  const url =
+    kind === "bot"
+      ? "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+      : "https://api.resend.com/emails";
+  const body =
+    kind === "bot"
+      ? JSON.stringify({
+          secret,
+          response: z.string().min(1).max(2048).parse(payload.token),
+        })
+      : JSON.stringify({
+          from: z
+            .literal("SoccerBotStudioSG Dev <noreply@auth.app404.ai>")
+            .parse(payload.sender),
+          to: [z.literal("sheng@app404.ai").parse(payload.recipient)],
+          subject: "Your SoccerBotStudioSG Dev verification code",
+          text: `Your verification code is ${z
+            .string()
+            .regex(/^\d{6}$/)
+            .parse(
+              payload.code,
+            )}. It expires within 10 minutes. If you did not request this, ignore this email.`,
+        });
+  const response = await fetch(url, {
+    method: "POST",
+    redirect: "manual",
+    signal,
+    headers: {
+      "Content-Type": "application/json",
+      ...(kind === "email"
+        ? {
+            Authorization: `Bearer ${secret}`,
+            "Idempotency-Key": z
+              .string()
+              .regex(/^verification\/[a-f0-9-]{36}$/)
+              .parse(payload.idempotencyKey),
+          }
+        : {}),
+    },
+    body,
+  });
+  if (
+    !response.ok ||
+    !response.headers
+      .get("content-type")
+      ?.toLowerCase()
+      .includes("application/json") ||
+    !response.body
+  ) {
+    await response.body?.cancel();
+    throw new ApiError(503, "identity_transport_unknown");
+  }
+  const reader = response.body.getReader(),
+    decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
+  let size = 0,
+    text = "";
+  try {
+    for (;;) {
+      const part = await reader.read();
+      signal.throwIfAborted();
+      if (part.done) break;
+      size += part.value.byteLength;
+      if (size > 4096) throw new ApiError(503, "identity_transport_unknown");
+      text += decoder.decode(part.value, { stream: true });
+    }
+    return JSON.parse(text + decoder.decode()) as unknown;
+  } finally {
+    void reader.cancel().catch(() => {});
+    reader.releaseLock();
+  }
+}
+
 export type ProviderFamily = "public" | "admin";
 export type ProviderOperation =
   | "public-auth"
