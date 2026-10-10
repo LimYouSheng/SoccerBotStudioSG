@@ -7,7 +7,7 @@ import {
   revokePresentedRemembered,
 } from "./remembered-identity";
 import { readVerifiedIdentity } from "./identity";
-import { identityDelivery } from "./identity-delivery";
+import { identityDelivery, assertIdentityProofOpen } from "./identity-delivery";
 import {
   createAccess,
   authenticate,
@@ -227,6 +227,7 @@ export default {
           url.pathname === "/api/identity/restore" &&
           request.method === "POST"
         ) {
+          await assertIdentityProofOpen(env);
           const cookies: string[] = [];
           const pepper: unknown = Reflect.get(env, "IDENTITY_PEPPER");
           const identity = await restoreRememberedIdentity(
@@ -235,6 +236,7 @@ export default {
             typeof pepper === "string" ? pepper : "",
             cookies,
           );
+          await assertIdentityProofOpen(env);
           const response = json(identity);
           for (const cookie of cookies)
             response.headers.append("Set-Cookie", cookie);
@@ -252,8 +254,12 @@ export default {
         }
         if (url.pathname === "/api/catalogue" && request.method === "GET")
           return json(await customerCatalogue(request, env, now));
-        if (url.pathname === "/api/identity" && request.method === "GET")
-          return json(await readVerifiedIdentity(request, env, now));
+        if (url.pathname === "/api/identity" && request.method === "GET") {
+          await assertIdentityProofOpen(env);
+          const identity = await readVerifiedIdentity(request, env, now);
+          await assertIdentityProofOpen(env);
+          return json(identity);
+        }
         const match = /^\/api\/attempts\/([a-f0-9-]{36})\/confirmation$/.exec(
           url.pathname,
         );

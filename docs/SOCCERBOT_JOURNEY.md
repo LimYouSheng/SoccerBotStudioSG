@@ -1,5 +1,15 @@
 # SoccerBotStudio — Journey
 
+## 2026-10-10 — PR18 merge and finite identity-proof preparation
+
+Owner merged PR18 atfe179d205437850884d5fb5dc7ed177245ccead9. Main independently passed38044816610 frontend/backend/live-email and Pages deployment. Prior c064cff PR CI38043956639 and its verified140-file artifact remain historical source evidence. Cloudflare Worker remains at the observed closedf2795a1/version3bb98b99; no remote migration or live test occurred.
+
+New isolated worktree/branch starts from merged main. Existing two-window policy cannot reopen or fund another trial. Designed one finite proof row under the existing delivery owner, keeping all previous records. Closure must revoke remembered authority, not merely disable delivery. Planned six emails deliberately space the second group beyond the three-per15-minute limit; no rate-limit exception or synthetic clock enters the live protocol.
+
+First focused41-case result40pass/1fail: expiry fixture started before the historical replacement expiry and was correctly refused by successor admission. Corrected only synthetic historical times;42/42 identity/delivery cases including new transactional closure failure passed. Failed receipt retained. Packet test default sandbox reported a file only; refused as proof, reran in the supported executor and verified both individual cases. Direct tsc lacked generated Env types in the new worktree; normal verify:worker owns generation. Strict lint found unused destructured fixture fields; corrected comparison without dropping any field/assertion. Prior failures remain retained privately. No browser run, external dispatch, reset or assertion weakening occurred.
+
+Offline packet preparation checks exact manifest hashes, source/profile, Worker/browser/release receipts and immutable deployment scope before emitting a proposed packet. It never sends requests or applies SQL. Final candidate/CI/artifact and prepared-packet hashes are recorded in the new feature PR to avoid a self-referential commit cycle. SimplyBook exact customer binding remains unproved; no support request, lookup, booking, payment, callback or scheduler activation was made.
+
 ## 2026-10-10 — PR18 release-preservation checker repair
 
 Candidate47cc928 CI38043587921 passed172 Worker cases and9 live-browser executions before sealed-release validation failed on a read of `_cf_METADATA.key` with SQLITE_AUTH. The new preservation inventory accidentally included D1's protected internal table. Excluded only that exact platform-owned name; all application table/column/row comparisons, unknown-attempt/operator preservation, empty delivery guards, source/export hashes and protected-read checks remain. No application or browser assertion changed.

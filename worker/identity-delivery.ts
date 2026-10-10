@@ -11,6 +11,7 @@ import { identityRequest } from "./provider-transport";
 
 const unavailable = () => new ApiError(503, "identity_unavailable");
 const windowSchema = z.object({
+  singleton: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   source_revision: z.string().regex(/^[a-f0-9]{40}$/),
   origin: z.url(),
   sender: z.literal("SoccerBotStudioSG Dev <noreply@auth.app404.ai>"),
@@ -47,10 +48,19 @@ async function windowFor(env: Env, now: number, reserve = false) {
     window.origin !== env.APP_ORIGIN ||
     window.opened_ms > now ||
     window.expires_ms <= now + (reserve ? 5000 : 0) ||
-    window.expires_ms - window.opened_ms > 1200000
+    window.expires_ms - window.opened_ms >
+      (window.singleton === 3 ? 3600000 : 1200000)
   )
     throw unavailable();
   return window;
+}
+// Once provisioned, the proof lifetime also bounds identity reads/restoration.
+// This is developer test authority, separate from the immutable 90-day expiry.
+export async function assertIdentityProofOpen(env: Env) {
+  const proof = await env.STATE.withSession("first-primary")
+    .prepare("SELECT singleton FROM identity_delivery_window WHERE singleton=3")
+    .first();
+  if (proof) await windowFor(env, Date.now());
 }
 // Bounded before parsing, and never includes request bodies or provider errors in logs.
 async function inputBody(request: Request): Promise<unknown> {
@@ -106,8 +116,8 @@ export async function identityDelivery(
     .safeParse(raw);
   if (!email.success || email.data.email !== window.recipient)
     throw new ApiError(400, "verification_unavailable");
-  if (new URL(request.url).pathname === "/api/identity/verify")
-    return verifyIdentityChallenge(
+  if (new URL(request.url).pathname === "/api/identity/verify") {
+    const result = await verifyIdentityChallenge(
       request,
       env,
       raw,
@@ -115,6 +125,10 @@ export async function identityDelivery(
       Date.now,
       cookies,
     );
+    if ((await windowFor(env, Date.now())).singleton !== window.singleton)
+      throw unavailable();
+    return result;
+  }
   // CF-Connecting-IP is supplied by the Worker edge, never X-Forwarded-For or JSON.
   const source = request.headers.get("CF-Connecting-IP");
   if (!source || source.length > 64 || !/^[a-fA-F0-9:.]+$/.test(source))
@@ -130,7 +144,8 @@ export async function identityDelivery(
   ) {
     signal.throwIfAborted();
     await authenticate(request, env, Date.now());
-    await windowFor(env, Date.now(), true);
+    if ((await windowFor(env, Date.now(), true)).singleton !== window.singleton)
+      throw unavailable();
     try {
       await env.STATE.prepare(
         "INSERT INTO identity_delivery_dispatches(id,kind,access_hash,source_hash,created_ms,state) VALUES(?,?,?,?,?,'reserved')",
@@ -144,7 +159,10 @@ export async function identityDelivery(
     try {
       // Re-sample time and access after durable reservation; an unknown slot is never refunded.
       await authenticate(request, env, Date.now());
-      await windowFor(env, Date.now(), true);
+      if (
+        (await windowFor(env, Date.now(), true)).singleton !== window.singleton
+      )
+        throw unavailable();
       signal.throwIfAborted();
       const result = await identityRequest(
         kind,
