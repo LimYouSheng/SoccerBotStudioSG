@@ -2,6 +2,10 @@
 
 Chronological decisions and evidence. Current contract: `SOCCERBOT_RULES_AND_ARCHITECTURE.md`.
 
+## 2026-10-10 — Email activation packet review
+
+Reconciled owner Dashboard setup and five approved read-only checks: initial plaintext bindings were corrected by owner, then secret_text types verified. Prior deployment budget is exhausted; unknown Dashboard usage remains explicit. PR17 source087576ed live artifact11622777711 passed CI and local seal verification. Replayed13 existing delivery cases against its exact compiled Worker with source/origin bindings and synthetic secrets: all pass, with no physical external traffic. First default-sandbox subprocess failure is retained alongside supported-executor success; no test was weakened. Audited pinned Wrangler4.148.0 asset uploader and found automatic retries, so the finite packet uses single-attempt counted curl operations. Prepared upload metadata, asset manifest, migrations and close/readback payloads without executing them. Service Contracts owns the38-management/four-deployment/24-direct-HTTP proposal and truthful owner-test limits. Deployment candidate remains pinned despite this documentation-only checkpoint; nothing merged or activated.
+
 ## 8 October 2026 — Developer integration continuation
 
 Fresh deployed Worker authentication now succeeds for both public and admin credentials; company login matches and booking allowance is26/50. Four durably reserved requests, active0; operator grant closed after identical read-back. API quota is still unverified. Source321cd81 passed both CI gates and was deployed from the tested bundle without rebuild. Current version/accounting are in PROGRESS. No provider booking/payment write occurred.

@@ -2,6 +2,8 @@
 
 ## Governing continuation — 9 October 2026
 
+10October update: PR17 live artifact and three Worker secret binding types are verified; real delivery and deployed candidate remain pending. PROGRESS supersedes older setup/counter statements below. Service Contracts owns the concrete proposed additional38 management requests/four deployments, including closure and rollback; no remote allowance is implicit in preparation.
+
 Resumed email preparation: real fixed Resend/Turnstile source composition and durable finite admission remain closed by default. Environment Resend readiness and exact PR15 artifact import are now verified; owner now reports Turnstile ready and supplied its public sitekey. Exact widget settings, Worker secret bindings, verified live-mode artifact, migrations/setup allowance and actual delivery remain pending. The separate live-email CI profile prepares closed delivery only. No private prefill or North Star completion follows.
 
 Deliver frontend → protected backend → current SimplyBook data → server-validated bookings → native SimplyBook/SBPay/HitPay checkout → authoritative reconciliation → protected confirmation. All agreed flows must work without Preview fallback, operator-injected success, browser payment hints or hardcoded provider records. SimplyBook owns routine supported catalogue/schedule changes. Separate checkout tab/manual return is accepted; automatic return is a separate enhancement. Reconciliation must eventually run without the browser.

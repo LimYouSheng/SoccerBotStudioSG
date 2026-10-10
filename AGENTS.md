@@ -2,6 +2,8 @@
 
 ## 1. Start
 
+- Current10October state supersedes older counters/setup notes below: PROGRESS owns verified PR17 artifact and encrypted binding evidence; Service Contracts owns the prepared38-management/4-deployment/24-direct-HTTP email packet. All remote allowances remain unapproved/exhausted. Preserve243 measured management plus unknown Dashboard activity, at least14 deployments and provider8/80. No existing rollback reserve can be claimed. Owner browser only; no source rebuild/substitution for pinned087576ed.
+
 - Current Resend continuation: new branch feat/resend-composition-20261009 from PR14 at5673e79. Default delivery disabled; empty source-only0011 window, no external execution. Owner suppliedauth.app404.ai sender/recipient and reports Turnstile ready; public sitekey is bound only by the separate live-email release profile. Worker secret installation and activation remain unapproved. Use Service Contracts finite email section and PROGRESS carried accounting. Preserve isolated PR15 artifact/source. Current user reserves browser execution for CI/user; do not launch assistant browsers.
 
 - Read NORTH_STAR and PROGRESS (the one current task ledger), then relevant sections of the three canonical owners.
