@@ -1,7 +1,13 @@
 import { z } from "zod";
 import { authenticate } from "./access";
-import { ApiError, digest } from "./policy";
+import { ApiError, digest, keyedHash } from "./policy";
 
+export { keyedHash } from "./policy";
+import {
+  rememberedIssuance,
+  replaceRememberedIdentity,
+  clearRememberedCookie,
+} from "./remembered-identity";
 const emailSchema = z.string().trim().toLowerCase().pipe(z.email().max(254));
 const challengeInput = z.strictObject({
   email: emailSchema,
@@ -9,6 +15,7 @@ const challengeInput = z.strictObject({
 });
 const verifyInput = z.strictObject({
   challengeId: z.string().uuid(),
+  remember: z.boolean().default(false),
   email: emailSchema,
   code: z.string().regex(/^\d{6}$/),
 });
@@ -36,25 +43,6 @@ export type IdentityDelivery = {
 };
 function denied() {
   return new ApiError(400, "verification_unavailable");
-}
-export async function keyedHash(pepper: string, parts: string[]) {
-  if (pepper.length < 32 || pepper.length > 512)
-    throw new ApiError(503, "identity_unavailable");
-  const key = await crypto.subtle.importKey(
-    "raw",
-    new TextEncoder().encode(pepper),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const signature = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    new TextEncoder().encode(JSON.stringify(parts)),
-  );
-  return Array.from(new Uint8Array(signature), (b) =>
-    b.toString(16).padStart(2, "0"),
-  ).join("");
 }
 function randomCode() {
   const value = new Uint32Array(1);
@@ -203,6 +191,7 @@ export async function verifyIdentityChallenge(
   raw: unknown,
   pepper: string,
   clock: () => number = Date.now,
+  cookies: string[] = [],
 ) {
   const input = verifyInput.safeParse(raw);
   if (!input.success) throw denied();
@@ -216,11 +205,20 @@ export async function verifyIdentityChallenge(
     code,
   ]);
   const now = clock();
+  const issuance = input.data.remember
+    ? await rememberedIssuance(env, access, email, now, challengeId)
+    : null;
+  const replaceRemembered = await replaceRememberedIdentity(
+    request,
+    env,
+    now,
+    challengeId,
+  );
   // Wrong codes consume attempts atomically. Only the single matching transition
   // can establish a session; replay/concurrent followers cannot renew expiry.
   const result = await env.STATE.batch([
     env.STATE.prepare(
-      "UPDATE identity_challenges SET attempts=attempts+1,state=CASE WHEN code_hash=? THEN 'consumed' ELSE state END WHERE id=? AND access_hash=? AND email=? AND state='sent' AND attempts<5 AND created_ms<=? AND expires_ms>? AND EXISTS(SELECT 1 FROM guest_access WHERE capability_hash=? AND revoked_ms IS NULL AND issued_ms<=? AND expires_ms>?) RETURNING state",
+      "UPDATE identity_challenges SET attempts=attempts+1,state=CASE WHEN code_hash=? THEN 'consumed' ELSE state END WHERE id=? AND access_hash=? AND email=? AND state='sent' AND attempts<5 AND created_ms>COALESCE((SELECT cutoff_ms FROM identity_revocations WHERE email=identity_challenges.email),-1) AND created_ms<=? AND expires_ms>? AND EXISTS(SELECT 1 FROM guest_access WHERE capability_hash=? AND revoked_ms IS NULL AND issued_ms<=? AND expires_ms>?) RETURNING state",
     ).bind(
       hash,
       challengeId,
@@ -235,8 +233,15 @@ export async function verifyIdentityChallenge(
     env.STATE.prepare(
       "INSERT INTO verified_identity(access_hash,owner_id,email,verified_ms,expires_ms,revoked_ms) SELECT access_hash,owner_id,email,?,MIN(?,?),NULL FROM identity_challenges WHERE id=? AND code_hash=? AND state='consumed' AND changes()=1 ON CONFLICT(access_hash) DO UPDATE SET email=excluded.email,verified_ms=excluded.verified_ms,expires_ms=excluded.expires_ms,revoked_ms=NULL",
     ).bind(now, now + 1800000, access.expires_ms, challengeId, hash),
+    ...(issuance?.statements ?? []),
+    replaceRemembered,
   ]);
   if (result[1].meta.changes !== 1) throw denied();
+  if (issuance) {
+    if (result[2].meta.changes !== 1 || result[3].meta.changes !== 1)
+      throw denied();
+    cookies.push(issuance.cookie);
+  } else cookies.push(clearRememberedCookie());
   return readVerifiedIdentity(request, env, clock());
 }
 

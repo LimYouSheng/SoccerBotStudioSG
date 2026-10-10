@@ -138,10 +138,7 @@ try {
   const grants = (await db.prepare("SELECT * FROM developer_operations").all())
     .results;
   assert.deepEqual(manifest.pendingRemoteMigrations, [
-    "0009_identity_challenges.sql",
-    "0010_customer_read_scopes.sql",
-    "0011_identity_delivery.sql",
-    "0012_identity_replacement_window.sql",
+    "0013_remembered_identity.sql",
   ]);
   // Old-state compatibility remains tested locally, never re-applied remotely.
   for (const name of names.slice(5, 8)) await migrate(name);
@@ -154,7 +151,35 @@ try {
         .all()
     ).results,
   };
+  for (const name of names.slice(8, 12)) await migrate(name);
+  // Preserve every application table and column; D1 owns its protected _cf_METADATA table.
+  const priorTables = (
+    await db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> '_cf_METADATA' ORDER BY name",
+      )
+      .all()
+  ).results.map((row) => row.name);
+  const snapshots = new Map();
+  for (const table of priorTables)
+    snapshots.set(
+      table,
+      (await db.prepare(`SELECT * FROM "${table}" ORDER BY rowid`).all())
+        .results,
+    );
   for (const name of manifest.pendingRemoteMigrations) await migrate(name);
+  for (const table of priorTables)
+    assert.deepEqual(
+      (await db.prepare(`SELECT * FROM "${table}" ORDER BY rowid`).all())
+        .results,
+      snapshots.get(table),
+    );
+  assert.equal(
+    (await db.prepare("SELECT COUNT(*) AS n FROM remembered_identity").first())
+      .n,
+    0,
+  );
+
   assert.equal(
     (
       await db
@@ -257,7 +282,7 @@ try {
         checks: [
           "file hashes",
           "root export",
-          "0001–0008 compatibility and pending0009–0011 preserve all existing columns identities unknown effects and operator grants",
+          "0001–0012 application state and pending0013 preserve all existing columns identities unknown effects and operator grants",
           "empty identity delivery authority and default-closed HTTP",
           "exact Worker revision",
           "protected checkout unavailable",

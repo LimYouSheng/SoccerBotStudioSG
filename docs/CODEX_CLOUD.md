@@ -132,7 +132,7 @@ Use current package scripts and check their owners when they change. Keep case/p
 | Fresh build and complete browser gate | `npm run verify:browser`               |
 | Combined gate, one build              | `npm run verify`                       |
 
-- Codex Cloud may prepare browsers, run Playwright and inspect screenshots/traces/internal previews. This supersedes the former user-only browser execution rule. Physical-device acceptance stays with YS/client.
+- Browser execution belongs to YS and CI. Codex must not prepare/launch browsers, run Playwright, take screenshots or execute verify/verify:browser or the historical smoke installer. Use verify:code and focused non-browser checks. Physical-device acceptance stays with YS/client.
 - Use meaningful affected checks during iteration. Full PR/main CI remains required. For a substantial integrated Cloud run use `npm run verify` once, not separate code/browser gates followed by another identical full run.
 - A focused browser command needs a fresh build and free preview port. Do not use stale output or report a selected case as the whole matrix. Keep retries/skips at zero and all applicable projects intact.
 - Docs-only changes need document/link/diff integrity and affected tooling checks. They do not need repeated full application runs; the unchanged required PR CI still runs.

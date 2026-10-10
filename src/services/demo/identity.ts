@@ -48,7 +48,7 @@ export const demoIdentityService: IdentityService = {
     challenge.used = true;
     const identity = {
       email: challenge.email,
-      expiresAt: Date.now() + (remember ? 30 * 86400_000 : 12 * 3600_000),
+      expiresAt: Date.now() + (remember ? 90 * 86400_000 : 12 * 3600_000),
     };
     safeRemove(KEY, true);
     safeWrite(KEY, identity);

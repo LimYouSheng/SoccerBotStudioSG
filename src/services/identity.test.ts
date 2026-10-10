@@ -108,3 +108,66 @@ it("live identity rejects stale mismatched oversized and unavailable responses w
   }
   expect(request).toHaveBeenCalledTimes(4);
 });
+it("live remembered refresh creates only fresh guest access and rereads restored identity", async () => {
+  const request = vi
+    .fn()
+    .mockResolvedValueOnce(Response.json({ access: "guest" }))
+    .mockResolvedValueOnce(Response.json(null))
+    .mockResolvedValueOnce(Response.json(identity))
+    .mockResolvedValueOnce(Response.json(identity));
+  vi.stubGlobal("fetch", request);
+  const service = createLiveIdentityService(),
+    signal = new AbortController().signal;
+  expect(await service.refresh(signal)).toEqual(identity);
+  expect(request.mock.calls.map((c) => [c[0], c[1].method])).toEqual([
+    ["/api/access", "POST"],
+    ["/api/identity", "GET"],
+    ["/api/identity/restore", "POST"],
+    ["/api/identity", "GET"],
+  ]);
+  expect(service.current()).toEqual(identity);
+});
+it("live remembered restoration arriving after signout cannot repopulate cached identity", async () => {
+  let finish!: (response: Response) => void;
+  const request = vi
+    .fn()
+    .mockResolvedValueOnce(Response.json({ access: "guest" }))
+    .mockResolvedValueOnce(Response.json(null))
+    .mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = resolve;
+        }),
+    )
+    .mockResolvedValueOnce(Response.json({ access: "revoked" }));
+  vi.stubGlobal("fetch", request);
+  const service = createLiveIdentityService(),
+    signal = new AbortController().signal;
+  const pending = service.refresh(signal);
+  await vi.waitFor(() => expect(request).toHaveBeenCalledTimes(3));
+  await service.signOut(signal);
+  finish(Response.json(identity));
+  await expect(pending).rejects.toThrow("unavailable");
+  expect(service.current()).toBeNull();
+  expect(request).toHaveBeenCalledTimes(4);
+});
+it("live verification transmits explicit consent and all-device signout uses its protected operation", async () => {
+  const request = vi
+    .fn()
+    .mockResolvedValueOnce(Response.json(identity))
+    .mockResolvedValueOnce(Response.json(identity))
+    .mockResolvedValueOnce(Response.json({ access: "revoked" }));
+  vi.stubGlobal("fetch", request);
+  const service = createLiveIdentityService(),
+    signal = new AbortController().signal;
+  await service.verify(challenge, "123456", true, signal);
+  expect(JSON.parse(request.mock.calls[0][1].body)).toEqual({
+    challengeId: challenge.challengeId,
+    email: challenge.email,
+    code: "123456",
+    remember: true,
+  });
+  await service.signOut(signal, true);
+  expect(request.mock.calls[2][0]).toBe("/api/identity/all-devices");
+  expect(service.current()).toBeNull();
+});

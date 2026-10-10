@@ -45,5 +45,9 @@ export async function revokeAccess(env: Env, access: Access, now: number) {
   )
     .bind(now, access.capability_hash)
     .run();
+  return clearAccessCookie();
+}
+
+export function clearAccessCookie() {
   return `${cookieName}=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0`;
 }

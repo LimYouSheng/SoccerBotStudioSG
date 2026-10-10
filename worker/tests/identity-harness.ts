@@ -5,6 +5,11 @@ import app, {
   readVerifiedIdentity,
   verifiedContact,
 } from "../index";
+import { createAccess } from "../access";
+import {
+  restoreRememberedIdentity,
+  revokeAllIdentities,
+} from "../remembered-identity";
 export { SoccerBotAccountCoordinator } from "../index";
 const pepper = "SYNTHETIC_PRIVATE_PEPPER_FOR_IDENTITY_123456789";
 export default {
@@ -13,8 +18,16 @@ export default {
     if (!path.startsWith("/synthetic-identity/"))
       return app.fetch(request, env);
     const input = (await request.json()) as {
-      action: "challenge" | "verify" | "read" | "profile";
+      action:
+        | "challenge"
+        | "verify"
+        | "read"
+        | "profile"
+        | "restore"
+        | "guest"
+        | "all-signout";
       now: number;
+      remember?: boolean;
       email?: string;
       code?: string;
       challengeId?: string;
@@ -25,6 +38,7 @@ export default {
       matches?: unknown;
     };
     const sent: { email: string; code: string; idempotencyKey: string }[] = [];
+    const cookies: string[] = [];
     try {
       let result: unknown;
       if (input.action === "challenge")
@@ -60,14 +74,30 @@ export default {
             email: input.email,
             code: input.code,
             challengeId: input.challengeId,
+            remember: input.remember,
           },
           pepper,
           () => input.now,
+          cookies,
         );
-      else if (input.action === "read")
+      else if (input.action === "restore")
+        result = await restoreRememberedIdentity(
+          request,
+          env,
+          pepper,
+          cookies,
+          () => input.now,
+        );
+      else if (input.action === "guest") {
+        cookies.push(await createAccess(env, input.now));
+        result = null;
+      } else if (input.action === "all-signout") {
+        await revokeAllIdentities(request, env, input.now);
+        result = null;
+      } else if (input.action === "read")
         result = await readVerifiedIdentity(request, env, input.now);
       else result = verifiedContact(input.email ?? "", input.matches);
-      return Response.json({ result, sent });
+      return Response.json({ result, sent, cookies });
     } catch (error) {
       return Response.json(
         { error: error instanceof Error ? error.message : "failed", sent },

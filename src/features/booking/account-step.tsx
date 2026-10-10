@@ -13,16 +13,18 @@ export function AccountStep() {
   const [view, setView] = useState<"choice" | "email" | "code">("choice"),
     [email, setEmail] = useState(""),
     [code, setCode] = useState(""),
-    [remember, setRemember] = useState(true),
+    [remember, setRemember] = useState(false),
     [error, setError] = useState(""),
     [challenge, setChallenge] = useState<CustomerChallenge | null>(null);
   const [identity, setIdentity] = useState(() => identityService.current());
   const [busy, setBusy] = useState(false);
   const [botToken, setBotToken] = useState("");
   const [botGeneration, setBotGeneration] = useState(0);
+  const refreshing = useRef<AbortController | null>(null);
   const active = useRef<AbortController | null>(null);
   useEffect(() => {
     const controller = new AbortController();
+    refreshing.current = controller;
     void identityService
       .refresh(controller.signal)
       .then((value) => {
@@ -45,6 +47,7 @@ export function AccountStep() {
   }
   async function perform(work: (signal: AbortSignal) => Promise<void>) {
     if (active.current) return;
+    refreshing.current?.abort();
     const controller = new AbortController();
     active.current = controller;
     setBusy(true);
@@ -138,17 +141,33 @@ export function AccountStep() {
               <Icon name="arrow" />
             </button>
             {identity && (
-              <button
-                className="text-link"
-                onClick={() => {
-                  void perform(async (signal) => {
-                    await identityService.signOut(signal);
-                    if (!signal.aborted) setIdentity(null);
-                  });
-                }}
-              >
-                Use another email
-              </button>
+              <>
+                <button
+                  className="text-link"
+                  onClick={() => {
+                    void perform(async (signal) => {
+                      await identityService.signOut(signal);
+                      if (!signal.aborted) setIdentity(null);
+                    });
+                  }}
+                >
+                  Use another email
+                </button>
+                {identityService.mode === "live" && (
+                  <button
+                    className="text-link"
+                    disabled={busy}
+                    onClick={() => {
+                      void perform(async (signal) => {
+                        await identityService.signOut(signal, true);
+                        if (!signal.aborted) setIdentity(null);
+                      });
+                    }}
+                  >
+                    Sign out all devices
+                  </button>
+                )}
+              </>
             )}
           </section>
         </div>
@@ -205,16 +224,14 @@ export function AccountStep() {
               onChange={(e) => setEmail(e.target.value)}
               maxLength={120}
             />
-            {identityService.mode === "demo" && (
-              <label className="check-label auth-remember">
-                <input
-                  type="checkbox"
-                  checked={remember}
-                  onChange={(e) => setRemember(e.target.checked)}
-                />
-                Keep me signed in on this browser for 30 days.
-              </label>
-            )}
+            <label className="check-label auth-remember">
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => setRemember(e.target.checked)}
+              />
+              Remember me on this device for 90 days.
+            </label>
           </>
         ) : (
           <>

@@ -30,7 +30,13 @@ async function identityRequest(
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
-  if (!response.ok) throw unavailable();
+  if (!response.ok) {
+    if (path === "/api/identity/all-devices" && response.status === 401)
+      throw new Error(
+        "Verify your email again before signing out all devices.",
+      );
+    throw unavailable();
+  }
   if (!response.body) throw unavailable();
   const reader = response.body.getReader(),
     decoder = new TextDecoder();
@@ -72,7 +78,29 @@ export function createLiveIdentityService(): CustomerIdentityService {
   return {
     mode: "live",
     current: () => (current && current.expiresAt > Date.now() ? current : null),
-    refresh: read,
+    refresh: async (signal) => {
+      const own = ++generation;
+      current = null;
+      const check = () => {
+        if (signal.aborted || own !== generation) throw unavailable();
+      };
+      await identityRequest("/api/access", "POST", signal);
+      check();
+      let value = identitySchema
+        .nullable()
+        .parse(await identityRequest("/api/identity", "GET", signal));
+      check();
+      if (!value || value.expiresAt <= Date.now()) {
+        await identityRequest("/api/identity/restore", "POST", signal);
+        check();
+        value = identitySchema
+          .nullable()
+          .parse(await identityRequest("/api/identity", "GET", signal));
+        check();
+      }
+      current = value && value.expiresAt > Date.now() ? value : null;
+      return current;
+    },
     guest: async (signal) => {
       await identityRequest("/api/access", "POST", signal);
     },
@@ -90,7 +118,7 @@ export function createLiveIdentityService(): CustomerIdentityService {
         throw unavailable();
       return { ...response, email: normalized };
     },
-    verify: async (challenge, code, _remember, signal) => {
+    verify: async (challenge, code, remember, signal) => {
       const own = ++generation;
       current = null;
       const value = identitySchema.parse(
@@ -98,6 +126,7 @@ export function createLiveIdentityService(): CustomerIdentityService {
           challengeId: challenge.challengeId,
           email: challenge.email,
           code,
+          remember,
         }),
       );
       // Verification response is not cached: a subsequent authenticated read
@@ -114,10 +143,14 @@ export function createLiveIdentityService(): CustomerIdentityService {
       return verified;
     },
     profile: async () => null, // Actual private provider lookup remains unavailable.
-    signOut: async (signal) => {
+    signOut: async (signal, allDevices = false) => {
       ++generation;
       current = null;
-      await identityRequest("/api/access", "DELETE", signal);
+      await identityRequest(
+        allDevices ? "/api/identity/all-devices" : "/api/access",
+        "DELETE",
+        signal,
+      );
     },
   };
 }

@@ -53,6 +53,13 @@ async function fixture(page: Page, delivery = false) {
       result = verified
         ? { email: "synthetic@example.test", expiresAt: Date.now() + 600000 }
         : null;
+    } else if (
+      delivery &&
+      url.pathname === "/api/identity/restore" &&
+      method === "POST"
+    ) {
+      status = 200;
+      result = null;
     } else if (delivery && url.pathname === "/api/access") {
       status = method === "DELETE" ? 200 : 201;
       if (method === "DELETE") verified = false;
@@ -102,6 +109,7 @@ test("live guest denial stays on account without Preview fallback", async ({
   await expect(page).toHaveURL(/\/book\/account\/$/);
   expect(evidence.calls.filter((c) => c.method === "POST")).toEqual([
     { path: "/api/access", method: "POST", body: null },
+    { path: "/api/access", method: "POST", body: null },
   ]);
   expect(evidence.unexpected).toEqual([]);
 });
@@ -128,7 +136,9 @@ test("live email requires the supplied widget proof before protected requests", 
   await expect(page.getByRole("main").getByRole("alert")).toHaveText(
     "Email verification is unavailable. You can continue as a guest.",
   );
-  expect(evidence.calls.filter((c) => c.method === "POST")).toEqual([]);
+  expect(evidence.calls.filter((c) => c.method === "POST")).toEqual([
+    { path: "/api/access", method: "POST", body: null },
+  ]);
   expect(evidence.unexpected).toEqual([]);
 });
 
@@ -168,6 +178,8 @@ test("synthetic live verification reads server identity and keeps native booking
   ).toHaveCount(0);
   expect(evidence.calls.filter((c) => c.method === "POST")).toEqual([
     { path: "/api/access", method: "POST", body: null },
+    { path: "/api/identity/restore", method: "POST", body: null },
+    { path: "/api/access", method: "POST", body: null },
     {
       path: "/api/identity/challenges",
       method: "POST",
@@ -176,7 +188,12 @@ test("synthetic live verification reads server identity and keeps native booking
     {
       path: "/api/identity/verify",
       method: "POST",
-      body: { email: "synthetic@example.test", challengeId, code: "246810" },
+      body: {
+        email: "synthetic@example.test",
+        challengeId,
+        code: "246810",
+        remember: false,
+      },
     },
   ]);
   expect(

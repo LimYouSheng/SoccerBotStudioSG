@@ -1,8 +1,19 @@
 import { runScheduledRecovery } from "./scheduled-recovery";
 import { customerCatalogue } from "./customer-catalogue";
+import {
+  restoreRememberedIdentity,
+  revokeAllIdentities,
+  clearRememberedCookie,
+  revokePresentedRemembered,
+} from "./remembered-identity";
 import { readVerifiedIdentity } from "./identity";
 import { identityDelivery } from "./identity-delivery";
-import { createAccess, authenticate, revokeAccess } from "./access";
+import {
+  createAccess,
+  authenticate,
+  revokeAccess,
+  clearAccessCookie,
+} from "./access";
 import { confirmation, checkoutContext } from "./confirmation";
 import { ApiError, policy } from "./policy";
 import { verifyBindings } from "./bindings";
@@ -99,7 +110,11 @@ export default {
             url.pathname,
           )
         ) {
-          return json(await identityDelivery(request, env));
+          const cookies: string[] = [];
+          const response = json(await identityDelivery(request, env, cookies));
+          for (const cookie of cookies)
+            response.headers.append("Set-Cookie", cookie);
+          return response;
         }
         // These initial named operations accept no payload at all.
         if (request.body !== null) {
@@ -178,21 +193,63 @@ export default {
           if (
             request.headers.get("cookie")?.includes("__Host-soccerbot-access=")
           ) {
-            await authenticate(request, env, now);
-            return json({ access: "guest" });
+            try {
+              await authenticate(request, env, now);
+              return json({ access: "guest" });
+            } catch (error) {
+              if (!(error instanceof ApiError) || error.status !== 401)
+                throw error;
+              // A new guest never inherits the expired/revoked owner's attempts.
+            }
           }
           return json({ access: "guest" }, 201, {
             "Set-Cookie": await createAccess(env, now),
           });
         }
-        if (url.pathname === "/api/access" && request.method === "DELETE")
-          return json({ access: "revoked" }, 200, {
-            "Set-Cookie": await revokeAccess(
-              env,
-              await authenticate(request, env, now),
-              now,
-            ),
+        if (url.pathname === "/api/access" && request.method === "DELETE") {
+          const access = await authenticate(request, env, now).catch(
+            (error: unknown) => {
+              if (error instanceof ApiError && error.status === 401)
+                return null;
+              throw error;
+            },
+          );
+          await revokePresentedRemembered(request, env, now);
+          const response = json({ access: "revoked" }, 200, {
+            "Set-Cookie": access
+              ? await revokeAccess(env, access, now)
+              : clearAccessCookie(),
           });
+          response.headers.append("Set-Cookie", clearRememberedCookie());
+          return response;
+        }
+        if (
+          url.pathname === "/api/identity/restore" &&
+          request.method === "POST"
+        ) {
+          const cookies: string[] = [];
+          const pepper: unknown = Reflect.get(env, "IDENTITY_PEPPER");
+          const identity = await restoreRememberedIdentity(
+            request,
+            env,
+            typeof pepper === "string" ? pepper : "",
+            cookies,
+          );
+          const response = json(identity);
+          for (const cookie of cookies)
+            response.headers.append("Set-Cookie", cookie);
+          return response;
+        }
+        if (
+          url.pathname === "/api/identity/all-devices" &&
+          request.method === "DELETE"
+        ) {
+          await revokeAllIdentities(request, env, now);
+          const response = json({ access: "revoked" });
+          response.headers.append("Set-Cookie", clearRememberedCookie());
+          response.headers.append("Set-Cookie", clearAccessCookie());
+          return response;
+        }
         if (url.pathname === "/api/catalogue" && request.method === "GET")
           return json(await customerCatalogue(request, env, now));
         if (url.pathname === "/api/identity" && request.method === "GET")

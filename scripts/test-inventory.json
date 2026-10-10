@@ -184,6 +184,10 @@
     "title": "guest selection creates a guest contact and continues to the session"
   },
   {
+    "file": "src/features/booking/account-step.test.tsx",
+    "title": "remember me is explicit default off and opted in preview expiry stays ninety days from verification"
+  },
+  {
     "file": "src/features/booking/async-booking.test.tsx",
     "title": "a changed booking session invalidates availability even if the old date response arrives last"
   },
@@ -566,6 +570,18 @@
   {
     "file": "src/services/identity.test.ts",
     "title": "live identity requires a fresh bot proof and sends it only after guest access"
+  },
+  {
+    "file": "src/services/identity.test.ts",
+    "title": "live remembered refresh creates only fresh guest access and rereads restored identity"
+  },
+  {
+    "file": "src/services/identity.test.ts",
+    "title": "live remembered restoration arriving after signout cannot repopulate cached identity"
+  },
+  {
+    "file": "src/services/identity.test.ts",
+    "title": "live verification transmits explicit consent and all-device signout uses its protected operation"
   },
   {
     "file": "tests/customer.spec.ts",

@@ -50,3 +50,23 @@ export function capability() {
     b.toString(16).padStart(2, "0"),
   ).join("");
 }
+
+export async function keyedHash(pepper: string, parts: string[]) {
+  if (pepper.length < 32 || pepper.length > 512)
+    throw new ApiError(503, "identity_unavailable");
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(pepper),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(JSON.stringify(parts)),
+  );
+  return Array.from(new Uint8Array(signature), (b) =>
+    b.toString(16).padStart(2, "0"),
+  ).join("");
+}
