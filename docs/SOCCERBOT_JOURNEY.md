@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## 2026-10-10 — PR18 release-preservation checker repair
+
+Candidate47cc928 CI38043587921 passed172 Worker cases and9 live-browser executions before sealed-release validation failed on a read of `_cf_METADATA.key` with SQLITE_AUTH. The new preservation inventory accidentally included D1's protected internal table. Excluded only that exact platform-owned name; all application table/column/row comparisons, unknown-attempt/operator preservation, empty delivery guards, source/export hashes and protected-read checks remain. No application or browser assertion changed.
+
+Preserved original failure log and artifact11667395274, ZIP SHA256df850925fdcbddaaa78441a7ab960b2f0a79609c00a38ca4dd4a8346d473ad91. All140 sealed file hashes checked. The corrected checker passed on those exact downloaded Worker/assets/migration bytes in isolated local workerd/D1, zero outbound requests; no rebuild substituted for the failed candidate. Final repaired commit requires fresh CI, recorded in PR18. Current PROGRESS now points to PR18 and the new finite proof-gate prerequisite rather than the merged PR17 branch.
+
 ## 2026-10-10 — M3.5 source continuation from merged PR17
 
 Refreshed GitHub and local state: main2f08b1c contains PR17/headb94b14a and PR16 functionality; main's separate CI38041760947 passed. Preserved the clean historical experiment checkout897cbfe and opened a new feature worktree. Prior private campaign ledger/receipts were absent; carried canonical counters and unknown time/loop intervals explicitly. Initial sandbox Git fetch could not reach the proxy; supported network permission fetched unchanged origin successfully. Direct gh API returned Forbidden; connected GitHub reads supplied main CI without altering network policy. No provider or management call was made.

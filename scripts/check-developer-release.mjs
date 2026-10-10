@@ -152,11 +152,11 @@ try {
     ).results,
   };
   for (const name of names.slice(8, 12)) await migrate(name);
-  // Preserve every old table and column through the additive remembered schema.
+  // Preserve every application table and column; D1 owns its protected _cf_METADATA table.
   const priorTables = (
     await db
       .prepare(
-        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> '_cf_METADATA' ORDER BY name",
       )
       .all()
   ).results.map((row) => row.name);
@@ -282,7 +282,7 @@ try {
         checks: [
           "file hashes",
           "root export",
-          "0001–0008 compatibility and pending0009–0011 preserve all existing columns identities unknown effects and operator grants",
+          "0001–0012 application state and pending0013 preserve all existing columns identities unknown effects and operator grants",
           "empty identity delivery authority and default-closed HTTP",
           "exact Worker revision",
           "protected checkout unavailable",
