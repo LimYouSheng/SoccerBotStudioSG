@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## 2026-10-11 — Defer physical flight until native and webhook technical completion
+
+YS asked for webhook instructions after native technical readiness, with a strong directive to resolve the integration, and clarified that the whole flight should be tested together. Recorded one combined acceptance stage, preserving automated/contract validation now and physical acceptance pending. Drafted detailed instructions for supported delivery/signatures, durable deduplication/acknowledgement, existing authoritative normalization/confirmation, no-return/missed-callback recovery, adverse scenarios and finite activation/closure. No callback was registered, receiver deployed, scheduler enabled or payment performed. Unsupported settlement events remain explicit; invoice creation alone is never paid evidence.
+
 ## 2026-10-11 — Execute the six native completion items
 
 YS asked to draft and execute the six remaining native-booking items, then merged PR20 after exact head2d48ed0 CI38128735760 completed frontend/backend/live-email successfully. Verified merge25aac892. Preserved PR20 and opened feat/native-checkout-completion-20261011 for the successor. Drafted all six deliverables with stable milestone mapping, owners, tests, live evidence and explicit dependency stops.

@@ -8,6 +8,10 @@ Deliver the complete quoted A1–A7 customer journey: new and returning customer
 
 YS approved execution of this overarching plan on11October. Source, public research, focused non-browser checks, canonical documentation and feature-branch/draft-PR work proceed within the carried campaign. Live operations require their concrete finite packets; prior closed grants do not reopen. YS reprioritized native booking followed by payment reconciliation/webhooks. Execute supported source and preparation now; the immediate source change adopts one native studio allocation and rejects unexpected overlapping providers; required group size belongs in the native booking Comments section; remaining account contracts determine the next finite live packet. Native booking stays unavailable until its actual mappings are established.
 
+## Technical integration first; one combined acceptance flight
+
+YS directed on11October that native booking and webhook/reconciliation be technically settled before one joined end-to-end physical test. Automated checks, source CI and provider-contract evidence continue during development. The detailed webhook execution instructions live in Service Contracts: establish supported delivery/signatures, durable deduplication/acknowledgement, existing authoritative readback, missed-callback/no-return recovery and adverse-case coverage. No paid webhook is presumed; supported notification hints plus bounded reconciliation are the fallback when settlement delivery is unavailable. Physical acceptance and launch remain pending until the combined flight and final gates pass.
+
 ## Native booking completion task — six deliverables, 11 October 2026
 
 Outcome: complete the supported customer booking path before treating native checkout or later webhooks as accepted. Owner-approved policies above remain unchanged. PR20 head2d48ed0 passed all three CI38128735760 jobs and the owner merged it as25aac892. The successor branch preserves that baseline; independent main verification is not inferred from PR CI.

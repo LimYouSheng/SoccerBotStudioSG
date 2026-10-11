@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## Current direction — technical integration before combined testing
+
+YS now wants native booking and webhook/reconciliation technical work settled first, then one combined physical acceptance flight. Native source increment remains in PR21; Service Contracts contains the complete webhook execution brief with explicit delivery/signature/acknowledgement/idempotency/reconciliation/fallback/negative-test and closure gates. No new physical test is requested now. Automated checks continue. Provider account contracts, native write/annotation/batch integration and actual callback support remain open, with no live completion claim. This is a planning addition to the tested source increment, not a deployed webhook receiver.
+
 ## Native booking completion task — six deliverables, 11 October 2026
 
 Outcome: complete the supported customer booking path before treating native checkout or later webhooks as accepted. Owner-approved policies above remain unchanged. PR20 head2d48ed0 passed all three CI38128735760 jobs and the owner merged it as25aac892. The successor branch preserves that baseline; independent main verification is not inferred from PR CI.
