@@ -55,6 +55,15 @@ async function fixture(page: Page, delivery = false) {
         : null;
     } else if (
       delivery &&
+      url.pathname === "/api/identity/contact" &&
+      method === "GET"
+    ) {
+      status = verified ? 200 : 401;
+      result = verified
+        ? { email: "synthetic@example.test", contact: null }
+        : { error: "identity_unavailable" };
+    } else if (
+      delivery &&
       url.pathname === "/api/identity/restore" &&
       method === "POST"
     ) {
@@ -201,5 +210,8 @@ test("synthetic live verification reads server identity and keeps native booking
       (c) => c.path === "/api/identity" && c.method === "GET",
     ).length,
   ).toBeGreaterThanOrEqual(2);
+  expect(
+    evidence.calls.filter((c) => c.path === "/api/identity/contact"),
+  ).toEqual([{ path: "/api/identity/contact", method: "GET", body: null }]);
   expect(evidence.unexpected).toEqual([]);
 });

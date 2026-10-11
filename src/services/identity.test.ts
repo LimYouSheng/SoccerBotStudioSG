@@ -171,3 +171,68 @@ it("live verification transmits explicit consent and all-device signout uses its
   expect(request.mock.calls[2][0]).toBe("/api/identity/all-devices");
   expect(service.current()).toBeNull();
 });
+
+it("website profile is loaded only for the current identity and saves only explicit name and phone", async () => {
+  const request = vi
+    .fn()
+    .mockResolvedValueOnce(Response.json({ access: "guest" }))
+    .mockResolvedValueOnce(Response.json(identity))
+    .mockResolvedValueOnce(
+      Response.json({
+        email: identity.email,
+        contact: { name: "Synthetic Contact", phone: "+65 8123 4567" },
+      }),
+    )
+    .mockResolvedValueOnce(
+      Response.json({ email: identity.email, saved: true }),
+    );
+  vi.stubGlobal("fetch", request);
+  const service = createLiveIdentityService(),
+    signal = new AbortController().signal;
+  expect(await service.profile(identity.email, signal)).toBeNull();
+  expect(request).not.toHaveBeenCalled();
+  await service.refresh(signal);
+  const contact = await service.profile(identity.email, signal);
+  expect(contact?.name).toBe("Synthetic Contact");
+  await service.saveProfile(contact!, signal);
+  expect(JSON.parse(request.mock.calls[3][1].body)).toEqual({
+    email: identity.email,
+    name: "Synthetic Contact",
+    phone: "+65 8123 4567",
+  });
+});
+it("website profile discards foreign and delayed post-signout responses", async () => {
+  let finish!: (response: Response) => void;
+  const request = vi
+    .fn()
+    .mockResolvedValueOnce(Response.json({ access: "guest" }))
+    .mockResolvedValueOnce(Response.json(identity))
+    .mockResolvedValueOnce(
+      Response.json({
+        email: "foreign@example.invalid",
+        contact: { name: "Foreign Contact", phone: "+65 8123 4567" },
+      }),
+    )
+    .mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = resolve;
+        }),
+    )
+    .mockResolvedValueOnce(Response.json({ access: "revoked" }));
+  vi.stubGlobal("fetch", request);
+  const service = createLiveIdentityService(),
+    signal = new AbortController().signal;
+  await service.refresh(signal);
+  await expect(service.profile(identity.email, signal)).rejects.toThrow();
+  const pending = service.profile(identity.email, signal);
+  await service.signOut(signal);
+  finish(
+    Response.json({
+      email: identity.email,
+      contact: { name: "Old Contact", phone: "+65 8123 4567" },
+    }),
+  );
+  await expect(pending).rejects.toThrow();
+  expect(service.current()).toBeNull();
+});

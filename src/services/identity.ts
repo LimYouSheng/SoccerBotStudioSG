@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { blankContact } from "@/domain/contact";
 import type { CustomerIdentityService, VerifiedIdentity } from "./contracts";
 
 const identitySchema = z.strictObject({
@@ -9,6 +10,19 @@ const challengeSchema = z.strictObject({
   challengeId: z.string().uuid(),
   expiresAt: z.number().int().positive().safe(),
   resendAfter: z.number().int().nonnegative().safe(),
+});
+const profileSchema = z.strictObject({
+  email: z.email(),
+  contact: z
+    .strictObject({
+      name: z.string().min(2).max(80),
+      phone: z.string().min(8).max(24),
+    })
+    .nullable(),
+});
+const savedSchema = z.strictObject({
+  email: z.email(),
+  saved: z.literal(true),
 });
 const unavailable = () =>
   new Error("Email verification is unavailable. You can continue as a guest.");
@@ -107,6 +121,8 @@ export function createLiveIdentityService(): CustomerIdentityService {
     challenge: async (email, signal, botToken) => {
       const normalized = z.email().parse(email.trim().toLowerCase());
       if (!botToken || botToken.length > 2048) throw unavailable();
+      ++generation;
+      current = null;
       await identityRequest("/api/access", "POST", signal);
       const response = challengeSchema.parse(
         await identityRequest("/api/identity/challenges", "POST", signal, {
@@ -142,7 +158,55 @@ export function createLiveIdentityService(): CustomerIdentityService {
       if (!verified || verified.email !== challenge.email) throw unavailable();
       return verified;
     },
-    profile: async () => null, // Actual private provider lookup remains unavailable.
+    profile: async (email, signal) => {
+      if (
+        !current ||
+        current.expiresAt <= Date.now() ||
+        current.email !== email
+      )
+        return null;
+      const own = generation;
+      const value = profileSchema.parse(
+        await identityRequest("/api/identity/contact", "GET", signal),
+      );
+      if (
+        signal.aborted ||
+        own !== generation ||
+        !current ||
+        current.expiresAt <= Date.now() ||
+        current.email !== email ||
+        value.email !== email
+      )
+        throw unavailable();
+      return value.contact
+        ? { ...blankContact(), email, ...value.contact }
+        : null;
+    },
+    saveProfile: async (contact, signal) => {
+      if (
+        !current ||
+        current.expiresAt <= Date.now() ||
+        current.email !== contact.email
+      )
+        throw unavailable();
+      const own = generation;
+      const value = savedSchema.parse(
+        await identityRequest("/api/identity/contact", "POST", signal, {
+          email: contact.email,
+          name: contact.name,
+          phone: contact.phone,
+        }),
+      );
+      if (
+        signal.aborted ||
+        own !== generation ||
+        !current ||
+        current.expiresAt <= Date.now() ||
+        current.email !== contact.email ||
+        value.email !== contact.email
+      )
+        throw unavailable();
+    },
     signOut: async (signal, allDevices = false) => {
       ++generation;
       current = null;

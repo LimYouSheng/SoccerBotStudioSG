@@ -139,5 +139,9 @@ export interface CustomerIdentityService {
     email: string,
     signal: AbortSignal,
   ): Promise<BookingDraft["contact"] | null>;
+  saveProfile(
+    contact: BookingDraft["contact"],
+    signal: AbortSignal,
+  ): Promise<void>;
   signOut(signal: AbortSignal, allDevices?: boolean): Promise<void>;
 }

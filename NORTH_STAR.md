@@ -12,7 +12,7 @@ PR19 is merged at `298c9c8f443063f8b21a2e7b006993a1ec76a9e7`. [Main CI3811261704
 
 The last verified developer Worker is source4a10133/version6c2730a6-9591-4c06-8830-803cb6d30790, identity/provider disabled/end0; no fresh Cloudflare inspection is claimed on11October. Applied0001–0014 are immutable. All three identity windows explicitly closed. Owner acceptance passed opt-out/access-only, supersession, remembered issuance, restart/two tabs, phone independence, fresh all-device sign-out and final closure. Replay and real short-session restoration remain open. Developer infrastructure/source tests do not imply provider or production acceptance.
 
-The quotation APP404-SBS-Q-WEB-001 p3 A3 requires verified SimplyBook name/phone prefill, customer correction and safe ambiguous-email handling. The recorded source hash remains in Rules; the original private PDF is unavailable for fresh validation. The owner separately chose opt-in90days absolute from fresh verification, with no silent extension. Returning identity alone does not complete A3.
+The recorded quotation originally specified verified SimplyBook name/phone prefill. On11October YS explicitly replaced that engineering design with the latest contact details confirmed on this website: one shared profile per verified email, explicit saving, editable prefill and unchanged booking history. Optional safe unique SimplyBook import is deferred and does not block this feature. The recorded source hash remains in Rules; no fresh PDF validation or signed commercial amendment is claimed. The separate opt-in90-day absolute remembered policy remains unchanged. Identity alone does not complete A3.
 
 ## Product boundaries
 
@@ -38,14 +38,14 @@ Stable M1–M9 and all44 subiteration IDs remain in Rules. Existing source excep
 | M8.1–M8.4 | Approved production readiness, exact-artifact deployment, live checks and handover                                    | Actual production evidence, operating guide, access/source/configuration and training                        |
 | M9.1–M9.4 | Stabilization, six-month warranty, optional elected maintenance and eventual exit                                     | Verified repairs, explicit support/access dates and current operational records                              |
 
-Critical path: supported M2 contracts → completed M3 identity/customer binding → M4 booking/recovery → M5 payment/confirmation → M6 client release → M7 written acceptance → M8 launch. Independent source/contract preparation may continue while external evidence is blocked, within one-agent scope. Unsupported multi-session finalization or customer binding requires a documented decision before dependent live implementation.
+Critical path: completed M3 identity/website contact profile plus supported M2 booking contracts → M4 booking/recovery → M5 payment/confirmation → M6 client release → M7 written acceptance → M8 launch. Independent source/contract preparation may continue while external evidence is blocked, within one-agent scope. Unsupported multi-session finalization or customer binding requires a documented decision before dependent live implementation.
 
 ## Immediate package and next feature
 
 1. Reconcile main/deployed identities and the single current matrix in Service Contracts; preserve accepted receipts and unknown accounting.
 2. Design a focused identity completion session that starts long-idle proof first, captures the successful verification request before navigation, and retains sanitized actual request counts. Do not repeat all six old emails.
-3. Resolve exact verified-email/customer binding using supported authoritative documentation/account evidence. Broad search, truncated duplicate detection and first-match selection are not accepted substitutes.
-4. Specify unique/no-match/ambiguous/unavailable/foreign/stale-response prefill behavior, preserving guest entry and editable contact details.
+3. Implement website-owned name/phone profiles, scoped to the server-verified email/account/origin. Load after verification/restoration; save only after explicit customer action. Shared email means one shared contact, with the latest accepted save replacing the prior values.
+4. Prove absent-profile, shared-email overwrite, unavailable, foreign, expired/revoked and stale-response behavior; preserve guest entry and immutable booking history. Optional SimplyBook import remains separately blocked on safe unique-match evidence.
 5. Prepare the next bounded source feature against those contracts with exact owners, tests, failure handling and recovery. No new live authority is inferred from documentation or CI.
 6. Produce an exact tested-artifact execution packet only when source policy, provider dependencies and complete closure reserves are ready; obtain the applicable finite approval before remote work.
 

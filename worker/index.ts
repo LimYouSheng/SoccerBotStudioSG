@@ -7,6 +7,8 @@ import {
   revokePresentedRemembered,
 } from "./remembered-identity";
 import { readVerifiedIdentity } from "./identity";
+import { readContactProfile, saveContactProfile } from "./contact-profile";
+import { inputBody } from "./identity-delivery";
 import { identityDelivery, assertIdentityProofOpen } from "./identity-delivery";
 import {
   createAccess,
@@ -115,6 +117,23 @@ export default {
           for (const cookie of cookies)
             response.headers.append("Set-Cookie", cookie);
           return response;
+        }
+        if (url.pathname === "/api/identity/contact") {
+          if (request.method !== "GET" && request.method !== "POST")
+            throw new ApiError(405, "operation_unavailable");
+          await verifyBindings(env);
+          await assertIdentityProofOpen(env);
+          const result =
+            request.method === "POST"
+              ? await saveContactProfile(
+                  request,
+                  env,
+                  await inputBody(request),
+                  Date.now(),
+                )
+              : await readContactProfile(request, env, Date.now());
+          await assertIdentityProofOpen(env);
+          return json(result);
         }
         // These initial named operations accept no payload at all.
         if (request.body !== null) {

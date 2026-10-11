@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icon";
 import { CONTACT_METHODS } from "@/domain/catalog";
@@ -13,14 +13,54 @@ type TextKey = {
   [K in keyof ContactDetails]: ContactDetails[K] extends string ? K : never;
 }[keyof ContactDetails];
 export function DetailsStep() {
-  const { draft, update } = useBooking(),
+  const { draft, update, identityService } = useBooking(),
     router = useRouter(),
     c = draft.contact;
   const [errors, setErrors] = useState<ContactErrors>({});
+  const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState("");
+  const activeSave = useRef<AbortController | null>(null);
+  const contactKey = JSON.stringify([draft.mode, draft.accountEmail, c]);
+  useEffect(
+    () => () => {
+      activeSave.current?.abort();
+      activeSave.current = null;
+    },
+    [contactKey, identityService],
+  );
+  async function save() {
+    if (activeSave.current) return;
+    const next = contactErrors(c, draft.accountEmail);
+    setErrors(next);
+    if (Object.keys(next).length) return;
+    const controller = new AbortController();
+    activeSave.current = controller;
+    setSaving(true);
+    setSaveMessage("");
+    try {
+      await identityService.saveProfile(c, controller.signal);
+      if (!controller.signal.aborted)
+        setSaveMessage("Contact details saved for your next visit.");
+    } catch {
+      if (!controller.signal.aborted)
+        setSaveMessage(
+          "Contact details could not be saved. Verify your email and try again.",
+        );
+    } finally {
+      if (activeSave.current === controller) {
+        activeSave.current = null;
+        setSaving(false);
+      }
+    }
+  }
   function change<K extends keyof ContactDetails>(
     key: K,
     value: ContactDetails[K],
   ) {
+    activeSave.current?.abort();
+    activeSave.current = null;
+    setSaving(false);
+    setSaveMessage("");
     update({ contact: { ...c, [key]: value } });
     setErrors((current) => ({ ...current, [key]: undefined }));
   }
@@ -116,8 +156,9 @@ export function DetailsStep() {
           <h2 className="section-title">Booking contact</h2>
           {draft.mode === "member" && (
             <p className="section-description">
-              Review your prefilled name and phone number. You can correct them
-              here.
+              Review your name and phone number, then save them for your next
+              visit. Anyone using this verified email shares these saved contact
+              details. Saving does not change previous bookings.
             </p>
           )}
           <div className="field-grid">
@@ -146,6 +187,19 @@ export function DetailsStep() {
             )}
           </div>
         </section>
+        {draft.mode === "member" && (
+          <>
+            <button
+              type="button"
+              className="button"
+              disabled={saving}
+              onClick={() => void save()}
+            >
+              {saving ? "Saving contact details…" : "Save contact details"}
+            </button>
+            {saveMessage && <p role="status">{saveMessage}</p>}
+          </>
+        )}
         <div className="actions">
           <button className="button" type="submit">
             Review booking <Icon name="arrow" />

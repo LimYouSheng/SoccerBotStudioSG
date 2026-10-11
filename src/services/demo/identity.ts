@@ -22,6 +22,16 @@ function read() {
   }
   return null;
 }
+function saveContact(
+  contact: Parameters<CustomerIdentityService["saveProfile"]>[0],
+) {
+  const parsed = profilesSchema.safeParse(safeRead(PROFILES));
+  const normalized = normalizeContact(contact);
+  safeWrite(PROFILES, {
+    ...(parsed.success ? parsed.data : {}),
+    [normalized.email]: { name: normalized.name, phone: normalized.phone },
+  });
+}
 export const demoIdentityService: IdentityService = {
   read,
   challenge(email) {
@@ -68,12 +78,7 @@ export const demoIdentityService: IdentityService = {
   },
   saveProfile(draft) {
     if (draft.mode !== "member" || read()?.email !== draft.accountEmail) return;
-    const parsed = profilesSchema.safeParse(safeRead(PROFILES));
-    const contact = normalizeContact(draft.contact);
-    safeWrite(PROFILES, {
-      ...(parsed.success ? parsed.data : {}),
-      [draft.accountEmail]: { name: contact.name, phone: contact.phone },
-    });
+    saveContact(draft.contact);
   },
 };
 
@@ -103,6 +108,11 @@ export const demoCustomerIdentity: CustomerIdentityService = {
     return demoIdentityService.verify(value, code, remember);
   },
   profile: async (email) => demoIdentityService.profile(email),
+  saveProfile: async (contact, signal) => {
+    if (signal.aborted || read()?.email !== contact.email)
+      throw new Error("Verify your email again.");
+    saveContact(contact);
+  },
   signOut: async () => {
     previewChallenges.clear();
     demoIdentityService.signOut();

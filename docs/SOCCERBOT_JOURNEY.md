@@ -1,5 +1,13 @@
 # SoccerBotStudio — Journey
 
+## 2026-10-11 — Owner replaces provider-only prefill with website contact profile
+
+YS explicitly selected latest name/phone confirmed on this website, including one shared profile for a shared email and no changes to old bookings. This replaces the prior prerequisite for SimplyBook-only prefill. The quotation's historical wording/hash remains; no signed commercial amendment or original PDF revalidation is claimed. Safe unique provider import is optional and deferred. Provider booking/payment authority remains separate.
+
+Implemented additive source-only0015 and protected GET/POST contact operations, conditional session/subject checks, existing-service prefill and explicit save UI with shared-email explanation. Updated the release manifest to the actual applied0001–0014 baseline and pending0015; old row3 packet generator deliberately refuses the new pending migration list. No identity-window exception, remote migration or deployment.
+
+Focused checks initially found missing generated Worker types in the new worktree and new synthetic cases exhausting the unchanged per-source challenge limit. Reused types from identical pinned configuration and isolated the new cases' synthetic source identifiers; no security cap/assertion weakened. The first full non-browser tooling invocation exited without diagnostic output; a scoped local-network run passed all115 tooling cases. The subsequent lint gate caught two unused typed mock parameters; the mock now declares its service signature without unused parameters. Original failure logs retained. Existing proof and remembered policies remain intact. Source-index skill resource remains unavailable. All186 Worker cases and the complete non-browser gate passed (150 application cases,115 tooling cases, installer checks, lint/types/build/export). The CI-only live-email transport fixture was then extended for the authenticated no-profile read, preserving every original assertion and adding the exact profile request assertion; final focused source/policy/format/lint/type checks cover that fixture change. Final candidate CI is recorded in the PR checkpoint.
+
 ## 2026-10-11 — Merged North Star execution package
 
 Owner merged PR19 at298c9c8f443063f8b21a2e7b006993a1ec76a9e7. Main CI38112617043 passed all three verification jobs and Pages deployment; this is separate from PR-headc2f2506/CI38049449145 and deployed Worker4a10133. Refreshed clean historical worktree and created plan/north-star-integration-20261011 from actual main. Baseline inventory222 tracked files; existing worktrees/receipts preserved. No Worker/provider/account reinspection or new live authority.

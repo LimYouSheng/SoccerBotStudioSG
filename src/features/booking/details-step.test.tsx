@@ -1,8 +1,10 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, test, vi } from "vitest";
-import { BookingProvider } from "./provider";
+import { BookingProvider, useBooking } from "./provider";
 import { DetailsStep } from "./details-step";
+import { demoCustomerIdentity } from "@/services/demo/identity";
+import type { CustomerIdentityService } from "@/services/contracts";
 
 const mocks = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
@@ -38,4 +40,115 @@ test("details contains only the five contact fields and validates them before re
   await user.type(screen.getByLabelText(/Academy \/ school/), "Demo Academy");
   await user.click(screen.getByRole("button", { name: "Review booking" }));
   expect(mocks.push).toHaveBeenCalledExactlyOnceWith("/book/review/");
+});
+
+test("verified details saves only on explicit action and ignores completion after editing", async () => {
+  const user = userEvent.setup();
+  let finish!: () => void;
+  const saveProfile = vi.fn<CustomerIdentityService["saveProfile"]>(
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const identity = { ...demoCustomerIdentity, saveProfile };
+  function ChooseMember() {
+    const { update } = useBooking();
+    return (
+      <button
+        onClick={() =>
+          update({
+            mode: "member",
+            accountEmail: "shared@example.invalid",
+            contact: {
+              name: "First Contact",
+              email: "shared@example.invalid",
+              phone: "+65 8123 4567",
+              contactMethod: "email",
+              academy: "",
+            },
+          })
+        }
+      >
+        Choose member
+      </button>
+    );
+  }
+  render(
+    <BookingProvider identityService={identity}>
+      <ChooseMember />
+      <DetailsStep />
+    </BookingProvider>,
+  );
+  await user.click(screen.getByRole("button", { name: "Choose member" }));
+  expect(saveProfile).not.toHaveBeenCalled();
+  expect(
+    screen.getByText(/Anyone using this verified email shares/),
+  ).toBeInTheDocument();
+  await user.click(
+    screen.getByRole("button", { name: "Save contact details" }),
+  );
+  expect(saveProfile).toHaveBeenCalledTimes(1);
+  expect(
+    screen.getByRole("button", { name: "Saving contact details…" }),
+  ).toBeDisabled();
+  await user.type(screen.getByLabelText(/Full name/), " Edited");
+  expect(saveProfile.mock.calls[0][1].aborted).toBe(true);
+  await act(async () => finish());
+  expect(
+    screen.queryByText("Contact details saved for your next visit."),
+  ).not.toBeInTheDocument();
+  expect(screen.getByLabelText(/Full name/)).toHaveValue(
+    "First Contact Edited",
+  );
+});
+test("verified details reports an explicit save and retains editable contact on failure", async () => {
+  const user = userEvent.setup();
+  const saveProfile = vi
+    .fn()
+    .mockResolvedValueOnce(undefined)
+    .mockRejectedValueOnce(new Error("unavailable"));
+  function ChooseMember() {
+    const { update } = useBooking();
+    return (
+      <button
+        onClick={() =>
+          update({
+            mode: "member",
+            accountEmail: "shared@example.invalid",
+            contact: {
+              name: "Shared Contact",
+              email: "shared@example.invalid",
+              phone: "+65 8123 4567",
+              contactMethod: "email",
+              academy: "",
+            },
+          })
+        }
+      >
+        Choose member
+      </button>
+    );
+  }
+  render(
+    <BookingProvider identityService={{ ...demoCustomerIdentity, saveProfile }}>
+      <ChooseMember />
+      <DetailsStep />
+    </BookingProvider>,
+  );
+  await user.click(screen.getByRole("button", { name: "Choose member" }));
+  await user.click(
+    screen.getByRole("button", { name: "Save contact details" }),
+  );
+  expect(await screen.findByRole("status")).toHaveTextContent(
+    "Contact details saved for your next visit.",
+  );
+  await user.click(
+    screen.getByRole("button", { name: "Save contact details" }),
+  );
+  expect(await screen.findByRole("status")).toHaveTextContent(
+    "could not be saved",
+  );
+  expect(screen.getByLabelText(/Full name/)).toHaveValue("Shared Contact");
+  expect(mocks.push).not.toHaveBeenCalled();
 });

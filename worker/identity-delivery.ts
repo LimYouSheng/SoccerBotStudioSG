@@ -63,7 +63,7 @@ export async function assertIdentityProofOpen(env: Env) {
   if (proof) await windowFor(env, Date.now());
 }
 // Bounded before parsing, and never includes request bodies or provider errors in logs.
-async function inputBody(request: Request): Promise<unknown> {
+export async function inputBody(request: Request): Promise<unknown> {
   if (
     request.headers.get("content-type")?.split(";")[0].trim() !==
       "application/json" ||

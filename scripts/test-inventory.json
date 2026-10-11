@@ -300,6 +300,14 @@
     "title": "details contains only the five contact fields and validates them before review"
   },
   {
+    "file": "src/features/booking/details-step.test.tsx",
+    "title": "verified details reports an explicit save and retains editable contact on failure"
+  },
+  {
+    "file": "src/features/booking/details-step.test.tsx",
+    "title": "verified details saves only on explicit action and ignores completion after editing"
+  },
+  {
     "file": "src/features/booking/email-bot-proof.test.tsx",
     "title": "email bot widget binds purpose clears expired proof and ignores callbacks after disposal"
   },
@@ -582,6 +590,14 @@
   {
     "file": "src/services/identity.test.ts",
     "title": "live verification transmits explicit consent and all-device signout uses its protected operation"
+  },
+  {
+    "file": "src/services/identity.test.ts",
+    "title": "website profile discards foreign and delayed post-signout responses"
+  },
+  {
+    "file": "src/services/identity.test.ts",
+    "title": "website profile is loaded only for the current identity and saves only explicit name and phone"
   },
   {
     "file": "tests/customer.spec.ts",

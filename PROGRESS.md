@@ -1,6 +1,18 @@
 # SoccerBotStudioSG current progress
 
-## Current task — North Star execution package, 11 October 2026
+## Current task — website-confirmed contact profile, 11 October 2026
+
+YS explicitly replaced SimplyBook-only prefill with latest website-confirmed name/phone. One profile per normalized verified email/account/origin, shared by users of that email; explicit saving only, existing booking history untouched. Optional unique native import remains deferred and no longer blocks this feature. Source work continues in draft PR20 from merged main298c9c8; previous planning head4124929 passed all three CI38113691356 jobs with deployment skipped.
+
+Implemented protected profile read/save, existing Account prefill, explicit Details save/status/shared-email notice, and additive source-only0015. Applied0001–0014 and current closed row3/no-row4 policy remain unchanged. Release manifest now reflects pending0015 and last verified closed Worker version6c2730a6-9591-4c06-8830-803cb6d30790; old consumed identity packet is not reusable. Latest deployment remains source4a10133, with identity/provider disabled/end0; not freshly queried.
+
+Selected workerd/D1 and service/component checks cover unauthorized guesses, cross-email writes, latest shared-email save, input failures, expiry/revocation, remembered restoration, stale responses and explicit saving. Required final local non-browser and all three PR CI gates are recorded at publication. Source implemented does not mean remote/profile/device accepted.
+
+Next task: review the source profile increment and prepare a successor identity/profile acceptance policy and exact finite packet before remote0015/deployment or any new window. The earlier two-email design needs the explicit profile save/restore/shared-email checks incorporated and recosted. No live authority is inferred from this feature request. Remaining provider contracts for booking/quote/capacity/payment still block their dependent live work.
+
+Carried campaign starts9October08:18:56UTC and ends12October16:18:56SGT; one agent,24 active hours/72 elapsed/60 loops/6 repairs per cause. All prior measured counters and unknown intervals below persist. This source increment adds zero management/provider/email/bot/payment operations. No new secrets, browser execution, merge or remote state mutation. Exactly three canonical documentation owners and all44 milestone IDs retained.
+
+## Previous checkpoint — North Star planning package, 11 October 2026
 
 YS approved execution of the full North Star plan. Refreshed main `298c9c8f443063f8b21a2e7b006993a1ec76a9e7` contains owner-merged PR19; independent main CI38112617043 passed frontend/backend/live-email and Pages demo deployment. PR19 final headc2f2506 passed CI38049449145. The clean historical identity-proof worktree is preserved; this package uses new branch `plan/north-star-integration-20261011` from actual main, with222 tracked baseline files. No Cloudflare/provider probe or browser was launched.
 
