@@ -5,6 +5,7 @@ import { ApiError, digest } from "./policy";
 import { intentSchema, associationSchema } from "./journal";
 import {
   normalizeNativeCreation,
+  normalizeNativeSession,
   normalizeNativeReads,
   providerId,
   bookingWallTime,
@@ -32,7 +33,6 @@ function validateScope(scope: NativeScope) {
   z.string().uuid().parse(scope.attemptId);
   const intent = intentSchema.parse(scope.intent);
   if (
-    intent.sessions.length !== 1 ||
     scope.timezone !== "Asia/Singapore" ||
     !scope.companyLogin ||
     scope.companyLogin.includes("[") ||
@@ -41,8 +41,9 @@ function validateScope(scope: NativeScope) {
     throw new ApiError(503, "native_scope_unavailable");
   return intent;
 }
-// Implements the existing composition contract. Finalize consumes the invoice
-// returned by book; it never issues a second booking or independent payment.
+// Implements the existing composition contract: book returns a single invoice;
+// multiple sessions use one signed native batch closure. Neither path creates
+// an independent payment or retries a dispatched booking/finalization.
 export function nativeBookingOperations(options: {
   scope: NativeScope;
   exchange: NativeExchange;
@@ -52,6 +53,8 @@ export function nativeBookingOperations(options: {
   prebooking: Pick<NativePrebooking, "revalidate" | "invalidate">;
   hasRecoveryCapacity: BookingOperations["hasRecoveryCapacity"];
   db: D1Database;
+  clientSignature?: (clientId: string, hash: string) => Promise<string>;
+  batchSignature?: (batchId: string, hash: string) => Promise<string>;
 }): BookingOperations {
   const intent = validateScope(options.scope);
   if (!intent.contact)
@@ -59,7 +62,14 @@ export function nativeBookingOperations(options: {
   const { name, email, phone } = intent.contact;
   const fields = nativeBookFields({ name, email, phone }, options.additional);
   let created: ReturnType<typeof normalizeNativeCreation> | undefined;
-  let dispatched = false;
+  const dispatched = new Set<number>();
+  const bookingIds: string[] = [];
+  let batchId: string | undefined;
+  let batchHash: string | undefined;
+  let nativeCustomerId: string | undefined;
+  let clientHash: string | undefined;
+  if (intent.sessions.length > 1 && !options.batchSignature)
+    throw new ApiError(503, "native_batch_signing_unavailable");
   const matches = async (value: unknown, attemptId: string) => {
     if (
       attemptId !== options.scope.attemptId ||
@@ -73,17 +83,54 @@ export function nativeBookingOperations(options: {
     hasRecoveryCapacity: options.hasRecoveryCapacity,
     async revalidate(value, context) {
       await matches(value, context.attemptId);
-      if (context.sessionIndex !== 0)
-        throw new ApiError(409, "native_single_session_only");
-      return options.prebooking.revalidate(value);
+      return options.prebooking.revalidate(value, context.sessionIndex);
     },
     async createSession(session, value, context) {
       await matches(value, context.attemptId);
-      if (JSON.stringify(session) !== JSON.stringify(intent.sessions[0]))
+      if (
+        JSON.stringify(session) !==
+        JSON.stringify(intent.sessions[context.sessionIndex])
+      )
         throw new ApiError(409, "native_intent_mismatch");
-      if (dispatched || context.sessionIndex !== 0)
+      if (
+        dispatched.has(context.sessionIndex) ||
+        context.sessionIndex !== bookingIds.length
+      )
         throw new ApiError(409, "native_write_not_replayable");
-      dispatched = true;
+      dispatched.add(context.sessionIndex);
+      if (intent.sessions.length > 1 && context.sessionIndex === 0) {
+        const reserved = await options.db
+          .prepare(
+            "INSERT INTO session_effects(attempt_id,step,outcome) SELECT id,'native-batch','unknown' FROM attempts WHERE id=? AND state='dispatching' AND association_json IS NULL AND deadline_ms>?",
+          )
+          .bind(options.scope.attemptId, Date.now())
+          .run();
+        if (reserved.meta.changes !== 1)
+          throw new ApiError(409, "native_batch_not_claimed");
+        await context.assertCurrent();
+        const batch = await options.exchange({ kind: "batch-create" });
+        batchId = providerId(batch.body);
+        await options.db
+          .prepare(
+            "UPDATE session_effects SET outcome='observed',reference_id=? WHERE attempt_id=? AND step='native-batch' AND outcome='unknown'",
+          )
+          .bind(batchId, options.scope.attemptId)
+          .run();
+      }
+      const client = { ...fields.client };
+      if (
+        intent.customerMode === "booking-contact" &&
+        context.sessionIndex > 0
+      ) {
+        if (!nativeCustomerId || !clientHash || !options.clientSignature)
+          throw new ApiError(503, "native_client_signing_unavailable");
+        client.client_id = nativeCustomerId;
+        client.client_sign = await options.clientSignature(
+          nativeCustomerId,
+          clientHash,
+        );
+      }
+      await context.assertCurrent();
       const wall = new Date(session.startMs + 8 * 3600000).toISOString();
       options.prebooking.invalidate();
       const response = await options
@@ -93,36 +140,103 @@ export function nativeBookingOperations(options: {
           instructorId: session.instructorId,
           date: wall.slice(0, 10),
           time: wall.slice(11, 19),
-          client: fields.client,
+          client,
           additional: fields.additional,
+          ...(batchId ? { batchId } : {}),
         })
         .finally(() => options.prebooking.invalidate());
-      created = normalizeNativeCreation(response.body, {
-        ...options.scope,
-        bookingObservedAtMs: response.receivedAtMs,
-        invoiceObservedAtMs: response.receivedAtMs,
-      });
+      const key = normalizeNativeSession(
+        response.body,
+        { ...options.scope, nativeCustomerId },
+        context.sessionIndex,
+      );
       await retainNativeBookingKey(
         options.db,
         options.scope.attemptId,
-        created.association.bookingIds[0],
-        created.bookingHash,
+        key.bookingId,
+        key.hash,
+        intent.sessions.length === 1 ? undefined : context.sessionIndex,
       );
+      nativeCustomerId = key.nativeCustomerId;
+      if (
+        intent.customerMode === "booking-contact" &&
+        intent.sessions.length > 1 &&
+        context.sessionIndex === 0
+      ) {
+        const customer = z
+          .object({
+            bookings: z
+              .array(
+                z.object({
+                  client_hash: z.string().regex(/^[A-Za-z0-9_-]{8,256}$/),
+                }),
+              )
+              .length(1),
+          })
+          .parse(response.body);
+        clientHash = customer.bookings[0].client_hash;
+      }
+      if (bookingIds.includes(key.bookingId))
+        throw new ApiError(409, "native_duplicate_booking");
+      bookingIds.push(key.bookingId);
+      if (batchId) {
+        const batch = z
+          .object({
+            batch_id: z.union([z.string(), z.number()]),
+            batch_hash: z.string().regex(/^[A-Za-z0-9_-]{8,256}$/),
+          })
+          .parse(response.body);
+        if (
+          providerId(batch.batch_id) !== batchId ||
+          (batchHash !== undefined && batchHash !== batch.batch_hash)
+        )
+          throw new ApiError(409, "native_batch_mismatch");
+        batchHash = batch.batch_hash;
+      } else {
+        created = normalizeNativeCreation(response.body, {
+          ...options.scope,
+          bookingObservedAtMs: response.receivedAtMs,
+          invoiceObservedAtMs: response.receivedAtMs,
+        });
+      }
       return {
-        bookingId: created.association.bookingIds[0],
+        bookingId: key.bookingId,
         accountId: intent.accountId,
         customerId: intent.customerId,
+        ...(intent.customerMode === "booking-contact"
+          ? { nativeCustomerId }
+          : {}),
         ...session,
         currency: intent.currency,
         confirmed: true,
       };
     },
-    async finalize(ids, value, attemptId) {
+    async finalize(ids, value, attemptId, assertCurrent) {
       await matches(value, attemptId);
       if (
+        ids.length !== intent.sessions.length ||
+        JSON.stringify(ids) !== JSON.stringify(bookingIds)
+      )
+        throw new ApiError(409, "native_association_missing");
+      if (batchId) {
+        if (!batchHash || !options.batchSignature)
+          throw new ApiError(503, "native_batch_signing_unavailable");
+        const signature = await options.batchSignature(batchId, batchHash);
+        await assertCurrent();
+        const response = await options.exchange({
+          kind: "batch-close",
+          batchId,
+          signature,
+        });
+        created = normalizeNativeCreation(response.body, {
+          ...options.scope,
+          bookingObservedAtMs: response.receivedAtMs,
+          invoiceObservedAtMs: response.receivedAtMs,
+        });
+      }
+      if (
         !created ||
-        ids.length !== 1 ||
-        ids[0] !== created.association.bookingIds[0]
+        JSON.stringify(ids) !== JSON.stringify(created.association.bookingIds)
       )
         throw new ApiError(409, "native_association_missing");
       return {
@@ -130,6 +244,9 @@ export function nativeBookingOperations(options: {
         bookingIds: ids,
         accountId: intent.accountId,
         customerId: intent.customerId,
+        ...(intent.customerMode === "booking-contact"
+          ? { nativeCustomerId: created.association.nativeCustomerId }
+          : {}),
         currency: intent.currency,
         totalMinor: intent.totalMinor,
         taxMinor: intent.taxMinor,
@@ -137,7 +254,7 @@ export function nativeBookingOperations(options: {
     },
   };
 }
-// Exactly two reads of known references. Receipt times are captured by the
+// One read per known booking and one invoice read. Receipt times are captured by the
 // authenticated exchange, not by provider entity timestamps or browser polling.
 export async function readNativeAttempt(options: {
   scope: NativeScope;
@@ -148,17 +265,23 @@ export async function readNativeAttempt(options: {
 }) {
   validateScope(options.scope);
   const refs = associationSchema.parse(options.association);
-  if (refs.bookingIds.length !== 1)
-    throw new ApiError(503, "native_single_session_only");
+  if (refs.bookingIds.length !== options.scope.intent.sessions.length)
+    throw new ApiError(503, "native_association_missing");
   providerId(refs.invoiceId);
-  providerId(refs.bookingIds[0]);
-  options.signal.throwIfAborted();
-  const signature = await options.signature(refs.bookingIds[0]);
-  options.signal.throwIfAborted();
-  const booking = await options.exchange(
-    { kind: "booking-read", bookingId: refs.bookingIds[0], signature },
-    options.signal,
-  );
+  const bookings: unknown[] = [];
+  let observedAtMs = Number.MAX_SAFE_INTEGER;
+  for (const bookingId of refs.bookingIds) {
+    providerId(bookingId);
+    options.signal.throwIfAborted();
+    const signature = await options.signature(bookingId);
+    options.signal.throwIfAborted();
+    const booking = await options.exchange(
+      { kind: "booking-read", bookingId, signature },
+      options.signal,
+    );
+    bookings.push(booking.body);
+    observedAtMs = Math.min(observedAtMs, booking.receivedAtMs);
+  }
   options.signal.throwIfAborted();
   const invoice = await options.exchange(
     { kind: "invoice-read", invoiceId: refs.invoiceId },
@@ -167,10 +290,10 @@ export async function readNativeAttempt(options: {
   options.signal.throwIfAborted();
   return {
     kind: "observation" as const,
-    observation: normalizeNativeReads(booking.body, invoice.body, {
+    observation: normalizeNativeReads(bookings, invoice.body, {
       ...options.scope,
       association: refs,
-      bookingObservedAtMs: booking.receivedAtMs,
+      bookingObservedAtMs: observedAtMs,
       invoiceObservedAtMs: invoice.receivedAtMs,
     }),
   };
@@ -253,8 +376,8 @@ export async function prepareNativeLink(
   )
     throw new ApiError(409, "native_association_missing");
   const refs = associationSchema.parse(JSON.parse(row.association_json));
-  if (refs.bookingIds.length !== 1)
-    throw new ApiError(409, "native_single_session_only");
+  if (refs.bookingIds.length !== intent.sessions.length)
+    throw new ApiError(409, "native_association_missing");
   if (providerId(timing.invoiceId) !== refs.invoiceId)
     throw new ApiError(409, "native_association_missing");
   const expiresAtMs = nativeCheckoutDeadline(
@@ -370,12 +493,19 @@ async function retainNativeBookingKey(
   attemptId: string,
   bookingId: string,
   hash: string,
+  sessionIndex?: number,
 ) {
   const result = await db
     .prepare(
-      "INSERT INTO session_effects(attempt_id,step,outcome,reference_id) SELECT id,'native-booking-key','observed',? FROM attempts WHERE id=? AND state='dispatching' AND association_json IS NULL",
+      "INSERT INTO session_effects(attempt_id,step,outcome,reference_id) SELECT id,?,'observed',? FROM attempts WHERE id=? AND state IN ('dispatching','recovery_required') AND association_json IS NULL",
     )
-    .bind(JSON.stringify({ bookingId, hash }), attemptId)
+    .bind(
+      sessionIndex === undefined
+        ? "native-booking-key"
+        : `native-booking-key:${sessionIndex}`,
+      JSON.stringify({ bookingId, hash }),
+      attemptId,
+    )
     .run();
   if (result.meta.changes !== 1)
     throw new ApiError(409, "native_key_not_retained");
@@ -389,20 +519,129 @@ export async function storedNativeSignature(
   const row = await db
     .withSession("first-primary")
     .prepare(
-      "SELECT e.reference_id,a.association_json FROM session_effects e JOIN attempts a ON a.id=e.attempt_id WHERE e.attempt_id=? AND e.step='native-booking-key' AND e.outcome='observed'",
+      "SELECT e.reference_id,a.association_json FROM session_effects e JOIN attempts a ON a.id=e.attempt_id WHERE e.attempt_id=? AND (e.step='native-booking-key' OR e.step GLOB 'native-booking-key:[0-9]*') AND e.outcome='observed' AND json_extract(e.reference_id,'$.bookingId')=?",
     )
-    .bind(attemptId)
+    .bind(attemptId, bookingId)
     .first<{ reference_id: string; association_json: string }>();
   if (!row) throw new ApiError(503, "native_signing_unavailable");
   const key = z
     .strictObject({ bookingId: z.string(), hash: z.string() })
     .parse(JSON.parse(row.reference_id));
   const refs = associationSchema.parse(JSON.parse(row.association_json));
-  if (
-    key.bookingId !== bookingId ||
-    refs.bookingIds.length !== 1 ||
-    refs.bookingIds[0] !== bookingId
-  )
+  if (key.bookingId !== bookingId || !refs.bookingIds.includes(bookingId))
     throw new ApiError(503, "native_signing_unavailable");
   return nativeBookingSignature(bookingId, key.hash, signingSecret);
+}
+
+// A lost finalization reply can be reconciled only from every retained new
+// booking key. No email lookup, batch replay, invoice creation or payment write.
+export async function recoverNativeAssociation(options: {
+  db: D1Database;
+  scope: NativeScope;
+  exchange: NativeExchange;
+  signingSecret: string;
+  signal: AbortSignal;
+}) {
+  const intent = validateScope(options.scope);
+  const row = await options.db
+    .withSession("first-primary")
+    .prepare(
+      "SELECT version,intent_json FROM attempts WHERE id=? AND association_json IS NULL AND state='recovery_required'",
+    )
+    .bind(options.scope.attemptId)
+    .first<{ version: number; intent_json: string }>();
+  if (
+    !row ||
+    (await digest(row.intent_json)) !== (await digest(JSON.stringify(intent)))
+  )
+    throw new ApiError(409, "native_recovery_scope_mismatch");
+  const rows = await options.db
+    .withSession("first-primary")
+    .prepare(
+      "SELECT step,reference_id FROM session_effects WHERE attempt_id=? AND (step='native-booking-key' OR step GLOB 'native-booking-key:[0-9]*') AND outcome='observed' ORDER BY step",
+    )
+    .bind(options.scope.attemptId)
+    .all<{ step: string; reference_id: string }>();
+  if (rows.results.length !== intent.sessions.length)
+    throw new ApiError(503, "native_recovery_references_incomplete");
+  const keys = intent.sessions.map((_, index) => {
+    const step =
+      intent.sessions.length === 1
+        ? "native-booking-key"
+        : `native-booking-key:${index}`;
+    const retained = rows.results.find((entry) => entry.step === step);
+    if (!retained)
+      throw new ApiError(503, "native_recovery_references_incomplete");
+    return z
+      .strictObject({ bookingId: z.string(), hash: z.string() })
+      .parse(JSON.parse(retained.reference_id));
+  });
+  if (new Set(keys.map((key) => key.bookingId)).size !== keys.length)
+    throw new ApiError(409, "native_duplicate_booking");
+  const bookings: unknown[] = [];
+  let invoiceId: string | undefined, nativeCustomerId: string | undefined;
+  let bookingObservedAtMs = Number.MAX_SAFE_INTEGER;
+  for (const key of keys) {
+    options.signal.throwIfAborted();
+    const signature = await nativeBookingSignature(
+      key.bookingId,
+      key.hash,
+      options.signingSecret,
+    );
+    const response = await options.exchange(
+      { kind: "booking-read", bookingId: key.bookingId, signature },
+      options.signal,
+    );
+    const booking = z
+      .object({
+        id: z.unknown(),
+        invoice_id: z.unknown(),
+        client_id: z.unknown(),
+      })
+      .parse(response.body);
+    const nativeInvoice = providerId(booking.invoice_id),
+      nativeCustomer = providerId(booking.client_id);
+    if (
+      providerId(booking.id) !== key.bookingId ||
+      (invoiceId !== undefined && invoiceId !== nativeInvoice) ||
+      (nativeCustomerId !== undefined && nativeCustomerId !== nativeCustomer)
+    )
+      throw new ApiError(409, "native_recovery_association_conflict");
+    invoiceId = nativeInvoice;
+    nativeCustomerId = nativeCustomer;
+    bookings.push(response.body);
+    bookingObservedAtMs = Math.min(bookingObservedAtMs, response.receivedAtMs);
+  }
+  const association = associationSchema.parse({
+    invoiceId,
+    bookingIds: keys.map((key) => key.bookingId),
+    ...(intent.customerMode === "booking-contact" ? { nativeCustomerId } : {}),
+  });
+  options.signal.throwIfAborted();
+  const invoice = await options.exchange(
+    { kind: "invoice-read", invoiceId: association.invoiceId },
+    options.signal,
+  );
+  const observation = normalizeNativeReads(bookings, invoice.body, {
+    ...options.scope,
+    association,
+    bookingObservedAtMs,
+    invoiceObservedAtMs: invoice.receivedAtMs,
+  });
+  options.signal.throwIfAborted();
+  const result = await options.db
+    .prepare(
+      "UPDATE attempts SET association_json=?,observation_json=?,observation_ms=?,state='observed',version=version+1 WHERE id=? AND version=? AND state='recovery_required' AND association_json IS NULL",
+    )
+    .bind(
+      JSON.stringify(association),
+      JSON.stringify(observation),
+      Math.min(bookingObservedAtMs, invoice.receivedAtMs),
+      options.scope.attemptId,
+      row.version,
+    )
+    .run();
+  if (result.meta.changes !== 1)
+    throw new ApiError(409, "native_recovery_fence_lost");
+  return { state: "associated" as const, reads: keys.length + 1 };
 }

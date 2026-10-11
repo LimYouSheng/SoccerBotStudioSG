@@ -1,5 +1,11 @@
 # SoccerBotStudioSG engineering
 
+## 11 October — native checkout implementation and owner configuration confirmation
+
+Owner confirmed developer tax0/S$88 final,40+10minutes and Client Login off. Source now has scoped declaration-based prebooking, fresh guest/native-client separation, single and multi-session native booking/invoice validation, no-replay effects, lost-finalization known-ID recovery and a one-use protected checkout route. New0016 is empty/source-only alongside pending0015; applied0001–0014 and all closed windows are unchanged. Full local Worker runtime201/201 passed; an ordered inventory mismatch in the runner was preserved and repaired against the saved output. Exact final CI is required and recorded in PR21.
+
+**Next ready task:** complete live provider-ID selection/availability and protected preparation in the existing customer flow. Comments need preservation-safe provider semantics and remain non-blocking; partial missing references, account batch acceptance, native redirect/payment and webhook recovery remain open. Do not label this source checkpoint native-booking completion. Prepare the exact live packet only when its artifact, operations, limits and closure/cleanup are reviewable. No live window or physical test is requested by this checkpoint. Canonical details and evidence belong to the three docs.
+
 Every booking automatically attempts a Comments entry `Number of players: N` (default1, range1–4). When the optional fifth Details field is filled, append `School / organisation: VALUE` on the next line; omit that line when blank. If comment delivery fails, leave it blank and allow payment: no notification, staff follow-up or repeated booking/payment. The session price is fixed for1–4 players and the displayed total includes applicable tax with no extra fees. A changed price stops checkout and requires restart. Any unavailable selected session stops the whole checkout for customer revision; never silently drop it. These owner decisions do not establish provider tax as zero or complete multi-session recovery.
 
 ## 1. Start

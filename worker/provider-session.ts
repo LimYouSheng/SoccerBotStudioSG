@@ -1,6 +1,6 @@
 import { discoveryFields } from "./field-discovery";
 import { CatalogueReads } from "./catalogue";
-import { NativePrebooking } from "./prebooking";
+import { NativePrebooking, type NativeAccountContract } from "./prebooking";
 import { measure } from "./diagnostics";
 import { ApiError, policy } from "./policy";
 import { historicalComparison } from "./provider-normalization";
@@ -61,7 +61,11 @@ export class ProviderSession {
       fresh,
     );
   }
-  prebooking(env: Env, control: ProviderControl) {
+  prebooking(
+    env: Env,
+    control: ProviderControl,
+    contract?: NativeAccountContract,
+  ) {
     const p = policy(env),
       secrets = this.bindScope(env);
     return new NativePrebooking(
@@ -72,6 +76,7 @@ export class ProviderSession {
       },
       this.catalogueReads,
       (request, signal) => this.nativeRead(env, control, request, signal),
+      contract,
     );
   }
   // One named discovery only. Caller supplies the existing durable admission owner,
@@ -145,9 +150,8 @@ export class ProviderSession {
     }
   }
 
-  // Internal adapter transport. No customer route or operator grant exposes it.
-  // Current admission permits reads only; native writes remain unavailable until
-  // a separately reviewed finite write grant is installed.
+  // Read-only internal transport. Finite checkout uses the separate nativeWrite
+  // entry with durable grant validation; a read grant can never dispatch writes.
   async nativeRead(
     env: Env,
     control: ProviderControl,
@@ -159,7 +163,12 @@ export class ProviderSession {
       Number(env.CAMPAIGN_END_MS) <= Date.now()
     )
       throw new ApiError(503, "provider_access_disabled");
-    if (request.kind === "book" || request.kind === "payment-link")
+    if (
+      request.kind === "book" ||
+      request.kind === "payment-link" ||
+      request.kind === "batch-create" ||
+      request.kind === "batch-close"
+    )
       throw new ApiError(503, "native_write_grant_unavailable");
     signal?.throwIfAborted();
     const secrets = this.bindScope(env);
@@ -180,6 +189,44 @@ export class ProviderSession {
       control,
       request,
       signal,
+    );
+    return { body, receivedAtMs: Date.now() };
+  }
+
+  // Trusted finite-grant composition only. The callback checks the durable
+  // grant, guest capability, attempt and budget immediately before each write.
+  async nativeWrite(
+    env: Env,
+    control: ProviderControl,
+    request: NativeRequest,
+    assertGranted: () => Promise<void>,
+  ) {
+    const p = policy(env);
+    if (
+      p.PROVIDER_ACCESS !== "trusted-reads" ||
+      p.CAMPAIGN_END_MS <= Date.now()
+    )
+      throw new ApiError(503, "provider_access_disabled");
+    if (
+      !["book", "batch-create", "batch-close", "payment-link"].includes(
+        request.kind,
+      )
+    )
+      throw new ApiError(503, "provider_operation_unavailable");
+    await assertGranted();
+    await this.identity(env, control);
+    const secrets = this.bindScope(env);
+    const family = request.kind === "payment-link" ? "admin" : "public";
+    const token = this.tokens.get(family);
+    if (!token || token.until <= Date.now())
+      throw new ApiError(503, "provider_auth_expired");
+    await assertGranted();
+    const body = await providerRequest(
+      "native",
+      secrets,
+      token.value,
+      control,
+      request,
     );
     return { body, receivedAtMs: Date.now() };
   }

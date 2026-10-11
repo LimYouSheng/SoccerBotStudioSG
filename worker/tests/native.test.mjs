@@ -147,7 +147,7 @@ function runtimeSlot(data, startMs) {
     invoice.lines[0].bookings[0].end_datetime = wall(startMs + 50 * 60000);
   }
 }
-async function prepared() {
+async function prepared(multi = false, guest = false, finite = false) {
   const res = await mf.dispatchFetch(origin + "/api/access", {
     method: "POST",
     headers: { origin },
@@ -166,6 +166,15 @@ async function prepared() {
     data,
     Math.floor(data.now / 86400000) * 86400000 + 3 * 86400000 + 3600000,
   );
+  if (multi) addSecondSession(data);
+  if (guest) {
+    data.scope.intent.customerMode = "booking-contact";
+    data.scope.intent.customerId = owner;
+    data.association.nativeCustomerId = "51";
+    for (const booking of data.creation.bookings)
+      booking.client_hash = "synthetic-client-hash";
+  }
+  if (finite) data.scope.intent.accountId = config.vars.DEPLOYMENT_ACCOUNT_ID;
   const a = await call("prepare", { ...data, owner });
   assert.equal(a.status, 200);
   data.scope.attemptId = a.result.id;
@@ -732,4 +741,396 @@ test("native lost readback stops the pair without replaying booking or link effe
     before,
   );
   assert.equal((await call("readback", data)).requests, 0);
+});
+
+// Synthetic extension of the retained one-line shape; not provider batch acceptance.
+function addSecondSession(data) {
+  const startMs = data.scope.intent.sessions[0].startMs + 86400000;
+  const wall = (value) =>
+    new Date(value + 8 * 3600000).toISOString().slice(0, 19).replace("T", " ");
+  data.scope.intent.sessions.push({
+    ...data.scope.intent.sessions[0],
+    startMs,
+    players: 4,
+  });
+  data.scope.intent.totalMinor *= 2;
+  data.association.bookingIds.push("702");
+  const b = {
+    ...data.booking,
+    id: "702",
+    start_date_time: wall(startMs),
+    end_date_time: wall(startMs + 3000000),
+    invoice_line_id: "802",
+    invoice_amount: "176.0000",
+  };
+  data.booking.invoice_amount = "176.0000";
+  data.booking = [data.booking, b];
+  data.creation.bookings.push({
+    ...data.creation.bookings[0],
+    id: "702",
+    start_date_time: wall(startMs),
+    end_date_time: wall(startMs + 3000000),
+    hash: "synthetic-second-hash",
+  });
+  for (const invoice of [data.invoice, data.creation.invoice]) {
+    invoice.amount = 176;
+    invoice.deposit = 176;
+    const line = structuredClone(invoice.lines[0]);
+    line.id = "802";
+    line.booking_ids = [702];
+    line.bookings[0].id = 702;
+    line.bookings[0].start_datetime = wall(startMs);
+    line.bookings[0].end_datetime = wall(startMs + 3000000);
+    invoice.lines.push(line);
+  }
+  return data;
+}
+test("native multi-session invoice joins every booking irrespective of provider response order", async () => {
+  const data = addSecondSession(input());
+  data.invoice.lines.reverse();
+  data.creation.bookings.reverse();
+  data.booking.reverse();
+  const normalized = await call("normalize", data);
+  assert.equal(normalized.status, 200);
+  assert.equal(normalized.result.decision.status, "confirmed");
+  assert.equal(normalized.result.observation.invoice.money.totalMinor, 17600);
+  const created = await call("creation", data);
+  assert.equal(created.status, 200);
+  assert.deepEqual(created.result.association.bookingIds, ["701", "702"]);
+});
+test("native multi-session rejects missing duplicate foreign and financially inconsistent invoice lines", async () => {
+  for (const mutate of [
+    (d) => d.invoice.lines.pop(),
+    (d) => {
+      d.invoice.lines[1] = structuredClone(d.invoice.lines[0]);
+    },
+    (d) => {
+      d.invoice.lines[1].bookings[0].client_id = "52";
+    },
+    (d) => {
+      d.invoice.lines[1].amount = 87;
+    },
+    (d) => {
+      d.booking[1].invoice_line_id = "801";
+    },
+    (d) => {
+      d.booking[1].event_buffertime_after = "0";
+    },
+    (d) => {
+      d.invoice.lines[1].qty = 2;
+    },
+    (d) => {
+      d.invoice.amount = 88;
+    },
+  ]) {
+    const data = addSecondSession(input());
+    mutate(data);
+    assert.equal((await call("normalize", data)).status, 409);
+  }
+});
+test("native batch reserves once finalizes all sessions and cannot repeat across adapter instances", async () => {
+  const data = await prepared(true);
+  const first = await call("orchestrate", data);
+  assert.equal(first.result.state, "associated");
+  assert.deepEqual(
+    first.sent.map((x) => x.kind),
+    ["batch-create", "book", "book", "batch-close"],
+  );
+  assert.equal(first.sent[1].batchId, "601");
+  assert.equal(first.sent[2].batchId, "601");
+  const effects = (
+    await db
+      .prepare(
+        "SELECT step,outcome FROM session_effects WHERE attempt_id=? ORDER BY step",
+      )
+      .bind(data.scope.attemptId)
+      .all()
+  ).results;
+  assert.deepEqual(
+    effects.map((x) => x.step),
+    [
+      "finalize",
+      "native-batch",
+      "native-booking-key:0",
+      "native-booking-key:1",
+      "session:0",
+      "session:1",
+    ],
+  );
+  assert.ok(effects.every((x) => x.outcome === "observed"));
+  assert.equal((await call("orchestrate", data)).requests, 0);
+  assert.equal((await call("stored-signature", data)).status, 200);
+});
+test("native lost batch closure keeps all original references and withholds payment without replay", async () => {
+  const data = await prepared(true);
+  const first = await call("orchestrate", {
+    ...data,
+    scenario: "batch-close-lost",
+  });
+  assert.equal(first.result.state, "recovery_required");
+  assert.equal(first.result.paymentAvailable, false);
+  const effects = (
+    await db
+      .prepare(
+        "SELECT step,outcome,reference_id FROM session_effects WHERE attempt_id=? ORDER BY step",
+      )
+      .bind(data.scope.attemptId)
+      .all()
+  ).results;
+  assert.equal(effects.find((x) => x.step === "finalize").outcome, "unknown");
+  assert.equal(effects.find((x) => x.step === "session:0").reference_id, "701");
+  assert.equal(effects.find((x) => x.step === "session:1").reference_id, "702");
+  assert.equal((await call("orchestrate", data)).requests, 0);
+});
+
+test("native guest batch binds only the new client receipt and signs later sessions without a directory lookup", async () => {
+  const data = await prepared(true, true);
+  const first = await call("orchestrate", data);
+  assert.equal(first.result.state, "associated");
+  const books = first.sent.filter((x) => x.kind === "book");
+  assert.equal(books[0].client.client_id, undefined);
+  assert.equal(books[0].client.client_sign, undefined);
+  assert.equal(books[1].client.client_id, "51");
+  assert.match(books[1].client.client_sign, /^[a-f0-9]{32}$/);
+  const row = await db
+    .prepare("SELECT association_json FROM attempts WHERE id=?")
+    .bind(data.scope.attemptId)
+    .first();
+  assert.equal(JSON.parse(row.association_json).nativeCustomerId, "51");
+  assert.deepEqual(
+    first.sent.map((x) => x.kind),
+    ["batch-create", "book", "book", "batch-close"],
+  );
+  assert.equal(
+    (await call("normalize", data)).result.observation.invoice.customerId,
+    data.scope.intent.customerId,
+  );
+});
+
+test("native guest creation rejects mixed client receipts and retains a known booking when its client hash is missing", async () => {
+  const data = await prepared(true, true);
+  const mixed = structuredClone(data);
+  mixed.creation.bookings[1].client_id = "52";
+  assert.equal((await call("creation", mixed)).status, 409);
+  delete data.creation.bookings[0].client_hash;
+  const result = await call("orchestrate", data);
+  assert.equal(result.result.state, "recovery_required");
+  assert.equal(result.requests, 2);
+  const key = await db
+    .prepare(
+      "SELECT reference_id FROM session_effects WHERE attempt_id=? AND step='native-booking-key:0'",
+    )
+    .bind(data.scope.attemptId)
+    .first();
+  assert.equal(JSON.parse(key.reference_id).bookingId, "701");
+  assert.equal((await call("orchestrate", data)).requests, 0);
+});
+
+async function grantNative(data, overrides = {}) {
+  const attempt = await db
+    .prepare("SELECT intent_hash,deadline_ms FROM attempts WHERE id=?")
+    .bind(data.scope.attemptId)
+    .first();
+  const contract = {
+    accountId: config.vars.DEPLOYMENT_ACCOUNT_ID,
+    environmentId: "developer",
+    companyLogin: "synthetic-developer",
+    serviceId: "12",
+    priceMinor: 8800,
+    currency: "SGD",
+    taxMinor: 0,
+    durationMinutes: 40,
+    bufferAfterMinutes: 10,
+    clientLoginRequired: false,
+    providerSchedules: "non-overlapping",
+    confirmedAtMs: Date.now() - 1000,
+    expiresAtMs: attempt.deadline_ms,
+  };
+  const grant = {
+    intentHash: attempt.intent_hash,
+    revision: "c".repeat(40),
+    expires: attempt.deadline_ms - 1000,
+    ...overrides,
+  };
+  await db
+    .prepare(
+      "INSERT INTO native_checkout_grants VALUES(?,?,?,?,?,?,?,?,?,'granted',NULL)",
+    )
+    .bind(
+      data.scope.attemptId,
+      createHash("sha256").update(data.cookie.split("=")[1]).digest("hex"),
+      grant.intentHash,
+      grant.revision,
+      JSON.stringify(contract),
+      Date.now() - 1000,
+      grant.expires,
+      15,
+      60,
+    )
+    .run();
+}
+
+test("native finite grant rejects absent wrong revision changed intent and expired authority before provider dispatch", async () => {
+  for (const overrides of [
+    null,
+    { revision: "d".repeat(40) },
+    { intentHash: "e".repeat(64) },
+    { expires: Date.now() + 1000 },
+  ]) {
+    const data = await prepared(false, true, true);
+    if (overrides) await grantNative(data, overrides);
+    const before = calls.length;
+    const result = await call("finite-checkout", data);
+    assert.equal(result.status, 409);
+    assert.equal(result.reserved, 0);
+    assert.equal(calls.length, before);
+  }
+});
+
+test("native finite checkout composes fresh checks one booking protected payment and replay prevention", async () => {
+  const data = await prepared(false, true, true);
+  await grantNative(data);
+  const wall = new Date(
+    data.scope.intent.sessions[0].startMs + 8 * 3600000,
+  ).toISOString();
+  data.invoice.due_datetime = new Date(Date.now() + 600000)
+    .toISOString()
+    .replace(/\.\d{3}Z$/, "Z");
+  const before = calls.length;
+  reply = async (request, body) => {
+    if (request.url.endsWith("/admin/auth"))
+      return Response.json({ token: "synthetic-admin-token" });
+    if (request.url.endsWith("/admin/company/info"))
+      return Response.json({ login: "synthetic-developer" });
+    if (request.url.endsWith("/admin/tariff/current"))
+      return Response.json({
+        limits: [{ key: "sheduler_limit", total: 100, rest: 100 }],
+      });
+    if (request.url.endsWith("/admin/invoices/901/payment-link"))
+      return Response.json({
+        link: "https://soccerbotstudiosg.simplybook.asia/v2/client/pay-later/id/synthetic-id/hash/synthetic-hash",
+      });
+    if (request.url.endsWith("/admin/invoices/901"))
+      return Response.json(data.invoice);
+    const results = {
+      getToken: "synthetic-public-token",
+      getEventList: {
+        12: {
+          id: 12,
+          name: "Synthetic Session",
+          duration: "40",
+          is_active: "1",
+          is_public: "1",
+          is_recurring: "0",
+          price: "88",
+          currency: "SGD",
+          unit_map: [14],
+        },
+      },
+      getUnitList: {
+        14: { id: 14, name: "Synthetic Trainer", is_active: "1" },
+      },
+      getAdditionalFields: [],
+      getAvailableUnits: [14],
+      getStartTimeMatrix: { [wall.slice(0, 10)]: [wall.slice(11, 19)] },
+      book: data.creation,
+      getBookingDetails: data.booking,
+    };
+    assert.ok(Object.hasOwn(results, body.method), body.method);
+    return Response.json({
+      jsonrpc: "2.0",
+      id: body.id,
+      result: results[body.method],
+    });
+  };
+  try {
+    const result = await call("finite-checkout", data);
+    assert.equal(result.status, 200, JSON.stringify(result));
+    assert.equal(result.result.state, "associated", JSON.stringify(result));
+    assert.equal(result.result.paymentAvailable, true);
+    const sent = calls.slice(before);
+    assert.equal(sent.filter((call) => call.body?.method === "book").length, 1);
+    assert.equal(
+      sent.filter((call) => call.url.endsWith("/payment-link")).length,
+      1,
+    );
+    assert.ok(result.reserved <= 45);
+    assert.equal(result.reserved, result.finished);
+    const replay = await call("finite-checkout", data);
+    assert.equal(replay.reserved, 0);
+    assert.equal(calls.length, before + sent.length);
+    assert.equal(
+      (await call("protected-context", data)).result.checkout.state,
+      "available",
+    );
+  } finally {
+    reply = undefined;
+  }
+});
+
+test("native batch rechecks guest revocation after reservation before creating a booking", async () => {
+  const data = await prepared(true, true);
+  const result = await call("orchestrate", {
+    ...data,
+    scenario: "revoke-after-batch",
+  });
+  assert.equal(result.result.state, "recovery_required");
+  assert.deepEqual(
+    result.sent.map((request) => request.kind),
+    ["batch-create"],
+  );
+  const effects = (
+    await db
+      .prepare("SELECT * FROM session_effects WHERE attempt_id=?")
+      .bind(data.scope.attemptId)
+      .all()
+  ).results;
+  assert.equal(
+    effects.find((effect) => effect.step === "native-batch").reference_id,
+    "601",
+  );
+  assert.equal(
+    effects.find((effect) => effect.step === "session:0").outcome,
+    "unknown",
+  );
+});
+
+test("native lost batch finalization reconciles all retained IDs without replay and rejects invoice conflicts", async () => {
+  for (const mismatch of [false, true]) {
+    const data = await prepared(true, true);
+    assert.equal(
+      (await call("orchestrate", { ...data, scenario: "batch-close-lost" }))
+        .result.state,
+      "recovery_required",
+    );
+    if (mismatch) data.booking[1].invoice_id = "902";
+    const result = await call("recover-association", data);
+    if (mismatch) {
+      assert.equal(result.status, 409);
+      assert.equal(result.requests, 2);
+      const row = await db
+        .prepare("SELECT association_json FROM attempts WHERE id=?")
+        .bind(data.scope.attemptId)
+        .first();
+      assert.equal(row.association_json, null);
+    } else {
+      assert.equal(result.result.state, "associated");
+      assert.equal(result.result.reads, 3);
+      assert.deepEqual(
+        result.sent.map((request) => request.kind),
+        ["booking-read", "booking-read", "invoice-read"],
+      );
+      const row = await db
+        .prepare("SELECT association_json FROM attempts WHERE id=?")
+        .bind(data.scope.attemptId)
+        .first();
+      assert.deepEqual(JSON.parse(row.association_json), {
+        invoiceId: "901",
+        nativeCustomerId: "51",
+        bookingIds: ["701", "702"],
+      });
+      assert.equal((await call("recover-association", data)).requests, 0);
+      assert.equal((await call("orchestrate", data)).requests, 0);
+    }
+  }
 });

@@ -1,3 +1,4 @@
+import { executeNativeCheckout } from "../native-checkout";
 // Isolated test entry. Never deployed; caller-supplied fixtures have no live authority.
 import {
   normalizeNativeReads,
@@ -8,6 +9,7 @@ import {
 } from "../provider-normalization";
 import {
   nativeBookingOperations,
+  recoverNativeAssociation,
   nativeCheckoutLink,
   nativeCheckoutDeadline,
   type NativeCheckoutTiming,
@@ -64,7 +66,48 @@ const harness = {
     const exchange = async (operation: NativeRequest) => {
       requests++;
       sent.push(operation);
-      if (input.scenario === "lost") throw new Error("synthetic lost reply");
+      if (
+        input.scenario === "lost" ||
+        (input.scenario === "batch-close-lost" &&
+          operation.kind === "batch-close")
+      )
+        throw new Error("synthetic lost reply");
+      if (input.scope?.intent.sessions.length > 1) {
+        if (operation.kind === "batch-create") {
+          if (input.scenario === "revoke-after-batch")
+            await env.STATE.prepare(
+              "UPDATE guest_access SET revoked_ms=? WHERE owner_id=(SELECT owner_id FROM attempts WHERE id=?)",
+            )
+              .bind(Date.now(), input.scope.attemptId)
+              .run();
+          return { body: 601, receivedAtMs: input.now };
+        }
+        if (operation.kind === "batch-close")
+          return { body: input.creation, receivedAtMs: input.now };
+        if (operation.kind === "book") {
+          const creation = input.creation as { bookings: unknown[] };
+          return {
+            body: {
+              require_confirm: false,
+              batch_id: 601,
+              batch_hash: "synthetic-batch-hash",
+              bookings: [
+                creation.bookings[
+                  sent.filter((item) => item.kind === "book").length - 1
+                ],
+              ],
+            },
+            receivedAtMs: input.now,
+          };
+        }
+        if (operation.kind === "booking-read" && Array.isArray(input.booking))
+          return {
+            body: input.booking.find(
+              (booking: { id: string }) => booking.id === operation.bookingId,
+            ),
+            receivedAtMs: input.now,
+          };
+      }
       return {
         body:
           operation.kind === "book"
@@ -198,6 +241,41 @@ const harness = {
             input.operation,
           );
           break;
+        case "recover-association": {
+          result = await recoverNativeAssociation({
+            db: env.STATE,
+            scope: input.scope,
+            exchange,
+            signingSecret: "synthetic-signing-secret",
+            signal: new AbortController().signal,
+          });
+          break;
+        }
+        case "finite-checkout": {
+          for (const [key, value] of Object.entries({
+            SOURCE_REVISION: "c".repeat(40),
+            SIMPLYBOOK_DEV_COMPANY_LOGIN: "synthetic-developer",
+            SIMPLYBOOK_DEV_ADMIN_LOGIN: "synthetic-operator",
+            SIMPLYBOOK_DEV_API_KEY: "synthetic-public-key",
+            SIMPLYBOOK_DEV_ADMIN_API_USER_KEY: "synthetic-admin-key",
+            SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret",
+          }))
+            Reflect.set(admittedEnv, key, value);
+          result = await executeNativeCheckout({
+            request: new Request("https://soccerbot.test/", {
+              headers: { cookie: input.cookie },
+            }),
+            env: admittedEnv,
+            attemptId: input.scope.attemptId,
+            provider: new ProviderSession(),
+            control,
+            accounting: () => ({
+              used: 15 + reserved,
+              active: reserved - finished,
+            }),
+          });
+          break;
+        }
         case "orchestrate": {
           const operations = nativeBookingOperations({
             scope: input.scope,
@@ -209,6 +287,10 @@ const harness = {
             },
             hasRecoveryCapacity: async () => true,
             db: env.STATE,
+            clientSignature: async (id, hash) =>
+              nativeBookingSignature(id, hash, "synthetic-signing-secret"),
+            batchSignature: async (id, hash) =>
+              nativeBookingSignature(id, hash, "synthetic-signing-secret"),
           });
           result = await orchestrateBooking(
             new Request("https://soccerbot.test/", {

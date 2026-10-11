@@ -9,8 +9,9 @@ const windowSchema = z.strictObject({
   maximumUsed: z.number().int().min(6).max(64),
 });
 // No browser trigger, callback guess, draining loop, cron config or self-grant.
-// Each installed one-use window permits one known-attempt readback, six physical
-// calls maximum including cold setup. Aggregate ceiling stays in the account DO.
+// Each installed one-use window permits one known-attempt readback: N + 5
+// physical calls including cold setup. The grant must cover that exact cost;
+// aggregate admission and the existing time limit remain in the account DO.
 export async function runScheduledRecovery(
   env: Env,
   clock: () => number = Date.now,

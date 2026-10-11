@@ -1,5 +1,11 @@
 # SoccerBotStudioSG current progress
 
+## 11 October — native checkout implementation and owner configuration confirmation
+
+Owner confirmed developer tax0/S$88 final,40+10minutes and Client Login off. Source now has scoped declaration-based prebooking, fresh guest/native-client separation, single and multi-session native booking/invoice validation, no-replay effects, lost-finalization known-ID recovery and a one-use protected checkout route. New0016 is empty/source-only alongside pending0015; applied0001–0014 and all closed windows are unchanged. Full local Worker runtime201/201 passed; an ordered inventory mismatch in the runner was preserved and repaired against the saved output. Exact final CI is required and recorded in PR21.
+
+**Next ready task:** complete live provider-ID selection/availability and protected preparation in the existing customer flow. Comments need preservation-safe provider semantics and remain non-blocking; partial missing references, account batch acceptance, native redirect/payment and webhook recovery remain open. Do not label this source checkpoint native-booking completion. Prepare the exact live packet only when its artifact, operations, limits and closure/cleanup are reviewable. No live window or physical test is requested by this checkpoint. Canonical details and evidence belong to the three docs.
+
 ## Metadata discovery accepted and closed — 11 October 2026
 
 YS approved packet SHA256 `e535f54372e47d6cde632f8b643b91dd669cb90eade2efbcdc9c50343831321a` in this session. Executed10:07:35–10:09:04UTC (18:07:35–18:09:04SGT),89.318 seconds within the20-minute limit. Actual consumption:25/32 Cloudflare management requests,2/3 configuration deployments included in those25,8/14 direct Worker HTTP requests and7/11 provider requests. Provider accounting advanced8→15/80, active0, recovery reserve16 unchanged. Carried measured management is now364 plus unknown Dashboard activity, deployment lower bound26 plus unknown; historical closed80, Resend8 and siteverify8 are unchanged. Unused allowances do not authorize another window.

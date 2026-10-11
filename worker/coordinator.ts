@@ -1,7 +1,11 @@
+import { executeNativeCheckout } from "./native-checkout";
 import { z } from "zod";
 import { intentSchema, associationSchema } from "./journal";
 import { runNativeReadback } from "./recovery";
-import { storedNativeSignature } from "./native-adapter";
+import {
+  storedNativeSignature,
+  recoverNativeAssociation,
+} from "./native-adapter";
 import { providerSecrets } from "./provider-transport";
 import { DurableObject } from "cloudflare:workers";
 import { traced, measure, instrumentStorage } from "./diagnostics";
@@ -245,6 +249,23 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       };
     });
   }
+  async nativeCheckout(
+    scope: { attemptId: string; cookie: string },
+    correlationId: string,
+  ) {
+    return traced(correlationId, "coordinator", () =>
+      executeNativeCheckout({
+        request: new Request(this.env.APP_ORIGIN, {
+          headers: { cookie: scope.cookie },
+        }),
+        env: this.env,
+        attemptId: scope.attemptId,
+        provider: this.provider,
+        control: this.providerControl(),
+        accounting: () => this.providerAccounting(),
+      }),
+    );
+  }
   async nativeRecovery(
     scope: {
       attemptId: string;
@@ -288,14 +309,13 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         .first<{ intent_json: string; association_json: string | null }>();
       if (!row) return { outcomes: [], reads: 0 };
       const intent = intentSchema.parse(JSON.parse(row.intent_json)),
-        refs = associationSchema.parse(
-          JSON.parse(row.association_json || "null"),
-        );
+        refs = row.association_json
+          ? associationSchema.parse(JSON.parse(row.association_json))
+          : null;
       if (
         intent.accountId !== p.DEPLOYMENT_ACCOUNT_ID ||
         intent.environmentId !== p.ENVIRONMENT ||
-        intent.sessions.length !== 1 ||
-        refs.bookingIds.length !== 1
+        (refs !== null && refs.bookingIds.length !== intent.sessions.length)
       )
         throw new ApiError(503, "native_recovery_scope_mismatch");
       const secret: unknown = Reflect.get(
@@ -304,12 +324,9 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       );
       if (typeof secret !== "string")
         throw new ApiError(503, "native_signing_unavailable");
-      const signature = await storedNativeSignature(
-        this.env.STATE,
-        scope.attemptId,
-        refs.bookingIds[0],
-        secret,
-      );
+      const maximumCalls = intent.sessions.length + 5;
+      if (initial.used + maximumCalls > scope.maximumUsed)
+        throw new ApiError(503, "recovery_window_unavailable");
       const control = this.providerControl();
       let count = 0,
         last = 0;
@@ -321,7 +338,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           if (
             Date.now() + 15000 >=
               Math.min(scope.expiresMs, p.CAMPAIGN_END_MS) ||
-            count >= 6 ||
+            count >= maximumCalls ||
             this.providerAccounting().used >= scope.maximumUsed
           )
             throw new ApiError(503, "recovery_window_exhausted");
@@ -332,6 +349,38 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       };
       await this.provider.identity(this.env, bounded);
       const company = providerSecrets(this.env).company;
+      if (!refs) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 5000);
+        try {
+          const recovered = await recoverNativeAssociation({
+            db: this.env.STATE,
+            scope: {
+              attemptId: scope.attemptId,
+              companyLogin: company,
+              timezone: "Asia/Singapore",
+              intent,
+            },
+            exchange: (operation, signal) =>
+              this.provider.nativeRead(this.env, bounded, operation, signal),
+            signingSecret: secret,
+            signal: controller.signal,
+          });
+          return {
+            outcomes: [
+              {
+                attemptId: scope.attemptId,
+                state: "observed",
+                reason: "association_reconciled",
+              },
+            ],
+            reads: recovered.reads,
+          };
+        } finally {
+          clearTimeout(timer);
+          controller.abort();
+        }
+      }
       return runNativeReadback(this.env, {
         scope: {
           attemptId: scope.attemptId,
@@ -346,9 +395,14 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         exchange: (operation, signal) =>
           this.provider.nativeRead(this.env, bounded, operation, signal),
         signature: async (bookingId) => {
-          if (bookingId !== refs.bookingIds[0])
+          if (!refs.bookingIds.includes(bookingId))
             throw new ApiError(503, "native_recovery_scope_mismatch");
-          return signature;
+          return storedNativeSignature(
+            this.env.STATE,
+            scope.attemptId,
+            bookingId,
+            secret,
+          );
         },
       });
     });

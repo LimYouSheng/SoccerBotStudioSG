@@ -139,6 +139,7 @@ try {
     .results;
   assert.deepEqual(manifest.pendingRemoteMigrations, [
     "0015_contact_profiles.sql",
+    "0016_native_checkout_grants.sql",
   ]);
   // Old-state compatibility remains tested locally, never re-applied remotely.
   for (const name of names.slice(5, 8)) await migrate(name);
@@ -174,6 +175,14 @@ try {
         .results,
       snapshots.get(table),
     );
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT COUNT(*) AS n FROM native_checkout_grants")
+        .first()
+    ).n,
+    0,
+  );
   assert.equal(
     (await db.prepare("SELECT COUNT(*) AS n FROM remembered_identity").first())
       .n,
@@ -282,7 +291,7 @@ try {
         checks: [
           "file hashes",
           "root export",
-          "0001–0014 application state and pending0015 preserve all existing columns identities unknown effects and operator grants",
+          "0001–0014 application state and pending0015–0016 preserve all existing columns identities unknown effects and operator grants",
           "empty identity delivery authority and default-closed HTTP",
           "exact Worker revision",
           "protected checkout unavailable",

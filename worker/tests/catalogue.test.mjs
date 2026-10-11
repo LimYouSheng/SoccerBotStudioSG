@@ -564,3 +564,67 @@ test("catalogue cache expires and scope eviction never returns another account d
   assert.equal(back.binding.accountId, binding.accountId);
   assert.equal(read.calls.length, 24);
 });
+
+test("prebooking accepts scoped owner declarations for fresh booking contact and rejects stale or foreign settings", async () => {
+  const intent = approved();
+  intent.customerMode = "booking-contact";
+  intent.customerId = "synthetic-local-subject";
+  intent.contact = {
+    name: "Synthetic Guest",
+    email: "guest@example.invalid",
+    phone: "00000000",
+    contactMethod: "email",
+    academy: "",
+  };
+  const contract = {
+    ...binding,
+    serviceId: "12",
+    priceMinor: 8800,
+    currency: "SGD",
+    taxMinor: 0,
+    durationMinutes: 40,
+    bufferAfterMinutes: 10,
+    clientLoginRequired: false,
+    providerSchedules: "non-overlapping",
+    confirmedAtMs: Date.now() - 1000,
+    expiresAtMs: Date.now() + 600000,
+  };
+  const read = exchangeFor(fixtures(), intent);
+  const validation = new NativePrebooking(
+    binding,
+    new CatalogueReads(),
+    read.exchange,
+    contract,
+  );
+  assert.equal((await validation.review(intent)).state, "ready");
+  assert.deepEqual(await validation.revalidate(intent), intent);
+  for (const change of [
+    { accountId: "foreign" },
+    { companyLogin: "foreign" },
+    { serviceId: "13" },
+    { expiresAtMs: Date.now() - 1 },
+    { confirmedAtMs: Date.now() + 100000 },
+    { taxMinor: 1 },
+    { bufferAfterMinutes: 0 },
+    { clientLoginRequired: true },
+  ]) {
+    await assert.rejects(
+      new NativePrebooking(binding, new CatalogueReads(), read.exchange, {
+        ...contract,
+        ...change,
+      }).revalidate(intent),
+    );
+  }
+  read.bodies["eligible-instructors"] = [14, 15];
+  await assert.rejects(
+    validation.revalidate(intent),
+    /native_prebooking_unavailable/,
+  );
+  read.bodies["eligible-instructors"] = [14];
+  read.bodies["catalogue-services"][12].price = "99";
+  await assert.rejects(
+    validation.revalidate(intent),
+    /native_restart_required/,
+  );
+  assert.ok(read.calls.every((request) => request.kind !== "book"));
+});

@@ -104,8 +104,20 @@ export const nativeClientSchema = z
     name: contactText,
     email: contactText.pipe(z.email()),
     phone: contactText,
+    client_id: z
+      .string()
+      .regex(/^[1-9]\d{0,14}$/)
+      .optional(),
+    client_sign: z
+      .string()
+      .regex(/^[a-f0-9]{32}$/)
+      .optional(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (value) =>
+      (value.client_id === undefined) === (value.client_sign === undefined),
+  );
 // Invoice handling is a control, not a discovered custom intake answer.
 export const nativeAdditionalSchema = z
   .object({ handle_invoice: z.literal(true) })
@@ -122,6 +134,8 @@ export type NativeExchange = (
   signal?: AbortSignal,
 ) => Promise<{ body: unknown; receivedAtMs: number }>;
 export type NativeRequest =
+  | { kind: "batch-create" }
+  | { kind: "batch-close"; batchId: string; signature: string }
   | { kind: "catalogue-services" }
   | { kind: "catalogue-instructors" }
   | {
@@ -145,6 +159,7 @@ export type NativeRequest =
       time: string;
       client: z.infer<typeof nativeClientSchema>;
       additional: z.infer<typeof nativeAdditionalSchema>;
+      batchId?: string;
     }
   | { kind: "booking-read"; bookingId: string; signature: string }
   | { kind: "invoice-read"; invoiceId: string }
@@ -241,7 +256,19 @@ export async function providerRequest(
       method = "POST";
       rpc = true;
       let rpcMethod: string, params: unknown[];
-      if (
+      if (native.kind === "batch-create") {
+        rpcMethod = "createBatch";
+        params = [];
+      } else if (native.kind === "batch-close") {
+        if (!/^[a-f0-9]{32}$/.test(native.signature))
+          throw new ApiError(503, "provider_signature_invalid");
+        rpcMethod = "closeBatch";
+        params = [
+          Number(providerId(native.batchId)),
+          "batch_multiple_booking",
+          native.signature,
+        ];
+      } else if (
         native.kind === "catalogue-services" ||
         native.kind === "catalogue-instructors"
       ) {
@@ -290,7 +317,9 @@ export async function providerRequest(
               fields.client,
               fields.additional,
               1,
-              null,
+              native.batchId === undefined
+                ? null
+                : Number(providerId(native.batchId)),
               null,
             ];
           }

@@ -1,3 +1,5 @@
+import { nativeCheckoutStatus } from "./native-checkout";
+import { coordinatorName } from "./bindings";
 import { runScheduledRecovery } from "./scheduled-recovery";
 import { customerCatalogue } from "./customer-catalogue";
 import {
@@ -162,6 +164,25 @@ export default {
           STATE: env.STATE ? instrumentStorage(env.STATE) : env.STATE,
         };
         await verifyBindings(env);
+        const nativeCheckoutMatch =
+          /^\/api\/booking\/native\/([a-f0-9-]{36})$/.exec(url.pathname);
+        if (nativeCheckoutMatch) {
+          const attemptId = nativeCheckoutMatch[1];
+          if (request.method === "GET")
+            return json(await nativeCheckoutStatus(request, env, attemptId));
+          if (request.method !== "POST")
+            throw new ApiError(405, "operation_unavailable");
+          await authenticate(request, env, Date.now());
+          return json(
+            await env.COORDINATOR.getByName(coordinatorName).nativeCheckout(
+              {
+                attemptId,
+                cookie: request.headers.get("cookie") || "",
+              },
+              correlationId,
+            ),
+          );
+        }
         if (url.pathname === "/api/health" && request.method === "GET")
           return json({
             environment: "developer",

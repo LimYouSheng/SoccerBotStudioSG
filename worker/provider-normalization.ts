@@ -166,70 +166,35 @@ export function bookingWallTime(value: unknown, timezone: string): number {
 function boundIntent(value: unknown) {
   const intent = intentSchema.parse(value);
   if (
-    intent.sessions.length !== 1 ||
     intent.taxMinor !== 0 ||
-    intent.sessions[0].taxMinor !== 0
+    intent.sessions.some((session) => session.taxMinor !== 0)
   )
     reject();
-  providerId(intent.customerId);
+  if (intent.customerMode !== "booking-contact") providerId(intent.customerId);
+  else if (!intent.contact) reject();
   return intent;
 }
 function invoiceEvidence(raw: unknown, context: NativeReadContext) {
   const intent = boundIntent(context.intent),
     refs = associationSchema.parse(context.association);
-  if (refs.bookingIds.length !== 1) reject();
-  const invoice = record(raw),
-    line = single(invoice.lines),
-    nested = single(line.bookings);
+  if (refs.bookingIds.length !== intent.sessions.length) reject();
+  const nativeCustomerId =
+    intent.customerMode === "booking-contact"
+      ? providerId(refs.nativeCustomerId)
+      : providerId(intent.customerId);
+  const invoice = record(raw);
   equal(providerId(invoice.id), refs.invoiceId);
-  equal(providerId(invoice.client_id), intent.customerId);
-  equal(providerId(line.invoice_id), refs.invoiceId);
-  equal(line.type, "booking");
-  if (!Array.isArray(line.booking_ids) || line.booking_ids.length !== 1)
-    reject();
-  equal(providerId(line.booking_ids[0]), refs.bookingIds[0]);
-  equal(providerId(nested.id), refs.bookingIds[0]);
-  equal(providerId(nested.client_id), intent.customerId);
-  const expected = intent.sessions[0];
-  equal(providerId(nested.service_id), expected.serviceId);
-  equal(providerId(nested.provider_id), expected.instructorId);
-  equal(
-    bookingWallTime(nested.start_datetime, context.timezone),
-    expected.startMs,
-  );
-  equal(
-    bookingWallTime(nested.end_datetime, context.timezone),
-    expected.startMs + START_INTERVAL_MINUTES * 60000,
-  );
-  equal(providerId(nested.duration), String(SESSION_MINUTES));
-  const nestedConfirmed = flag(nested.is_confirmed);
+  equal(providerId(invoice.client_id), nativeCustomerId);
   equal(invoice.currency, intent.currency);
-  equal(line.currency, intent.currency);
   equal(decimal(invoice.amount), intent.totalMinor);
   equal(decimal(invoice.tax_amount), intent.taxMinor);
-  equal(decimal(line.amount), expected.totalMinor);
-  equal(decimal(line.tax_amount), expected.taxMinor);
-  equal(decimal(line.price), expected.totalMinor);
-  equal(decimal(line.price_without_tax), expected.totalMinor);
-  equal(decimal(line.final_price), expected.totalMinor);
-  equal(decimal(line.qty), 100);
-  // Deliberately restricted to the evidenced full-price, zero-tax purchase.
-  for (const v of [
+  for (const value of [
     invoice.rest_amount,
     invoice.recurring_amount,
     invoice.discount_amount,
-    line.rest_amount,
-    line.discount_amount,
-    line.recurring_tax_amount,
-    line.recurring_price_without_tax,
-    line.package_qty,
-    line.discount_ratio,
-    line.discount,
-    line.tax_ratio,
   ])
-    equal(decimal(v), 0);
+    equal(decimal(value), 0);
   equal(flag(invoice.is_with_deposit_amount), false);
-  equal(flag(line.is_with_deposit_amount), false);
   equal(decimal(invoice.deposit), intent.totalMinor);
   equal(invoice.refund_datetime, null);
   equal(invoice.deposit_child_invoice, null);
@@ -241,8 +206,72 @@ function invoiceEvidence(raw: unknown, context: NativeReadContext) {
   if (
     !Array.isArray(invoice.taxes) ||
     invoice.taxes.length !== 0 ||
-    !Array.isArray(line.tickets) ||
-    line.tickets.length !== 0
+    !Array.isArray(invoice.lines) ||
+    invoice.lines.length !== refs.bookingIds.length
+  )
+    reject();
+  // One evidenced quantity-one invoice line per reserved studio session.
+  // Grouped quantities/add-ons remain unsupported, never partially accepted.
+  const lines = invoice.lines.map((rawLine) => {
+    const line = record(rawLine),
+      nested = single(line.bookings);
+    const bookingId = providerId(nested.id),
+      index = refs.bookingIds.indexOf(bookingId);
+    if (index < 0) reject();
+    const expected = intent.sessions[index];
+    equal(providerId(line.invoice_id), refs.invoiceId);
+    equal(line.type, "booking");
+    if (!Array.isArray(line.booking_ids) || line.booking_ids.length !== 1)
+      reject();
+    equal(providerId(line.booking_ids[0]), bookingId);
+    equal(providerId(nested.id), bookingId);
+    equal(providerId(nested.client_id), nativeCustomerId);
+    equal(providerId(nested.service_id), expected.serviceId);
+    equal(providerId(nested.provider_id), expected.instructorId);
+    equal(
+      bookingWallTime(nested.start_datetime, context.timezone),
+      expected.startMs,
+    );
+    equal(
+      bookingWallTime(nested.end_datetime, context.timezone),
+      expected.startMs + START_INTERVAL_MINUTES * 60000,
+    );
+    equal(providerId(nested.duration), String(SESSION_MINUTES));
+    equal(line.currency, intent.currency);
+    equal(decimal(line.amount), expected.totalMinor);
+    equal(decimal(line.tax_amount), expected.taxMinor);
+    equal(decimal(line.price), expected.totalMinor);
+    equal(decimal(line.price_without_tax), expected.totalMinor);
+    equal(decimal(line.final_price), expected.totalMinor);
+    equal(decimal(line.qty), 100);
+    for (const value of [
+      line.rest_amount,
+      line.discount_amount,
+      line.recurring_tax_amount,
+      line.recurring_price_without_tax,
+      line.package_qty,
+      line.discount_ratio,
+      line.discount,
+      line.tax_ratio,
+    ])
+      equal(decimal(value), 0);
+    equal(flag(line.is_with_deposit_amount), false);
+    if (!Array.isArray(line.tickets) || line.tickets.length !== 0) reject();
+    return {
+      bookingId,
+      lineId: providerId(line.id),
+      nestedConfirmed: flag(nested.is_confirmed),
+      money: {
+        currency: intent.currency,
+        totalMinor: expected.totalMinor,
+        taxMinor: expected.taxMinor,
+      },
+    };
+  });
+  if (
+    new Set(lines.map((line) => line.bookingId)).size !==
+      refs.bookingIds.length ||
+    new Set(lines.map((line) => line.lineId)).size !== lines.length
   )
     reject();
   const received = flag(invoice.payment_received);
@@ -272,21 +301,14 @@ function invoiceEvidence(raw: unknown, context: NativeReadContext) {
         totalMinor: intent.totalMinor,
         taxMinor: intent.taxMinor,
       },
-      lines: [
-        {
-          bookingId: refs.bookingIds[0],
-          money: {
-            currency: intent.currency,
-            totalMinor: expected.totalMinor,
-            taxMinor: expected.taxMinor,
-          },
-        },
-      ],
+      lines: refs.bookingIds.map((id) => {
+        const line = lines.find((entry) => entry.bookingId === id)!;
+        return { bookingId: id, money: line.money };
+      }),
       status,
       paymentReceived: received,
     },
-    nestedConfirmed,
-    lineId: providerId(line.id),
+    lines,
   };
 }
 export function normalizeNativeReads(
@@ -296,92 +318,105 @@ export function normalizeNativeReads(
 ) {
   const intent = boundIntent(context.intent),
     refs = associationSchema.parse(context.association);
-  const booking = record(bookingValue),
-    expected = intent.sessions[0];
   const normalized = invoiceEvidence(invoiceValue, context);
-  equal(providerId(booking.id), refs.bookingIds[0]);
-  equal(providerId(booking.invoice_id), refs.invoiceId);
-  equal(providerId(booking.invoice_line_id), normalized.lineId);
-  equal(providerId(booking.client_id), intent.customerId);
-  if (!context.companyLogin || context.companyLogin.includes("[")) reject();
-  equal(booking.company_login, context.companyLogin);
-  equal(providerId(booking.event_id), expected.serviceId);
-  equal(providerId(booking.unit_id), expected.instructorId);
-  equal(providerId(booking.event_duration), String(SESSION_MINUTES));
-  equal(decimal(booking.event_buffertime_before), 0);
-  equal(decimal(booking.event_buffertime_after), CHANGEOVER_MINUTES * 100);
-  equal(
-    bookingWallTime(booking.start_date_time, context.timezone),
-    expected.startMs,
-  );
-  equal(
-    bookingWallTime(booking.end_date_time, context.timezone),
-    expected.startMs + START_INTERVAL_MINUTES * 60000,
-  );
-  equal(decimal(booking.event_price), expected.totalMinor);
-  equal(decimal(booking.invoice_line_amount), expected.totalMinor);
-  equal(decimal(booking.invoice_amount), intent.totalMinor);
-  equal(booking.event_currency, intent.currency);
-  equal(booking.invoice_currency, intent.currency);
-  const confirmed = flag(booking.is_confirmed);
-  let status: ConfirmationInput["bookings"][number]["status"] = "unknown";
-  if (booking.status === "confirmed" && confirmed && normalized.nestedConfirmed)
-    status = "confirmed";
-  else if (booking.status === "cancelled" && !confirmed) status = "cancelled";
-  else if (!confirmed || !normalized.nestedConfirmed) status = "invalid";
-  // Conflicting reads remain unknown; invoice numbers may legitimately change.
-  if (
-    flag(booking.invoice_payment_received) !==
-      normalized.invoice.paymentReceived ||
-    booking.invoice_status !== record(invoiceValue).status ||
-    booking.invoice_payment_processor !== record(invoiceValue).payment_processor
-  )
-    normalized.invoice.status = "unknown";
-  return {
-    invoice: normalized.invoice,
-    bookings: [
-      {
-        accountId: intent.accountId,
-        environmentId: intent.environmentId,
-        attemptId: context.attemptId,
-        customerId: intent.customerId,
-        invoiceId: refs.invoiceId,
-        observedAtMs: receipt(context.bookingObservedAtMs),
-        session: {
-          bookingId: refs.bookingIds[0],
-          serviceId: expected.serviceId,
-          instructorId: expected.instructorId,
-          startMs: expected.startMs,
-          playEndMs: expected.startMs + SESSION_MINUTES * 60000,
-          occupiedStartMs: expected.startMs,
-          occupiedEndMs: expected.startMs + START_INTERVAL_MINUTES * 60000,
-        },
-        status,
+  const values = Array.isArray(bookingValue) ? bookingValue : [bookingValue];
+  if (values.length !== intent.sessions.length) reject();
+  const seen = new Set<string>();
+  const bookings = values.map((value) => {
+    const booking = record(value),
+      bookingId = providerId(booking.id),
+      index = refs.bookingIds.indexOf(bookingId);
+    if (index < 0 || seen.has(bookingId)) reject();
+    seen.add(bookingId);
+    const expected = intent.sessions[index],
+      line = normalized.lines.find((entry) => entry.bookingId === bookingId)!;
+    equal(providerId(booking.id), bookingId);
+    equal(providerId(booking.invoice_id), refs.invoiceId);
+    equal(providerId(booking.invoice_line_id), line.lineId);
+    equal(
+      providerId(booking.client_id),
+      intent.customerMode === "booking-contact"
+        ? providerId(refs.nativeCustomerId)
+        : intent.customerId,
+    );
+    if (!context.companyLogin || context.companyLogin.includes("[")) reject();
+    equal(booking.company_login, context.companyLogin);
+    equal(providerId(booking.event_id), expected.serviceId);
+    equal(providerId(booking.unit_id), expected.instructorId);
+    equal(providerId(booking.event_duration), String(SESSION_MINUTES));
+    equal(decimal(booking.event_buffertime_before), 0);
+    equal(decimal(booking.event_buffertime_after), CHANGEOVER_MINUTES * 100);
+    equal(
+      bookingWallTime(booking.start_date_time, context.timezone),
+      expected.startMs,
+    );
+    equal(
+      bookingWallTime(booking.end_date_time, context.timezone),
+      expected.startMs + START_INTERVAL_MINUTES * 60000,
+    );
+    equal(decimal(booking.event_price), expected.totalMinor);
+    equal(decimal(booking.invoice_line_amount), expected.totalMinor);
+    equal(decimal(booking.invoice_amount), intent.totalMinor);
+    equal(booking.event_currency, intent.currency);
+    equal(booking.invoice_currency, intent.currency);
+    const confirmed = flag(booking.is_confirmed);
+    let status: ConfirmationInput["bookings"][number]["status"] = "unknown";
+    if (booking.status === "confirmed" && confirmed && line.nestedConfirmed)
+      status = "confirmed";
+    else if (booking.status === "cancelled" && !confirmed) status = "cancelled";
+    else if (!confirmed || !line.nestedConfirmed) status = "invalid";
+    // Conflicting reads remain unknown; invoice numbers may legitimately change.
+    if (
+      flag(booking.invoice_payment_received) !==
+        normalized.invoice.paymentReceived ||
+      booking.invoice_status !== record(invoiceValue).status ||
+      booking.invoice_payment_processor !==
+        record(invoiceValue).payment_processor
+    )
+      normalized.invoice.status = "unknown";
+    return {
+      accountId: intent.accountId,
+      environmentId: intent.environmentId,
+      attemptId: context.attemptId,
+      customerId: intent.customerId,
+      invoiceId: refs.invoiceId,
+      observedAtMs: receipt(context.bookingObservedAtMs),
+      session: {
+        bookingId: bookingId,
+        serviceId: expected.serviceId,
+        instructorId: expected.instructorId,
+        startMs: expected.startMs,
+        playEndMs: expected.startMs + SESSION_MINUTES * 60000,
+        occupiedStartMs: expected.startMs,
+        occupiedEndMs: expected.startMs + START_INTERVAL_MINUTES * 60000,
       },
-    ],
-  };
+      status,
+    };
+  });
+  return { invoice: normalized.invoice, bookings };
 }
-export function normalizeNativeCreation(
+// A partial batch response is evidence only for its exact selected session.
+// It cannot establish an invoice or payment authority.
+export function normalizeNativeSession(
   raw: unknown,
-  context: Omit<NativeReadContext, "association">,
+  context: Pick<NativeReadContext, "intent" | "timezone"> & {
+    nativeCustomerId?: string;
+  },
+  sessionIndex: number,
 ) {
   const response = record(raw),
     booking = single(response.bookings),
-    invoice = record(response.invoice);
+    intent = boundIntent(context.intent);
+  const expected = intent.sessions[sessionIndex];
+  if (!Number.isInteger(sessionIndex) || !expected) reject();
   equal(flag(response.require_confirm), false);
-  // require_payment is checked for representation only, never used as paid evidence.
   flag(booking.require_payment);
   equal(flag(booking.is_confirmed), true);
-  const intent = boundIntent(context.intent),
-    expected = intent.sessions[0];
-  const association = {
-    bookingIds: [providerId(booking.id)],
-    invoiceId: providerId(invoice.id),
-  };
-  const normalized = invoiceEvidence(invoice, { ...context, association });
-  equal(normalized.nestedConfirmed, true);
-  equal(normalized.invoice.status, "unpaid");
-  equal(providerId(booking.client_id), intent.customerId);
+  const nativeCustomerId = providerId(booking.client_id);
+  if (intent.customerMode !== "booking-contact")
+    equal(nativeCustomerId, intent.customerId);
+  else if (context.nativeCustomerId !== undefined)
+    equal(nativeCustomerId, context.nativeCustomerId);
   equal(providerId(booking.event_id), expected.serviceId);
   equal(providerId(booking.unit_id), expected.instructorId);
   equal(
@@ -398,8 +433,59 @@ export function normalizeNativeCreation(
   )
     reject();
   return {
+    bookingId: providerId(booking.id),
+    hash: booking.hash,
+    nativeCustomerId,
+  };
+}
+export function normalizeNativeCreation(
+  raw: unknown,
+  context: Omit<NativeReadContext, "association">,
+) {
+  const response = record(raw),
+    invoice = record(response.invoice),
+    intent = boundIntent(context.intent);
+  equal(flag(response.require_confirm), false);
+  if (
+    !Array.isArray(response.bookings) ||
+    response.bookings.length !== intent.sessions.length
+  )
+    reject();
+  const remaining = [...response.bookings];
+  const keys = intent.sessions.map((session, index) => {
+    const matched = remaining.findIndex((value) => {
+      const booking = record(value);
+      return (
+        providerId(booking.event_id) === session.serviceId &&
+        providerId(booking.unit_id) === session.instructorId &&
+        bookingWallTime(booking.start_date_time, context.timezone) ===
+          session.startMs
+      );
+    });
+    if (matched < 0) reject();
+    const booking = remaining.splice(matched, 1)[0];
+    return normalizeNativeSession(
+      { require_confirm: response.require_confirm, bookings: [booking] },
+      context,
+      index,
+    );
+  });
+  if (keys.some((key) => key.nativeCustomerId !== keys[0].nativeCustomerId))
+    reject();
+  const association = {
+    bookingIds: keys.map((key) => key.bookingId),
+    invoiceId: providerId(invoice.id),
+    ...(intent.customerMode === "booking-contact"
+      ? { nativeCustomerId: keys[0].nativeCustomerId }
+      : {}),
+  };
+  const normalized = invoiceEvidence(invoice, { ...context, association });
+  if (normalized.lines.some((line) => !line.nestedConfirmed)) reject();
+  equal(normalized.invoice.status, "unpaid");
+  return {
     association,
-    bookingHash: booking.hash,
+    bookingHash: keys[0].hash,
+    bookingKeys: keys,
     invoice: normalized.invoice,
   };
 }
