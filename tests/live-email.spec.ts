@@ -474,7 +474,9 @@ test("native guest journey preserves players contact and one checkout across ref
   await page
     .getByLabel("Academy / school / organisation", { exact: false })
     .fill("Synthetic School");
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Review booking", exact: true })
+    .click();
   await page
     .getByRole("checkbox", { name: /I’ve reviewed all selected/ })
     .check();

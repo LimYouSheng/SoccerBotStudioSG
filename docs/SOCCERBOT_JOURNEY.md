@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## Native browser fixture correction — 11 October
+
+At2972d2d, CI38135134330 passed the Worker gates and all12 existing live identity/browser cases. The three new native journey cases stopped at the Details action because the new fixture asked for a button named Continue; the existing product action is Review booking (also used by the original customer suite). Corrected only that new locator; all downstream payload, payment and no-duplicate assertions remain, with no retry/timeout/runner change. Original failing job114457345404 and artifact11699984377 are retained. Frozen-source local verify:code passed before this fixture correction; final-head CI must verify the corrected journey.
+
 ## 11 October — customer-native continuation after5878001
 
 Checkpoint5878001 passed CI38133435815. Continued immediately into native availability/selection/Details/Review/preparation/checkout/restore in the existing owners, with no provider or remote account operations. Initial affected UI result46/47 identified restoration being attempted for demo identity; restricted protected restore to live booking plus live identity without relaxing the old no-fetch assertion. The corrected affected UI/service set passed50/50. Native tests progressed29/29, then30/30 with current availability/cache/unapproved-date coverage. The first allowance typecheck exposed an unknown cached-identity shape; added runtime schema validation, not a type assertion. The first inventory update subprocess hit sandbox EPERM; filesystem-based AST collection preserved all old titles and added only the new cases. The full code sequence passed its checks,158 application tests and static export, but correctly refused its final receipt because documentation was edited during that run. Preserve customer-code-first.log and the refused receipt; exact final-source CI is still required. Full Worker and exact CI evidence are recorded at publication.
