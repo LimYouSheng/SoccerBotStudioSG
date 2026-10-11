@@ -48,7 +48,7 @@ export function eligibleInstructors(raw: unknown): string[] {
 // Server-owned pre-write implementation. Reads documented current catalogue,
 // service relationship, exact slot/eligibility and required fields; never trusts
 // browser snapshots and never infers shared capacity or tax. The owner-approved
-// native allocation is one studio; group size is required booking-comment information.
+// native allocation is one studio; group size is automatic, non-blocking booking-comment information.
 export class NativePrebooking {
   constructor(
     private binding: CatalogueBinding,
@@ -164,10 +164,10 @@ export class NativePrebooking {
       taxMinor: null,
     };
     if (service.priceMinor !== intent.totalMinor)
-      return { state: "review_required" as const, review, intent };
+      return { state: "restart_required" as const, review, intent };
     // Remaining upstream mappings cannot be manufactured from a response schema.
-    // Count1 allocates the studio. Every booking needs its derived group-size
-    // comment; native comment write/readback is not integrated yet.
+    // Count1 allocates the studio. Comment delivery is automatic but non-blocking;
+    // its failure must not prevent payment or trigger booking retries.
     return {
       state: "unavailable" as const,
       review,
@@ -176,7 +176,6 @@ export class NativePrebooking {
         "native_customer_binding_unavailable",
         "native_quote_tax_unavailable",
         "native_shared_capacity_unverified",
-        "native_booking_comment_unavailable",
       ],
     };
   }
@@ -185,8 +184,8 @@ export class NativePrebooking {
     // Unresolved customer/tax/capacity mappings still prevent commit.
     throw new ApiError(
       result.state === "unavailable" ? 503 : 409,
-      result.state === "review_required"
-        ? "native_review_required"
+      result.state === "restart_required"
+        ? "native_restart_required"
         : result.state === "selection_unavailable"
           ? "native_selection_changed"
           : "native_prebooking_unavailable",

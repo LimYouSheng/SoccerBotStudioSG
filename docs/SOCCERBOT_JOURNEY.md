@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## 2026-10-11 — Final native checkout decisions
+
+Every booking automatically attempts a Comments entry `Number of players: N` (default1, range1–4). When the optional fifth Details field is filled, append `School / organisation: VALUE` on the next line; omit that line when blank. If comment delivery fails, leave it blank and allow payment: no notification, staff follow-up or repeated booking/payment. The session price is fixed for1–4 players and the displayed total includes applicable tax with no extra fees. A changed price stops checkout and requires restart. Any unavailable selected session stops the whole checkout for customer revision; never silently drop it. These owner decisions do not establish provider tax as zero or complete multi-session recovery.
+
+This supersedes the interim comment-delivery blocker and staff-alert proposal below. Source removes that blocker and refuses changed-price continuation with native_restart_required; tests preserve the approved intent and assert no booking dispatch. School inclusion is accepted design, with intent propagation and provider comment writes still pending. No remote mutation or provider acceptance is claimed.
+
 ## 2026-10-11 — Native-first North Star and one-studio clarification
 
 YS requested the full plan and immediate execution with native booking followed by webhooks. Refreshed cleanf881510/PR20 and green three-job CI38116387515; drafted the complete dependency sequence through client UAT/launch/support. Public web-search tool returned no usable content. Downloaded backend11693104902 and verified its GitHub ZIP digest, preserving original artifact bytes; no new runtime artifact claimed.

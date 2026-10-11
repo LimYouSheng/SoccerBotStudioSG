@@ -236,7 +236,7 @@ test("prebooking refreshes current price and names without rewriting approved in
     read.exchange,
   );
   const result = await validation.review(intent);
-  assert.equal(result.state, "review_required");
+  assert.equal(result.state, "restart_required");
   assert.equal(result.review.priceMinor, 9950);
   assert.equal(result.review.instructorName, "Renamed Trainer");
   assert.equal(result.review.taxMinor, null);
@@ -253,6 +253,12 @@ test("prebooking refreshes current price and names without rewriting approved in
   );
   assert.equal(read.calls.at(-1).serviceId, "12");
   assert.equal(read.calls.at(-1).instructorId, "14");
+  await assert.rejects(
+    validation.revalidate(intent),
+    /native_restart_required/,
+  );
+  assert.deepEqual(intent, before);
+  assert.ok(read.calls.every((x) => x.kind !== "book"));
 });
 test("prebooking rejects unknown inactive reassigned and no longer eligible instructors", async () => {
   for (const kind of [
@@ -335,7 +341,7 @@ test("prebooking validates freshness account lead time and supported service pro
     "native_service_profile_unsupported",
   );
 });
-test("prebooking derives a required player comment for every group size independently of studio capacity", async () => {
+test("prebooking derives automatic non-blocking player comments independently of studio capacity", async () => {
   for (const players of [1, 2, 3, 4]) {
     const data = fixtures(),
       intent = approved();
@@ -350,7 +356,7 @@ test("prebooking derives a required player comment for every group size independ
     assert.equal(result.state, "unavailable");
     assert.equal(result.review.players, players);
     assert.equal(result.review.bookingComment, `Number of players: ${players}`);
-    assert.ok(result.reasons.includes("native_booking_comment_unavailable"));
+    assert.ok(!result.reasons.includes("native_booking_comment_unavailable"));
     assert.ok(!result.reasons.includes("native_player_mapping_unavailable"));
     assert.ok(
       !result.reasons.includes("native_player_information_unavailable"),
