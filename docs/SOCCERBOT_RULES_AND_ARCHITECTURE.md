@@ -1,5 +1,21 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Current accepted state — finite identity proof closed, 10 October 2026
+
+The owner-approved PR19 packet executed source4a10133, applied additive0013/0014 and explicitly closed proof row3. All three windows are closed; source4a10133/version6c2730a6-9591-4c06-8830-803cb6d30790 is deployed with identity/provider disabled/end0. This supersedes the preparation-only authority statements in the historical sections below. Applied0001–0014 are now immutable. No fourth row, reopening, expiry extension, reset or spare-budget activation is authorized.
+
+Owner browser evidence covers opt-out cookie absence, original-code supersession rejection, opt-in cookie presence, restart/two tabs, independent phone verification and fresh all-device sign-out. Server evidence confirms six responded email/six bot dispatches and atomic closure with zero unrevoked proof families/sessions. Replay rejection and real30-minute idle restoration were not completed; the final closure browser reload passed with the owner-provided Account screenshot. This is partial M3.5 acceptance, not90-day elapsed proof, provider prefill, A3 completion or native booking/payment acceptance. PROGRESS owns the current task/counters; Service Contracts owns remaining gates; Journey owns exact execution failures and evidence.
+
+## Finite remembered-identity proof preparation — 10 October 2026
+
+PR18 is owner-merged atfe179d2; main CI38044816610 passed all verification jobs and Pages demo publication. No Cloudflare Worker migration/deployment is implied. The owner authorized preparing the next gate and exact packet, not executing live actions. Existing one-agent/campaign limits and unknown accounting remain in PROGRESS.
+
+Additive0014 changes only the existing delivery window schema/admission, preserving every original window/dispatch value and provisioning no row. Exactly one proof row3 may follow both closed historical windows and their expiry bounds. It has immutable source/origin/sender/recipient/times, at most60minutes,6 new email and8 new bot reservations. Counts are selected by its non-overlapping timestamp interval; historical reservations remain visible and cannot be refunded, edited or deleted. Existing3 emails/15minutes,60-second resend and source limits persist. No fourth row, reopening, automatic replacement or reset is allowed.
+
+Proof authority is distinct from the90-day credential lifetime: once row3 exists, public identity read/restore require matching current source/origin, finite-test mode and an unexpired open proof. Recheck before responding. Closure revokes proof dispatch guests in the same database statement; existing family triggers revoke issued/restored identity and guest links. Attempt/recovery data survives. A failed close transaction stays unclosed and must be reported; natural expiry is fail-closed but never a substitute for explicit close evidence. Rollback retains additive schema and revocation rows, using a reviewed closed application version.
+
+Service Contracts owns the37-management/4-deployment finite proposal, owner protocol and zero-provider boundary. Source preparation may proceed; no window or approval is manufactured by merged code, spare historic quotas or a packet generator. Provider-backed prefill and the full native journey remain open.
+
 ## Remembered identity source checkpoint — 10 October 2026
 
 Owner authorized source implementation, synthetic checks and one new feature PR from merged main2f08b1c. M3.5 now has source implementation of explicit default-off90-day consent, digest-only remembered families, atomic bounded rotation, short identity restoration, device sign-out and freshly verified all-device revocation. Service Contracts owns the exact lifecycle/errors/recovery. Migration0013 is additive and source-only; applied0001–0012 remain byte-identical. Remembered credentials never return a previous guest/attempt capability or extend its lifetime. Existing booking/recovery records survive revocation.

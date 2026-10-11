@@ -139,6 +139,7 @@ try {
     .results;
   assert.deepEqual(manifest.pendingRemoteMigrations, [
     "0013_remembered_identity.sql",
+    "0014_identity_proof_window.sql",
   ]);
   // Old-state compatibility remains tested locally, never re-applied remotely.
   for (const name of names.slice(5, 8)) await migrate(name);
@@ -282,7 +283,7 @@ try {
         checks: [
           "file hashes",
           "root export",
-          "0001–0012 application state and pending0013 preserve all existing columns identities unknown effects and operator grants",
+          "0001–0012 application state and pending0013/0014 preserve all existing columns identities unknown effects and operator grants",
           "empty identity delivery authority and default-closed HTTP",
           "exact Worker revision",
           "protected checkout unavailable",
