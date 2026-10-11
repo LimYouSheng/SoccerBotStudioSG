@@ -93,6 +93,13 @@ function input(paid = true) {
         accountId: "synthetic-account",
         environmentId: "developer",
         customerId: "51",
+        contact: {
+          name: "Synthetic Test Guest",
+          email: "guest@example.invalid",
+          phone: "00000000",
+          contactMethod: "email",
+          academy: "",
+        },
         currency: "SGD",
         totalMinor: 8800,
         taxMinor: 0,
@@ -499,6 +506,11 @@ test("native orchestration consumes one booking response and cannot replay lost 
   const result = await call("orchestrate", data);
   assert.equal(result.result.state, "associated");
   assert.equal(result.requests, 1);
+  assert.deepEqual(result.sent[0].client, {
+    name: data.scope.intent.contact.name,
+    email: data.scope.intent.contact.email,
+    phone: data.scope.intent.contact.phone,
+  });
   const again = await call("orchestrate", data);
   assert.equal(again.requests, 0);
   const lost = await prepared();
@@ -506,6 +518,32 @@ test("native orchestration consumes one booking response and cannot replay lost 
   assert.equal(failure.result.state, "recovery_required");
   assert.equal(failure.requests, 1);
   assert.equal((await call("orchestrate", lost)).requests, 0);
+});
+test("native creation requires an immutable contact snapshot and rejects changed contact before dispatch", async () => {
+  const missing = await prepared();
+  delete missing.scope.intent.contact;
+  const denied = await call("orchestrate", missing);
+  assert.equal(denied.error, "native_contact_snapshot_unavailable");
+  assert.equal(denied.requests, 0);
+  for (const field of ["name", "phone", "academy"]) {
+    const changed = await prepared();
+    changed.scope.intent.contact[field] =
+      field === "phone" ? "11111111" : "Changed Synthetic";
+    const result = await call("orchestrate", changed);
+    assert.equal(result.result.state, "prerequisites_unavailable");
+    assert.equal(result.requests, 0);
+    assert.equal(
+      (
+        await db
+          .prepare(
+            "SELECT count(*) AS n FROM session_effects WHERE attempt_id=?",
+          )
+          .bind(changed.scope.attemptId)
+          .first()
+      ).n,
+      0,
+    );
+  }
 });
 test("native link effect preserves one capability on reopen and never regenerates lost replies", async () => {
   const now = Date.parse("2026-10-08T01:00:00+08:00");

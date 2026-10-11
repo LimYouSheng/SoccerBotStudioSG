@@ -91,6 +91,28 @@ export async function orchestrateBooking(
     !(await operations.hasRecoveryCapacity(intent.sessions.length))
   )
     return { state: "prerequisites_unavailable", paymentAvailable: false };
+  // Validate the whole selected cart before creating its first native booking.
+  // This is not a reservation; each write still revalidates below.
+  try {
+    for (const [sessionIndex] of intent.sessions.entries()) {
+      const fresh = intentSchema.parse(
+        await operations.revalidate(intent, { attemptId: id, sessionIndex }),
+      );
+      if ((await digest(JSON.stringify(fresh))) !== row.intent_hash)
+        throw new ApiError(409, "native_restart_required");
+    }
+  } catch (error) {
+    return {
+      state:
+        error instanceof ApiError && error.code === "native_restart_required"
+          ? "restart_required"
+          : error instanceof ApiError &&
+              error.code === "native_selection_changed"
+            ? "selection_unavailable"
+            : "prerequisites_unavailable",
+      paymentAvailable: false,
+    };
+  }
   // Single atomic winner. A second click or resumed process cannot replay writes.
   let fence: number;
   try {
@@ -133,7 +155,7 @@ export async function orchestrateBooking(
     for (const [sessionIndex, session] of intent.sessions.entries()) {
       const context = { attemptId: id, sessionIndex };
       // The eventual live adapter must verify identity, eligible instructor,
-      // timetable, shared slot, exact price/tax and persisted player mapping.
+      // timetable, shared slot, exact price/tax. Player information is a non-blocking annotation.
       const fresh = intentSchema.parse(
         await operations.revalidate(intent, context),
       );

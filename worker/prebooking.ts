@@ -15,6 +15,17 @@ import { CatalogueReads, freshReceipt } from "./catalogue";
 import { providerId } from "./provider-normalization";
 import type { NativeExchange } from "./provider-transport";
 type Intent = z.infer<typeof intentSchema>;
+export function nativeBookingComment(value: unknown, sessionIndex: number) {
+  const intent = intentSchema.parse(value);
+  const session = intent.sessions[sessionIndex];
+  if (!Number.isInteger(sessionIndex) || !session)
+    throw new ApiError(409, "native_session_missing");
+  const school = intent.contact?.academy;
+  return (
+    `Number of players: ${session.players}` +
+    (school ? `\nSchool / organisation: ${school}` : "")
+  );
+}
 const record = (raw: unknown): Record<string, unknown> => {
   if (!raw || typeof raw !== "object" || Array.isArray(raw))
     throw new ApiError(503, "availability_representation_unavailable");
@@ -158,7 +169,7 @@ export class NativePrebooking {
       instructorName: instructor.name,
       startMs: session.startMs,
       players: session.players,
-      bookingComment: `Number of players: ${session.players}`,
+      bookingComment: nativeBookingComment(intent, 0),
       priceMinor: service.priceMinor,
       currency: service.currency,
       taxMinor: null,

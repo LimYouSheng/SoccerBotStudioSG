@@ -46,16 +46,18 @@ function validateScope(scope: NativeScope) {
 export function nativeBookingOperations(options: {
   scope: NativeScope;
   exchange: NativeExchange;
-  client: unknown;
   additional: unknown;
-  // Required-fields, eligibility/shared availability, current price/tax, customer
-  // and player mapping remain trusted pre-write checks, not response guesses.
+  // Required fields, eligibility/shared availability, current price/tax and
+  // customer association remain trusted pre-write checks, not response guesses.
   prebooking: Pick<NativePrebooking, "revalidate" | "invalidate">;
   hasRecoveryCapacity: BookingOperations["hasRecoveryCapacity"];
   db: D1Database;
 }): BookingOperations {
   const intent = validateScope(options.scope);
-  const fields = nativeBookFields(options.client, options.additional);
+  if (!intent.contact)
+    throw new ApiError(503, "native_contact_snapshot_unavailable");
+  const { name, email, phone } = intent.contact;
+  const fields = nativeBookFields({ name, email, phone }, options.additional);
   let created: ReturnType<typeof normalizeNativeCreation> | undefined;
   let dispatched = false;
   const matches = async (value: unknown, attemptId: string) => {

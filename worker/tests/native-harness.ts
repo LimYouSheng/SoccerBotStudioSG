@@ -48,6 +48,7 @@ const harness = {
     let reserved = 0,
       finished = 0,
       requests = 0;
+    const sent: NativeRequest[] = [];
     const control: ProviderControl = {
       reserve: async () => {
         reserved++;
@@ -62,6 +63,7 @@ const harness = {
     };
     const exchange = async (operation: NativeRequest) => {
       requests++;
+      sent.push(operation);
       if (input.scenario === "lost") throw new Error("synthetic lost reply");
       return {
         body:
@@ -200,11 +202,6 @@ const harness = {
           const operations = nativeBookingOperations({
             scope: input.scope,
             exchange,
-            client: {
-              name: "Synthetic Test Guest",
-              email: "guest@example.invalid",
-              phone: "00000000",
-            },
             additional: { handle_invoice: true },
             prebooking: {
               revalidate: async (value) => value,
@@ -276,7 +273,7 @@ const harness = {
         default:
           throw new Error("unknown fixture action");
       }
-      return Response.json({ result, reserved, finished, requests });
+      return Response.json({ result, reserved, finished, requests, sent });
     } catch (error) {
       return Response.json(
         {

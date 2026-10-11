@@ -679,11 +679,46 @@ test("orchestration withholds all writes when native contracts or recovery capac
     assert.deepEqual(await effects(a), []);
   }
 });
+test("orchestration preflights the complete cart before any effect and preserves selection on failure", async () => {
+  for (const [scenario, state] of [
+    ["preflight-unavailable", "selection_unavailable"],
+    ["preflight-price", "restart_required"],
+    ["preflight-unknown", "prerequisites_unavailable"],
+  ]) {
+    const a = await multiAttempt();
+    const before = await db
+      .prepare("SELECT intent_json FROM attempts WHERE id=?")
+      .bind(a.id)
+      .first();
+    const r = await orchestrate(a, scenario);
+    assert.deepEqual(r.result, { state, paymentAvailable: false });
+    assert.deepEqual(r.calls, ["validate:0", "validate:1"]);
+    assert.deepEqual(await effects(a), []);
+    const after = await db
+      .prepare("SELECT intent_json,state,version FROM attempts WHERE id=?")
+      .bind(a.id)
+      .first();
+    assert.equal(after.intent_json, before.intent_json);
+    assert.equal(after.state, "prepared");
+    assert.equal(after.version, 0);
+    assert.equal(
+      (
+        await db
+          .prepare("SELECT count(*) AS n FROM dispatches WHERE attempt_id=?")
+          .bind(a.id)
+          .first()
+      ).n,
+      0,
+    );
+  }
+});
 test("orchestration associates every session and invoice once without enabling payment", async () => {
   const a = await multiAttempt(),
     r = await orchestrate(a, "complete");
   assert.deepEqual(r.result, { state: "associated", paymentAvailable: false });
   assert.deepEqual(r.calls, [
+    "validate:0",
+    "validate:1",
     "validate:0",
     "create:0",
     "validate:1",
@@ -729,7 +764,13 @@ test("orchestration rechecks exact price and revoked access before each session 
     const a = await multiAttempt(),
       r = await orchestrate(a, scenario);
     assert.equal(r.result.state, "recovery_required");
-    assert.deepEqual(r.calls, ["validate:0", "create:0", "validate:1"]);
+    assert.deepEqual(r.calls, [
+      "validate:0",
+      "validate:1",
+      "validate:0",
+      "create:0",
+      "validate:1",
+    ]);
     assert.equal((await effects(a)).length, 1);
   }
 });
@@ -737,7 +778,13 @@ test("orchestration stale generation cannot dispatch a subsequent session", asyn
   const a = await multiAttempt(),
     r = await orchestrate(a, "fence");
   assert.equal(r.result.state, "recovery_required");
-  assert.deepEqual(r.calls, ["validate:0", "create:0", "validate:1"]);
+  assert.deepEqual(r.calls, [
+    "validate:0",
+    "validate:1",
+    "validate:0",
+    "create:0",
+    "validate:1",
+  ]);
   assert.equal((await effects(a)).length, 1);
 });
 test("orchestration rejects duplicate booking references and incomplete invoice associations", async () => {

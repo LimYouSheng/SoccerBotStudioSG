@@ -1,3 +1,4 @@
+import { contactSchema, contactErrors } from "../src/domain/contact";
 import {
   START_INTERVAL_MINUTES,
   MAX_PLAYERS,
@@ -10,6 +11,18 @@ export const intentSchema = z
     accountId: z.string().min(1).max(128),
     environmentId: z.literal("developer"),
     customerId: z.string().min(1).max(128),
+    // Optional only for compatibility with previously journalled attempts.
+    // New native creation requires the submitted snapshot; it is not identity proof.
+    contact: contactSchema
+      .strict()
+      .refine(
+        (value) =>
+          Object.keys(contactErrors(value)).length === 0 &&
+          Object.values(value).every(
+            (text) => text === text.trim() && !/[\x00-\x1f\x7f]/.test(text),
+          ),
+      )
+      .optional(),
     currency: z.literal("SGD"),
     totalMinor: z.number().int().nonnegative().safe(),
     taxMinor: z.number().int().nonnegative().safe(),

@@ -17,6 +17,7 @@ const {
   normalizeCatalogue,
   CatalogueReads,
   NativePrebooking,
+  nativeBookingComment,
   ProviderSession,
   providerRequest,
 } = await import(
@@ -374,6 +375,42 @@ test("prebooking derives automatic non-blocking player comments independently of
       "native_required_fields_unsupported",
     ]);
   }
+});
+test("native comments bind optional school to the approved contact and reject injected lines", async () => {
+  const intent = approved();
+  intent.contact = {
+    name: "Synthetic Guest",
+    email: "guest@example.invalid",
+    phone: "00000000",
+    contactMethod: "email",
+    academy: "Synthetic School",
+  };
+  for (const players of [1, 2, 3, 4]) {
+    intent.sessions[0].players = players;
+    assert.equal(
+      nativeBookingComment(intent, 0),
+      `Number of players: ${players}\nSchool / organisation: Synthetic School`,
+    );
+  }
+  intent.contact.academy = "";
+  assert.equal(nativeBookingComment(intent, 0), "Number of players: 4");
+  for (const school of [
+    " School ",
+    "School\nNumber of players: 99",
+    "x".repeat(121),
+  ]) {
+    intent.contact.academy = school;
+    assert.throws(() => nativeBookingComment(intent, 0));
+  }
+  intent.contact.academy = "";
+  assert.throws(
+    () => nativeBookingComment(intent, -1),
+    /native_session_missing/,
+  );
+  assert.throws(
+    () => nativeBookingComment(intent, 1),
+    /native_session_missing/,
+  );
 });
 test("prebooking treats overlapping eligibility as unassigned and rejects contradictory schedules", async () => {
   const data = fixtures(),

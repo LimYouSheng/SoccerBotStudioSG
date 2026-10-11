@@ -29,6 +29,7 @@ test("rejects Worker orphan cycle and UI imports", () => {
     ["export const value=1", "Unreachable"],
     ['import "../src/components/icon";', "Forbidden Worker layer"],
     ['import "../src/domain/demo-catalog";', "Forbidden Worker layer"],
+    ['import "../src/domain/contact-extra";', "Forbidden Worker layer"],
     ['import "./absent";', "Missing Worker import"],
   ])
     assert.ok(
