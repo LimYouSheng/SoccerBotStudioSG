@@ -3,6 +3,7 @@ import {
   catalogueSchema,
   catalogueBindingSchema,
   type CatalogueBinding,
+  providerIdentifier,
 } from "@/domain/catalog";
 import type { CatalogueService } from "./contracts";
 import { z } from "zod";
@@ -20,10 +21,16 @@ import { isDate, clockMinutes } from "@/domain/dates";
 import { MAX_PLAYERS } from "@/domain/booking-policy";
 import { SESSION_STARTS } from "@/domain/demo-catalog";
 import { BookingServiceError, type BookingService } from "./contracts";
+import {
+  nativeAvailabilitySchema,
+  nativePrepareSchema,
+  nativeCurrentSchema,
+} from "@/domain/native-checkout";
 
 const availabilityInput = z.object({
   date: z.string().refine(isDate),
   players: z.number().int().min(1).max(MAX_PLAYERS),
+  serviceId: providerIdentifier.optional(),
 });
 const checkoutInput = z.object({
   draft: draftSchema,
@@ -35,7 +42,7 @@ const resolveInput = attemptInput.extend({
   now: z.number().finite().nonnegative().optional(),
 });
 const slotsSchema = z
-  .array(sessionSchema.extend({ available: z.boolean() }))
+  .array(sessionSchema.safeExtend({ available: z.boolean() }))
   .max(100);
 const cancelled = () =>
   new BookingServiceError("cancelled", "The request was cancelled.");
@@ -149,7 +156,7 @@ function transitioned(
 // and future adapters: successful TypeScript typing alone is not wire evidence.
 export function defineBookingService(adapter: BookingService): BookingService {
   function supported(operation: keyof BookingService["operations"]) {
-    if (adapter.mode !== "demo" || adapter.operations[operation] !== "demo")
+    if (adapter.operations[operation] !== adapter.mode)
       throw new BookingServiceError(
         "unavailable",
         "Online booking is not available yet. Please contact the studio.",
@@ -158,6 +165,24 @@ export function defineBookingService(adapter: BookingService): BookingService {
   return {
     mode: adapter.mode,
     operations: adapter.operations,
+    ...(adapter.restore
+      ? {
+          restore: (signal: AbortSignal) =>
+            invoke(signal, async () => {
+              const restored = await adapter.restore!(signal);
+              if (restored === null) return null;
+              const parsed = decode(attemptSchema, restored);
+              if (
+                adapter.mode !== "live" ||
+                !["ready", "checking"].includes(parsed.status) ||
+                parsed.booking !== null ||
+                parsed.draft.slots.some((slot) => !slot.native)
+              )
+                throw invalidResponse();
+              return parsed;
+            }),
+        }
+      : {}),
     availability(input) {
       return invoke(input.signal, async () => {
         supported("availability");
@@ -170,7 +195,10 @@ export function defineBookingService(adapter: BookingService): BookingService {
           slots.some(
             (slot) =>
               slot.date !== request.date ||
-              !SESSION_STARTS.includes(clockMinutes(slot.start)),
+              (adapter.mode === "demo"
+                ? !!slot.native ||
+                  !SESSION_STARTS.includes(clockMinutes(slot.start))
+                : !slot.native || slot.native.serviceId !== request.serviceId),
           ) ||
           new Set(slots.map(slotKey)).size !== slots.length
         )
@@ -238,18 +266,203 @@ const unavailable = async (): Promise<never> => {
 };
 // No guessed live route and no demo import/fallback. Protected confirmation has
 // its existing independent, cookie-authorized readConfirmation owner.
+async function nativeRequest(
+  path: string,
+  method: "GET" | "POST",
+  signal?: AbortSignal,
+  body?: unknown,
+) {
+  const response = await fetch(path, {
+    method,
+    signal,
+    credentials: "same-origin",
+    cache: "no-store",
+    redirect: "error",
+    headers: {
+      Accept: "application/json",
+      ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+    },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  });
+  if (!response.ok) {
+    if (response.status === 409)
+      throw new BookingServiceError(
+        "conflict",
+        "This selection has changed. Return to your booking and restart checkout.",
+      );
+    throw new BookingServiceError(
+      "unavailable",
+      "Online booking is unavailable. Your selections have been kept.",
+    );
+  }
+  return response.json() as Promise<unknown>;
+}
+const nativeAttemptId = z.string().uuid();
 export const liveBookingService: BookingService = defineBookingService({
   mode: "live",
   operations: {
-    availability: "unavailable",
-    checkout: "unavailable",
-    pay: "unavailable",
+    availability: "live",
+    checkout: "live",
+    pay: "live",
     check: "unavailable",
     resolve: "unavailable",
   },
-  availability: unavailable,
-  checkout: unavailable,
-  pay: unavailable,
+  async restore(signal) {
+    const current = nativeCurrentSchema.parse(
+      await nativeRequest("/api/booking/current", "GET", signal),
+    );
+    if (current.state === "empty") return null;
+    const slots = current.sessions.map((offer) => {
+      const wall = new Date(offer.startMs + 8 * 3600000).toISOString();
+      return {
+        date: wall.slice(0, 10),
+        start: wall.slice(11, 16),
+        instructor: offer.instructorId,
+        native: {
+          serviceId: offer.serviceId,
+          serviceName: offer.serviceName,
+          instructorName: offer.instructorName,
+          priceMinor: offer.priceMinor,
+          currency: offer.currency,
+        },
+      };
+    });
+    return {
+      id: current.attemptId,
+      status: current.state === "prepared" ? "ready" : "checking",
+      outcome: "pending",
+      checkUntil: 0,
+      booking: null,
+      draft: {
+        mode: "guest",
+        accountEmail: "",
+        nativeServiceId: slots[0].native.serviceId,
+        contact: current.contact,
+        players: current.sessions[0].players,
+        accepted: true,
+        slots,
+      },
+    };
+  },
+  async availability({ date, serviceId, signal }) {
+    if (!serviceId) return unavailable();
+    providerIdentifier.parse(serviceId);
+    const data = nativeAvailabilitySchema.parse(
+      await nativeRequest(
+        `/api/booking/availability/${serviceId}/${date}`,
+        "GET",
+        signal,
+      ),
+    );
+    if (
+      data.date !== date ||
+      data.observedAtMs > Date.now() ||
+      Date.now() - data.observedAtMs >= CATALOGUE_MAX_AGE_MS
+    )
+      throw invalidResponse();
+    return data.offers.map((offer) => {
+      const wall = new Date(offer.startMs + 8 * 3600000).toISOString();
+      if (offer.serviceId !== serviceId || wall.slice(0, 10) !== date)
+        throw invalidResponse();
+      return {
+        date,
+        start: wall.slice(11, 16),
+        instructor: offer.instructorId,
+        available: true,
+        native: {
+          serviceId,
+          serviceName: offer.serviceName,
+          instructorName: offer.instructorName,
+          priceMinor: offer.priceMinor,
+          currency: offer.currency,
+        },
+      };
+    });
+  },
+  async checkout({ draft, previous, signal }) {
+    if (draft.slots.some((slot) => !slot.native)) return unavailable();
+    if (
+      previous ||
+      !draft.accepted ||
+      draft.slots.some(
+        (slot) =>
+          !slot.native || slot.native.serviceId !== draft.nativeServiceId,
+      )
+    )
+      throw new BookingServiceError(
+        "conflict",
+        "Review your selection before starting checkout.",
+      );
+    const approved = snapshot(draft);
+    const key = crypto.randomUUID();
+    const request = nativePrepareSchema.parse({
+      key,
+      contact: approved.contact,
+      accepted: approved.accepted,
+      sessions: approved.slots.map((slot) => ({
+        serviceId: slot.native?.serviceId,
+        instructorId: slot.instructor,
+        startMs: Date.parse(`${slot.date}T${slot.start}:00+08:00`),
+        players: approved.players,
+        totalMinor: slot.native?.priceMinor,
+      })),
+    });
+    const prepared = z
+      .strictObject({
+        attemptId: nativeAttemptId,
+        state: z.literal("prepared"),
+      })
+      .parse(
+        await nativeRequest("/api/booking/prepare", "POST", signal, request),
+      );
+    return {
+      id: prepared.attemptId,
+      status: "ready",
+      draft: approved,
+      outcome: "pending",
+      checkUntil: 0,
+      booking: null,
+    };
+  },
+  async pay({ attempt, signal }) {
+    if (attempt.draft.slots.some((slot) => !slot.native)) return unavailable();
+    nativeAttemptId.parse(attempt.id);
+    if (
+      attempt.status !== "ready" ||
+      attempt.draft.slots.some((slot) => !slot.native)
+    )
+      throw invalidResponse();
+    const result = z
+      .object({
+        attemptId: nativeAttemptId,
+        state: z.string(),
+        paymentAvailable: z.boolean(),
+      })
+      .parse(
+        await nativeRequest(
+          `/api/booking/native/${attempt.id}`,
+          "POST",
+          signal,
+        ),
+      );
+    if (result.attemptId !== attempt.id) throw invalidResponse();
+    if (
+      result.state === "restart_required" ||
+      result.state === "selection_unavailable"
+    )
+      throw new BookingServiceError(
+        "conflict",
+        "This selection has changed. Return to your booking and restart checkout.",
+      );
+    // A response can never mark the browser paid. All ambiguous writes remain
+    // under this attempt and the protected confirmation/recovery owner.
+    return {
+      ...attempt,
+      status: "checking",
+      outcome: "pending",
+      booking: null,
+    };
+  },
   check: unavailable,
   resolve: unavailable,
 });

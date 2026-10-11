@@ -1,4 +1,8 @@
-import { nativeCheckoutStatus } from "./native-checkout";
+import {
+  nativeCheckoutStatus,
+  prepareCustomerNative,
+  currentCustomerNative,
+} from "./native-checkout";
 import { coordinatorName } from "./bindings";
 import { runScheduledRecovery } from "./scheduled-recovery";
 import { customerCatalogue } from "./customer-catalogue";
@@ -137,6 +141,15 @@ export default {
           await assertIdentityProofOpen(env);
           return json(result);
         }
+        if (url.pathname === "/api/booking/prepare") {
+          if (request.method !== "POST")
+            throw new ApiError(405, "operation_unavailable");
+          await verifyBindings(env);
+          return json(
+            await prepareCustomerNative(request, env, await inputBody(request)),
+            201,
+          );
+        }
         // These initial named operations accept no payload at all.
         if (request.body !== null) {
           const reader = request.body.getReader();
@@ -164,6 +177,30 @@ export default {
           STATE: env.STATE ? instrumentStorage(env.STATE) : env.STATE,
         };
         await verifyBindings(env);
+        if (url.pathname === "/api/booking/current") {
+          if (request.method !== "GET")
+            throw new ApiError(405, "operation_unavailable");
+          return json(await currentCustomerNative(request, env));
+        }
+        const availabilityMatch =
+          /^\/api\/booking\/availability\/([1-9]\d{0,14})\/(\d{4}-\d{2}-\d{2})$/.exec(
+            url.pathname,
+          );
+        if (availabilityMatch) {
+          if (request.method !== "GET")
+            throw new ApiError(405, "operation_unavailable");
+          await authenticate(request, env, Date.now());
+          return json(
+            await env.COORDINATOR.getByName(coordinatorName).nativeAvailability(
+              {
+                serviceId: availabilityMatch[1],
+                date: availabilityMatch[2],
+                cookie: request.headers.get("cookie") || "",
+              },
+              correlationId,
+            ),
+          );
+        }
         const nativeCheckoutMatch =
           /^\/api\/booking\/native\/([a-f0-9-]{36})$/.exec(url.pathname);
         if (nativeCheckoutMatch) {

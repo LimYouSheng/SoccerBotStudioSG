@@ -34,7 +34,9 @@ export function BookingPage({ step }: { step: BookingStep }) {
   const { ready, draft, attempt, now, bookingService } = useBooking(),
     router = useRouter();
   const actual =
-      bookingService.mode === "live" && step !== "account"
+      bookingService.mode === "live" &&
+      bookingService.operations.availability === "unavailable" &&
+      step !== "account"
         ? "session"
         : guardedStep(step, draft, attempt, now),
     current = progress.findIndex(([id]) => id === step);

@@ -75,7 +75,10 @@ export function ReviewStep() {
             </Link>
           </div>
           <p>
-            <strong>{SERVICE_NAME}</strong>
+            <strong>
+              {draft.slots[0]?.native?.serviceName ??
+                (draft.nativeServiceId ? "Your session" : SERVICE_NAME)}
+            </strong>
             <br />
             {draft.players} {draft.players === 1 ? "player" : "players"} per
             session · Full instructor guidance

@@ -295,3 +295,234 @@ test("remembered live account edits and rereads contact while native booking sta
   );
   expect(evidence.unexpected).toEqual([]);
 });
+
+test("native guest journey preserves players contact and one checkout across refresh", async ({
+  page,
+}) => {
+  const date = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Singapore",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(Date.now() + 3 * 86400000));
+  const startMs = Date.parse(`${date}T08:10:00+08:00`);
+  const attemptId = "20000000-0000-4000-8000-000000000001";
+  const checkoutUrl =
+    "https://soccerbotstudiosg.simplybook.asia/v2/client/pay-later/id/synthetic-id/hash/synthetic-hash";
+  const offer = {
+    serviceId: "12",
+    serviceName: "Native Session",
+    instructorId: "14",
+    instructorName: "Native Trainer",
+    startMs,
+    priceMinor: 8800,
+    currency: "SGD",
+  };
+  const calls: { path: string; method: string; body: unknown }[] = [];
+  const unexpected: string[] = [];
+  let prepared: { contact: unknown; sessions: { players: number }[] } | null =
+    null;
+  let committed = false;
+  await page.route("**/*", async (route) => {
+    const request = route.request(),
+      url = new URL(request.url());
+    if (url.origin !== "http://127.0.0.1:4173") {
+      unexpected.push(url.origin);
+      await route.abort();
+      return;
+    }
+    if (!url.pathname.startsWith("/api/")) {
+      await route.continue();
+      return;
+    }
+    const body: unknown = request.postData() ? request.postDataJSON() : null;
+    calls.push({ path: url.pathname, method: request.method(), body });
+    let status = 200,
+      result: unknown;
+    if (url.pathname === "/api/access") {
+      status = 201;
+      result = {};
+    } else if (
+      ["/api/identity", "/api/identity/restore"].includes(url.pathname)
+    )
+      result = null;
+    else if (url.pathname === "/api/booking/current")
+      result = prepared
+        ? {
+            state: committed ? "checking" : "prepared",
+            attemptId,
+            contact: prepared.contact,
+            sessions: [{ ...offer, players: prepared.sessions[0].players }],
+          }
+        : { state: "empty" };
+    else if (url.pathname === "/api/catalogue")
+      result = {
+        environment: "developer",
+        observedAtMs: Date.now(),
+        complete: true,
+        services: [
+          {
+            id: "12",
+            name: "Native Session",
+            active: true,
+            durationMinutes: 40,
+            recurring: false,
+            priceMinor: 8800,
+            currency: "SGD",
+            instructorIds: ["14"],
+          },
+        ],
+        instructors: [{ id: "14", name: "Native Trainer", active: true }],
+      };
+    else if (url.pathname.startsWith("/api/booking/availability/12/")) {
+      const requested = url.pathname.split("/").at(-1);
+      result = {
+        date: requested,
+        observedAtMs: Date.now(),
+        offers: requested === date ? [offer] : [],
+      };
+    } else if (
+      url.pathname === "/api/booking/prepare" &&
+      request.method() === "POST"
+    ) {
+      prepared = body as typeof prepared;
+      result = { attemptId, state: "prepared" };
+    } else if (
+      url.pathname === `/api/booking/native/${attemptId}` &&
+      request.method() === "POST"
+    ) {
+      committed = true;
+      result = { attemptId, state: "associated", paymentAvailable: true };
+    } else if (url.pathname === `/api/attempts/${attemptId}/checkout`)
+      result = {
+        attemptId,
+        mode: "live",
+        checkout: {
+          state: "available",
+          url: checkoutUrl,
+          expiresAtMs: Date.now() + 300000,
+        },
+        summary: {
+          players: 2,
+          totalMinor: 8800,
+          currency: "SGD",
+          sessions: [{ startMs, players: 2 }],
+        },
+        checking: {
+          deadlineMs: Date.now() + 600000,
+          nextCheckMs: Date.now(),
+          pollAfterMs: 30000,
+        },
+      };
+    else if (url.pathname === `/api/attempts/${attemptId}/confirmation`)
+      result = { status: "pending", reason: "payment_pending" };
+    else {
+      status = 503;
+      result = { error: "unavailable" };
+    }
+    await route.fulfill({ status, json: result });
+  });
+  await page.goto("/book/account/");
+  await page
+    .getByRole("dialog", { name: "Get the SoccerBot Player App" })
+    .getByRole("button", { name: "Not now", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Continue as guest", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/book\/session\/$/);
+  await page
+    .getByRole("button", { name: "Add one player", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Select session", exact: true })
+    .click();
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Singapore",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+  const monthOffset =
+    (+date.slice(0, 4) - +today.slice(0, 4)) * 12 +
+    +date.slice(5, 7) -
+    +today.slice(5, 7);
+  await page
+    .getByLabel("Calendar month", { exact: true })
+    .selectOption(String(monthOffset));
+  const label = new Intl.DateTimeFormat("en-SG", {
+    timeZone: "Asia/Singapore",
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(`${date}T04:00:00Z`));
+  await page.getByRole("button", { name: label, exact: true }).click();
+  await page
+    .getByRole("group", { name: "Session times" })
+    .getByRole("button", { name: /08:10–08:50/ })
+    .click();
+  await page.getByRole("link", { name: "Continue", exact: true }).click();
+  await page.getByLabel("Full name", { exact: false }).fill("Synthetic Guest");
+  await page
+    .getByLabel("Email address", { exact: false })
+    .fill("synthetic@example.test");
+  await page.getByLabel("Mobile number", { exact: false }).fill("+6591234567");
+  await page
+    .getByLabel("Preferred contact method", { exact: false })
+    .selectOption("email");
+  await page
+    .getByLabel("Academy / school / organisation", { exact: false })
+    .fill("Synthetic School");
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page
+    .getByRole("checkbox", { name: /I’ve reviewed all selected/ })
+    .check();
+  await page
+    .getByRole("button", { name: "Continue to payment", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Continue to secure payment", exact: true })
+    .click();
+  await expect(
+    page.getByRole("link", { name: "Open checkout", exact: true }),
+  ).toHaveAttribute("href", checkoutUrl);
+  expect(
+    calls.filter((c) => c.path === "/api/booking/prepare")[0].body,
+  ).toMatchObject({
+    contact: {
+      name: "Synthetic Guest",
+      email: "synthetic@example.test",
+      phone: "+6591234567",
+      academy: "Synthetic School",
+    },
+    sessions: [
+      {
+        serviceId: "12",
+        instructorId: "14",
+        startMs,
+        players: 2,
+        totalMinor: 8800,
+      },
+    ],
+  });
+  await page.reload();
+  await expect(
+    page.getByRole("link", { name: "Open checkout", exact: true }),
+  ).toHaveAttribute("href", checkoutUrl);
+  await expect(
+    page.getByRole("heading", { name: "Booking confirmed", exact: true }),
+  ).toHaveCount(0);
+  expect(
+    calls.filter(
+      (c) =>
+        c.path === `/api/booking/native/${attemptId}` && c.method === "POST",
+    ),
+  ).toHaveLength(1);
+  expect(
+    calls.filter(
+      (c) => c.path === "/api/identity/contact" && c.method === "POST",
+    ),
+  ).toHaveLength(0);
+  expect(unexpected).toEqual([]);
+});

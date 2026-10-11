@@ -1,8 +1,21 @@
 import { z } from "zod";
 import { authenticate } from "./access";
 import { ApiError, digest, policy } from "./policy";
-import { intentSchema, associationSchema } from "./journal";
-import { nativeAccountContractSchema } from "./prebooking";
+import {
+  intentSchema,
+  associationSchema,
+  prepareAttempt,
+  recordObservation,
+} from "./journal";
+import { nativeAccountContractSchema, offeredStarts } from "./prebooking";
+import {
+  nativeAvailabilitySchema,
+  nativePrepareSchema,
+  nativeCurrentSchema,
+  type nativeOfferSchema,
+} from "../src/domain/native-checkout";
+import { NATIVE_TRIAL_LEAD_MS } from "../src/domain/booking-policy";
+import { freshReceipt } from "./catalogue";
 import { orchestrateBooking } from "./orchestration";
 import {
   nativeBookingOperations,
@@ -18,7 +31,8 @@ import { providerSecrets, type NativeExchange } from "./provider-transport";
 // installed externally from the exact approved packet; this code never grants.
 type Grant = {
   capability_hash: string;
-  intent_hash: string;
+  attempt_id: string | null;
+  intent_hash: string | null;
   source_revision: string;
   contract_json: string;
   not_before_ms: number;
@@ -27,6 +41,9 @@ type Grant = {
   maximum_used: number;
   state: string;
   result_json: string | null;
+  available_dates_json: string;
+  availability_json: string | null;
+  read_state: string;
 };
 export async function nativeCheckoutStatus(
   request: Request,
@@ -116,7 +133,8 @@ export async function executeNativeCheckout(options: {
     p.CAMPAIGN_END_MS < grant.expires_ms ||
     !Number.isSafeInteger(grant.starting_used) ||
     !Number.isSafeInteger(grant.maximum_used) ||
-    initial.used !== grant.starting_used ||
+    initial.used < grant.starting_used ||
+    initial.used + 20 > grant.maximum_used ||
     initial.active !== 0 ||
     grant.maximum_used > 64 ||
     grant.maximum_used - grant.starting_used < 20
@@ -204,7 +222,15 @@ export async function executeNativeCheckout(options: {
         invalidate: () => prebooking.invalidate(),
         revalidate: async (value, index) => {
           await assertGranted();
-          await provider.identity(env, control);
+          const identity = await provider.identity(env, control);
+          const allowance = z
+            .object({ remaining: z.number().int().nonnegative().safe() })
+            .safeParse(identity.bookingAllowance);
+          if (
+            !allowance.success ||
+            allowance.data.remaining < value.sessions.length - (index ?? 0)
+          )
+            throw new ApiError(503, "native_booking_allowance_unavailable");
           return prebooking.revalidate(value, index);
         },
       },
@@ -215,16 +241,19 @@ export async function executeNativeCheckout(options: {
     if (result.state === "associated") {
       const associated = await env.STATE.withSession("first-primary")
         .prepare(
-          "SELECT association_json FROM attempts WHERE id=? AND owner_id=? AND state='dispatching'",
+          "SELECT association_json,version FROM attempts WHERE id=? AND owner_id=? AND state='dispatching'",
         )
         .bind(attemptId, access.owner_id)
-        .first<{ association_json: string }>();
+        .first<{ association_json: string; version: number }>();
       if (!associated) throw new ApiError(409, "native_association_missing");
       const refs = associationSchema.parse(
         JSON.parse(associated.association_json),
       );
       await provider.identity(env, control);
       let dueDatetime: unknown;
+      let observation: Awaited<
+        ReturnType<typeof readNativeAttempt>
+      >["observation"];
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 15000);
       try {
@@ -243,6 +272,7 @@ export async function executeNativeCheckout(options: {
             return response;
           },
         });
+        observation = observed.observation;
         if (
           observed.observation.invoice.status !== "unpaid" ||
           observed.observation.bookings.some(
@@ -261,6 +291,13 @@ export async function executeNativeCheckout(options: {
         supervisionDeadlineMs: grant.expires_ms,
         handoffAtMs: Date.now(),
       });
+      await recordObservation(
+        env.STATE,
+        attemptId,
+        associated.version,
+        observation!,
+        Date.now(),
+      );
       result = { state: "associated", paymentAvailable: true };
     }
   } catch {
@@ -279,4 +316,313 @@ export async function executeNativeCheckout(options: {
     .run();
   await authenticate(request, env, Date.now());
   return { attemptId, ...result };
+}
+
+async function customerNativeWindow(request: Request, env: Env) {
+  const p = policy(env),
+    now = Date.now();
+  const access = await authenticate(request, env, now);
+  const grant = await env.STATE.withSession("first-primary")
+    .prepare("SELECT * FROM native_checkout_grants WHERE capability_hash=?")
+    .bind(access.capability_hash)
+    .first<Grant>();
+  if (
+    !grant ||
+    grant.state !== "granted" ||
+    p.PROVIDER_ACCESS !== "trusted-reads" ||
+    grant.source_revision !== p.SOURCE_REVISION ||
+    !/^[a-f0-9]{40}$/.test(grant.source_revision) ||
+    now < grant.not_before_ms ||
+    now + 180000 >= grant.expires_ms ||
+    grant.expires_ms > grant.not_before_ms + 1200000 ||
+    p.CAMPAIGN_END_MS < grant.expires_ms
+  )
+    throw new ApiError(503, "native_customer_window_unavailable");
+  const contract = nativeAccountContractSchema.parse(
+    JSON.parse(grant.contract_json),
+  );
+  if (
+    contract.accountId !== p.DEPLOYMENT_ACCOUNT_ID ||
+    contract.environmentId !== p.ENVIRONMENT ||
+    contract.companyLogin !== providerSecrets(env).company ||
+    contract.confirmedAtMs > now ||
+    contract.expiresAtMs < grant.expires_ms
+  )
+    throw new ApiError(503, "native_account_contract_unavailable");
+  const dates = z
+    .array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/))
+    .max(2)
+    .parse(JSON.parse(grant.available_dates_json));
+  return { p, access, grant, contract, dates };
+}
+export async function prepareCustomerNative(
+  request: Request,
+  env: Env,
+  value: unknown,
+) {
+  const { p, access, grant, contract, dates } = await customerNativeWindow(
+    request,
+    env,
+  );
+  const input = nativePrepareSchema.parse(value),
+    now = Date.now();
+  if (grant.read_state !== "available")
+    throw new ApiError(503, "native_availability_unavailable");
+  if (
+    input.sessions.length > 2 ||
+    input.sessions.some(
+      (session) =>
+        session.serviceId !== contract.serviceId ||
+        session.startMs - now < NATIVE_TRIAL_LEAD_MS ||
+        !dates.includes(
+          new Date(session.startMs + 8 * 3600000).toISOString().slice(0, 10),
+        ),
+    )
+  )
+    throw new ApiError(409, "native_selection_changed");
+  if (
+    input.sessions.some((session) => session.totalMinor !== contract.priceMinor)
+  )
+    throw new ApiError(409, "native_restart_required");
+  const offers = Object.values(
+    z
+      .record(z.string(), nativeAvailabilitySchema)
+      .parse(JSON.parse(grant.availability_json || "{}")),
+  ).flatMap((entry) => entry.offers);
+  if (
+    input.sessions.some(
+      (session) =>
+        !offers.some(
+          (offer) =>
+            offer.serviceId === session.serviceId &&
+            offer.instructorId === session.instructorId &&
+            offer.startMs === session.startMs &&
+            offer.priceMinor === session.totalMinor,
+        ),
+    )
+  )
+    throw new ApiError(409, "native_selection_changed");
+  const intent = intentSchema.parse({
+    accountId: p.DEPLOYMENT_ACCOUNT_ID,
+    environmentId: p.ENVIRONMENT,
+    customerId: access.owner_id,
+    customerMode: "booking-contact",
+    contact: input.contact,
+    currency: "SGD",
+    taxMinor: 0,
+    totalMinor: input.sessions.reduce(
+      (total, session) => total + session.totalMinor,
+      0,
+    ),
+    sessions: input.sessions.map((session) => ({ ...session, taxMinor: 0 })),
+  });
+  const hash = await digest(JSON.stringify(intent));
+  if (grant.attempt_id) {
+    if (grant.intent_hash !== hash)
+      throw new ApiError(409, "native_attempt_already_bound");
+    return { attemptId: grant.attempt_id, state: "prepared" as const };
+  }
+  const attempt = await prepareAttempt(
+    env.STATE,
+    access.owner_id,
+    input.key,
+    intent,
+    now,
+    grant.expires_ms - now,
+  );
+  const bound = await env.STATE.prepare(
+    "UPDATE native_checkout_grants SET attempt_id=?,intent_hash=? WHERE capability_hash=? AND state='granted' AND source_revision=? AND expires_ms>? AND ((attempt_id IS NULL AND intent_hash IS NULL) OR (attempt_id=? AND intent_hash=?))",
+  )
+    .bind(
+      attempt.id,
+      hash,
+      access.capability_hash,
+      p.SOURCE_REVISION,
+      Date.now() + 180000,
+      attempt.id,
+      hash,
+    )
+    .run();
+  if (bound.meta.changes !== 1)
+    throw new ApiError(409, "native_attempt_already_bound");
+  await authenticate(request, env, Date.now());
+  return { attemptId: attempt.id, state: "prepared" as const };
+}
+export async function customerNativeAvailability(options: {
+  request: Request;
+  env: Env;
+  date: string;
+  serviceId: string;
+  provider: ProviderSession;
+  control: ProviderControl;
+  accounting: () => { used: number; active: number };
+}) {
+  const { request, env, provider, date, serviceId } = options;
+  const { grant, access, contract, dates } = await customerNativeWindow(
+    request,
+    env,
+  );
+  if (
+    !dates.includes(date) ||
+    serviceId !== contract.serviceId ||
+    grant.attempt_id
+  )
+    throw new ApiError(503, "native_availability_unavailable");
+  const cache = z
+    .record(z.string(), nativeAvailabilitySchema)
+    .parse(JSON.parse(grant.availability_json || "{}"));
+  const retained = cache[date];
+  if (
+    retained &&
+    retained.observedAtMs <= Date.now() &&
+    Date.now() - retained.observedAtMs < 60000
+  )
+    return retained;
+  const claimed = await env.STATE.prepare(
+    "UPDATE native_checkout_grants SET read_state='reading' WHERE capability_hash=? AND state='granted' AND read_state='available' AND attempt_id IS NULL AND expires_ms>?",
+  )
+    .bind(access.capability_hash, Date.now() + 180000)
+    .run();
+  if (claimed.meta.changes !== 1)
+    throw new ApiError(503, "native_availability_busy");
+  let last = 0;
+  const control = {
+    ...options.control,
+    reserve: async () => {
+      const delay = Math.max(0, last + 300 - Date.now());
+      if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+      const current = await customerNativeWindow(request, env);
+      const usage = options.accounting();
+      if (
+        current.grant.read_state !== "reading" ||
+        current.grant.attempt_id ||
+        usage.used < grant.starting_used ||
+        usage.used >= grant.maximum_used - 32
+      )
+        throw new ApiError(503, "native_availability_budget_exhausted");
+      last = Date.now();
+      return options.control.reserve();
+    },
+  };
+  try {
+    await provider.identity(env, control);
+    const catalogue = await provider.catalogue(env, control);
+    const service = catalogue.services.find(
+      (item) => item.id === serviceId && item.active,
+    );
+    if (
+      !service ||
+      service.recurring ||
+      service.durationMinutes !== 40 ||
+      service.currency !== "SGD"
+    )
+      throw new ApiError(503, "native_service_unavailable");
+    const instructors = catalogue.instructors.filter(
+      (person) =>
+        person.active &&
+        (service.instructorIds === null ||
+          service.instructorIds.includes(person.id)),
+    );
+    if (!instructors.length || instructors.length > 3)
+      throw new ApiError(503, "native_instructors_unavailable");
+    const offers: z.infer<typeof nativeOfferSchema>[] = [];
+    let observedAtMs = catalogue.observedAtMs;
+    for (const instructor of instructors) {
+      const response = await provider.nativeRead(env, control, {
+        kind: "availability",
+        serviceId,
+        instructorId: instructor.id,
+        date,
+      });
+      observedAtMs = Math.min(observedAtMs, response.receivedAtMs);
+      for (const time of offeredStarts(response.body, date)) {
+        const startMs = Date.parse(`${date}T${time}+08:00`);
+        if (startMs - Date.now() < NATIVE_TRIAL_LEAD_MS) continue;
+        // Unexpected simultaneous eligibility is configuration drift. Never pick
+        // a provider by order or silently hide a competing studio allocation.
+        if (
+          offers.some(
+            (offer) =>
+              Math.abs(offer.startMs - startMs) < 3000000 &&
+              offer.instructorId !== instructor.id,
+          )
+        )
+          throw new ApiError(503, "native_provider_schedule_overlap");
+        offers.push({
+          serviceId,
+          serviceName: service.name,
+          instructorId: instructor.id,
+          instructorName: instructor.name,
+          startMs,
+          priceMinor: service.priceMinor,
+          currency: "SGD",
+        });
+      }
+    }
+    freshReceipt(observedAtMs, Date.now());
+    const result = nativeAvailabilitySchema.parse({
+      date,
+      observedAtMs,
+      offers: offers.sort((a, b) => a.startMs - b.startMs),
+    });
+    cache[date] = result;
+    const saved = await env.STATE.prepare(
+      "UPDATE native_checkout_grants SET read_state='available',availability_json=? WHERE capability_hash=? AND state='granted' AND read_state='reading' AND attempt_id IS NULL AND expires_ms>?",
+    )
+      .bind(JSON.stringify(cache), access.capability_hash, Date.now() + 180000)
+      .run();
+    if (saved.meta.changes !== 1)
+      throw new ApiError(503, "native_availability_expired");
+    await authenticate(request, env, Date.now());
+    return result;
+  } catch (error) {
+    await env.STATE.prepare(
+      "UPDATE native_checkout_grants SET read_state='blocked' WHERE capability_hash=? AND read_state='reading'",
+    )
+      .bind(access.capability_hash)
+      .run();
+    throw error;
+  }
+}
+
+export async function currentCustomerNative(request: Request, env: Env) {
+  const access = await authenticate(request, env, Date.now());
+  const row = await env.STATE.withSession("first-primary")
+    .prepare(
+      "SELECT a.id,a.intent_json,a.state,g.state AS grant_state,g.availability_json FROM native_checkout_grants g JOIN attempts a ON a.id=g.attempt_id WHERE g.capability_hash=? AND a.owner_id=?",
+    )
+    .bind(access.capability_hash, access.owner_id)
+    .first<{
+      id: string;
+      intent_json: string;
+      state: string;
+      grant_state: string;
+      availability_json: string | null;
+    }>();
+  if (!row) return { state: "empty" as const };
+  const intent = intentSchema.parse(JSON.parse(row.intent_json));
+  const cache = z
+    .record(z.string(), nativeAvailabilitySchema)
+    .parse(JSON.parse(row.availability_json || "{}"));
+  const offers = Object.values(cache).flatMap((entry) => entry.offers);
+  const sessions = intent.sessions.map((session) => {
+    const offer = offers.find(
+      (item) =>
+        item.serviceId === session.serviceId &&
+        item.instructorId === session.instructorId &&
+        item.startMs === session.startMs &&
+        item.priceMinor === session.totalMinor,
+    );
+    if (!offer) throw new ApiError(503, "native_snapshot_unavailable");
+    return { ...offer, players: session.players };
+  });
+  return nativeCurrentSchema.parse({
+    attemptId: row.id,
+    contact: intent.contact,
+    sessions,
+    state:
+      row.state === "prepared" && row.grant_state === "granted"
+        ? "prepared"
+        : "checking",
+  });
 }

@@ -30,11 +30,13 @@ export function useBookingAvailability(
   scope: string,
   minute: number,
   sessionKey: () => string,
+  serviceId?: string,
 ) {
   const datesKey = JSON.stringify([...new Set(dates)].sort());
   const session = sessionKey();
   const key = JSON.stringify([
     service.mode,
+    serviceId,
     datesKey,
     players,
     scope,
@@ -49,7 +51,12 @@ export function useBookingAvailability(
     const requested: string[] = JSON.parse(datesKey);
     void Promise.all(
       requested.map((date) =>
-        service.availability({ date, players, signal: controller.signal }),
+        service.availability({
+          date,
+          players,
+          ...(serviceId ? { serviceId } : {}),
+          signal: controller.signal,
+        }),
       ),
     ).then(
       (values) => {
@@ -96,7 +103,7 @@ export function useBookingAvailability(
       current = false;
       controller.abort();
     };
-  }, [service, datesKey, players, key, reload, session, sessionKey]);
+  }, [service, datesKey, players, key, reload, session, sessionKey, serviceId]);
   return {
     result: result?.key === key && result.owner === service ? result : null,
     retry() {

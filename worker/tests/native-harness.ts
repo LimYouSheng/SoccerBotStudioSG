@@ -1,4 +1,9 @@
-import { executeNativeCheckout } from "../native-checkout";
+import {
+  executeNativeCheckout,
+  prepareCustomerNative,
+  currentCustomerNative,
+  customerNativeAvailability,
+} from "../native-checkout";
 // Isolated test entry. Never deployed; caller-supplied fixtures have no live authority.
 import {
   normalizeNativeReads,
@@ -251,6 +256,9 @@ const harness = {
           });
           break;
         }
+        case "customer-prepare":
+        case "customer-current":
+        case "customer-availability":
         case "finite-checkout": {
           for (const [key, value] of Object.entries({
             SOURCE_REVISION: "c".repeat(40),
@@ -261,6 +269,36 @@ const harness = {
             SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret",
           }))
             Reflect.set(admittedEnv, key, value);
+          const customerRequest = new Request("https://soccerbot.test/", {
+            headers: { cookie: input.cookie },
+          });
+          if (input.action === "customer-prepare") {
+            result = await prepareCustomerNative(
+              customerRequest,
+              admittedEnv,
+              input.value,
+            );
+            break;
+          }
+          if (input.action === "customer-current") {
+            result = await currentCustomerNative(customerRequest, admittedEnv);
+            break;
+          }
+          if (input.action === "customer-availability") {
+            const value = input.value as { date: string; serviceId: string };
+            result = await customerNativeAvailability({
+              request: customerRequest,
+              env: admittedEnv,
+              ...value,
+              provider: new ProviderSession(),
+              control,
+              accounting: () => ({
+                used: 15 + reserved,
+                active: reserved - finished,
+              }),
+            });
+            break;
+          }
           result = await executeNativeCheckout({
             request: new Request("https://soccerbot.test/", {
               headers: { cookie: input.cookie },

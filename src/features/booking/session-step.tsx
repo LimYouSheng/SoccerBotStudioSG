@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icon";
 import { MAX_PLAYERS } from "@/domain/booking-policy";
 import { SERVICE_NAME } from "@/domain/demo-catalog";
@@ -7,11 +8,47 @@ import { LiveCatalogue } from "./live-catalogue";
 import { useBooking } from "./provider";
 export function SessionStep() {
   const { draft, update, bookingService } = useBooking();
+  const router = useRouter();
+  const playerSelection = (
+    <section
+      className="surface player-selection"
+      aria-labelledby="players-label"
+    >
+      <span className="field-label" id="players-label">
+        Players · maximum 4
+      </span>
+      <div className="counter">
+        <button
+          aria-label="Remove one player"
+          disabled={draft.players <= 1}
+          onClick={() => update({ players: draft.players - 1 })}
+        >
+          <Icon name="minus" />
+        </button>
+        <output aria-labelledby="players-label" aria-live="polite">
+          {draft.players} {draft.players === 1 ? "player" : "players"}
+        </output>
+        <button
+          aria-label="Add one player"
+          disabled={draft.players >= MAX_PLAYERS}
+          onClick={() => update({ players: draft.players + 1 })}
+        >
+          <Icon name="plus" />
+        </button>
+      </div>
+    </section>
+  );
   if (bookingService.mode === "live")
     return (
       <>
         <h1 className="page-title">Your session</h1>
-        <LiveCatalogue />
+        {playerSelection}
+        <LiveCatalogue
+          onSelect={(serviceId) => {
+            update({ nativeServiceId: serviceId, slots: [] });
+            router.push("/book/time/");
+          }}
+        />
       </>
     );
   return (
@@ -34,33 +71,7 @@ export function SessionStep() {
           </div>
         </div>
       </section>
-      <section
-        className="surface player-selection"
-        aria-labelledby="players-label"
-      >
-        <span className="field-label" id="players-label">
-          Players · maximum 4
-        </span>
-        <div className="counter">
-          <button
-            aria-label="Remove one player"
-            disabled={draft.players <= 1}
-            onClick={() => update({ players: draft.players - 1 })}
-          >
-            <Icon name="minus" />
-          </button>
-          <output aria-labelledby="players-label" aria-live="polite">
-            {draft.players} {draft.players === 1 ? "player" : "players"}
-          </output>
-          <button
-            aria-label="Add one player"
-            disabled={draft.players >= MAX_PLAYERS}
-            onClick={() => update({ players: draft.players + 1 })}
-          >
-            <Icon name="plus" />
-          </button>
-        </div>
-      </section>
+      {playerSelection}
       <section className="session-inclusions">
         <h2 className="section-title">Included with your session</h2>
         <ul className="inclusion-list">

@@ -954,7 +954,7 @@ async function grantNative(data, overrides = {}) {
   };
   await db
     .prepare(
-      "INSERT INTO native_checkout_grants VALUES(?,?,?,?,?,?,?,?,?,'granted',NULL)",
+      "INSERT INTO native_checkout_grants(attempt_id,capability_hash,intent_hash,source_revision,contract_json,not_before_ms,expires_ms,starting_used,maximum_used,state,result_json) VALUES(?,?,?,?,?,?,?,?,?,'granted',NULL)",
     )
     .bind(
       data.scope.attemptId,
@@ -987,17 +987,8 @@ test("native finite grant rejects absent wrong revision changed intent and expir
   }
 });
 
-test("native finite checkout composes fresh checks one booking protected payment and replay prevention", async () => {
-  const data = await prepared(false, true, true);
-  await grantNative(data);
-  const wall = new Date(
-    data.scope.intent.sessions[0].startMs + 8 * 3600000,
-  ).toISOString();
-  data.invoice.due_datetime = new Date(Date.now() + 600000)
-    .toISOString()
-    .replace(/\.\d{3}Z$/, "Z");
-  const before = calls.length;
-  reply = async (request, body) => {
+function nativeProviderReply(data, wall) {
+  return async (request, body) => {
     if (request.url.endsWith("/admin/auth"))
       return Response.json({ token: "synthetic-admin-token" });
     if (request.url.endsWith("/admin/company/info"))
@@ -1043,6 +1034,19 @@ test("native finite checkout composes fresh checks one booking protected payment
       result: results[body.method],
     });
   };
+}
+
+test("native finite checkout composes fresh checks one booking protected payment and replay prevention", async () => {
+  const data = await prepared(false, true, true);
+  await grantNative(data);
+  const wall = new Date(
+    data.scope.intent.sessions[0].startMs + 8 * 3600000,
+  ).toISOString();
+  data.invoice.due_datetime = new Date(Date.now() + 600000)
+    .toISOString()
+    .replace(/\.\d{3}Z$/, "Z");
+  const before = calls.length;
+  reply = nativeProviderReply(data, wall);
   try {
     const result = await call("finite-checkout", data);
     assert.equal(result.status, 200, JSON.stringify(result));
@@ -1132,5 +1136,181 @@ test("native lost batch finalization reconciles all retained IDs without replay 
       assert.equal((await call("recover-association", data)).requests, 0);
       assert.equal((await call("orchestrate", data)).requests, 0);
     }
+  }
+});
+
+test("native customer preparation binds one immutable cart and restores only the authenticated snapshot", async () => {
+  const data = await prepared(false, true, true);
+  await grantNative(data);
+  const selected = data.scope.intent.sessions[0];
+  const date = new Date(selected.startMs + 8 * 3600000)
+    .toISOString()
+    .slice(0, 10);
+  const offer = {
+    serviceId: "12",
+    serviceName: "Native Session",
+    instructorId: "14",
+    instructorName: "Native Trainer",
+    startMs: selected.startMs,
+    priceMinor: 8800,
+    currency: "SGD",
+  };
+  await db
+    .prepare(
+      "UPDATE native_checkout_grants SET attempt_id=NULL,intent_hash=NULL,available_dates_json=?,availability_json=? WHERE attempt_id=?",
+    )
+    .bind(
+      JSON.stringify([date]),
+      JSON.stringify({
+        [date]: { date, observedAtMs: Date.now(), offers: [offer] },
+      }),
+      data.scope.attemptId,
+    )
+    .run();
+  const value = {
+    key: crypto.randomUUID(),
+    contact: data.scope.intent.contact,
+    accepted: true,
+    sessions: [
+      {
+        serviceId: "12",
+        instructorId: "14",
+        startMs: selected.startMs,
+        players: 4,
+        totalMinor: 8800,
+      },
+    ],
+  };
+  const first = await call("customer-prepare", { ...data, value });
+  assert.equal(first.status, 200, JSON.stringify(first));
+  assert.equal(first.reserved, 0);
+  const replay = await call("customer-prepare", {
+    ...data,
+    value: { ...value, key: crypto.randomUUID() },
+  });
+  assert.equal(replay.result.attemptId, first.result.attemptId);
+  assert.equal(replay.reserved, 0);
+  assert.equal(
+    (
+      await call("customer-prepare", {
+        ...data,
+        value: { ...value, contact: { ...value.contact, name: "Changed" } },
+      })
+    ).status,
+    409,
+  );
+  const current = await call("customer-current", data);
+  assert.equal(current.result.attemptId, first.result.attemptId);
+  assert.equal(current.result.sessions[0].players, 4);
+  assert.equal(current.result.sessions[0].instructorName, "Native Trainer");
+  const other = await prepared(false, true, true);
+  assert.deepEqual((await call("customer-current", other)).result, {
+    state: "empty",
+  });
+  assert.equal(current.reserved, 0);
+});
+
+test("native customer preparation rejects price drift unapproved dates and incomplete contact without provider effects", async () => {
+  const data = await prepared(false, true, true);
+  await grantNative(data);
+  const selected = data.scope.intent.sessions[0];
+  const date = new Date(selected.startMs + 8 * 3600000)
+    .toISOString()
+    .slice(0, 10);
+  await db
+    .prepare(
+      "UPDATE native_checkout_grants SET attempt_id=NULL,intent_hash=NULL,available_dates_json=? WHERE attempt_id=?",
+    )
+    .bind(JSON.stringify([date]), data.scope.attemptId)
+    .run();
+  const base = {
+    key: crypto.randomUUID(),
+    contact: data.scope.intent.contact,
+    accepted: true,
+    sessions: [
+      {
+        serviceId: "12",
+        instructorId: "14",
+        startMs: selected.startMs,
+        players: 1,
+        totalMinor: 8800,
+      },
+    ],
+  };
+  for (const value of [
+    { ...base, sessions: [{ ...base.sessions[0], totalMinor: 9900 }] },
+    {
+      ...base,
+      sessions: [{ ...base.sessions[0], startMs: selected.startMs + 86400000 }],
+    },
+    { ...base, contact: { ...base.contact, phone: "" } },
+    { ...base, accepted: false },
+  ]) {
+    const rejected = await call("customer-prepare", { ...data, value });
+    assert.equal(rejected.status, 409);
+    assert.equal(rejected.reserved, 0);
+  }
+  assert.deepEqual((await call("customer-current", data)).result, {
+    state: "empty",
+  });
+});
+
+test("native customer availability preserves provider offers caches bounded reads and rejects foreign dates", async () => {
+  const data = await prepared(false, true, true);
+  await grantNative(data);
+  const wall = new Date(
+    data.scope.intent.sessions[0].startMs + 8 * 3600000,
+  ).toISOString();
+  const date = wall.slice(0, 10);
+  await db
+    .prepare(
+      "UPDATE native_checkout_grants SET attempt_id=NULL,intent_hash=NULL,available_dates_json=? WHERE attempt_id=?",
+    )
+    .bind(JSON.stringify([date]), data.scope.attemptId)
+    .run();
+  const before = calls.length;
+  reply = nativeProviderReply(data, wall);
+  try {
+    const first = await call("customer-availability", {
+      ...data,
+      value: { date, serviceId: "12" },
+    });
+    assert.equal(first.status, 200, JSON.stringify(first));
+    assert.equal(first.result.offers.length, 1);
+    assert.deepEqual(first.result.offers[0], {
+      serviceId: "12",
+      serviceName: "Synthetic Session",
+      instructorId: "14",
+      instructorName: "Synthetic Trainer",
+      startMs: data.scope.intent.sessions[0].startMs,
+      priceMinor: 8800,
+      currency: "SGD",
+    });
+    assert.ok(first.reserved > 0 && first.reserved <= 13);
+    assert.equal(first.reserved, first.finished);
+    const sent = calls.slice(before);
+    assert.ok(
+      sent.every(
+        (item) =>
+          !["book", "createBatch", "closeBatch"].includes(item.body?.method),
+      ),
+    );
+    const cached = await call("customer-availability", {
+      ...data,
+      value: { date, serviceId: "12" },
+    });
+    assert.deepEqual(cached.result, first.result);
+    assert.equal(cached.reserved, 0);
+    for (const value of [
+      { date: "2026-01-01", serviceId: "12" },
+      { date, serviceId: "99" },
+    ]) {
+      const rejected = await call("customer-availability", { ...data, value });
+      assert.equal(rejected.status, 409);
+      assert.equal(rejected.reserved, 0);
+    }
+    assert.equal(calls.length, before + sent.length);
+  } finally {
+    reply = undefined;
   }
 });

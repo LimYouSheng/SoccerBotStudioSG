@@ -1,5 +1,13 @@
 # North Star: dependable customer booking and quick rebooking
 
+## 11 October — protected native customer flow
+
+The existing customer journey now carries native service/provider IDs and current names/prices from catalogue and bounded date availability through players, Details, Review, immutable preparation and the one-use native checkout. Submitted slots must match server-retained offers; the Worker still rechecks the entire cart and each write. The browser includes the ten-minute buffer in overlap checks, never fabricates a paid receipt, and restores the authenticated server attempt after refresh. Remember me/profile consent is unchanged.
+
+The empty, unapplied0016 grant now admits one authenticated customer's selection on at most two approved dates before binding exactly one attempt. Source/account/time/cumulative limits, the two-session developer proof limit and16-call recovery reserve remain. Display reads consume the same physical budget; the UI cannot self-grant or reset it. No live window has opened and no migration/deployment/provider/customer operation occurred.
+
+**Next ready task:** resolve native provider response/cleanup and supported notification contracts, then assemble the exact combined developer flight from the final CI artifact. Comment content is derived, but delivery remains unsupported where staff-comment preservation cannot be guaranteed; that failure is non-blocking under the owner decision. Missing booking references remain unresolved without replay/search/payment. Native account batch/redirect/payment acceptance and webhook delivery are still pending. Do not label these remaining dependencies complete or request intermediate physical tests.
+
 ## 11 October — native checkout implementation and owner configuration confirmation
 
 Owner confirmed developer tax0/S$88 final,40+10minutes and Client Login off. Source now has scoped declaration-based prebooking, fresh guest/native-client separation, single and multi-session native booking/invoice validation, no-replay effects, lost-finalization known-ID recovery and a one-use protected checkout route. New0016 is empty/source-only alongside pending0015; applied0001–0014 and all closed windows are unchanged. Full local Worker runtime201/201 passed; an ordered inventory mismatch in the runner was preserved and repaired against the saved output. Exact final CI is required and recorded in PR21.

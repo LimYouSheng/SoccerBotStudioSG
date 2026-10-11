@@ -6,8 +6,9 @@ import {
   normalizeContact,
 } from "./contact";
 import { MAX_PLAYERS, SESSION_MINUTES } from "./booking-policy";
-import { PRICE_CENTS, SESSION_STARTS } from "./demo-catalog";
+import { INSTRUCTORS, PRICE_CENTS, SESSION_STARTS } from "./demo-catalog";
 import { clockMinutes, isDate, todaySG } from "./dates";
+import { providerIdentifier } from "./catalog";
 export const slotSchema = z.object({
   date: z.string().refine(isDate),
   start: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
@@ -15,18 +16,36 @@ export const slotSchema = z.object({
 export type Slot = z.infer<typeof slotSchema>;
 export { demoInstructorSchema as instructorSchema } from "./demo-catalog";
 import { demoInstructorSchema as instructorSchema } from "./demo-catalog";
-export const sessionSchema = slotSchema.extend({
-  instructor: instructorSchema,
-  rotationAt: z
-    .string()
-    .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
-    .optional(),
-});
+export const sessionSchema = slotSchema
+  .extend({
+    instructor: z.union([instructorSchema, providerIdentifier]),
+    native: z
+      .strictObject({
+        serviceId: providerIdentifier,
+        serviceName: z.string().min(1).max(256),
+        instructorName: z.string().min(1).max(256),
+        priceMinor: z.number().int().nonnegative().safe(),
+        currency: z.literal("SGD"),
+      })
+      .optional(),
+    rotationAt: z
+      .string()
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/)
+      .optional(),
+  })
+  .refine((slot) =>
+    slot.native
+      ? providerIdentifier.safeParse(slot.instructor).success
+      : instructorSchema.safeParse(slot.instructor).success,
+  );
 export type Session = z.infer<typeof sessionSchema>;
-export const assignedSlotSchema = sessionSchema.extend({ studio: z.string() });
+export const assignedSlotSchema = sessionSchema.safeExtend({
+  studio: z.string(),
+});
 export const draftSchema = z.object({
   mode: z.enum(["guest", "member"]).nullable(),
   accountEmail: z.string(),
+  nativeServiceId: providerIdentifier.optional(),
   players: z.number().int().min(1).max(MAX_PLAYERS),
   slots: z.array(sessionSchema).max(100),
   contact: contactSchema,
@@ -63,15 +82,24 @@ export const blankDraft = (): BookingDraft => ({
 export const slotKey = (slot: Slot) => `${slot.date}|${slot.start}`;
 export const orderedSlots = <T extends Slot>(slots: T[]) =>
   [...slots].sort((a, b) => slotKey(a).localeCompare(slotKey(b)));
+export const sessionInstructorName = (slot: Session) =>
+  slot.native?.instructorName ??
+  INSTRUCTORS[instructorSchema.parse(slot.instructor)].name;
+export const sessionPrice = (slot: Session) =>
+  slot.native?.priceMinor ?? PRICE_CENTS;
 export const totalCents = (draft: BookingDraft) =>
-  draft.slots.length * PRICE_CENTS;
+  draft.slots.reduce(
+    (sum, slot) => sum + (slot.native?.priceMinor ?? PRICE_CENTS),
+    0,
+  );
 export const paymentLocked = (attempt: Attempt | null) =>
   !!attempt && ["checking", "pending", "late", "paid"].includes(attempt.status);
 export function overlaps(a: Slot, b: Slot) {
+  const duration = SESSION_MINUTES + ("native" in a && a.native ? 10 : 0);
   return (
     a.date === b.date &&
-    clockMinutes(a.start) < clockMinutes(b.start) + SESSION_MINUTES &&
-    clockMinutes(b.start) < clockMinutes(a.start) + SESSION_MINUTES
+    clockMinutes(a.start) < clockMinutes(b.start) + duration &&
+    clockMinutes(b.start) < clockMinutes(a.start) + duration
   );
 }
 // Slots are Singapore wall times regardless of the device timezone. Browser time
@@ -89,10 +117,20 @@ export function selectionErrors(slots: Slot[], now = Date.now()): string[] {
       (slot) =>
         !slotSchema.safeParse(slot).success ||
         slot.date > max.toISOString().slice(0, 10) ||
-        !SESSION_STARTS.includes(clockMinutes(slot.start)),
+        ("native" in slot && slot.native !== undefined
+          ? !sessionSchema.safeParse(slot).success
+          : !SESSION_STARTS.includes(clockMinutes(slot.start))),
     )
   )
     return ["Choose a valid session within the booking window."];
+  if (
+    slots.some(
+      (slot) =>
+        ("native" in slot && slot.native !== undefined) !==
+        ("native" in slots[0] && slots[0].native !== undefined),
+    )
+  )
+    return ["Review your selected sessions."];
   if (slots.some((slot) => isElapsed(slot, now)))
     return [
       "A selected session has started. Remove it and choose a future time.",

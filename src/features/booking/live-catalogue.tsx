@@ -9,8 +9,10 @@ import { CONTACT } from "@/domain/catalog";
 import { money } from "@/domain/dates";
 export function LiveCatalogue({
   service = customerCatalogueService,
+  onSelect,
 }: {
   service?: CustomerCatalogueService;
+  onSelect?: (serviceId: string) => void;
 }) {
   const [revision, retry] = useState(0);
   const [result, setResult] = useState<{
@@ -71,15 +73,25 @@ export function LiveCatalogue({
                 .map((person) => person.name)
                 .join(", ") || "No instructor currently available"}
             </p>
+            {onSelect &&
+              item.currency === "SGD" &&
+              item.durationMinutes === 40 &&
+              !item.recurring && (
+                <button className="button" onClick={() => onSelect(item.id)}>
+                  Select session
+                </button>
+              )}
           </article>
         ))
       ) : (
         <p>No sessions are currently available.</p>
       )}
-      <p>
-        Online booking is not available yet.{" "}
-        <a href={`mailto:${CONTACT.email}`}>Contact the studio</a> for help.
-      </p>
+      {!onSelect && (
+        <p>
+          Online booking is not available yet.{" "}
+          <a href={`mailto:${CONTACT.email}`}>Contact the studio</a> for help.
+        </p>
+      )}
     </section>
   );
 }

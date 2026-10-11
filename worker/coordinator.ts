@@ -1,4 +1,7 @@
-import { executeNativeCheckout } from "./native-checkout";
+import {
+  executeNativeCheckout,
+  customerNativeAvailability,
+} from "./native-checkout";
 import { z } from "zod";
 import { intentSchema, associationSchema } from "./journal";
 import { runNativeReadback } from "./recovery";
@@ -14,6 +17,7 @@ import { ProviderSession, type ProviderControl } from "./provider-session";
 // One instance per actual provider account. No booking or customer data here.
 export class SoccerBotAccountCoordinator extends DurableObject<Env> {
   private provider = new ProviderSession();
+  private nativeAvailabilityQueue: Promise<unknown> = Promise.resolve();
   private get sql() {
     return instrumentStorage(this.ctx.storage.sql);
   }
@@ -248,6 +252,31 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         instructors: result.instructors,
       };
     });
+  }
+  async nativeAvailability(
+    scope: { date: string; serviceId: string; cookie: string },
+    correlationId: string,
+  ) {
+    const pending = this.nativeAvailabilityQueue.then(() =>
+      traced(correlationId, "coordinator", () =>
+        customerNativeAvailability({
+          request: new Request(this.env.APP_ORIGIN, {
+            headers: { cookie: scope.cookie },
+          }),
+          env: this.env,
+          date: scope.date,
+          serviceId: scope.serviceId,
+          provider: this.provider,
+          control: this.providerControl(),
+          accounting: () => this.providerAccounting(),
+        }),
+      ),
+    );
+    this.nativeAvailabilityQueue = pending.then(
+      () => undefined,
+      () => undefined,
+    );
+    return pending;
   }
   async nativeCheckout(
     scope: { attemptId: string; cookie: string },
