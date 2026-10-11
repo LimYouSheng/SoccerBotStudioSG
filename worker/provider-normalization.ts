@@ -275,7 +275,7 @@ function invoiceEvidence(raw: unknown, context: NativeReadContext) {
   )
     reject();
   const received = flag(invoice.payment_received);
-  let status: "paid" | "unpaid" | "unknown" = "unknown";
+  let status: "paid" | "unpaid" | "cancelled" | "unknown" = "unknown";
   if (
     invoice.status === "paid" &&
     received &&
@@ -288,6 +288,12 @@ function invoiceEvidence(raw: unknown, context: NativeReadContext) {
     invoice.payment_processor === null
   )
     status = "unpaid";
+  else if (
+    invoice.status === "cancelled" &&
+    !received &&
+    invoice.payment_processor === null
+  )
+    status = "cancelled";
   return {
     invoice: {
       accountId: intent.accountId,

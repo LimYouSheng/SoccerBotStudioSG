@@ -196,7 +196,9 @@ async function fixture({
           ? "/api/developer/provider-identity"
           : operation === "native_field_discovery"
             ? "/api/developer/native-field-discovery"
-            : "/api/developer/historical-comparison"),
+            : operation === "native_recovery_window"
+              ? "/api/developer/native-readback"
+              : "/api/developer/historical-comparison"),
       { method, headers: { origin, authorization: "Bearer " + token } },
     );
     return {
@@ -1196,7 +1198,8 @@ async function scheduledAttempt(f, options = {}) {
       JSON.stringify({ bookingId: "701", hash: "synthetic-booking-hash" }),
     )
     .run();
-  const key = createHash("sha256").update(crypto.randomUUID()).digest("hex");
+  const token = createHash("sha256").update(crypto.randomUUID()).digest("hex");
+  const key = createHash("sha256").update(token).digest("hex");
   const scope = {
     attemptId: id,
     notBeforeMs: now,
@@ -1215,7 +1218,7 @@ async function scheduledAttempt(f, options = {}) {
       JSON.stringify(scope),
     )
     .run();
-  return { id, key };
+  return { id, key, token };
 }
 function nativeReadResponse(_request, body) {
   if (body?.method === "getBookingDetails")
@@ -1287,6 +1290,110 @@ test("scheduled native recovery confirms from authoritative reads without browse
     await f.mf.dispose();
   }
 });
+test("scheduled native readback uses the recovery reserve only under explicit finite authority", async () => {
+  for (const allowed of [false, true]) {
+    const f = await fixture({
+      full: true,
+      respond: nativeReadResponse,
+      secrets: { SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret" },
+    });
+    try {
+      await f.sql(
+        "INSERT INTO budget(campaign,used) VALUES('developer-20261008',64)",
+      );
+      const a = await scheduledAttempt(f, {
+        scope: {
+          startingUsed: 64,
+          maximumUsed: 70,
+          ...(allowed ? { useRecoveryReserve: true } : {}),
+        },
+      });
+      await tick(f);
+      assert.equal(f.calls.length, allowed ? 6 : 0);
+      assert.equal(
+        (await f.sql("SELECT used FROM budget"))[0].used,
+        allowed ? 70 : 64,
+      );
+      const grant = await f.db
+        .prepare(
+          "SELECT state FROM developer_operations WHERE capability_hash=?",
+        )
+        .bind(a.key)
+        .first();
+      assert.equal(grant.state, allowed ? "complete" : "blocked");
+      await tick(f);
+      assert.equal(f.calls.length, allowed ? 6 : 0);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+
+test("operator native readback consumes only its named window and cannot be invoked by guest access", async () => {
+  const f = await fixture({
+    full: true,
+    respond: nativeReadResponse,
+    secrets: { SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret" },
+  });
+  try {
+    const untouched = await scheduledAttempt(f);
+    const target = await scheduledAttempt(f);
+    const guest = await f.mf.dispatchFetch(origin + "/api/access", {
+      method: "POST",
+      headers: { origin },
+    });
+    assert.equal(guest.status, 201);
+    const cookie = guest.headers.get("set-cookie").split(";")[0];
+    const denied = await f.mf.dispatchFetch(
+      origin + "/api/developer/native-readback",
+      { method: "POST", headers: { origin, cookie } },
+    );
+    assert.equal(denied.status, 401);
+    assert.equal(
+      (await f.call("f".repeat(64), "POST", "native_recovery_window")).status,
+      401,
+    );
+    assert.equal(f.calls.length, 0);
+    const before = await f.call(target.token, "GET", "native_recovery_window");
+    assert.equal(before.body.state, "granted");
+    assert.equal(f.calls.length, 0);
+    const invoked = await Promise.all([
+      f.call(target.token, "POST", "native_recovery_window"),
+      f.call(target.token, "POST", "native_recovery_window"),
+    ]);
+    assert.ok(
+      invoked.some((result) => result.body.state === "complete"),
+      JSON.stringify(invoked),
+    );
+    assert.equal(f.calls.length, 6);
+    assert.equal(
+      (
+        await f.db
+          .prepare(
+            "SELECT state FROM developer_operations WHERE capability_hash=?",
+          )
+          .bind(untouched.key)
+          .first()
+      ).state,
+      "granted",
+    );
+    const readback = await f.call(
+      target.token,
+      "GET",
+      "native_recovery_window",
+    );
+    assert.equal(readback.body.state, "complete");
+    assert.equal(
+      (await f.call(target.token, "POST", "native_recovery_window")).body.state,
+      "complete",
+    );
+    assert.equal(f.calls.length, 6);
+    assert.ok(!JSON.stringify(readback).includes("synthetic-booking-hash"));
+  } finally {
+    await f.mf.dispose();
+  }
+});
+
 test("scheduled recovery rejects closed expired future unknown and unsigned windows without provider calls", async () => {
   for (const variant of [
     "closed",

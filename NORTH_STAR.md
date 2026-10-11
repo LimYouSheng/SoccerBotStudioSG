@@ -1,5 +1,11 @@
 # North Star: dependable customer booking and quick rebooking
 
+## 11 October — native recovery and compensation source
+
+Returned native IDs/keys survive malformed creation fields and remain candidates until strict readback proves the original scope. Checkout handoff failures enter durable recovery. Separately granted confirmed-unpaid compensation uses signed cancelBooking, fresh complete invoice/subset validation, one-use effects and verified cancellation readback. It blocks possible checkout handoffs, preserves paid/foreign records and missing/unknown replies, never refunds, and consumes at most16 recovery requests under the existing80 cumulative cap. Empty0016 defaults cleanup_allowed=0; applied0001–0014 remain unchanged. No live authority or provider acceptance is claimed.
+
+Next ready task is the final exact-source CI/release and a concrete finite developer-account contract packet. Current-account batch/signatures/link/cancellation and supported webhook delivery remain acceptance dependencies; physical testing stays deferred. Comments may remain blank where safe preservation is unsupported. Service Contracts owns the protocol and Journey owns the first failures/results; do not copy an old packet or reopen historical grants.
+
 ## 11 October — protected native customer flow
 
 The existing customer journey now carries native service/provider IDs and current names/prices from catalogue and bounded date availability through players, Details, Review, immutable preparation and the one-use native checkout. Submitted slots must match server-retained offers; the Worker still rechecks the entire cart and each write. The browser includes the ten-minute buffer in overlap checks, never fabricates a paid receipt, and restores the authenticated server attempt after refresh. Remember me/profile consent is unchanged.

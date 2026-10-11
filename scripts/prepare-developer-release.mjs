@@ -102,7 +102,7 @@ const manifest = {
     "0015_contact_profiles.sql",
     "0016_native_checkout_grants.sql",
   ],
-  priorWorkerVersion: "6c2730a6-9591-4c06-8830-803cb6d30790",
+  priorWorkerVersion: "4f507619-4f4a-4c19-ba15-f047f981ae71",
   acceptance:
     profile.name === "live-email"
       ? "synthetic live-email frontend; delivery closed; no provider or mailbox acceptance"

@@ -251,7 +251,8 @@ export default {
         if (
           (url.pathname === "/api/developer/provider-identity" ||
             url.pathname === "/api/developer/historical-comparison" ||
-            url.pathname === "/api/developer/native-field-discovery") &&
+            url.pathname === "/api/developer/native-field-discovery" ||
+            url.pathname === "/api/developer/native-readback") &&
           (request.method === "POST" || request.method === "GET")
         )
           return json(
@@ -261,9 +262,11 @@ export default {
               now,
               url.pathname.endsWith("provider-identity")
                 ? "provider_identity"
-                : url.pathname.endsWith("native-field-discovery")
-                  ? "native_field_discovery"
-                  : "historical_comparison",
+                : url.pathname.endsWith("native-readback")
+                  ? "native_recovery_window"
+                  : url.pathname.endsWith("native-field-discovery")
+                    ? "native_field_discovery"
+                    : "historical_comparison",
             ),
           );
         if (url.pathname === "/api/access" && request.method === "POST") {

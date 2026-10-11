@@ -1,13 +1,17 @@
 import { measure, traceId } from "./diagnostics";
 import { coordinatorName } from "./bindings";
 import { ApiError, digest } from "./policy";
+import { runScheduledRecovery } from "./scheduled-recovery";
 
 export async function developerOperation(
   request: Request,
   env: Env,
   now: number,
   operation:
-    "provider_identity" | "historical_comparison" | "native_field_discovery",
+    | "provider_identity"
+    | "historical_comparison"
+    | "native_field_discovery"
+    | "native_recovery_window",
 ) {
   const bearer = request.headers.get("authorization") || "";
   if (!/^Bearer [a-f0-9]{64}$/.test(bearer))
@@ -35,6 +39,10 @@ export async function developerOperation(
     };
   if (String(env.PROVIDER_ACCESS) !== "trusted-reads")
     throw new ApiError(503, "provider_access_disabled");
+  // Private operator admission reuses the identical one-use recovery owner.
+  // It cannot drain another grant, accept customer IDs or enable a schedule.
+  if (operation === "native_recovery_window")
+    return runScheduledRecovery(env, Date.now, hash);
   const claimed = await env.STATE.prepare(
     "UPDATE developer_operations SET state='running' WHERE capability_hash=? AND state='granted' AND expires_ms>? RETURNING capability_hash",
   )

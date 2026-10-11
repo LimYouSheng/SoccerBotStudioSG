@@ -397,6 +397,16 @@ test("native fixed requests reserve each dispatch and reject malformed signature
     ],
     [
       {
+        kind: "booking-cancel",
+        bookingId: "701",
+        signature: "a".repeat(32),
+        evidenceObservedAtMs: Date.now(),
+      },
+      "cancelBooking",
+      [701, "a".repeat(32)],
+    ],
+    [
+      {
         kind: "book",
         serviceId: "12",
         instructorId: "14",
@@ -1137,6 +1147,398 @@ test("native lost batch finalization reconciles all retained IDs without replay 
       assert.equal((await call("orchestrate", data)).requests, 0);
     }
   }
+});
+
+test("native malformed creation retains its reference for strict readback without accepting or replaying it", async () => {
+  for (const foreignRead of [false, true]) {
+    const data = await prepared(false, true);
+    data.creation.bookings[0].unit_id = "99";
+    const first = await call("orchestrate", data);
+    assert.equal(first.result.state, "recovery_required");
+    assert.equal(first.result.paymentAvailable, false);
+    const effects = (
+      await db
+        .prepare(
+          "SELECT step,outcome,reference_id FROM session_effects WHERE attempt_id=? ORDER BY step",
+        )
+        .bind(data.scope.attemptId)
+        .all()
+    ).results;
+    assert.equal(
+      effects.find((effect) => effect.step === "session:0").reference_id,
+      "701",
+    );
+    assert.equal(
+      JSON.parse(
+        effects.find((effect) => effect.step === "native-booking-key")
+          .reference_id,
+      ).bookingId,
+      "701",
+    );
+    assert.equal((await call("stored-signature", data)).status, 409);
+    assert.equal((await call("orchestrate", data)).requests, 0);
+    if (foreignRead) data.booking.unit_id = "99";
+    const recovered = await call("recover-association", data);
+    assert.equal(recovered.requests, 2);
+    const row = await db
+      .prepare("SELECT state,association_json FROM attempts WHERE id=?")
+      .bind(data.scope.attemptId)
+      .first();
+    if (foreignRead) {
+      assert.equal(recovered.status, 409);
+      assert.equal(row.association_json, null);
+      assert.equal(row.state, "recovery_required");
+    } else {
+      assert.equal(recovered.result.state, "associated");
+      assert.deepEqual(JSON.parse(row.association_json).bookingIds, ["701"]);
+    }
+    assert.equal((await call("orchestrate", data)).requests, 0);
+  }
+});
+
+test("native recovery and compensation reject reassigned clients and previously bound invoice changes", async () => {
+  const data = await prepared(false, true);
+  data.creation.bookings[0].unit_id = "99";
+  await call("orchestrate", data);
+  data.booking.client_id = "52";
+  data.invoice.client_id = "52";
+  data.invoice.lines[0].bookings[0].client_id = "52";
+  assert.equal((await call("recover-association", data)).status, 409);
+  const rejected = await call("compensate", data);
+  assert.equal(rejected.status, 409);
+  assert.ok(
+    rejected.sent.every((request) => request.kind !== "booking-cancel"),
+  );
+  const associated = await prepared(false, true);
+  await call("orchestrate", associated);
+  await db
+    .prepare(
+      "UPDATE attempts SET state='recovery_required',version=version+1 WHERE id=?",
+    )
+    .bind(associated.scope.attemptId)
+    .run();
+  associated.booking.invoice_id = "902";
+  associated.invoice.id = 902;
+  associated.invoice.lines[0].invoice_id = 902;
+  const changed = await call("compensate", associated);
+  assert.equal(changed.status, 409);
+  assert.equal(changed.error, "native_cleanup_association_changed");
+  assert.ok(changed.sent.every((request) => request.kind !== "booking-cancel"));
+});
+
+test("native missing signing keys and partial or duplicate references never authorize guessed recovery", async () => {
+  for (const scenario of ["missing-key", "partial", "duplicate"]) {
+    const data = await prepared(scenario !== "missing-key", true);
+    if (scenario === "missing-key") delete data.creation.bookings[0].hash;
+    if (scenario === "partial") data.creation.bookings[0].unit_id = "99";
+    if (scenario === "duplicate")
+      data.creation.bookings[1].id = data.creation.bookings[0].id;
+    const first = await call("orchestrate", data);
+    assert.equal(first.result.state, "recovery_required");
+    const observed = await db
+      .prepare(
+        "SELECT reference_id FROM session_effects WHERE attempt_id=? AND step='session:0'",
+      )
+      .bind(data.scope.attemptId)
+      .first();
+    assert.equal(observed.reference_id, "701");
+    const recovery = await call("recover-association", data);
+    assert.equal(recovery.status, 409);
+    assert.equal(recovery.requests, 0);
+    assert.equal((await call("orchestrate", data)).requests, 0);
+    const row = await db
+      .prepare("SELECT association_json FROM attempts WHERE id=?")
+      .bind(data.scope.attemptId)
+      .first();
+    assert.equal(row.association_json, null);
+  }
+});
+
+test("native failed checkout handoff durably enters recovery and cannot regenerate its link", async () => {
+  const data = await prepared(false, true, true);
+  await grantNative(data);
+  const wall = new Date(
+    data.scope.intent.sessions[0].startMs + 8 * 3600000,
+  ).toISOString();
+  data.invoice.due_datetime = new Date(Date.now() + 600000)
+    .toISOString()
+    .replace(/\.\d{3}Z$/, "Z");
+  const normal = nativeProviderReply(data, wall);
+  const before = calls.length;
+  reply = (request, body) =>
+    request.url.endsWith("/payment-link")
+      ? Response.json({ link: "https://foreign.example.invalid/checkout" })
+      : normal(request, body);
+  try {
+    const result = await call("finite-checkout", data);
+    assert.equal(result.result.state, "recovery_required");
+    assert.equal(result.result.paymentAvailable, false);
+    const row = await db
+      .prepare("SELECT state,association_json FROM attempts WHERE id=?")
+      .bind(data.scope.attemptId)
+      .first();
+    assert.equal(row.state, "recovery_required");
+    assert.deepEqual(JSON.parse(row.association_json).bookingIds, ["701"]);
+    const effect = await db
+      .prepare(
+        "SELECT outcome,reference_id FROM session_effects WHERE attempt_id=? AND step='native-link'",
+      )
+      .bind(data.scope.attemptId)
+      .first();
+    assert.deepEqual(effect, { outcome: "unknown", reference_id: null });
+    const sent = calls.length - before;
+    assert.equal((await call("finite-checkout", data)).reserved, 0);
+    assert.equal(calls.length - before, sent);
+    assert.equal(
+      (await call("protected-context", data)).result.checkout.state,
+      "unavailable",
+    );
+  } finally {
+    reply = undefined;
+  }
+});
+
+test("native compensation cancels only the freshly unpaid retained subset and keeps missing replies unresolved", async () => {
+  const data = await prepared(true, true);
+  assert.equal(
+    (await call("orchestrate", { ...data, scenario: "second-book-lost" }))
+      .result.state,
+    "recovery_required",
+  );
+  data.booking = [data.booking[0]];
+  data.booking[0].invoice_amount = "88.0000";
+  data.invoice.lines = [data.invoice.lines[0]];
+  data.invoice.amount = 88;
+  data.invoice.deposit = 88;
+  data.now = Date.now();
+  const result = await call("compensate", data);
+  assert.equal(result.status, 200, JSON.stringify(result));
+  assert.deepEqual(result.result, { state: "incomplete", cancelled: 1 });
+  assert.deepEqual(
+    result.sent.map((request) => request.kind),
+    [
+      "booking-read",
+      "invoice-read",
+      "booking-cancel",
+      "booking-read",
+      "invoice-read",
+    ],
+  );
+  assert.equal(result.sent[2].bookingId, "701");
+  const effects = (
+    await db
+      .prepare(
+        "SELECT step,outcome,reference_id FROM session_effects WHERE attempt_id=? ORDER BY step",
+      )
+      .bind(data.scope.attemptId)
+      .all()
+  ).results;
+  assert.deepEqual(
+    effects.find((effect) => effect.step === "native-cancel:0"),
+    { step: "native-cancel:0", outcome: "observed", reference_id: "701" },
+  );
+  assert.equal(
+    effects.find((effect) => effect.step === "session:1").outcome,
+    "unknown",
+  );
+  const row = await db
+    .prepare(
+      "SELECT state,intent_json,association_json FROM attempts WHERE id=?",
+    )
+    .bind(data.scope.attemptId)
+    .first();
+  assert.equal(JSON.parse(row.intent_json).sessions.length, 2);
+  assert.equal(row.association_json, null);
+  assert.equal(row.state, "recovery_required");
+  assert.equal((await call("compensate", data)).requests, 0);
+  assert.equal((await call("orchestrate", data)).requests, 0);
+});
+
+test("native compensation verifies every cancellation and accepts only an explicitly unpaid cancelled invoice", async () => {
+  for (const cancelledInvoice of [false, true]) {
+    const data = await prepared(!cancelledInvoice, true);
+    if (cancelledInvoice) data.creation.bookings[0].unit_id = "99";
+    await call("orchestrate", {
+      ...data,
+      scenario: cancelledInvoice ? undefined : "batch-close-lost",
+    });
+    data.now = Date.now();
+    const result = await call("compensate", {
+      ...data,
+      scenario: cancelledInvoice ? "cancelled-invoice" : undefined,
+    });
+    assert.equal(result.status, 200, JSON.stringify(result));
+    assert.deepEqual(result.result, {
+      state: "cancelled",
+      cancelled: cancelledInvoice ? 1 : 2,
+    });
+    assert.equal(
+      result.sent.filter((request) => request.kind === "booking-cancel").length,
+      cancelledInvoice ? 1 : 2,
+    );
+    assert.equal(result.requests, cancelledInvoice ? 5 : 14);
+  }
+});
+
+test("native finite compensation is separately granted and never exposes payment or replays writes", async () => {
+  for (const allowed of [false, true]) {
+    const data = await prepared(false, true, true);
+    await grantNative(data);
+    if (allowed)
+      await db
+        .prepare(
+          "UPDATE native_checkout_grants SET cleanup_allowed=1 WHERE attempt_id=?",
+        )
+        .bind(data.scope.attemptId)
+        .run();
+    data.creation.bookings[0].unit_id = "99";
+    const wall = new Date(
+      data.scope.intent.sessions[0].startMs + 8 * 3600000,
+    ).toISOString();
+    const normal = nativeProviderReply(data, wall);
+    const before = calls.length;
+    reply = (request, body) => {
+      if (body?.method === "cancelBooking") {
+        data.booking.status = "cancelled";
+        data.booking.is_confirmed = "0";
+        data.invoice.lines[0].bookings[0].is_confirmed = false;
+        return Response.json({ jsonrpc: "2.0", id: body.id, result: true });
+      }
+      return normal(request, body);
+    };
+    try {
+      const result = await call("finite-checkout", data);
+      assert.equal(result.result.state, "recovery_required");
+      assert.equal(result.result.paymentAvailable, false);
+      const requests = calls.slice(before);
+      assert.equal(
+        requests.filter((value) => value.body?.method === "cancelBooking")
+          .length,
+        allowed ? 1 : 0,
+      );
+      assert.equal(
+        requests.filter((value) => value.body?.method === "book").length,
+        1,
+      );
+      assert.equal(
+        requests.filter((value) => value.url.endsWith("/payment-link")).length,
+        0,
+      );
+      const effect = await db
+        .prepare(
+          "SELECT outcome FROM session_effects WHERE attempt_id=? AND step='native-cancel:0'",
+        )
+        .bind(data.scope.attemptId)
+        .first();
+      assert.deepEqual(effect, allowed ? { outcome: "observed" } : null);
+      assert.equal((await call("finite-checkout", data)).reserved, 0);
+      assert.equal(calls.length - before, requests.length);
+    } finally {
+      reply = undefined;
+    }
+  }
+});
+
+test("native compensation preserves paid foreign stale and potentially handed-off bookings", async () => {
+  for (const scenario of [
+    "paid",
+    "foreign",
+    "stale",
+    "link",
+    "cleanup-revoked",
+  ]) {
+    const data = await prepared(false, true);
+    data.creation.bookings[0].unit_id = "99";
+    await call("orchestrate", data);
+    data.now = Date.now();
+    if (scenario === "paid") {
+      Object.assign(data.invoice, {
+        status: "paid",
+        payment_received: true,
+        payment_processor: "hitpay",
+      });
+      Object.assign(data.booking, {
+        invoice_status: "paid",
+        invoice_payment_received: true,
+        invoice_payment_processor: "hitpay",
+      });
+    }
+    if (scenario === "foreign")
+      data.booking.company_login = "foreign-developer";
+    if (scenario === "stale") data.now -= 16000;
+    if (scenario === "link")
+      await db
+        .prepare(
+          "INSERT INTO session_effects(attempt_id,step,outcome) VALUES(?,'native-link','unknown')",
+        )
+        .bind(data.scope.attemptId)
+        .run();
+    const result = await call("compensate", { ...data, scenario });
+    assert.equal(result.status, 409, scenario);
+    assert.ok(
+      result.sent.every((request) => request.kind !== "booking-cancel"),
+      scenario,
+    );
+    if (scenario === "link" || scenario === "cleanup-revoked")
+      assert.equal(result.requests, 0);
+    assert.equal(
+      await db
+        .prepare(
+          "SELECT 1 FROM session_effects WHERE attempt_id=? AND step LIKE 'native-cancel:%'",
+        )
+        .bind(data.scope.attemptId)
+        .first(),
+      null,
+    );
+  }
+});
+
+test("native cancellation loss and payment race retain unknown effects without retry or refund", async () => {
+  for (const scenario of ["cancel-lost", "paid-after-cancel"]) {
+    const data = await prepared(false, true);
+    data.creation.bookings[0].unit_id = "99";
+    await call("orchestrate", data);
+    data.now = Date.now();
+    const result = await call("compensate", { ...data, scenario });
+    assert.equal(result.status, 409);
+    assert.equal(
+      result.sent.filter((request) => request.kind === "booking-cancel").length,
+      1,
+    );
+    assert.ok(
+      result.sent.every((request) =>
+        ["booking-read", "invoice-read", "booking-cancel"].includes(
+          request.kind,
+        ),
+      ),
+    );
+    const effect = await db
+      .prepare(
+        "SELECT outcome,reference_id FROM session_effects WHERE attempt_id=? AND step='native-cancel:0'",
+      )
+      .bind(data.scope.attemptId)
+      .first();
+    assert.deepEqual(effect, { outcome: "unknown", reference_id: null });
+    assert.equal((await call("compensate", data)).requests, 0);
+    assert.equal((await call("orchestrate", data)).requests, 0);
+  }
+});
+
+test("native cancellation dispatch rejects evidence that expired before the physical request", async () => {
+  const before = calls.length;
+  const result = await call("transport", {
+    operation: {
+      kind: "booking-cancel",
+      bookingId: "701",
+      signature: "a".repeat(32),
+      evidenceObservedAtMs: Date.now() - 16000,
+    },
+  });
+  assert.equal(result.status, 409);
+  assert.equal(result.error, "native_cleanup_evidence_expired");
+  assert.equal(calls.length, before);
+  assert.equal(result.reserved, 1);
+  assert.equal(result.finished, 1);
 });
 
 test("native customer preparation binds one immutable cart and restores only the authenticated snapshot", async () => {

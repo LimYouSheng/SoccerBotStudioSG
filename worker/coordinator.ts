@@ -92,11 +92,11 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       return { allowed: true, id, used: budget.used + 1 };
     });
   }
-  private providerControl(): ProviderControl {
+  private providerControl(recovery = false): ProviderControl {
     return {
       reserve: async () =>
         measure("coordinator", async () => {
-          const admitted = this.admit(false);
+          const admitted = this.admit(recovery);
           if (!admitted.allowed || !admitted.id)
             throw new ApiError(
               503,
@@ -291,6 +291,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         attemptId: scope.attemptId,
         provider: this.provider,
         control: this.providerControl(),
+        recoveryControl: this.providerControl(true),
         accounting: () => this.providerAccounting(),
       }),
     );
@@ -302,6 +303,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       maximumUsed: number;
       expiresMs: number;
       invocationId: string;
+      useRecoveryReserve?: boolean;
     },
     correlationId: string,
   ) {
@@ -322,7 +324,9 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         !Number.isSafeInteger(scope.startingUsed) ||
         !Number.isSafeInteger(scope.maximumUsed) ||
         scope.startingUsed < 0 ||
-        scope.maximumUsed > 64 ||
+        scope.maximumUsed > (scope.useRecoveryReserve === true ? 80 : 64) ||
+        (scope.useRecoveryReserve === true &&
+          scope.maximumUsed - scope.startingUsed > 16) ||
         scope.maximumUsed - scope.startingUsed > 30 ||
         scope.maximumUsed - scope.startingUsed < 6 ||
         initial.used < scope.startingUsed ||
@@ -356,7 +360,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       const maximumCalls = intent.sessions.length + 5;
       if (initial.used + maximumCalls > scope.maximumUsed)
         throw new ApiError(503, "recovery_window_unavailable");
-      const control = this.providerControl();
+      const control = this.providerControl(scope.useRecoveryReserve === true);
       let count = 0,
         last = 0;
       const bounded = {

@@ -167,8 +167,18 @@ export async function orchestrateBooking(
     )
       .bind(referenceId, id, step, id, fence)
       .run();
-    if (result.meta.changes !== 1)
-      throw new ApiError(409, "effect_completion_conflict");
+    // The native adapter can retain a receipt before business validation.
+    // Observed effects are immutable: acknowledge the exact same reference
+    // under the current fence, without rewriting or replacing that receipt.
+    const retained =
+      result.meta.changes === 1 ||
+      (await env.STATE.withSession("first-primary")
+        .prepare(
+          "SELECT 1 FROM session_effects e JOIN attempts a ON a.id=e.attempt_id WHERE e.attempt_id=? AND e.step=? AND e.outcome='observed' AND e.reference_id=? AND a.version=? AND a.state='dispatching'",
+        )
+        .bind(id, step, referenceId, fence)
+        .first());
+    if (!retained) throw new ApiError(409, "effect_completion_conflict");
   };
   try {
     const ids: string[] = [];

@@ -6,6 +6,7 @@ import {
   associationSchema,
   prepareAttempt,
   recordObservation,
+  requireRecovery,
 } from "./journal";
 import { nativeAccountContractSchema, offeredStarts } from "./prebooking";
 import {
@@ -23,6 +24,7 @@ import {
   prepareNativeLink,
   readNativeAttempt,
   storedNativeSignature,
+  compensateNativeAttempt,
 } from "./native-adapter";
 import { ProviderSession, type ProviderControl } from "./provider-session";
 import { providerSecrets, type NativeExchange } from "./provider-transport";
@@ -39,6 +41,7 @@ type Grant = {
   expires_ms: number;
   starting_used: number;
   maximum_used: number;
+  cleanup_allowed: number;
   state: string;
   result_json: string | null;
   available_dates_json: string;
@@ -67,6 +70,7 @@ export async function executeNativeCheckout(options: {
   attemptId: string;
   provider: ProviderSession;
   control: ProviderControl;
+  recoveryControl: ProviderControl;
   accounting: () => { used: number; active: number };
 }) {
   const { request, env, attemptId, provider } = options;
@@ -150,13 +154,16 @@ export async function executeNativeCheckout(options: {
     .run();
   if (claimed.meta.changes !== 1)
     return nativeCheckoutStatus(request, env, attemptId);
+  let cleanupMode = false;
+  let cleanupSignal: AbortSignal | undefined;
   const assertGranted = async () => {
+    cleanupSignal?.throwIfAborted();
     const current = Date.now();
     if (current + 15000 >= Math.min(grant.expires_ms, p.CAMPAIGN_END_MS))
       throw new ApiError(503, "native_write_window_closed");
     const valid = await env.STATE.withSession("first-primary")
       .prepare(
-        "SELECT 1 FROM native_checkout_grants g JOIN attempts a ON a.id=g.attempt_id JOIN guest_access c ON c.capability_hash=g.capability_hash WHERE g.attempt_id=? AND g.state='running' AND g.source_revision=? AND g.intent_hash=a.intent_hash AND g.intent_hash=? AND g.expires_ms>? AND g.contract_json=? AND c.owner_id=a.owner_id AND c.revoked_ms IS NULL AND c.issued_ms<=? AND c.expires_ms>? AND a.state IN ('prepared','dispatching') AND a.deadline_ms>?",
+        "SELECT 1 FROM native_checkout_grants g JOIN attempts a ON a.id=g.attempt_id JOIN guest_access c ON c.capability_hash=g.capability_hash WHERE g.attempt_id=? AND g.state='running' AND g.source_revision=? AND g.intent_hash=a.intent_hash AND g.intent_hash=? AND g.expires_ms>? AND g.contract_json=? AND c.owner_id=a.owner_id AND c.revoked_ms IS NULL AND c.issued_ms<=? AND c.expires_ms>? AND (a.state IN ('prepared','dispatching') OR (?=1 AND g.cleanup_allowed=1 AND a.state='recovery_required')) AND a.deadline_ms>?",
       )
       .bind(
         attemptId,
@@ -166,13 +173,15 @@ export async function executeNativeCheckout(options: {
         grant.contract_json,
         current,
         current,
+        cleanupMode ? 1 : 0,
         current + 15000,
       )
       .first();
     if (!valid) throw new ApiError(503, "native_write_grant_closed");
   };
   let count = 0,
-    last = 0;
+    last = 0,
+    cleanupCount = 0;
   const control = {
     ...options.control,
     reserve: async () => {
@@ -180,13 +189,18 @@ export async function executeNativeCheckout(options: {
       if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
       await assertGranted();
       if (
-        count >= grant.maximum_used - grant.starting_used ||
-        options.accounting().used >= grant.maximum_used
+        (cleanupMode && cleanupCount >= 16) ||
+        count >=
+          grant.maximum_used - grant.starting_used + (cleanupMode ? 16 : 0) ||
+        options.accounting().used >= grant.maximum_used + (cleanupMode ? 16 : 0)
       )
         throw new ApiError(503, "native_write_budget_exhausted");
       count++;
+      if (cleanupMode) cleanupCount++;
       last = Date.now();
-      return options.control.reserve();
+      return (
+        cleanupMode ? options.recoveryControl : options.control
+      ).reserve();
     },
   };
   const scope = {
@@ -197,10 +211,24 @@ export async function executeNativeCheckout(options: {
   };
   const exchange: NativeExchange = async (operation, signal) => {
     await assertGranted();
+    if (cleanupMode) await provider.identity(env, control);
+    if (operation.kind === "booking-cancel" && !cleanupMode)
+      throw new ApiError(503, "native_cleanup_not_granted");
     if (
-      ["book", "batch-create", "batch-close", "payment-link"].includes(
+      cleanupMode &&
+      !["booking-read", "invoice-read", "booking-cancel"].includes(
         operation.kind,
       )
+    )
+      throw new ApiError(503, "native_cleanup_operation_unavailable");
+    if (
+      [
+        "book",
+        "batch-create",
+        "batch-close",
+        "payment-link",
+        "booking-cancel",
+      ].includes(operation.kind)
     )
       return provider.nativeWrite(env, control, operation, assertGranted);
     return provider.nativeRead(env, control, operation, signal);
@@ -209,6 +237,7 @@ export async function executeNativeCheckout(options: {
     state: "recovery_required",
     paymentAvailable: false,
   };
+  let dispatchFence: number | undefined;
   try {
     const prebooking = provider.prebooking(env, control, contract);
     const operations = nativeBookingOperations({
@@ -246,6 +275,7 @@ export async function executeNativeCheckout(options: {
         .bind(attemptId, access.owner_id)
         .first<{ association_json: string; version: number }>();
       if (!associated) throw new ApiError(409, "native_association_missing");
+      dispatchFence = associated.version;
       const refs = associationSchema.parse(
         JSON.parse(associated.association_json),
       );
@@ -303,7 +333,39 @@ export async function executeNativeCheckout(options: {
   } catch {
     // A lost reply may have created native state. Retain the original attempt;
     // this one-use grant never resumes writes or exposes raw provider errors.
+    if (dispatchFence !== undefined)
+      await requireRecovery(env.STATE, attemptId, dispatchFence);
     result = { state: "recovery_required", paymentAvailable: false };
+  }
+  if (
+    result.state === "recovery_required" &&
+    grant.cleanup_allowed === 1 &&
+    options.accounting().active === 0
+  ) {
+    // This separate permission is absent by default. The recovery reserve may
+    // only compensate known unpaid effects, never continue forward checkout.
+    cleanupMode = true;
+    const controller = new AbortController();
+    cleanupSignal = controller.signal;
+    const timer = setTimeout(() => controller.abort(), 15000);
+    try {
+      await compensateNativeAttempt({
+        db: env.STATE,
+        scope,
+        exchange,
+        signingSecret: secret,
+        signal: controller.signal,
+        assertGranted,
+        invalidate: () =>
+          provider.prebooking(env, control, contract).invalidate(),
+      });
+    } catch {
+      // Unknown cancellation/readback stays in the immutable effect journal.
+      // Partial cleanup is never reported as successful booking or payment.
+    } finally {
+      clearTimeout(timer);
+      controller.abort();
+    }
   }
   await env.STATE.prepare(
     "UPDATE native_checkout_grants SET state=?,result_json=? WHERE attempt_id=? AND state='running'",

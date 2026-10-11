@@ -10,6 +10,7 @@ CREATE TABLE native_checkout_grants (
   expires_ms INTEGER NOT NULL CHECK(expires_ms > not_before_ms AND expires_ms <= not_before_ms + 1200000),
   starting_used INTEGER NOT NULL CHECK(starting_used >= 0),
   maximum_used INTEGER NOT NULL CHECK(maximum_used > starting_used AND maximum_used <= 64),
+  cleanup_allowed INTEGER NOT NULL DEFAULT 0 CHECK(cleanup_allowed IN (0,1)),
   state TEXT NOT NULL CHECK(state IN ('granted','running','complete','blocked')),
   result_json TEXT CHECK(result_json IS NULL OR json_valid(result_json)),
   available_dates_json TEXT NOT NULL DEFAULT '[]' CHECK(json_valid(available_dates_json)),

@@ -162,6 +162,12 @@ export type NativeRequest =
       batchId?: string;
     }
   | { kind: "booking-read"; bookingId: string; signature: string }
+  | {
+      kind: "booking-cancel";
+      bookingId: string;
+      signature: string;
+      evidenceObservedAtMs: number;
+    }
   | { kind: "invoice-read"; invoiceId: string }
   | { kind: "payment-link"; invoiceId: string };
 export type ProviderSecrets = {
@@ -287,11 +293,22 @@ export async function providerRequest(
           `${native.date} ${native.time}`,
           1,
         ];
-      } else if (native.kind === "booking-read") {
+      } else if (
+        native.kind === "booking-read" ||
+        native.kind === "booking-cancel"
+      ) {
         if (!/^[a-f0-9]{32}$/.test(native.signature))
           throw new ApiError(503, "provider_signature_invalid");
-        rpcMethod = "getBookingDetails";
-        params = [providerId(native.bookingId), native.signature];
+        rpcMethod =
+          native.kind === "booking-read"
+            ? "getBookingDetails"
+            : "cancelBooking";
+        params = [
+          native.kind === "booking-cancel"
+            ? Number(providerId(native.bookingId))
+            : providerId(native.bookingId),
+          native.signature,
+        ];
       } else {
         const service = Number(providerId(native.serviceId));
         if (native.kind === "required-fields") {
@@ -357,6 +374,15 @@ export async function providerRequest(
   let cooldown = 0;
   return await measure("provider", async () => {
     try {
+      if (
+        native?.kind === "booking-cancel" &&
+        (!Number.isSafeInteger(native.evidenceObservedAtMs) ||
+          native.evidenceObservedAtMs > Date.now() ||
+          Date.now() - native.evidenceObservedAtMs > 15000)
+      ) {
+        complete = true;
+        throw new ApiError(503, "native_cleanup_evidence_expired");
+      }
       const response = await fetch(url, {
         method,
         headers,

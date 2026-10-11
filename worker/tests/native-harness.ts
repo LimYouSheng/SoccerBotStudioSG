@@ -15,6 +15,7 @@ import {
 import {
   nativeBookingOperations,
   recoverNativeAssociation,
+  compensateNativeAttempt,
   nativeCheckoutLink,
   nativeCheckoutDeadline,
   type NativeCheckoutTiming,
@@ -73,10 +74,52 @@ const harness = {
       sent.push(operation);
       if (
         input.scenario === "lost" ||
+        (input.scenario === "second-book-lost" &&
+          operation.kind === "book" &&
+          sent.filter((item) => item.kind === "book").length === 2) ||
         (input.scenario === "batch-close-lost" &&
           operation.kind === "batch-close")
       )
         throw new Error("synthetic lost reply");
+      if (operation.kind === "booking-cancel") {
+        const bookings = (
+          Array.isArray(input.booking) ? input.booking : [input.booking]
+        ) as Record<string, unknown>[];
+        const booking = bookings.find(
+          (value) => String(value.id) === operation.bookingId,
+        )!;
+        booking.status = "cancelled";
+        booking.is_confirmed = "0";
+        const invoice = input.invoice as {
+          lines: {
+            bookings: { id: string | number; is_confirmed: boolean }[];
+          }[];
+          status: string;
+          payment_received: boolean;
+          payment_processor: string | null;
+        };
+        for (const line of invoice.lines)
+          for (const nested of line.bookings)
+            if (String(nested.id) === operation.bookingId)
+              nested.is_confirmed = false;
+        if (input.scenario === "cancelled-invoice") {
+          invoice.status = "cancelled";
+          for (const value of bookings) value.invoice_status = "cancelled";
+        }
+        if (input.scenario === "paid-after-cancel") {
+          invoice.status = "paid";
+          invoice.payment_received = true;
+          invoice.payment_processor = "hitpay";
+          for (const value of bookings) {
+            value.invoice_status = "paid";
+            value.invoice_payment_received = true;
+            value.invoice_payment_processor = "hitpay";
+          }
+        }
+        if (input.scenario === "cancel-lost")
+          throw new Error("synthetic lost cancellation reply");
+        return { body: true, receivedAtMs: input.now };
+      }
       if (input.scope?.intent.sessions.length > 1) {
         if (operation.kind === "batch-create") {
           if (input.scenario === "revoke-after-batch")
@@ -256,6 +299,21 @@ const harness = {
           });
           break;
         }
+        case "compensate": {
+          result = await compensateNativeAttempt({
+            db: env.STATE,
+            scope: input.scope,
+            exchange,
+            signingSecret: "synthetic-signing-secret",
+            signal: new AbortController().signal,
+            assertGranted: async () => {
+              if (input.scenario === "cleanup-revoked")
+                throw new Error("synthetic revoked cleanup grant");
+            },
+            invalidate: () => {},
+          });
+          break;
+        }
         case "customer-prepare":
         case "customer-current":
         case "customer-availability":
@@ -307,6 +365,7 @@ const harness = {
             attemptId: input.scope.attemptId,
             provider: new ProviderSession(),
             control,
+            recoveryControl: control,
             accounting: () => ({
               used: 15 + reserved,
               active: reserved - finished,
@@ -401,6 +460,7 @@ const harness = {
           reserved,
           finished,
           requests,
+          sent,
         },
         { status: 409 },
       );

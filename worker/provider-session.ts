@@ -167,7 +167,8 @@ export class ProviderSession {
       request.kind === "book" ||
       request.kind === "payment-link" ||
       request.kind === "batch-create" ||
-      request.kind === "batch-close"
+      request.kind === "batch-close" ||
+      request.kind === "booking-cancel"
     )
       throw new ApiError(503, "native_write_grant_unavailable");
     signal?.throwIfAborted();
@@ -208,9 +209,13 @@ export class ProviderSession {
     )
       throw new ApiError(503, "provider_access_disabled");
     if (
-      !["book", "batch-create", "batch-close", "payment-link"].includes(
-        request.kind,
-      )
+      ![
+        "book",
+        "batch-create",
+        "batch-close",
+        "payment-link",
+        "booking-cancel",
+      ].includes(request.kind)
     )
       throw new ApiError(503, "provider_operation_unavailable");
     await assertGranted();

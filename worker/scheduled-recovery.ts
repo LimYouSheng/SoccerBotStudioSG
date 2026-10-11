@@ -2,12 +2,20 @@ import { z } from "zod";
 import { coordinatorName, verifyBindings } from "./bindings";
 import { policy } from "./policy";
 import { traced } from "./diagnostics";
-const windowSchema = z.strictObject({
-  attemptId: z.string().uuid(),
-  notBeforeMs: z.number().int().nonnegative().safe(),
-  startingUsed: z.number().int().min(0).max(58),
-  maximumUsed: z.number().int().min(6).max(64),
-});
+const windowSchema = z
+  .strictObject({
+    attemptId: z.string().uuid(),
+    notBeforeMs: z.number().int().nonnegative().safe(),
+    startingUsed: z.number().int().min(0).max(74),
+    maximumUsed: z.number().int().min(6).max(80),
+    useRecoveryReserve: z.boolean().optional(),
+  })
+  .refine(
+    (value) =>
+      value.maximumUsed <= (value.useRecoveryReserve === true ? 80 : 64) &&
+      (value.useRecoveryReserve !== true ||
+        value.maximumUsed - value.startingUsed <= 16),
+  );
 // No browser trigger, callback guess, draining loop, cron config or self-grant.
 // Each installed one-use window permits one known-attempt readback: N + 5
 // physical calls including cold setup. The grant must cover that exact cost;
@@ -15,17 +23,22 @@ const windowSchema = z.strictObject({
 export async function runScheduledRecovery(
   env: Env,
   clock: () => number = Date.now,
+  capabilityHash?: string,
 ) {
   const p = policy(env),
     now = clock();
   if (p.PROVIDER_ACCESS !== "trusted-reads" || now >= p.CAMPAIGN_END_MS)
     return { state: "closed" };
   await verifyBindings(env);
+  if (capabilityHash !== undefined)
+    z.string()
+      .regex(/^[a-f0-9]{64}$/)
+      .parse(capabilityHash);
   const row = await env.STATE.withSession("first-primary")
     .prepare(
-      "SELECT capability_hash,expires_ms,result_json FROM developer_operations WHERE operation='native_recovery_window' AND state='granted' AND expires_ms>? AND json_valid(result_json) AND json_extract(result_json,'$.notBeforeMs')<=? ORDER BY expires_ms,capability_hash LIMIT 1",
+      "SELECT capability_hash,expires_ms,result_json FROM developer_operations WHERE operation='native_recovery_window' AND state='granted' AND expires_ms>? AND json_valid(result_json) AND json_extract(result_json,'$.notBeforeMs')<=? AND (? IS NULL OR capability_hash=?) ORDER BY expires_ms,capability_hash LIMIT 1",
     )
-    .bind(now, now)
+    .bind(now, now, capabilityHash ?? null, capabilityHash ?? null)
     .first<{
       capability_hash: string;
       expires_ms: number;
