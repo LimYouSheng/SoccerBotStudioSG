@@ -335,7 +335,7 @@ test("prebooking validates freshness account lead time and supported service pro
     "native_service_profile_unsupported",
   );
 });
-test("prebooking preserves group size without treating optional comments as a capacity requirement", async () => {
+test("prebooking derives a required player comment for every group size independently of studio capacity", async () => {
   for (const players of [1, 2, 3, 4]) {
     const data = fixtures(),
       intent = approved();
@@ -349,6 +349,8 @@ test("prebooking preserves group size without treating optional comments as a ca
     const result = await validation.review(intent);
     assert.equal(result.state, "unavailable");
     assert.equal(result.review.players, players);
+    assert.equal(result.review.bookingComment, `Number of players: ${players}`);
+    assert.ok(result.reasons.includes("native_booking_comment_unavailable"));
     assert.ok(!result.reasons.includes("native_player_mapping_unavailable"));
     assert.ok(
       !result.reasons.includes("native_player_information_unavailable"),
