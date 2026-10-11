@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Native proof preflight status — 12 October 2026
+
+The owner-approved backend proof stopped before mutation because the deployed developer Worker lacks the native signing secret required for signed booking readback and cancellation. The test window never opened. No migration, deployment, provider call, booking, checkout link, notification or payment occurred. The source and sealed release remain510a1d7; all three exact-source CI gates passed. Native provider acceptance and the later combined physical flight remain pending.
+
+A narrowly scoped private amendment is prepared to add the missing encrypted binding during the planned closed deployment and continue the original bounded proof. Existing secrets must be preserved, an existing signing binding must never be overwritten, and original evidence/accounting must carry forward. Installation remains pending specific owner approval; workspace credential readiness does not establish deployed binding readiness. Detailed infrastructure/secret-binding execution metadata stays private; the PR retains a redacted outcome.
+
 ## 11 October — native recovery and compensation source
 
 Returned native IDs/keys survive malformed creation fields and remain candidates until strict readback proves the original scope. Checkout handoff failures enter durable recovery. Separately granted confirmed-unpaid compensation uses signed cancelBooking, fresh complete invoice/subset validation, one-use effects and verified cancellation readback. It blocks possible checkout handoffs, preserves paid/foreign records and missing/unknown replies, never refunds, and consumes at most16 recovery requests under the existing80 cumulative cap. Empty0016 defaults cleanup_allowed=0; applied0001–0014 remain unchanged. No live authority or provider acceptance is claimed.

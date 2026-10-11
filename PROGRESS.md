@@ -1,5 +1,11 @@
 # SoccerBotStudioSG current progress
 
+## Current task — missing deployed signing binding, 12 October 2026
+
+Approved native backend proof stopped after two read-only management requests: required signing binding absent from the developer Worker. No migration, deployment, activation, provider request, booking, checkout link, cancellation, payment or notification occurred. First failure and original ledger are preserved privately under work/native-completion/acceptance. Measured management total366 plus unknown Dashboard; provider last measured15/80 (not freshly queried), deployment lower bound26 plus unknown, email8/bot8 and historical closed80 unchanged.
+
+Source510a1d7 passed all three CI38153002446 gates; artifact11707193454 is sealed and unchanged. A private signing amendment is prepared and offline-validated under work/native-completion/signing-amendment; it is not authorized or executed. It adds only the absent encrypted binding during the already planned closed deployment and carries prior accounting. The specific owner approval question is pending. After approval, execute the amended finite packet once; retain exact source/artifact and no-replay/provider/closure limits. Do not rerun the stopped original packet, reset campaign budgets, publish detailed internal execution metadata, merge or claim native acceptance. Global deadline remains12October16:18:56SGT. Physical testing remains the later combined native/webhook flight.
+
 ## Current task — native failure-path closure, 11 October 2026
 
 Continuation on PR21/feat/native-checkout-completion-20261011 from5e89220, actual main25aac892 unchanged. Implemented pre-validation reference retention, durable post-booking handoff recovery, strict known-reference compensation and default-denied finite cleanup permission in source-only0016. No external account operations, bookings, cancellations, payments, email or browser execution occurred. Provider usage remains15/80 plus historical closed80; all other carried counters/unknown intervals and12October16:18:56SGT deadline remain unchanged.

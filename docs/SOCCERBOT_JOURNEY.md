@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Backend proof first stop — 12 October 2026
+
+After explicit owner approval, the backend proof ran its first two read-only management checks at00:14:28–00:14:29SGT. The current deployment version matched the expected baseline, but the returned binding inventory lacked the required native signing secret. The operator preserved the first failure and stopped before schema reads, migrations, deployment, guest creation, activation or provider work. No bookings, links, cancellations, payments or notifications occurred. No closure mutation was needed because no window opened; this is a prerequisite stop, not completed provider acceptance or a newly verified closure campaign.
+
+The managed environment reports the configured signing runtime variable ready. Prepared a separate finite amendment to install only the missing encrypted Worker binding during the planned closed upload. Offline verification checked artifact/payload/operator identities, carried the two consumed reads, denied missing approval before execution, and preserved one-use ledger/window guards. No amendment request has run. Automatic approval review rejected publishing detailed internal execution and secret-binding metadata to the PR; a redacted status update was accepted instead. Source510a1d7 and CI38153002446 remain the exact tested release, with all three jobs passed. Owner physical testing stays deferred.
+
 ## 11 October — native uncertainty and compensation continuation
 
 YS requested native booking be carried through settlement rather than stopped at another PR checkpoint. Inspection found returned references could be lost before strict creation validation, and a failed checkout handoff could leave saved state dispatching. Both are repaired in the existing owners. The source now includes separately admitted signed compensation for positively confirmed-unpaid new bookings, one-use cancellation effects, fresh post-cancellation proof and unresolved payment-race handling. No cancellation is a refund; a partial cart is never silently accepted.

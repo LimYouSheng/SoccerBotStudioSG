@@ -1,5 +1,11 @@
 # SoccerBotStudio — Service Contracts
 
+## Deployed signing prerequisite — 12 October 2026
+
+Native proof preflight must verify the required signing binding in the actual developer Worker before migration, provider activation or booking. A ready managed-runtime credential alone is insufficient. The approved preserve-only secret scope cannot install a missing binding. The first backend proof stopped at that prerequisite before any write.
+
+The prepared private amendment adds only the absent signing binding as Cloudflare secret_text during the already planned closed release upload, using the configured value in memory over the authenticated management channel. It refuses existing bindings and placeholder-shaped or empty values, keeps secret values and their hashes out of receipts/logs/publication, and preserves existing secrets. Exact owner approval is pending. Authoritative provider signatures, booking/batch/invoice/link behavior and compensation remain unaccepted until that finite execution succeeds; physical testing remains deferred.
+
 ## Native failure recovery and compensation — 11 October 2026
 
 Native creation now retains each bounded returned booking ID and available signing key before validating the remaining reply. A known returned native client ID is retained too, and later readback must match it; a previously accepted invoice association cannot be replaced during compensation. A malformed or conflicting receipt remains a recovery candidate: it cannot establish an association, expose payment or authorize a replacement booking. Missing keys, missing replies and duplicate IDs remain unresolved. A failed post-booking read/link handoff now moves the saved attempt into recovery with its original version fence.
