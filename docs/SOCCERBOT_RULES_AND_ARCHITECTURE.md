@@ -1,5 +1,13 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Native-first execution direction — 11 October 2026
+
+YS approved executing the full North Star with native booking followed by reconciliation/webhooks as the immediate priority. Preserve all44 existing milestone IDs and A1–A7 scope. Sequence is observed mappings → one safe native session/invoice/checkout → authoritative no-return payment reconciliation and supported notification integration → complete multi-session semantics → identity/profile/export/communications closure → client UAT → approved launch/handover/support. Research notification and batch contracts alongside mapping work; single-session proof does not waive multi-session acceptance. Native contact association remains separate from the now website-owned prefill.
+
+YS confirms native count1 and non-overlapping provider schedules. Website group size1–4 remains; optional “Number of players: N” in the native booking Comments section is desirable, not required to commit or pay. No separate trainer notification or mandatory player-intake field. Existing prebooking no longer confuses group size with allocation, and rejects multiple eligible providers before dependent availability/write calls. Customer/quote/required-input/full occupied-interval capacity checks remain; owner configuration is not live contention proof. The comment contract in Service Contracts requires own-attempt/new-booking scope, preservation of human comments and no blind retry. No native comment is written yet. Historical tie-break priority cannot silently override the newly confirmed no-overlap arrangement.
+
+PR20 f881510/CI38116387515 is the prior tested source, not the new policy-change artifact. Applied0001–0014 remain immutable,0015 source-only, no-row4/no-reopen and all closed windows unchanged. Complete exact finite native execution costing after the remaining contracts are established; no speculative receiver, provider configuration change or paid transaction follows from source preparation.
+
 ## Current M3.6 decision — website-confirmed contact, 11 October 2026
 
 YS explicitly chose the latest details confirmed on this website even when SimplyBook differs. This supersedes the SimplyBook-only prefill dependency in earlier planning below. The original quotation record remains historical; no signed commercial amendment is asserted. Exactly one shared name/phone profile belongs to each normalized verified email within the deployment account/origin. A fresh verified session or a valid remembered credential restored into a short verified session authorizes access. Recognized email input alone does not.

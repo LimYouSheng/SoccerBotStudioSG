@@ -1,6 +1,16 @@
 # SoccerBotStudioSG current progress
 
-## Current task — website-confirmed contact profile, 11 October 2026
+## Current task — native one-studio policy and North Star execution, 11 October 2026
+
+YS prioritized native booking then webhooks and requested immediate execution of the full North Star. Updated the complete A1–A7/M1–M9 plan through client UAT/launch/support. During preparation YS clarified native count1 for the studio and non-overlapping provider schedules. Final preference: retain website1–4 players, optionally show “Number of players: N” in the native booking Comments area, no trainer message or required intake field. Source now preserves group size independently of native allocation and rejects multiple eligible providers before dependent availability/write. Customer/tax/full-interval capacity/required-field guards remain. Optional comments do not block native booking; no comment is sent yet.
+
+The drafted discovery packet was withdrawn before publication/approval/execution. Corrected the web-search argument and obtained official comment read/set and Admin REST PUT documentation; account permission, replacement/preservation and UI readback still need bounded acceptance. Next dependencies are exact schedule/full occupied interval, current quote/customer/signing/merchant bindings and finite native write/recovery composition. Optional comment effect belongs after a new booking association, preserving existing comments and never rebooking/recharging on failure.
+
+Prior PR20 f881510875a885c357bcc2dc995597794b106a2f CI38116387515 passed frontend/backend/live-email;155 application/187 Worker/115 tooling cases plus browsers/release checks. Downloaded prior backend11693104902 ZIP and matched51891e3fcb29ba6976f9060d6a862555c0e11da8e11eab6bb790cdee10b8b1e9. That is historical artifact evidence, not new-source acceptance. New exact final CI is recorded at PR publication; profile/source0015 remains undeployed. The first web-search call used an invalid argument; corrected schema returned official comment documentation. Older webhook/batch contract gaps remain dated and incomplete.
+
+Preserve one-agent24 active/72 elapsed/60 loops/6 repairs, deadline12October16:18:56SGT, prior unknown time/counters, measured management339+unknown Dashboard/deploy>=24+unknown/email8/bot8/provider8/80 plus historical80 closed. This increment adds zero remote management/deployment/provider/email/bot/payment operations. No merge, browser execution, applied migration edit or remote state change. Three canonical owners and44 IDs remain.
+
+## Previous checkpoint — website-confirmed contact profile, 11 October 2026
 
 YS explicitly replaced SimplyBook-only prefill with latest website-confirmed name/phone. One profile per normalized verified email/account/origin, shared by users of that email; saving only with Remember me selected at form submission, existing booking history untouched. Optional unique native import remains deferred and no longer blocks this feature. Source work continues in draft PR20 from merged main298c9c8; previous planning head4124929 passed all three CI38113691356 jobs with deployment skipped.
 

@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## 2026-10-11 — Native-first North Star and one-studio clarification
+
+YS requested the full plan and immediate execution with native booking followed by webhooks. Refreshed cleanf881510/PR20 and green three-job CI38116387515; drafted the complete dependency sequence through client UAT/launch/support. Public web-search tool returned no usable content. Downloaded backend11693104902 and verified its GitHub ZIP digest, preserving original artifact bytes; no new runtime artifact claimed.
+
+Before any discovery, YS clarified count1 per studio and non-overlapping provider schedules, then showed the native booking Comments section as the preferred optional location for player count. No separate trainer message and no mandatory intake/player persistence. Withdrew the unpublished/unapproved discovery proposal. Source preserves group size1–4 while native count stays1 and stops unexpected multiple eligible providers; independent current customer/tax/capacity/required-input checks remain. Tests changed to the actual owner requirement, retain all guard assertions and cover all four sizes. Initial focused28 cases passed; subsequent full Worker evidence is retained per iteration. Corrected an invalid search argument and retrieved official comment documentation; UI/account permission/preservation/unknown-write semantics remain distinct from documentation. No raw screenshot customer/booking details enter source or test fixtures. No remote comment, field/resource/schedule change, booking, payment, webhook, migration, deployment, merge or assistant browser.
+
 ## 2026-10-11 — Remember me consent and reachable contact editing
 
 YS specified that contact details save only when Remember me is selected, on Details form submission, without a separate booking save button or duration in the label. The90-day absolute policy remains. Implemented server-derived remembered consent and an atomic write predicate over the active remembered family; false/missing client consent never grants a save. Opt-out booking submission proceeds without creating/updating the profile. Existing saved details can still be read after fresh verification; opting out does not delete history.

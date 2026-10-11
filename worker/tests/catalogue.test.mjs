@@ -335,8 +335,8 @@ test("prebooking validates freshness account lead time and supported service pro
     "native_service_profile_unsupported",
   );
 });
-test("prebooking never substitutes allocation count for missing player persistence or shared capacity", async () => {
-  for (const players of [1, 2, 4]) {
+test("prebooking preserves group size without treating optional comments as a capacity requirement", async () => {
+  for (const players of [1, 2, 3, 4]) {
     const data = fixtures(),
       intent = approved();
     intent.sessions[0].players = players;
@@ -348,7 +348,12 @@ test("prebooking never substitutes allocation count for missing player persisten
       );
     const result = await validation.review(intent);
     assert.equal(result.state, "unavailable");
-    assert.ok(result.reasons.includes("native_player_mapping_unavailable"));
+    assert.equal(result.review.players, players);
+    assert.ok(!result.reasons.includes("native_player_mapping_unavailable"));
+    assert.ok(
+      !result.reasons.includes("native_player_information_unavailable"),
+    );
+    assert.ok(result.reasons.includes("native_customer_binding_unavailable"));
     assert.ok(result.reasons.includes("native_shared_capacity_unverified"));
     assert.ok(result.reasons.includes("native_quote_tax_unavailable"));
     await assert.rejects(
@@ -374,8 +379,11 @@ test("prebooking treats overlapping eligibility as unassigned and rejects contra
   read.bodies["eligible-instructors"] = [15, 14];
   assert.ok(
     (await validation.review(intent)).reasons.includes(
-      "native_assignment_policy_unavailable",
+      "native_provider_schedule_overlap",
     ),
+  );
+  assert.ok(
+    read.calls.every((x) => x.kind !== "availability" && x.kind !== "book"),
   );
   read.bodies["eligible-instructors"] = [99];
   await assert.rejects(
