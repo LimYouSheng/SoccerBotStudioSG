@@ -1,5 +1,11 @@
 # SoccerBotStudio — Service Contracts
 
+## Current metadata evidence — 11 October 2026
+
+Approved metadata pass completed with verified closure; Rules owns exact deployment/budgets and Journey preserves the initial operator-comparison stop. `getAdditionalFields(2)` returned `[]` at10:08:50UTC. Public catalogue at10:08:54UTC returned active nonrecurring service2 Kickoff Special,40 minutes,SGD8800 minor units, and active instructors2 Faisal,3 Nabil,4 Caelan. `instructorIds` was null: eligible relationships, current40+10 occupied capacity and tax-inclusive final quote remain unproved. Empty additional fields establish no extra required intake at this observation; they do not authorize skipping fresh required-input validation before a later write.
+
+Native count1 and automatic player/school Comments policy are unchanged. No provider comment or booking was created. Supported customer association, signing/merchant bindings, native batch/finalization/unknown recovery, comment preservation and webhook event/authentication/retry contracts remain the exact blockers. This pass made7 physical provider requests (five field discovery, two catalogue reads using retained authentication), ending at used15/80 and active0. Old used8-only discovery grants cannot be rerun; any later operation needs source admission compatible with the actual counter and its own approved scope. Never reset the campaign counter or relax the old discovery guard to reuse a consumed packet.
+
 ## Webhook and payment reconciliation task — 11 October 2026
 
 **Owner direction:** finish native booking and webhook technical integration first, then run one combined customer/browser/device acceptance flight. Do not repeatedly request physical tests for intermediate source increments. Keep automated regression, current provider contract validation and exact-source CI during implementation; deferred physical acceptance is pending, never passed.
