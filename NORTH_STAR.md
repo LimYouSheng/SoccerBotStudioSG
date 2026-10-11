@@ -1,51 +1,89 @@
-# North Star: quick rebooking through a connected customer website
+# North Star: dependable customer booking and quick rebooking
 
-## Merged identity and next finite proof — 10 October 2026
+## Governing objective — 11 October 2026
 
-PR18 merged atfe179d2; main CI38044816610 passed frontend/backend/live-email and Pages demo publication. Remembered identity is merged source, not deployed/accepted identity. Next authorized source task prepares additive0014 and a separately reviewed60-minute identity-proof gate/packet. Both older windows stay closed; no remote execution is authorized. Correct provider prefill remains a separate prerequisite for quick rebooking. PROGRESS is the current ledger; Service Contracts owns the new packet.
+Deliver the complete quoted A1–A7 customer journey: new and returning customers select valid SoccerBot sessions, safely reuse verified contact details, pay through SimplyBook → SBPay → HitPay, and receive authoritative protected confirmation, including recovery when requests fail, payment is delayed or the browser never returns. Completion includes client-configured UAT, written acceptance, reviewed production activation and operating handover.
 
-## Authorized source continuation — 10 October 2026
+YS approved execution of this overarching plan on11October. Source, public research, focused non-browser checks, canonical documentation and feature-branch/draft-PR work proceed within the carried campaign. Live operations require their concrete finite packets; prior closed grants do not reopen. The immediate deliverable is the reconciled acceptance matrix, focused identity-proof design, customer-binding decision and dependency-ordered next feature scope.
 
-A returning customer on a remembered device can resume with a server-verified identity, review the correct current SimplyBook name/phone, choose sessions, and complete supported native payment with authoritative confirmation. New-device, expired-session and signed-out customers verify again. No demo fallback, guessed customer match or browser payment claim can produce success.
+## Verified baseline
 
-The complete objective is quoted A1–A7 together, written client acceptance and separately approved launch. The immediate vertical slice is **A3 quick rebooking**, using existing M3.4–M3.6. The wider North Star still includes A2/A4–A7 booking, capacity, multi-session acceptance, native SimplyBook/SBPay/HitPay payment and protected confirmation. A3 success alone is not end-to-end completion.
+PR19 is merged at `298c9c8f443063f8b21a2e7b006993a1ec76a9e7`. [Main CI38112617043](https://github.com/LimYouSheng/SoccerBotStudioSG/actions/runs/38112617043) passed frontend/backend/live-email and published the Pages demo. PR-head c2f2506 independently passed CI38049449145. Main publication does not redeploy the Worker.
 
-## Source and current baseline
+The last verified developer Worker is source4a10133/version6c2730a6-9591-4c06-8830-803cb6d30790, identity/provider disabled/end0; no fresh Cloudflare inspection is claimed on11October. Applied0001–0014 are immutable. All three identity windows explicitly closed. Owner acceptance passed opt-out/access-only, supersession, remembered issuance, restart/two tabs, phone independence, fresh all-device sign-out and final closure. Replay and real short-session restoration remain open. Developer infrastructure/source tests do not imply provider or production acceptance.
 
-- Uploaded APP404-SBS-Q-WEB-001,4October2026,p3 A3: verify email before approved SimplyBook name/phone prefill; permit review/correction; handle duplicate/shared emails safely; use expiring single-use verification and rate limits. Rules records the source hash and distinguishes quotation terms from owner decisions.
-- Owner decision10October: opt-in Remember me lasts **90 days from successful email verification**, absolute expiry with no silent sliding extension. This duration is an implementation choice, not wording in the quotation. The current30-minute guest-bound verified session does not implement it.
-- Proved in the controlled developer test: two email receipts, codeB redemption and sign-out; server evidence confirms revoked verified access. Both delivery windows closed; provider access disabled. Old-code/replay live rejection and full device acceptance remain open.
-- M3.5 persistent identity is now source-implemented with synthetic checks; live/device acceptance remains pending. Live SimplyBook customer prefill and the complete native booking/payment/reconciliation journey remain unaccepted. Developer happy-path evidence does not close A3.
+The quotation APP404-SBS-Q-WEB-001 p3 A3 requires verified SimplyBook name/phone prefill, customer correction and safe ambiguous-email handling. The recorded source hash remains in Rules; the original private PDF is unavailable for fresh validation. The owner separately chose opt-in90days absolute from fresh verification, with no silent extension. Returning identity alone does not complete A3.
 
-## Ordered game plan
+## Product boundaries
 
-| Order | Existing milestones  | Outcome and gate                                                                                                                                                                                                                                                                                    |
-| ----- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1     | M3.4–M3.5            | Design and implement opt-in90-day remembered identity separately from short access/guest capability. Preserve revocation, rotation/concurrency, absolute expiry, CSRF and guest attempt ownership. Complete synthetic/session tests and remaining identity live proofs under a new finite approval. |
-| 2     | M2.5, M3.6           | Establish the supported exact verified-email/customer binding and authorized minimal name/phone read. Handle no match, unique match, ambiguous/shared email and provider failure without disclosure or scans. Compose into the existing account/details UI.                                         |
-| 3     | M3.5–M3.6, M7.2      | Demonstrate quick rebooking after closing/reopening the browser, correct prefill/review/correction, sign-out/all-devices revocation and expiry/new-device verification. Synthetic time advancement proves90-day boundaries; owner browser/physical-device checks prove actual UX.                   |
-| 4     | M2.2–M2.5, M4.1–M4.6 | Resolve player/required-field/customer/quote/shared-studio/instructor mappings; connect authoritative availability and all-session booking with partial/unknown recovery. No independent HitPay substitute.                                                                                         |
-| 5     | M5.1–M5.5, M6.1–M6.2 | Prove native invoice/payment associations, sandbox outcomes, manual return and browser-independent reconciliation, protected confirmation/exports and native notifications.                                                                                                                         |
-| 6     | M6.3–M6.6, M7–M8     | Client-account mappings, full UAT/device/recovery evidence, reviewed production release and handover. M9 warranty/optional support remains governed by the quotation.                                                                                                                               |
+One Singapore venue/shared studio, one concurrent session,40-minute play with10-minute changeover,1–4 players and multiple same/different-date sessions. Dates/times determine eligible instructors. Preserve the approved current roster and ID-bound assignment policy. A selection is not a reservation; trusted price, eligibility and capacity are rechecked at the write boundary. The previously deferred cross-instructor resource-allocation proof remains deferred, not passed; current no-overlap protection remains mandatory.
 
-Provider contract research may proceed alongside the session design within the single-agent budget; it is not a reason to invent a lookup or activate unsupported calls. Start with the one ready task in PROGRESS, then continue only authorized work.
+SimplyBook owns customer/scheduling/bookings and the native payment route owns payment authority. D1 stores minimal identity, immutable attempt/effect and recovery state, not a replacement provider database. Booking contact correction is not provider-profile mutation. Unknown writes reconcile under the original attempt; partial cleanup touches only newly created confirmed-unpaid bookings. Cancellation is not refund; native authorized staff handle refunds.
 
-## Quick-rebooking completion evidence
+Keep custom staff AI/PWA/portal, memberships/packages/podcasts, recurring charging, payroll, historical migration and replacement booking database outside scope. Session Replay remains off. Demo enquiry/exports do not establish production delivery.
 
-- First verified visit offers a clear opt-in. Without opt-in, existing short-session behavior remains.
-- Same remembered browser after restart restores identity and approved current details without another code during the absolute90-day lifetime. It still validates current booking eligibility/price/capacity server-side.
-- At expiry, after sign-out/revocation, or on a different device, verification is required before private details appear. Ordinary use and token rotation cannot extend the original90-day end.
-- Server-side customer binding is unique and correct; ambiguous or missing matches expose no other person's name/phone. Customer can correct booking contact details without an implicit provider-profile write.
-- Session races/replay, forged browser state, cross-customer reads and storage/provider errors fail safely. Retain guest checkout and durable attempt/recovery records.
-- Local non-browser tests, exact PR/main CI, tested artifact, controlled deployed proof and owner/device acceptance are recorded separately. Synthetic90-day evidence is not a claim of90 elapsed days in production.
+## Dependency-ordered milestones
 
-## Authority, budgets and release path
+Stable M1–M9 and all44 subiteration IDs remain in Rules. Existing source exceptions do not silently close their formal prerequisites.
 
-Source implementation, synthetic checks and one feature PR are authorized. This is not a new live-execution grant or budget reset. Existing authorizations persist only in their original scope. The31/4/24 replacement packet closed at27 management/3 deployments/11HTTP; the original packet closed at34/3/13. Preserve management311 plus unknown Dashboard activity, deployment lower bound21, email2, bot2, provider8/80 and historical80. No reset, third window, automatic retries or use of safety reserves for new setup. New external work requires a concrete tested packet, finite costs, closure/rollback and approval.
+| Milestone | Outcome / remaining work                                                                                              | Exit gate                                                                                                    |
+| --------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| M1.1–M1.4 | Baseline, release protection, tooling/advisories and approved visual baseline                                         | Source/release-control evidence and named desktop/phone/tablet acceptance                                    |
+| M2.1–M2.5 | Account/merchant entitlement; customer/player/quote/timetable mappings; native scheduling/payment/recovery operations | Supported contracts, observed mappings, bounded costs and explicit blockers per capability                   |
+| M3.1–M3.6 | Preserve foundation and async/durable owners; finish identity evidence; implement authorized contact prefill          | Correct remembered/fresh prefill, safe absent/ambiguous/error results, expiry/revocation and guest isolation |
+| M4.1–M4.6 | Authoritative availability, latest-cart validation, one durable attempt, all-session creation and recovery            | No duplicate effects/overselling; incomplete or uncertain bookings never expose payment                      |
+| M5.1–M5.5 | Exact invoice association, native checkout, authoritative payment evidence and protected confirmation                 | Required success/pending/failed/expired/late/unknown/no-return scenarios pass                                |
+| M6.1–M6.6 | Final exports/content/native emails, client rehearsal, pipeline, monitoring and release audit                         | Complete client-configured candidate, recoverable operations and A1–A7 UAT package                           |
+| M7.1–M7.4 | Full client/device UAT, defect closure and written acceptance                                                         | Final candidate/account/device receipts and no failed required case                                          |
+| M8.1–M8.4 | Approved production readiness, exact-artifact deployment, live checks and handover                                    | Actual production evidence, operating guide, access/source/configuration and training                        |
+| M9.1–M9.4 | Stabilization, six-month warranty, optional elected maintenance and eventual exit                                     | Verified repairs, explicit support/access dates and current operational records                              |
 
-One agent; existing24 active-hour/72 elapsed-hour/60-loop/6-repair bounds continue from9October08:18:56UTC, deadline12October16:18:56SGT. The next campaign's proposed scope does not restart that clock or conceal unmeasured active time. No browser execution by the assistant, secret installation, merge/main push, production, paid upgrade or real payment/refund is included.
+Critical path: supported M2 contracts → completed M3 identity/customer binding → M4 booking/recovery → M5 payment/confirmation → M6 client release → M7 written acceptance → M8 launch. Independent source/contract preparation may continue while external evidence is blocked, within one-agent scope. Unsupported multi-session finalization or customer binding requires a documented decision before dependent live implementation.
 
-PR17 merged at2f08b1c; PR16 functionality reached main through it. PR14 merged and PR15 is superseded/closed. Main independently passed CI38041760947. New source work uses a new feature branch/PR; no further merge is authorized. Deployed sourcef2795a1 remains distinct from subsequent documentation commits. Rules owns policy, Service Contracts owns operations/acceptance, Journey owns receipts; PROGRESS is the single current task ledger.
+## Immediate package and next feature
+
+1. Reconcile main/deployed identities and the single current matrix in Service Contracts; preserve accepted receipts and unknown accounting.
+2. Design a focused identity completion session that starts long-idle proof first, captures the successful verification request before navigation, and retains sanitized actual request counts. Do not repeat all six old emails.
+3. Resolve exact verified-email/customer binding using supported authoritative documentation/account evidence. Broad search, truncated duplicate detection and first-match selection are not accepted substitutes.
+4. Specify unique/no-match/ambiguous/unavailable/foreign/stale-response prefill behavior, preserving guest entry and editable contact details.
+5. Prepare the next bounded source feature against those contracts with exact owners, tests, failure handling and recovery. No new live authority is inferred from documentation or CI.
+6. Produce an exact tested-artifact execution packet only when source policy, provider dependencies and complete closure reserves are ready; obtain the applicable finite approval before remote work.
+
+Service Contracts owns the focused protocol, binding decision and outstanding evidence request. PROGRESS owns the one next ready task; this orientation does not duplicate the mutable ledger.
+
+## Verification and operations
+
+Each increment declares outcome, scope, dependencies, owners/contracts/data, tests, user-device checks, recovery and exact completion evidence. Keep source implementation, selected tests, PR CI, independent main CI, deployment, provider and physical-device acceptance distinct. Assistant executes no browsers; user/CI own browser work. Retain failures and fix the owning cause without weakened tests, retries, hidden fallback or changed acceptance.
+
+The existing P01–P12 register in Rules remains the measurement owner. Freeze provider-dependent latency/cart/query/TTL/quota budgets through M2.5. Separate provider settlement/visibility from application processing; preserve cold/warm/device cohorts and low-sample limits. Zero duplicate effects, overselling, false paid confirmation or unrelated disclosure are hard required-test gates. No provider load test or paid infrastructure is inferred from synthetic concurrency.
+
+Deployment consumes exact verified environment artifacts; schema evolution is deliberately compatible. Code rollback does not restore data backwards, cancel provider effects or refund money. Rehearse bounded containment, unresolved-attempt recovery, redacted correlation and actual alert delivery before launch. Client mappings, entitlements and UAT must be revalidated; changing credentials alone is not cutover.
+
+## Planning windows and decision points
+
+Dates preserve the recorded quotation schedule and do not amend commercial terms. Provider feasibility is the critical schedule dependency; the earlier M2 target was missed and is re-estimated from evidence, never silently marked complete.
+
+| Singapore planning window | Intended outcome                                                                                    |
+| ------------------------- | --------------------------------------------------------------------------------------------------- |
+| 11–16October              | Reconciled baseline, remaining identity preparation/proof and supported provider/customer contracts |
+| 19–23October              | Authoritative booking and recovery                                                                  |
+| 26–30October              | Native payment and protected confirmation                                                           |
+| 2–6November               | Client rehearsal, exports/notifications, monitoring and release preparation                         |
+| 10–16November             | Client UAT and affected defect closure                                                              |
+| 17–22November             | Approved launch/training/handover                                                                   |
+| After launch              | Stabilization and quoted support lifecycle                                                          |
+
+Provider unsupported operations, unsafe identity matching, capacity uncertainty, absent merchant readiness or missing client inputs trigger an explicit dependency/schedule decision. They do not justify guessing mappings, substituting independent checkout or weakening correctness. Reconcile operating costs against actual entitlements before launch. The quotation's cost allowance is a planning estimate, not a certified cap.
+
+## Authority and completion
+
+One agent; existing24 aggregate active hours/72 elapsed hours/60 loops/6 repairs per cause continue from9October08:18:56UTC to12October16:18:56SGT. User waiting is not active work; unknown prior intervals stay unknown. This plan does not restart the clock. Current usage and unspent safety reserves remain in PROGRESS.
+
+Feature work uses reviewed branches/PRs. Every merge and live operation retains its own authorization; no main push, production activation, paid upgrade, real payment/refund, secret installation or message to providers is implied by this preparation package. No database reset or historical-window reopening. Source policy for any successor identity proof must be explicitly reviewed before an executable packet exists.
+
+Completion requires A1–A7 on the client configuration, all required automated/provider/device/UAT evidence, written acceptance, identified production release and operating handover. Include both quoted60-minute in-person setup/handover sessions across M2–M8, source/configuration/access/test records, native refund guidance and confirmed warranty dates. Six-month warranty and optional maintenance follow the quotation; no extra SLA or automatic renewal is created.
+
+Exactly three canonical owners: Rules and Architecture (invariants/roadmap/accepted state), Service Contracts (operations/authority/errors/recovery/availability), Journey (dated decisions/failures/evidence). PROGRESS is the current ledger. Deferred CLOUD-01 below stays separate from customer/provider acceptance.
 
 ## Deferred CLOUD-01 — incomplete
 

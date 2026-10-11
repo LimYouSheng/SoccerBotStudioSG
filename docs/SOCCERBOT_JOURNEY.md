@@ -1,5 +1,19 @@
 # SoccerBotStudio — Journey
 
+## 2026-10-11 — Merged North Star execution package
+
+Owner merged PR19 at298c9c8f443063f8b21a2e7b006993a1ec76a9e7. Main CI38112617043 passed all three verification jobs and Pages deployment; this is separate from PR-headc2f2506/CI38049449145 and deployed Worker4a10133. Refreshed clean historical worktree and created plan/north-star-integration-20261011 from actual main. Baseline inventory222 tracked files; existing worktrees/receipts preserved. No Worker/provider/account reinspection or new live authority.
+
+YS approved the overarching A1–A7 delivery plan. Replaced stale NORTH_STAR orientation, reconciled the existing current flow matrix in place, updated entry/progress/current Rules, preserved44 milestone IDs, and specified a focused identity protocol plus exact provider-binding evidence request and prefill contract. No product, test, package, workflow, migration or configuration change. Historical PR19 snapshot is labelled with its later merge; it is not rewritten as a different deployed source.
+
+Public documentation request https://simplybook.me/en/api/developer-api/ref failed at configured CONNECT proxy403 (curl56, HTTP000). Private header/failure evidence retained under work/north-star/evidence; no origin account call, retry, network-policy bypass or alternate-host attempt. Last available10October reading remains explicit evidence, not fresh documentation or proof the capability is unavailable. The skill source-index resource and original private quotation PDF remained unavailable. Prepared the smallest binding evidence question without sending a provider/support message.
+
+Identity protocol design addresses the actual prior gaps: original successful request must be retained in the verification tab before navigation; real idle starts after the first verification rather than after six emails; per-request sanitized counts are needed instead of reconstructing browser usage from email totals. Proposed2emails/4bots and immutable60minutes do not create source/runtime authority. Row4 refusal and applied0001–0014 stay unchanged. Earlier booking-capability live isolation is separately fixture-dependent, rather than being falsely closed by an identity cookie comparison.
+
+Provider decision remains unavailable prefill until exact complete matching or a supported native authenticated subject/client binding is proved. Broad name/email/phone search and first-match/truncated uniqueness remain rejected. Required unique/absent/ambiguous/unavailable/foreign/stale outcomes are specified against existing owners; current service signatures/endpoints are not silently declared implemented. Unsupported multi-session finalization and payment recovery remain downstream gates.
+
+Affected documentation/integrity checks and final draft-PR CI are recorded at publication. Application/browser suites are not repeated locally for a documentation-only package. Campaign start/deadline, old usage and unknown intervals remain; new management/provider/email/bot/payment calls0. No merge, live activation, data reset, secret exposure or external support message.
+
 ## 2026-10-10 — PR19 owner proof and explicit closure
 
 User approved the exact37-management/4-deployment packet and confirmed two-profile readiness. Seven preflight reads matched closed sourcef2795a1/version3bb98b99, secret binding types, no schedules,0001–0012 schema/history and two closed windows. Applied sealed0013 and0014 with history entries once; the third migration-phase read confirmed full original table-row preservation. Three returned asset buckets uploaded, and exact CI artifact bytes deployed closed asf7f737f8-9b6b-4442-8008-4077e395919c. Settings and nonce readiness matched.

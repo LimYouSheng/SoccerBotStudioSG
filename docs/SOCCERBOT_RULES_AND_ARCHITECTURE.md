@@ -1,5 +1,17 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Governing North Star execution checkpoint — 11 October 2026
+
+YS approved the full A1–A7/M1–M9 delivery plan. PR19 merged at298c9c8; main CI38112617043 independently passed frontend/backend/live-email and Pages publication. Last verified Worker remains source4a10133/version6c2730a6 with identity/provider disabled/end0 and applied0001–0014. Current acceptance is the reconciled Service Contracts matrix; earlier dated source/deployment statements are historical. NORTH_STAR orients the full delivery sequence; PROGRESS owns current work, bounds and exact blockers.
+
+Preserve all44 milestone IDs, quotation scope/schedule/support boundaries, component ownership and PERF-01–PERF-07/P01–P12 gates. M1 release/visual closure and M2 supported account/provider contracts remain dependencies. Approved source exceptions establish individual components, not formal milestone completion. Provider feasibility controls the remaining schedule; record a re-estimate/owner decision rather than weakening acceptance or assuming an unsupported route.
+
+The next A3 package separates completed identity observations from missing replay/short-expiry/attribute/authority evidence, and safe private prefill from unsupported customer lookup assumptions. An independently verified email is not an authorized native client ID. Current broad-search/truncated-list evidence cannot establish a unique customer. Leave live prefill unavailable until complete exact matching or a supported authenticated native binding is proved; return only approved fields, allow booking contact corrections and prevent stale-response disclosure or implicit provider-profile mutation.
+
+Current no-row4/no-reopen rule is unchanged. The focused two-email successor protocol is a design requiring explicit source-policy review, compatible additive evolution, complete historical preservation and atomic closure tests before an exact artifact-bound execution packet can exist. Never edit applied migrations or revive old grants. Preparing this plan does not enact that exception. No management/provider/email/payment call, scheduler or production activation occurs in this package.
+
+Public API-reference retrieval on11October was blocked by the configured network proxy. This limits fresh research; it is not proof an API capability is absent. Service Contracts owns the unresolved binding evidence request and preserves the last available reference findings. Exactly three canonical documentation owners remain; do not create a competing current acceptance matrix or replacement ledger.
+
 ## Current accepted state — finite identity proof closed, 10 October 2026
 
 The owner-approved PR19 packet executed source4a10133, applied additive0013/0014 and explicitly closed proof row3. All three windows are closed; source4a10133/version6c2730a6-9591-4c06-8830-803cb6d30790 is deployed with identity/provider disabled/end0. This supersedes the preparation-only authority statements in the historical sections below. Applied0001–0014 are now immutable. No fourth row, reopening, expiry extension, reset or spare-budget activation is authorized.
@@ -676,7 +688,7 @@ Recovery and demonstration: Use synthetic records and supported test modes. Reco
 
 ## M3 — Server foundation and customer identity
 
-Target: 12–16 October 2026. State: Planned. Scope: A3 and shared security foundations.
+Target: 12–16 October 2026. State: Source foundations implemented under recorded exceptions; developer identity partly accepted; provider prefill and formal dependency closure open. Scope: A3 and shared security foundations.
 
 Outcome: Create a protected API boundary that preserves the existing presentation and supports guest and returning customers.
 
@@ -738,13 +750,13 @@ Depends on: M3.2–M3.3; sender setup.
 
 ### M3.5 — Protected sessions and guest checkout capability
 
-Source checkpoint10October: implemented and focused synthetic-tested; full CI/live/device acceptance remains open. The current lifecycle is in Service Contracts; the acceptance requirements below remain mandatory.
+Current checkpoint11October: source and full CI passed; PR19 owner proof accepted opt-out, supersession, issuance, restart/two tabs, phone independence, fresh all-device sign-out and closure. Remaining real short-expiry/restoration, replay, attributes and authority evidence are tracked in Service Contracts. The acceptance requirements below remain mandatory.
 
 Implement the owner-selected opt-in90-day remembered-device policy separately from existing short verified/guest access. Reuse identity/access/D1 owners, server-only random-token digests, Secure/HttpOnly/SameSite cookies, exact origin/CSRF checks, explicit absolute expiry, revocation and rotation/reuse handling. Remember me defaults off. Design concurrency-safe rotation and sign-out/all-device revocation before code; do not extend financial/guest attempt capabilities or erase unresolved attempt history. A fresh email verification is required for a new90-day lifetime after expiry/revocation/new-device entry. Durable cookie alone is insufficient without a valid server record.
 
 Exit evidence: same-device browser close/reopen restores identity without OTP while valid; opt-out remains short-lived. Synthetic clocks test just before/at/after90-day expiry and demonstrate rotation does not slide it. Forged storage, revoked/expired/stolen token replay and cross-customer reads fail. Concurrent tabs/rotation, logout/new-login races and storage failure preserve the correct current identity. Sign out this device and all devices revoke server authority; clean/new devices require verification. User-operated desktop/mobile tests and cookie-policy behavior are retained separately from CI. An agreed retention disposition is required before cleanup activation.
 
-Depends on: M3.3–M3.4; approved90-day policy. Status: design/planned implementation, not provided by the current30-minute guest-bound verified session.
+Depends on: M3.3–M3.4 and the approved90-day policy. Status: implemented with partial live/device acceptance; the short guest capability remains separate. M3.6 prefill is not supplied by remembered identity.
 
 ### M3.6 — Safe returning customer prefill
 
