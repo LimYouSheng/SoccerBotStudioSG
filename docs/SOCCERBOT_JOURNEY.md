@@ -1,5 +1,13 @@
 # SoccerBotStudio — Journey
 
+## 2026-10-11 — Remember me consent and reachable contact editing
+
+YS specified that contact details save only when Remember me is selected, on Details form submission, without a separate booking save button or duration in the label. The90-day absolute policy remains. Implemented server-derived remembered consent and an atomic write predicate over the active remembered family; false/missing client consent never grants a save. Opt-out booking submission proceeds without creating/updating the profile. Existing saved details can still be read after fresh verification; opting out does not delete history.
+
+Found that live mode stops at Session before Details while native booking is unavailable. The existing Details form now also serves a remembered Account editor, preserving native booking guards. Booking submit awaits its save and retains editable data on failure; edits/unmount abort stale acknowledgements/navigation. Removed duplicate late demo checkout saving. Updated positive fixtures to opt in explicitly and added negative UI/service/Worker checks plus CI-only Account save/reread coverage. No assistant browser execution.
+
+The initial new Worker opt-out test used the remembered cookie as guest access and failed before its assertion. Corrected that synthetic fixture to use its separately issued guest cookie; the first receipt remains retained. The first focused UI run passed48 cases. Full typechecking then caught missing booking-only fields in the new negative service fixture; completed that typed contact without changing the assertion. Final non-browser and CI results belong to the PR checkpoint. Prior8ce3aaa/CI38115030043 remains accepted for that earlier revision only. Extended the design-only two-email protocol with synthetic contact save/restoration/shared-email checks, without adding live authority or relaxing no-row4. No remote migration, deployment, email, provider request or historical evidence rewrite.
+
 ## 2026-10-11 — Owner replaces provider-only prefill with website contact profile
 
 YS explicitly selected latest name/phone confirmed on this website, including one shared profile for a shared email and no changes to old bookings. This replaces the prior prerequisite for SimplyBook-only prefill. The quotation's historical wording/hash remains; no signed commercial amendment or original PDF revalidation is claimed. Safe unique provider import is optional and deferred. Provider booking/payment authority remains separate.

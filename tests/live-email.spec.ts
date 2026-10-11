@@ -3,10 +3,12 @@ import { expect, test, type Page } from "@playwright/test";
 // CI-only synthetic transports. No widget script, email or provider is contacted.
 const sitekey = "0x4AAAAAAFSTbdgbJQsvM5vy";
 const challengeId = "10000000-0000-4000-8000-000000000001";
-async function fixture(page: Page, delivery = false) {
+async function fixture(page: Page, delivery = false, remembered = false) {
   const calls: { path: string; method: string; body: unknown }[] = [];
   const unexpected: string[] = [];
-  let verified = false;
+  let verified = remembered;
+  let remember = remembered;
+  let contact: { name: string; phone: string } | null = null;
   await page.route("**/*", async (route) => {
     const request = route.request(),
       url = new URL(request.url());
@@ -51,7 +53,11 @@ async function fixture(page: Page, delivery = false) {
     if (url.pathname === "/api/identity" && method === "GET") {
       status = 200;
       result = verified
-        ? { email: "synthetic@example.test", expiresAt: Date.now() + 600000 }
+        ? {
+            email: "synthetic@example.test",
+            expiresAt: Date.now() + 600000,
+            remember,
+          }
         : null;
     } else if (
       delivery &&
@@ -60,8 +66,19 @@ async function fixture(page: Page, delivery = false) {
     ) {
       status = verified ? 200 : 401;
       result = verified
-        ? { email: "synthetic@example.test", contact: null }
+        ? { email: "synthetic@example.test", contact }
         : { error: "identity_unavailable" };
+    } else if (
+      delivery &&
+      url.pathname === "/api/identity/contact" &&
+      method === "POST"
+    ) {
+      status = verified && remember ? 200 : 401;
+      if (status === 200) {
+        const input = body as { name: string; phone: string };
+        contact = { name: input.name, phone: input.phone };
+        result = { email: "synthetic@example.test", saved: true };
+      }
     } else if (
       delivery &&
       url.pathname === "/api/identity/restore" &&
@@ -90,10 +107,12 @@ async function fixture(page: Page, delivery = false) {
       method === "POST"
     ) {
       verified = true;
+      remember = (body as { remember?: boolean }).remember === true;
       status = 200;
       result = {
         email: "synthetic@example.test",
         expiresAt: Date.now() + 600000,
+        remember,
       };
     }
     await route.fulfill({ status, json: result });
@@ -213,5 +232,66 @@ test("synthetic live verification reads server identity and keeps native booking
   expect(
     evidence.calls.filter((c) => c.path === "/api/identity/contact"),
   ).toEqual([{ path: "/api/identity/contact", method: "GET", body: null }]);
+  expect(evidence.unexpected).toEqual([]);
+});
+
+test("remembered live account edits and rereads contact while native booking stays unavailable", async ({
+  page,
+}) => {
+  const evidence = await fixture(page, true, true);
+  await page
+    .getByRole("button", { name: "Manage saved contact", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Saved contact details", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByLabel("Full name", { exact: false })
+    .fill("Synthetic Contact");
+  await page
+    .getByLabel("Mobile number", { exact: false })
+    .fill("+65 8123 4567");
+  await page
+    .getByRole("button", { name: "Save contact details", exact: true })
+    .click();
+  await expect(page.getByRole("status")).toHaveText(
+    "Contact details saved for your next visit.",
+  );
+  await page
+    .getByRole("button", { name: "Back to booking options", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Manage saved contact", exact: true })
+    .click();
+  await expect(page.getByLabel("Full name", { exact: false })).toHaveValue(
+    "Synthetic Contact",
+  );
+  await expect(page.getByLabel("Mobile number", { exact: false })).toHaveValue(
+    "+65 8123 4567",
+  );
+  expect(
+    evidence.calls.filter(
+      (c) => c.path === "/api/identity/contact" && c.method === "POST",
+    ),
+  ).toEqual([
+    {
+      path: "/api/identity/contact",
+      method: "POST",
+      body: {
+        email: "synthetic@example.test",
+        name: "Synthetic Contact",
+        phone: "+65 8123 4567",
+      },
+    },
+  ]);
+  await page
+    .getByRole("button", { name: "Back to booking options", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Continue signed in", exact: true })
+    .click();
+  await expect(page.getByRole("main").getByRole("alert")).toHaveText(
+    "Session information is unavailable. Your details have been kept.",
+  );
   expect(evidence.unexpected).toEqual([]);
 });

@@ -683,7 +683,7 @@ test("website contact requires verified identity and a guessed email cannot read
   assert.ok(
     (await call(cookie, { action: "contact-save", now, contact })).error,
   );
-  await call(cookie, verification(response));
+  await call(cookie, { ...verification(response), remember: true });
   assert.deepEqual(
     (await call(cookie, { action: "contact-read", now: Date.now() })).result,
     { email, contact: null },
@@ -697,7 +697,7 @@ test("website contact requires verified identity and a guessed email cannot read
     foreignChallenge = await challenge(foreign, {
       source: crypto.randomUUID(),
     });
-  await call(foreign, verification(foreignChallenge));
+  await call(foreign, { ...verification(foreignChallenge), remember: true });
   assert.ok(
     (await call(foreign, { action: "contact-save", now: Date.now(), contact }))
       .error,
@@ -715,7 +715,7 @@ test("website contact requires verified identity and a guessed email cannot read
 test("website contact shared email uses latest explicit save without changing retained attempts or identity expiry", async () => {
   const first = await guest(),
     response = await challenge(first, { source: crypto.randomUUID() });
-  await call(first, verification(response));
+  await call(first, { ...verification(response), remember: true });
   const email = response.sent[0].email;
   const second = await guest(),
     later = Date.now() + 61000;
@@ -724,7 +724,7 @@ test("website contact shared email uses latest explicit save without changing re
     now: later,
     source: crypto.randomUUID(),
   });
-  await call(second, verification(shared, later));
+  await call(second, { ...verification(shared, later), remember: true });
   const before = (await db.prepare("SELECT * FROM attempts ORDER BY id").all())
     .results;
   const identityBefore = (
@@ -776,7 +776,7 @@ test("website contact shared email uses latest explicit save without changing re
 test("website contact rejects malformed payloads expired sessions and signout while preserving saved data", async () => {
   const cookie = await guest(),
     response = await challenge(cookie, { source: crypto.randomUUID() });
-  await call(cookie, verification(response));
+  await call(cookie, { ...verification(response), remember: true });
   const email = response.sent[0].email,
     contact = { email, name: "Retained Contact", phone: "+65 8123 4567" };
   assert.equal(
@@ -907,10 +907,83 @@ test("website contact remembered restoration can read and save without recoverin
     "Updated Contact",
   );
 });
+test("website contact opt-out cannot create or replace a profile even with a forged remember flag", async () => {
+  const opted = await remembered();
+  const subject = opted.email;
+  const contact = {
+    email: subject,
+    name: "Original Contact",
+    phone: "+65 8123 4567",
+  };
+  assert.equal(
+    (
+      await call(opted.guest, {
+        action: "contact-save",
+        now: Date.now(),
+        contact,
+      })
+    ).result.saved,
+    true,
+  );
+  const cookie = await guest(),
+    at = Date.now() + 61000;
+  const response = await challenge(cookie, {
+    email: subject,
+    now: at,
+    source: crypto.randomUUID(),
+  });
+  const verified = await call(cookie, {
+    ...verification(response, at),
+    remember: false,
+  });
+  assert.equal(verified.result.remember, false);
+  assert.ok(
+    (
+      await call(cookie, {
+        action: "contact-save",
+        now: at,
+        contact: { ...contact, name: "Unconsented Update" },
+      })
+    ).error,
+  );
+  assert.ok(
+    (
+      await call(cookie, {
+        action: "contact-save",
+        now: at,
+        contact: { ...contact, remember: true },
+      })
+    ).error,
+  );
+  assert.equal(
+    (await call(cookie, { action: "contact-read", now: at })).result.contact
+      .name,
+    "Original Contact",
+  );
+  const noProfileCookie = await guest(),
+    newChallenge = await challenge(noProfileCookie, {
+      source: crypto.randomUUID(),
+    });
+  await call(noProfileCookie, verification(newChallenge));
+  assert.ok(
+    (
+      await call(noProfileCookie, {
+        action: "contact-save",
+        now: Date.now(),
+        contact: { ...contact, email: newChallenge.sent[0].email },
+      })
+    ).error,
+  );
+  assert.equal(
+    (await call(noProfileCookie, { action: "contact-read", now: Date.now() }))
+      .result.contact,
+    null,
+  );
+});
 test("website contact stays inaccessible under closed developer proof even with an otherwise valid identity", async () => {
   const cookie = await guest(),
     response = await challenge(cookie, { source: crypto.randomUUID() });
-  await call(cookie, verification(response));
+  await call(cookie, { ...verification(response), remember: true });
   const email = response.sent[0].email,
     contact = { email, name: "Retained Profile", phone: "+65 8123 4567" };
   assert.equal(

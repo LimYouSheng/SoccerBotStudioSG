@@ -66,6 +66,7 @@
   "website contact rejects malformed payloads expired sessions and signout while preserving saved data",
   "website contact HTTP boundary rejects foreign origin query targeting unverified reads and oversized writes",
   "website contact remembered restoration can read and save without recovering booking authority",
+  "website contact opt-out cannot create or replace a profile even with a forged remember flag",
   "website contact stays inaccessible under closed developer proof even with an otherwise valid identity",
   "native supplied unpaid and paid shapes use stable invoice identity and canonical decisions",
   "native scalar normalization rejects truthiness rounding malformed and unsafe values",

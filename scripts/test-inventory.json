@@ -176,6 +176,18 @@
     "title": "account waits for owned guest access and duplicate click cannot navigate early"
   },
   {
+    "file": "src/features/booking/account-lifecycle.test.tsx",
+    "title": "leaving saved-contact form discards delayed save acknowledgement"
+  },
+  {
+    "file": "src/features/booking/account-lifecycle.test.tsx",
+    "title": "saved-contact entry revalidates expired identity before loading private details"
+  },
+  {
+    "file": "src/features/booking/account-lifecycle.test.tsx",
+    "title": "signed-in customer manages saved contact on Account without entering unavailable booking steps"
+  },
+  {
     "file": "src/features/booking/account-step.test.tsx",
     "title": "email form rejects a wrong verification code and accepts the corrected code"
   },
@@ -306,6 +318,10 @@
   {
     "file": "src/features/booking/details-step.test.tsx",
     "title": "verified details saves only on explicit action and ignores completion after editing"
+  },
+  {
+    "file": "src/features/booking/details-step.test.tsx",
+    "title": "verified opt-out details submit without saving a contact profile"
   },
   {
     "file": "src/features/booking/email-bot-proof.test.tsx",
@@ -600,6 +616,10 @@
     "title": "website profile is loaded only for the current identity and saves only explicit name and phone"
   },
   {
+    "file": "src/services/identity.test.ts",
+    "title": "website profile save rejects missing or false Remember me without a request"
+  },
+  {
     "file": "tests/customer.spec.ts",
     "title": "50-minute cadence, automatic instructors, contact validation and final-slot conflict"
   },
@@ -698,6 +718,10 @@
   {
     "file": "tests/live-email.spec.ts",
     "title": "live guest denial stays on account without Preview fallback"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "remembered live account edits and rereads contact while native booking stays unavailable"
   },
   {
     "file": "tests/live-email.spec.ts",

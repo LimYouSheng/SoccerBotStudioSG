@@ -62,7 +62,11 @@ export type Enquiry = {
   time: string;
   message: string;
 };
-export type VerifiedIdentity = { email: string; expiresAt: number };
+export type VerifiedIdentity = {
+  email: string;
+  expiresAt: number;
+  remember?: boolean;
+};
 export type AuthChallenge = {
   email: string;
   expiresAt: number;

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { authenticate } from "./access";
 import { ApiError } from "./policy";
+import { rememberedConsentSql } from "./remembered-identity";
 
 const inputSchema = z.strictObject({
   email: z.string().trim().toLowerCase().pipe(z.email().max(254)),
@@ -68,7 +69,7 @@ export async function saveContactProfile(
   const access = await authenticate(request, env, now);
   const result = await env.STATE.prepare(
     `INSERT INTO contact_profiles(account_id,origin,email,name,phone,updated_ms)
-      SELECT ?,?,v.email,?,?,? FROM verified_identity v WHERE ${authority} AND v.email=?
+      SELECT ?,?,v.email,?,?,? FROM verified_identity v WHERE ${authority} AND v.email=? AND ${rememberedConsentSql}
       ON CONFLICT(account_id,origin,email) DO UPDATE SET name=excluded.name,
         phone=excluded.phone,updated_ms=MAX(contact_profiles.updated_ms,excluded.updated_ms)`,
   )
@@ -90,6 +91,10 @@ export async function saveContactProfile(
       now,
       env.IDENTITY_DELIVERY,
       input.data.email,
+      env.APP_ORIGIN,
+      env.DEPLOYMENT_ACCOUNT_ID,
+      now,
+      now,
     )
     .run();
   if (result.meta.changes !== 1)

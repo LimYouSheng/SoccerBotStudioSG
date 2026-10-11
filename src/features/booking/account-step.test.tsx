@@ -52,7 +52,7 @@ test("remember me is explicit default off and opted in preview expiry stays nine
   render(<AccountStep />);
   await user.click(screen.getByRole("button", { name: "Continue with email" }));
   const remember = screen.getByRole("checkbox", {
-    name: "Remember me on this device for 90 days.",
+    name: "Remember me",
   });
   expect(remember).not.toBeChecked();
   await user.click(remember);

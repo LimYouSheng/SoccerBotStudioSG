@@ -176,7 +176,7 @@ it("website profile is loaded only for the current identity and saves only expli
   const request = vi
     .fn()
     .mockResolvedValueOnce(Response.json({ access: "guest" }))
-    .mockResolvedValueOnce(Response.json(identity))
+    .mockResolvedValueOnce(Response.json({ ...identity, remember: true }))
     .mockResolvedValueOnce(
       Response.json({
         email: identity.email,
@@ -235,4 +235,30 @@ it("website profile discards foreign and delayed post-signout responses", async 
   );
   await expect(pending).rejects.toThrow();
   expect(service.current()).toBeNull();
+});
+
+it("website profile save rejects missing or false Remember me without a request", async () => {
+  for (const remember of [undefined, false]) {
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ access: "guest" }))
+      .mockResolvedValueOnce(Response.json({ ...identity, remember }));
+    vi.stubGlobal("fetch", request);
+    const service = createLiveIdentityService(),
+      signal = new AbortController().signal;
+    await service.refresh(signal);
+    await expect(
+      service.saveProfile(
+        {
+          email: identity.email,
+          name: "Booking Only",
+          phone: "+65 8123 4567",
+          contactMethod: "email",
+          academy: "",
+        },
+        signal,
+      ),
+    ).rejects.toThrow();
+    expect(request).toHaveBeenCalledTimes(2);
+  }
 });

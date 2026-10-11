@@ -5,6 +5,7 @@ import type { CustomerIdentityService, VerifiedIdentity } from "./contracts";
 const identitySchema = z.strictObject({
   email: z.email(),
   expiresAt: z.number().int().positive().safe(),
+  remember: z.boolean().optional(),
 });
 const challengeSchema = z.strictObject({
   challengeId: z.string().uuid(),
@@ -185,6 +186,7 @@ export function createLiveIdentityService(): CustomerIdentityService {
     saveProfile: async (contact, signal) => {
       if (
         !current ||
+        current.remember !== true ||
         current.expiresAt <= Date.now() ||
         current.email !== contact.email
       )

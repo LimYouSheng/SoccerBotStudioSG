@@ -8,7 +8,11 @@ import type {
 import { safeRead, safeRemove, safeWrite } from "../storage";
 const KEY = "soccerbot-next-demo-identity";
 const PROFILES = "soccerbot-next-demo-profiles";
-const identitySchema = z.object({ email: z.email(), expiresAt: z.number() });
+const identitySchema = z.object({
+  email: z.email(),
+  expiresAt: z.number(),
+  remember: z.boolean().optional(),
+});
 const profilesSchema = z.record(
   z.string(),
   z.object({ name: z.string(), phone: z.string() }),
@@ -58,6 +62,7 @@ export const demoIdentityService: IdentityService = {
     challenge.used = true;
     const identity = {
       email: challenge.email,
+      remember,
       expiresAt: Date.now() + (remember ? 90 * 86400_000 : 12 * 3600_000),
     };
     safeRemove(KEY, true);
@@ -77,8 +82,13 @@ export const demoIdentityService: IdentityService = {
       : null;
   },
   saveProfile(draft) {
-    if (draft.mode !== "member" || read()?.email !== draft.accountEmail) return;
-    saveContact(draft.contact);
+    if (
+      draft.mode !== "member" ||
+      read()?.email !== draft.accountEmail ||
+      read()?.remember !== true
+    )
+      return;
+    saveContact({ ...draft.contact, email: draft.accountEmail });
   },
 };
 
@@ -109,7 +119,11 @@ export const demoCustomerIdentity: CustomerIdentityService = {
   },
   profile: async (email) => demoIdentityService.profile(email),
   saveProfile: async (contact, signal) => {
-    if (signal.aborted || read()?.email !== contact.email)
+    if (
+      signal.aborted ||
+      read()?.email !== contact.email ||
+      read()?.remember !== true
+    )
       throw new Error("Verify your email again.");
     saveContact(contact);
   },
