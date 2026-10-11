@@ -7,6 +7,7 @@ import {
   rememberedIssuance,
   replaceRememberedIdentity,
   clearRememberedCookie,
+  rememberedConsentSql,
 } from "./remembered-identity";
 const emailSchema = z.string().trim().toLowerCase().pipe(z.email().max(254));
 const challengeInput = z.strictObject({
@@ -253,11 +254,20 @@ export async function readVerifiedIdentity(
   const access = await authenticate(request, env, now);
   const row = await env.STATE.withSession("first-primary")
     .prepare(
-      "SELECT email,expires_ms AS expiresAt FROM verified_identity WHERE access_hash=? AND owner_id=? AND revoked_ms IS NULL AND verified_ms<=? AND expires_ms>?",
+      `SELECT email,expires_ms AS expiresAt,${rememberedConsentSql} AS remember FROM verified_identity v WHERE access_hash=? AND owner_id=? AND revoked_ms IS NULL AND verified_ms<=? AND expires_ms>?`,
     )
-    .bind(access.capability_hash, access.owner_id, now, now)
-    .first<{ email: string; expiresAt: number }>();
-  return row;
+    .bind(
+      env.APP_ORIGIN,
+      env.DEPLOYMENT_ACCOUNT_ID,
+      now,
+      now,
+      access.capability_hash,
+      access.owner_id,
+      now,
+      now,
+    )
+    .first<{ email: string; expiresAt: number; remember: number }>();
+  return row ? { ...row, remember: row.remember === 1 } : null;
 }
 
 // An authenticated email never authorizes a directory listing. Missing/shared

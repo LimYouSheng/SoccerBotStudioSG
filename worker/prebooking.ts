@@ -47,7 +47,8 @@ export function eligibleInstructors(raw: unknown): string[] {
 }
 // Server-owned pre-write implementation. Reads documented current catalogue,
 // service relationship, exact slot/eligibility and required fields; never trusts
-// browser snapshots and never infers shared capacity, tax or player persistence.
+// browser snapshots and never infers shared capacity or tax. The owner-approved
+// native allocation is one studio; group size is automatic, non-blocking booking-comment information.
 export class NativePrebooking {
   constructor(
     private binding: CatalogueBinding,
@@ -121,6 +122,14 @@ export class NativePrebooking {
       )
     )
       throw new ApiError(503, "eligibility_catalogue_conflict");
+    // The owner configures non-overlapping provider schedules for one studio.
+    // Unexpected overlap is configuration drift, never a name/order tie-break.
+    if (ids.length > 1)
+      return {
+        state: "unavailable" as const,
+        reasons: ["native_provider_schedule_overlap"],
+        intent,
+      };
     const slot = await this.exchange({
       kind: "availability",
       serviceId: service.id,
@@ -149,14 +158,16 @@ export class NativePrebooking {
       instructorName: instructor.name,
       startMs: session.startMs,
       players: session.players,
+      bookingComment: `Number of players: ${session.players}`,
       priceMinor: service.priceMinor,
       currency: service.currency,
       taxMinor: null,
     };
     if (service.priceMinor !== intent.totalMinor)
-      return { state: "review_required" as const, review, intent };
+      return { state: "restart_required" as const, review, intent };
     // Remaining upstream mappings cannot be manufactured from a response schema.
-    // An empty intake is not evidence that player persistence is unnecessary.
+    // Count1 allocates the studio. Comment delivery is automatic but non-blocking;
+    // its failure must not prevent payment or trigger booking retries.
     return {
       state: "unavailable" as const,
       review,
@@ -165,18 +176,16 @@ export class NativePrebooking {
         "native_customer_binding_unavailable",
         "native_quote_tax_unavailable",
         "native_shared_capacity_unverified",
-        "native_player_mapping_unavailable",
-        ...(ids.length > 1 ? ["native_assignment_policy_unavailable"] : []),
       ],
     };
   }
   async revalidate(value: Intent): Promise<Intent> {
     const result = await this.review(value);
-    // No supported player/customer/tax/capacity mapping currently permits commit.
+    // Unresolved customer/tax/capacity mappings still prevent commit.
     throw new ApiError(
       result.state === "unavailable" ? 503 : 409,
-      result.state === "review_required"
-        ? "native_review_required"
+      result.state === "restart_required"
+        ? "native_restart_required"
         : result.state === "selection_unavailable"
           ? "native_selection_changed"
           : "native_prebooking_unavailable",

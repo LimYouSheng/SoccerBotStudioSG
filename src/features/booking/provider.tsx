@@ -236,8 +236,6 @@ export function BookingProvider({
             "conflict",
             "Your email session has changed. Verify your email again.",
           );
-        if (operation === "checkout" && service.mode === "demo")
-          services.identity.saveProfile(current.draft);
         commit({ ...current, attempt });
         setAction({ status: "success", operation });
         return true;

@@ -64,6 +64,7 @@ before(async () => {
     "0009_identity_challenges.sql",
     "0013_remembered_identity.sql",
     "0011_identity_delivery.sql",
+    "0015_contact_profiles.sql",
   ])
     await db.exec(
       readFileSync(`migrations/${name}`, "utf8")
@@ -669,5 +670,376 @@ test("remembered signout after the guest expires revokes the persistent credenti
         .first()
     ).revoked_ms,
     null,
+  );
+});
+
+test("website contact requires verified identity and a guessed email cannot read or overwrite another profile", async () => {
+  const cookie = await guest(),
+    response = await challenge(cookie, { source: crypto.randomUUID() });
+  const email = response.sent[0].email,
+    now = Date.now();
+  const contact = { email, name: "Synthetic Contact", phone: "+65 8123 4567" };
+  assert.ok((await call(cookie, { action: "contact-read", now })).error);
+  assert.ok(
+    (await call(cookie, { action: "contact-save", now, contact })).error,
+  );
+  await call(cookie, { ...verification(response), remember: true });
+  assert.deepEqual(
+    (await call(cookie, { action: "contact-read", now: Date.now() })).result,
+    { email, contact: null },
+  );
+  assert.deepEqual(
+    (await call(cookie, { action: "contact-save", now: Date.now(), contact }))
+      .result,
+    { email, saved: true },
+  );
+  const foreign = await guest(),
+    foreignChallenge = await challenge(foreign, {
+      source: crypto.randomUUID(),
+    });
+  await call(foreign, { ...verification(foreignChallenge), remember: true });
+  assert.ok(
+    (await call(foreign, { action: "contact-save", now: Date.now(), contact }))
+      .error,
+  );
+  assert.equal(
+    (await call(foreign, { action: "contact-read", now: Date.now() })).result
+      .contact,
+    null,
+  );
+  assert.deepEqual(
+    (await call(cookie, { action: "contact-read", now: Date.now() })).result,
+    { email, contact: { name: contact.name, phone: contact.phone } },
+  );
+});
+test("website contact shared email uses latest explicit save without changing retained attempts or identity expiry", async () => {
+  const first = await guest(),
+    response = await challenge(first, { source: crypto.randomUUID() });
+  await call(first, { ...verification(response), remember: true });
+  const email = response.sent[0].email;
+  const second = await guest(),
+    later = Date.now() + 61000;
+  const shared = await challenge(second, {
+    email,
+    now: later,
+    source: crypto.randomUUID(),
+  });
+  await call(second, { ...verification(shared, later), remember: true });
+  const before = (await db.prepare("SELECT * FROM attempts ORDER BY id").all())
+    .results;
+  const identityBefore = (
+    await db
+      .prepare("SELECT * FROM verified_identity ORDER BY access_hash")
+      .all()
+  ).results;
+  for (const [cookie, name] of [
+    [first, "First Contact"],
+    [second, "Latest Contact"],
+  ])
+    assert.equal(
+      (
+        await call(cookie, {
+          action: "contact-save",
+          now: later,
+          contact: { email, name, phone: "+65 8123 4567" },
+        })
+      ).result.saved,
+      true,
+    );
+  assert.equal(
+    (await call(first, { action: "contact-read", now: later })).result.contact
+      .name,
+    "Latest Contact",
+  );
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT COUNT(*) AS n FROM contact_profiles WHERE email=?")
+        .bind(email)
+        .first()
+    ).n,
+    1,
+  );
+  assert.deepEqual(
+    (await db.prepare("SELECT * FROM attempts ORDER BY id").all()).results,
+    before,
+  );
+  assert.deepEqual(
+    (
+      await db
+        .prepare("SELECT * FROM verified_identity ORDER BY access_hash")
+        .all()
+    ).results,
+    identityBefore,
+  );
+});
+test("website contact rejects malformed payloads expired sessions and signout while preserving saved data", async () => {
+  const cookie = await guest(),
+    response = await challenge(cookie, { source: crypto.randomUUID() });
+  await call(cookie, { ...verification(response), remember: true });
+  const email = response.sent[0].email,
+    contact = { email, name: "Retained Contact", phone: "+65 8123 4567" };
+  assert.equal(
+    (await call(cookie, { action: "contact-save", now: Date.now(), contact }))
+      .result.saved,
+    true,
+  );
+  for (const bad of [
+    { ...contact, name: "x" },
+    { ...contact, phone: "abc" },
+    { ...contact, accountId: "foreign" },
+  ])
+    assert.ok(
+      (
+        await call(cookie, {
+          action: "contact-save",
+          now: Date.now(),
+          contact: bad,
+        })
+      ).error,
+    );
+  assert.ok(
+    (await call(cookie, { action: "contact-read", now: Date.now() + 1800000 }))
+      .error,
+  );
+  assert.ok(
+    (
+      await call(cookie, {
+        action: "contact-save",
+        now: Date.now() + 1800000,
+        contact,
+      })
+    ).error,
+  );
+  await call(cookie, { action: "all-signout", now: Date.now() });
+  assert.ok(
+    (await call(cookie, { action: "contact-read", now: Date.now() })).error,
+  );
+  assert.ok(
+    (await call(cookie, { action: "contact-save", now: Date.now(), contact }))
+      .error,
+  );
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT name FROM contact_profiles WHERE email=?")
+        .bind(email)
+        .first()
+    ).name,
+    contact.name,
+  );
+});
+test("website contact HTTP boundary rejects foreign origin query targeting unverified reads and oversized writes", async () => {
+  const cookie = await guest();
+  for (const [url, options, status] of [
+    [
+      "/api/identity/contact",
+      {
+        method: "POST",
+        headers: { origin: "https://foreign.invalid", cookie },
+      },
+      403,
+    ],
+    [
+      "/api/identity/contact?email=someone@example.invalid",
+      { headers: { cookie } },
+      400,
+    ],
+    ["/api/identity/contact", { headers: { cookie } }, 401],
+    [
+      "/api/identity/contact",
+      {
+        method: "POST",
+        headers: { cookie, origin, "content-type": "application/json" },
+        body: "x".repeat(4097),
+      },
+      413,
+    ],
+  ]) {
+    const response = await mf.dispatchFetch(origin + url, options);
+    assert.equal(response.status, status);
+    assert.equal(response.headers.get("cache-control"), "no-store");
+  }
+});
+test("website contact remembered restoration can read and save without recovering booking authority", async () => {
+  const cookie = await guest(),
+    response = await challenge(cookie, { source: crypto.randomUUID() }),
+    at = Date.now();
+  const verified = await call(cookie, {
+    ...verification(response, at),
+    remember: true,
+  });
+  const remember = verified.cookies[0].split(";")[0],
+    email = response.sent[0].email;
+  await call(cookie, {
+    action: "contact-save",
+    now: at,
+    contact: { email, name: "Remembered Contact", phone: "+65 8123 4567" },
+  });
+  const later = at + 1800001;
+  const fresh = await call("", { action: "guest", now: later });
+  const nextCookie = fresh.cookies[0].split(";")[0] + "; " + remember;
+  assert.ok(
+    (await call(nextCookie, { action: "contact-read", now: later })).error,
+  );
+  assert.equal(
+    (await call(nextCookie, { action: "restore", now: later })).result.email,
+    email,
+  );
+  assert.equal(
+    (await call(nextCookie, { action: "contact-read", now: later })).result
+      .contact.name,
+    "Remembered Contact",
+  );
+  assert.equal(
+    (
+      await call(nextCookie, {
+        action: "contact-save",
+        now: later,
+        contact: { email, name: "Updated Contact", phone: "+65 8765 4321" },
+      })
+    ).result.saved,
+    true,
+  );
+  assert.equal(
+    (await call(nextCookie, { action: "contact-read", now: later })).result
+      .contact.name,
+    "Updated Contact",
+  );
+});
+test("website contact opt-out cannot create or replace a profile even with a forged remember flag", async () => {
+  const opted = await remembered();
+  const subject = opted.email;
+  const contact = {
+    email: subject,
+    name: "Original Contact",
+    phone: "+65 8123 4567",
+  };
+  assert.equal(
+    (
+      await call(opted.guest, {
+        action: "contact-save",
+        now: Date.now(),
+        contact,
+      })
+    ).result.saved,
+    true,
+  );
+  const cookie = await guest(),
+    at = Date.now() + 61000;
+  const response = await challenge(cookie, {
+    email: subject,
+    now: at,
+    source: crypto.randomUUID(),
+  });
+  const verified = await call(cookie, {
+    ...verification(response, at),
+    remember: false,
+  });
+  assert.equal(verified.result.remember, false);
+  assert.ok(
+    (
+      await call(cookie, {
+        action: "contact-save",
+        now: at,
+        contact: { ...contact, name: "Unconsented Update" },
+      })
+    ).error,
+  );
+  assert.ok(
+    (
+      await call(cookie, {
+        action: "contact-save",
+        now: at,
+        contact: { ...contact, remember: true },
+      })
+    ).error,
+  );
+  assert.equal(
+    (await call(cookie, { action: "contact-read", now: at })).result.contact
+      .name,
+    "Original Contact",
+  );
+  const noProfileCookie = await guest(),
+    newChallenge = await challenge(noProfileCookie, {
+      source: crypto.randomUUID(),
+    });
+  await call(noProfileCookie, verification(newChallenge));
+  assert.ok(
+    (
+      await call(noProfileCookie, {
+        action: "contact-save",
+        now: Date.now(),
+        contact: { ...contact, email: newChallenge.sent[0].email },
+      })
+    ).error,
+  );
+  assert.equal(
+    (await call(noProfileCookie, { action: "contact-read", now: Date.now() }))
+      .result.contact,
+    null,
+  );
+});
+test("website contact stays inaccessible under closed developer proof even with an otherwise valid identity", async () => {
+  const cookie = await guest(),
+    response = await challenge(cookie, { source: crypto.randomUUID() });
+  await call(cookie, { ...verification(response), remember: true });
+  const email = response.sent[0].email,
+    contact = { email, name: "Retained Profile", phone: "+65 8123 4567" };
+  assert.equal(
+    (await call(cookie, { action: "contact-save", now: Date.now(), contact }))
+      .result.saved,
+    true,
+  );
+  for (const name of [
+    "0012_identity_replacement_window.sql",
+    "0014_identity_proof_window.sql",
+  ])
+    await db.exec(
+      readFileSync(`migrations/${name}`, "utf8")
+        .replace(/^--.*$/gm, "")
+        .replace(/\n/g, " "),
+    );
+  const now = Date.now();
+  for (const [id, start, end] of [
+    [1, now - 5000000, now - 4000000],
+    [2, now - 3000000, now - 2000000],
+    [3, now, now + 600000],
+  ]) {
+    await db
+      .prepare(
+        "INSERT INTO identity_delivery_window VALUES(?,?,?,'SoccerBotStudioSG Dev <noreply@auth.app404.ai>','sheng@app404.ai',?,?,'open')",
+      )
+      .bind(id, "a".repeat(40), origin, start, end)
+      .run();
+    await db
+      .prepare(
+        "UPDATE identity_delivery_window SET state='closed' WHERE singleton=?",
+      )
+      .bind(id)
+      .run();
+  }
+  assert.ok((await call(cookie, { action: "contact-read", now })).error);
+  assert.ok(
+    (
+      await call(cookie, {
+        action: "contact-save",
+        now,
+        contact: { ...contact, name: "Forbidden Update" },
+      })
+    ).error,
+  );
+  const publicRead = await mf.dispatchFetch(origin + "/api/identity/contact", {
+    headers: { cookie },
+  });
+  assert.equal(publicRead.status, 503);
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT name FROM contact_profiles WHERE email=?")
+        .bind(email)
+        .first()
+    ).name,
+    contact.name,
   );
 });

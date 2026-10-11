@@ -7,10 +7,13 @@ import { DEMO_CODE } from "@/services/demo/identity";
 import type { CustomerChallenge } from "@/services/contracts";
 import { useBooking } from "./provider";
 import { EmailBotProof } from "./email-bot-proof";
+import { DetailsStep } from "./details-step";
 export function AccountStep() {
   const { update, identityService } = useBooking(),
     router = useRouter();
-  const [view, setView] = useState<"choice" | "email" | "code">("choice"),
+  const [view, setView] = useState<"choice" | "email" | "code" | "profile">(
+      "choice",
+    ),
     [email, setEmail] = useState(""),
     [code, setCode] = useState(""),
     [remember, setRemember] = useState(false),
@@ -64,7 +67,11 @@ export function AccountStep() {
       }
     }
   }
-  async function proceed(signal: AbortSignal, verifiedEmail?: string) {
+  async function proceed(
+    signal: AbortSignal,
+    verifiedEmail?: string,
+    editProfile = false,
+  ) {
     if (!verifiedEmail) await identityService.guest(signal);
     const contact = verifiedEmail
       ? (await identityService.profile(verifiedEmail, signal)) || {
@@ -78,7 +85,8 @@ export function AccountStep() {
       accountEmail: verifiedEmail || "",
       contact,
     });
-    router.push("/book/session/");
+    if (editProfile) setView("profile");
+    else router.push("/book/session/");
   }
   function request() {
     void perform(async (signal) => {
@@ -95,6 +103,8 @@ export function AccountStep() {
       setView("code");
     });
   }
+  if (view === "profile")
+    return <DetailsStep profileOnly onClose={() => setView("choice")} />;
   if (view === "choice")
     return (
       <>
@@ -142,6 +152,27 @@ export function AccountStep() {
             </button>
             {identity && (
               <>
+                {identity.remember === true && (
+                  <button
+                    type="button"
+                    className="text-link"
+                    disabled={busy}
+                    onClick={() => {
+                      void perform(async (signal) => {
+                        const current = await identityService.refresh(signal);
+                        if (signal.aborted) return;
+                        setIdentity(current);
+                        if (!current || current.remember !== true)
+                          throw new Error(
+                            "Verify your email with Remember me selected to save contact details.",
+                          );
+                        await proceed(signal, current.email, true);
+                      });
+                    }}
+                  >
+                    Manage saved contact
+                  </button>
+                )}
                 <button
                   className="text-link"
                   onClick={() => {
@@ -230,7 +261,7 @@ export function AccountStep() {
                 checked={remember}
                 onChange={(e) => setRemember(e.target.checked)}
               />
-              Remember me on this device for 90 days.
+              Remember me
             </label>
           </>
         ) : (

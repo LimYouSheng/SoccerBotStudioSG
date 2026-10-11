@@ -6,6 +6,7 @@ import app, {
   verifiedContact,
 } from "../index";
 import { createAccess } from "../access";
+import { readContactProfile, saveContactProfile } from "../contact-profile";
 import {
   restoreRememberedIdentity,
   revokeAllIdentities,
@@ -25,7 +26,9 @@ export default {
         | "profile"
         | "restore"
         | "guest"
-        | "all-signout";
+        | "all-signout"
+        | "contact-read"
+        | "contact-save";
       now: number;
       remember?: boolean;
       email?: string;
@@ -36,6 +39,7 @@ export default {
       delivery?: "lost";
       source?: string;
       matches?: unknown;
+      contact?: unknown;
     };
     const sent: { email: string; code: string; idempotencyKey: string }[] = [];
     const cookies: string[] = [];
@@ -96,6 +100,15 @@ export default {
         result = null;
       } else if (input.action === "read")
         result = await readVerifiedIdentity(request, env, input.now);
+      else if (input.action === "contact-read")
+        result = await readContactProfile(request, env, input.now);
+      else if (input.action === "contact-save")
+        result = await saveContactProfile(
+          request,
+          env,
+          input.contact,
+          input.now,
+        );
       else result = verifiedContact(input.email ?? "", input.matches);
       return Response.json({ result, sent, cookies });
     } catch (error) {

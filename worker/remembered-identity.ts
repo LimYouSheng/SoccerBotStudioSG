@@ -1,5 +1,10 @@
 import { authenticate, type Access } from "./access";
 import { ApiError, capability, digest, keyedHash } from "./policy";
+// Verified-session consent is derived from its active remembered family, never a request flag.
+export const rememberedConsentSql = `EXISTS(SELECT 1 FROM remembered_access ra
+  JOIN remembered_identity ri ON ri.id=ra.family_id WHERE ra.access_hash=v.access_hash
+  AND ri.email=v.email AND ri.verified_ms=v.verified_ms AND ri.origin=? AND ri.account_id=?
+  AND ri.revoked_ms IS NULL AND ri.verified_ms<=? AND ri.expires_ms>?)`;
 const name = "__Host-soccerbot-remember";
 const lifetime = 90 * 86400000;
 const grace = 30000;

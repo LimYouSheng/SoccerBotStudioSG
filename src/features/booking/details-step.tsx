@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icon";
 import { CONTACT_METHODS } from "@/domain/catalog";
@@ -12,15 +12,74 @@ import { useBooking } from "./provider";
 type TextKey = {
   [K in keyof ContactDetails]: ContactDetails[K] extends string ? K : never;
 }[keyof ContactDetails];
-export function DetailsStep() {
-  const { draft, update } = useBooking(),
+export function DetailsStep({
+  profileOnly = false,
+  onClose,
+}: { profileOnly?: boolean; onClose?: () => void } = {}) {
+  const { draft, update, identityService } = useBooking(),
     router = useRouter(),
     c = draft.contact;
   const [errors, setErrors] = useState<ContactErrors>({});
+  const [saveState, setSaveState] = useState({
+    key: "",
+    saving: false,
+    message: "",
+  });
+  const activeSave = useRef<AbortController | null>(null);
+  const contactKey = JSON.stringify([draft.mode, draft.accountEmail, c]);
+  const saving = saveState.key === contactKey && saveState.saving;
+  const saveMessage = saveState.key === contactKey ? saveState.message : "";
+  useEffect(
+    () => () => {
+      activeSave.current?.abort();
+      activeSave.current = null;
+    },
+    [contactKey, identityService],
+  );
+  const remember = identityService.current()?.remember === true;
+  async function save() {
+    if (activeSave.current || !remember) return false;
+    const next = contactErrors(c, draft.accountEmail);
+    setErrors(next);
+    const first = Object.keys(next)[0];
+    if (first) {
+      document.getElementById(first)?.focus();
+      return false;
+    }
+    const controller = new AbortController();
+    activeSave.current = controller;
+    setSaveState({ key: contactKey, saving: true, message: "" });
+    try {
+      await identityService.saveProfile(c, controller.signal);
+      if (!controller.signal.aborted)
+        setSaveState({
+          key: contactKey,
+          saving: false,
+          message: "Contact details saved for your next visit.",
+        });
+      return !controller.signal.aborted;
+    } catch {
+      if (!controller.signal.aborted)
+        setSaveState({
+          key: contactKey,
+          saving: false,
+          message:
+            "Contact details could not be saved. Verify your email and try again.",
+        });
+      return false;
+    } finally {
+      if (activeSave.current === controller) {
+        activeSave.current = null;
+      }
+    }
+  }
   function change<K extends keyof ContactDetails>(
     key: K,
     value: ContactDetails[K],
   ) {
+    activeSave.current?.abort();
+    activeSave.current = null;
+    setSaveState({ key: "", saving: false, message: "" });
     update({ contact: { ...c, [key]: value } });
     setErrors((current) => ({ ...current, [key]: undefined }));
   }
@@ -95,12 +154,18 @@ export function DetailsStep() {
   }
   return (
     <>
-      <h1 className="page-title">Your details</h1>
+      <h1 className="page-title">
+        {profileOnly ? "Saved contact details" : "Your details"}
+      </h1>
       <form
         id="details-form"
         noValidate
         onSubmit={(event) => {
           event.preventDefault();
+          if (profileOnly) {
+            void save();
+            return;
+          }
           const next = contactErrors(
             c,
             draft.mode === "member" ? draft.accountEmail : undefined,
@@ -108,16 +173,23 @@ export function DetailsStep() {
           setErrors(next);
           const first = Object.keys(next)[0];
           if (first) document.getElementById(first)?.focus();
-          else router.push("/book/review/");
+          else if (draft.mode === "member" && remember) {
+            void save().then((saved) => {
+              if (saved) router.push("/book/review/");
+            });
+          } else router.push("/book/review/");
         }}
       >
         <p className="booking-required">* Required fields</p>
         <section className="surface">
-          <h2 className="section-title">Booking contact</h2>
+          <h2 className="section-title">
+            {profileOnly ? "Contact profile" : "Booking contact"}
+          </h2>
           {draft.mode === "member" && (
             <p className="section-description">
-              Review your prefilled name and phone number. You can correct them
-              here.
+              {remember
+                ? "Your name and phone will be saved when you submit this form. Anyone using this verified email shares these saved contact details. Previous bookings stay unchanged."
+                : "Review your contact details for this booking. Changes will not be saved for your next visit."}
             </p>
           )}
           <div className="field-grid">
@@ -132,26 +204,44 @@ export function DetailsStep() {
               120,
             )}
             {field("phone", "Mobile number", "tel", true, 24)}
-            {select(
-              "contactMethod",
-              "Preferred contact method",
-              CONTACT_METHODS,
-            )}
-            {field(
-              "academy",
-              "Academy / school / organisation",
-              "text",
-              false,
-              120,
-            )}
+            {!profileOnly &&
+              select(
+                "contactMethod",
+                "Preferred contact method",
+                CONTACT_METHODS,
+              )}
+            {!profileOnly &&
+              field(
+                "academy",
+                "Academy / school / organisation",
+                "text",
+                false,
+                120,
+              )}
           </div>
         </section>
-        <div className="actions">
-          <button className="button" type="submit">
-            Review booking <Icon name="arrow" />
-          </button>
-        </div>
+        {profileOnly && draft.mode === "member" && remember && (
+          <>
+            <button type="submit" className="button" disabled={saving}>
+              {saving ? "Saving contact details…" : "Save contact details"}
+            </button>
+          </>
+        )}
+        {saveMessage && <p role="status">{saveMessage}</p>}
+        {!profileOnly && (
+          <div className="actions">
+            <button className="button" type="submit" disabled={saving}>
+              {saving ? "Saving details…" : "Review booking"}{" "}
+              <Icon name="arrow" />
+            </button>
+          </div>
+        )}
       </form>
+      {profileOnly && (
+        <button type="button" className="text-link" onClick={onClose}>
+          Back to booking options
+        </button>
+      )}
     </>
   );
 }

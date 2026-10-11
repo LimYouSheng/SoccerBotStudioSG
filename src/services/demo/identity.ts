@@ -8,7 +8,11 @@ import type {
 import { safeRead, safeRemove, safeWrite } from "../storage";
 const KEY = "soccerbot-next-demo-identity";
 const PROFILES = "soccerbot-next-demo-profiles";
-const identitySchema = z.object({ email: z.email(), expiresAt: z.number() });
+const identitySchema = z.object({
+  email: z.email(),
+  expiresAt: z.number(),
+  remember: z.boolean().optional(),
+});
 const profilesSchema = z.record(
   z.string(),
   z.object({ name: z.string(), phone: z.string() }),
@@ -21,6 +25,16 @@ function read() {
       return parsed.data;
   }
   return null;
+}
+function saveContact(
+  contact: Parameters<CustomerIdentityService["saveProfile"]>[0],
+) {
+  const parsed = profilesSchema.safeParse(safeRead(PROFILES));
+  const normalized = normalizeContact(contact);
+  safeWrite(PROFILES, {
+    ...(parsed.success ? parsed.data : {}),
+    [normalized.email]: { name: normalized.name, phone: normalized.phone },
+  });
 }
 export const demoIdentityService: IdentityService = {
   read,
@@ -48,6 +62,7 @@ export const demoIdentityService: IdentityService = {
     challenge.used = true;
     const identity = {
       email: challenge.email,
+      remember,
       expiresAt: Date.now() + (remember ? 90 * 86400_000 : 12 * 3600_000),
     };
     safeRemove(KEY, true);
@@ -67,13 +82,13 @@ export const demoIdentityService: IdentityService = {
       : null;
   },
   saveProfile(draft) {
-    if (draft.mode !== "member" || read()?.email !== draft.accountEmail) return;
-    const parsed = profilesSchema.safeParse(safeRead(PROFILES));
-    const contact = normalizeContact(draft.contact);
-    safeWrite(PROFILES, {
-      ...(parsed.success ? parsed.data : {}),
-      [draft.accountEmail]: { name: contact.name, phone: contact.phone },
-    });
+    if (
+      draft.mode !== "member" ||
+      read()?.email !== draft.accountEmail ||
+      read()?.remember !== true
+    )
+      return;
+    saveContact({ ...draft.contact, email: draft.accountEmail });
   },
 };
 
@@ -103,6 +118,15 @@ export const demoCustomerIdentity: CustomerIdentityService = {
     return demoIdentityService.verify(value, code, remember);
   },
   profile: async (email) => demoIdentityService.profile(email),
+  saveProfile: async (contact, signal) => {
+    if (
+      signal.aborted ||
+      read()?.email !== contact.email ||
+      read()?.remember !== true
+    )
+      throw new Error("Verify your email again.");
+    saveContact(contact);
+  },
   signOut: async () => {
     previewChallenges.clear();
     demoIdentityService.signOut();

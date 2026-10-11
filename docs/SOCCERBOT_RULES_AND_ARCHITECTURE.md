@@ -1,5 +1,35 @@
 # SoccerBotStudio — Rules & Architecture
 
+Every booking automatically attempts a Comments entry `Number of players: N` (default1, range1–4). When the optional fifth Details field is filled, append `School / organisation: VALUE` on the next line; omit that line when blank. If comment delivery fails, leave it blank and allow payment: no notification, staff follow-up or repeated booking/payment. The session price is fixed for1–4 players and the displayed total includes applicable tax with no extra fees. A changed price stops checkout and requires restart. Any unavailable selected session stops the whole checkout for customer revision; never silently drop it. These owner decisions do not establish provider tax as zero or complete multi-session recovery.
+
+## Native-first execution direction — 11 October 2026
+
+YS approved executing the full North Star with native booking followed by reconciliation/webhooks as the immediate priority. Preserve all44 existing milestone IDs and A1–A7 scope. Sequence is observed mappings → one safe native session/invoice/checkout → authoritative no-return payment reconciliation and supported notification integration → complete multi-session semantics → identity/profile/export/communications closure → client UAT → approved launch/handover/support. Research notification and batch contracts alongside mapping work; single-session proof does not waive multi-session acceptance. Native contact association remains separate from the now website-owned prefill.
+
+YS confirms native count1 and non-overlapping provider schedules. Website group size1–4 remains; automatic “Number of players: N” in the native booking Comments section is attempted on every booking; only the fifth customer Details field, school/organisation, is optional. No separate trainer notification or mandatory player-intake field. Existing prebooking no longer confuses group size with allocation, and rejects multiple eligible providers before dependent availability/write calls. Customer/quote/required-input/full occupied-interval capacity checks remain; owner configuration is not live contention proof. The comment contract in Service Contracts requires own-attempt/new-booking scope, preservation of human comments and no blind retry. No native comment is written yet. Historical tie-break priority cannot silently override the newly confirmed no-overlap arrangement.
+
+PR20 f881510/CI38116387515 is the prior tested source, not the new policy-change artifact. Applied0001–0014 remain immutable,0015 source-only, no-row4/no-reopen and all closed windows unchanged. Complete exact finite native execution costing after the remaining contracts are established; no speculative receiver, provider configuration change or paid transaction follows from source preparation.
+
+## Current M3.6 decision — website-confirmed contact, 11 October 2026
+
+YS explicitly chose the latest details confirmed on this website even when SimplyBook differs. This supersedes the SimplyBook-only prefill dependency in earlier planning below. The original quotation record remains historical; no signed commercial amendment is asserted. Exactly one shared name/phone profile belongs to each normalized verified email within the deployment account/origin. A fresh verified session or a valid remembered credential restored into a short verified session authorizes access. Recognized email input alone does not.
+
+YS further specified that details save only with Remember me selected, when submitting the booking Details form. No separate booking save action is required. The checkbox label is Remember me, without a duration; the existing90-day absolute session limit remains. Server writes require an active remembered family tied to the verified session. Unchecked submissions leave the existing profile unchanged and use details only for the current booking. Previously saved details remain readable after verification. Remembered customers may also submit edits through the Account contact form, reachable while native booking is unavailable. Last accepted database save wins for shared-email/concurrent saves. Existing booking intents retain the details used when booked. A website profile supplies no native client ID, booking ownership, price, capacity, payment or confirmation authority. Optional initial SimplyBook import is deferred until a supported safe unique match exists; no scan, migration of history, automatic overwrite from SimplyBook or silent provider-profile write.
+
+Owners: existing identity/access establish authority; worker/contact-profile owns conditional D1 reads/writes; the existing identity service and Account/Details steps load, review and explicitly save. Additive0015_contact_profiles is source-only;0001–0014 are unchanged. Current closed-window policy gates these endpoints too. No remote migration, provider request, new test window or deployment follows from this source change. Service Contracts owns exact envelopes/errors and PROGRESS owns acceptance status.
+
+## Governing North Star execution checkpoint — 11 October 2026
+
+YS approved the full A1–A7/M1–M9 delivery plan. PR19 merged at298c9c8; main CI38112617043 independently passed frontend/backend/live-email and Pages publication. Last verified Worker remains source4a10133/version6c2730a6 with identity/provider disabled/end0 and applied0001–0014. Current acceptance is the reconciled Service Contracts matrix; earlier dated source/deployment statements are historical. NORTH_STAR orients the full delivery sequence; PROGRESS owns current work, bounds and exact blockers.
+
+Preserve all44 milestone IDs, quotation scope/schedule/support boundaries, component ownership and PERF-01–PERF-07/P01–P12 gates. M1 release/visual closure and M2 supported account/provider contracts remain dependencies. Approved source exceptions establish individual components, not formal milestone completion. Provider feasibility controls the remaining schedule; record a re-estimate/owner decision rather than weakening acceptance or assuming an unsupported route.
+
+The next A3 package separates completed identity observations from remaining replay/short-expiry/attribute/authority evidence. Website-confirmed contact prefill follows the owner decision above and no longer needs a native customer binding. An independently verified email still does not authorize a native client ID: optional provider import and booking relationships require supported evidence, never broad search or first-match selection. Return only approved contact fields, retain explicit customer corrections and prevent stale-response disclosure or implicit provider-profile mutation.
+
+Current no-row4/no-reopen rule is unchanged. The focused two-email successor protocol is a design requiring explicit source-policy review, compatible additive evolution, complete historical preservation and atomic closure tests before an exact artifact-bound execution packet can exist. Never edit applied migrations or revive old grants. Preparing this plan does not enact that exception. No management/provider/email/payment call, scheduler or production activation occurs in this package.
+
+Public API-reference retrieval on11October was blocked by the configured network proxy. This limits fresh research; it is not proof an API capability is absent. Service Contracts owns the unresolved binding evidence request and preserves the last available reference findings. Exactly three canonical documentation owners remain; do not create a competing current acceptance matrix or replacement ledger.
+
 ## Current accepted state — finite identity proof closed, 10 October 2026
 
 The owner-approved PR19 packet executed source4a10133, applied additive0013/0014 and explicitly closed proof row3. All three windows are closed; source4a10133/version6c2730a6-9591-4c06-8830-803cb6d30790 is deployed with identity/provider disabled/end0. This supersedes the preparation-only authority statements in the historical sections below. Applied0001–0014 are now immutable. No fourth row, reopening, expiry extension, reset or spare-budget activation is authorized.
@@ -104,7 +134,7 @@ The dated experiment plans in this section are superseded by the8October checkpo
 
 - A1: responsive Home and Studio pages using supplied branding/content/imagery and agreed hero; navigation/contact/Instagram, titles, metadata, sitemap and canonical URLs. Preview builds are noindex. Live canonical URLs/sitemap require the confirmed production domain at launch.
 - A2: service/player/contact details, multiple sessions on the same or different dates, dates/times automatically determine each session’s instructor, review and policy acknowledgement.
-- A3: verify email before prefilling only approved name and phone from SimplyBook; permit correction; resolve duplicate/shared-email matches safely; expiring single-use verification and rate limits. Current demo stores only name/phone for prefill. No real SimplyBook lookup or verified identity is claimed.
+- A3: the original quotation specified SimplyBook name/phone prefill after email verification. YS changed the engineering design on11October to website-confirmed shared contact profiles with explicit saving, protected prefill and unchanged booking history. Expiring single-use verification, rate limits and the separately approved remembered policy remain. Optional safe native import is deferred; source/device acceptance is tracked separately.
 - A4: server validates prices, instructor eligibility and studio capacity. SimplyBook accepts/rejects bookings. Displayed selections are not reservations. Availability is rechecked when selection changes and again at checkout.
 - A5: offer hosted payment only after every session is accepted and invoice association/amount matches. Partial failures cancel only newly created confirmed-unpaid bookings. Verify uncertain results before retrying and flag incomplete cleanup. These are mandatory future Worker/provider gates, not proved by frontend simulation.
 - A6: supported SimplyBook/SBPay → HitPay hosted checkout for enabled PayNow/cards. Provider-authoritative success/pending/failure/expired/late/uncertain handling. Best-effort payment appearance within provider controls.
@@ -676,7 +706,7 @@ Recovery and demonstration: Use synthetic records and supported test modes. Reco
 
 ## M3 — Server foundation and customer identity
 
-Target: 12–16 October 2026. State: Planned. Scope: A3 and shared security foundations.
+Target: 12–16 October 2026. State: Source foundations implemented under recorded exceptions; developer identity partly accepted; provider prefill and formal dependency closure open. Scope: A3 and shared security foundations.
 
 Outcome: Create a protected API boundary that preserves the existing presentation and supports guest and returning customers.
 
@@ -738,21 +768,21 @@ Depends on: M3.2–M3.3; sender setup.
 
 ### M3.5 — Protected sessions and guest checkout capability
 
-Source checkpoint10October: implemented and focused synthetic-tested; full CI/live/device acceptance remains open. The current lifecycle is in Service Contracts; the acceptance requirements below remain mandatory.
+Current checkpoint11October: source and full CI passed; PR19 owner proof accepted opt-out, supersession, issuance, restart/two tabs, phone independence, fresh all-device sign-out and closure. Remaining real short-expiry/restoration, replay, attributes and authority evidence are tracked in Service Contracts. The acceptance requirements below remain mandatory.
 
 Implement the owner-selected opt-in90-day remembered-device policy separately from existing short verified/guest access. Reuse identity/access/D1 owners, server-only random-token digests, Secure/HttpOnly/SameSite cookies, exact origin/CSRF checks, explicit absolute expiry, revocation and rotation/reuse handling. Remember me defaults off. Design concurrency-safe rotation and sign-out/all-device revocation before code; do not extend financial/guest attempt capabilities or erase unresolved attempt history. A fresh email verification is required for a new90-day lifetime after expiry/revocation/new-device entry. Durable cookie alone is insufficient without a valid server record.
 
 Exit evidence: same-device browser close/reopen restores identity without OTP while valid; opt-out remains short-lived. Synthetic clocks test just before/at/after90-day expiry and demonstrate rotation does not slide it. Forged storage, revoked/expired/stolen token replay and cross-customer reads fail. Concurrent tabs/rotation, logout/new-login races and storage failure preserve the correct current identity. Sign out this device and all devices revoke server authority; clean/new devices require verification. User-operated desktop/mobile tests and cookie-policy behavior are retained separately from CI. An agreed retention disposition is required before cleanup activation.
 
-Depends on: M3.3–M3.4; approved90-day policy. Status: design/planned implementation, not provided by the current30-minute guest-bound verified session.
+Depends on: M3.3–M3.4 and the approved90-day policy. Status: implemented with partial live/device acceptance; the short guest capability remains separate. M3.6 prefill is not supplied by remembered identity.
 
 ### M3.6 — Safe returning customer prefill
 
-After fresh or remembered verified identity, use the supported exact SimplyBook customer/account binding to retrieve only approved name/phone. Prove the provider lookup/private signature and entitlements under M2.5 before live calls; no directory scan or local replacement customer database. Unique authorized match can prefill; missing, ambiguous/shared, malformed, foreign and unavailable results must expose no unrelated details. Let customers review/correct booking contacts; no automatic provider-profile mutation. Keep profile results correlated to the current session so late replies cannot repopulate another account after sign-out/switch.
+After fresh verification or valid remembered restoration, load the latest name/phone explicitly saved on this website for the server-verified normalized email. One email means one shared contact profile; last accepted explicit save replaces prior values. Show a clear shared-email notice, allow edits and preserve guest/manual entry. Missing profile is normal first use. Reject unverified, foreign, stale, expired and revoked requests. Keep async replies correlated to the current identity; no browser email alone authorizes access.
 
-Exit evidence: authorized provider-backed unique/no-match/duplicate/shared-email fixtures and failure cases, no pre-verification disclosure, browser restart with valid remembered identity, editable correct prefill, sign-out/new-device/expiry challenges and preserved guest flow. A remembered login without real name/phone lookup does not complete A3. Synthetic ambiguous-match coverage is not actual provider acceptance; user/CI operate browser checks.
+Exit evidence: exact source/CI checks for read/save isolation, same-email overwrite, invalid input, sign-out/expiry, remembered restoration, Remember me consent at submission, opt-out write denial, delayed responses and preserved booking/identity state; then separately approved developer deployment and owner/browser checks. No real deployment or profile acceptance is claimed by synthetic coverage. Optional SimplyBook initial import remains unimplemented and requires safe unique matching; it is not an M3.6 prerequisite. Booking provider authority is unchanged.
 
-Depends on: M3.2, M3.5 and M2.5's exact customer lookup/binding; still OPEN.
+Depends on: M3.2 and M3.5; source implementation under review, deployment/device acceptance OPEN.
 
 Recovery and demonstration: Keep live writes disabled until configuration and authority gates pass. Use compatible additive migrations and revoke invalid sessions without deleting unrelated records. Retain the milestone demonstration and apply the common completion gates to every item.
 
