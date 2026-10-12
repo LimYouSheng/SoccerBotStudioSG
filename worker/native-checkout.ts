@@ -209,7 +209,58 @@ export async function executeNativeCheckout(options: {
     timezone: "Asia/Singapore" as const,
     intent,
   };
+  let lastOperation: Parameters<NativeExchange>[0]["kind"] | undefined;
+  let representation:
+    | { kind: "array" | "object" | "primitive" | "null"; count?: number }
+    | undefined;
+  const observeRead = (
+    kind: NonNullable<typeof lastOperation>,
+    body?: unknown,
+  ) => {
+    lastOperation = kind;
+    representation =
+      body === undefined
+        ? undefined
+        : Array.isArray(body)
+          ? { kind: "array", count: body.length }
+          : body === null
+            ? { kind: "null" }
+            : typeof body === "object"
+              ? { kind: "object", count: Object.keys(body).length }
+              : { kind: "primitive" };
+  };
+  let diagnostic:
+    | {
+        stage: "identity" | "allowance" | "prebooking" | "execution";
+        sessionIndex?: number;
+        code: string;
+        operation?: typeof lastOperation;
+        representation?: typeof representation;
+        providerUsed: number;
+      }
+    | undefined;
+  const retainFailure = (
+    error: unknown,
+    stage: NonNullable<typeof diagnostic>["stage"],
+    sessionIndex?: number,
+  ) => {
+    // Only server-defined codes and structural counts belong in private evidence.
+    // Never retain provider values, exception messages, contacts or credentials.
+    diagnostic ??= {
+      stage,
+      sessionIndex,
+      code:
+        error instanceof ApiError && /^[a-z][a-z0-9_]{0,100}$/.test(error.code)
+          ? error.code
+          : "internal_error",
+      operation: lastOperation,
+      representation,
+      providerUsed: options.accounting().used,
+    };
+  };
   const exchange: NativeExchange = async (operation, signal) => {
+    lastOperation = operation.kind;
+    representation = undefined;
     await assertGranted();
     if (cleanupMode) await provider.identity(env, control);
     if (operation.kind === "booking-cancel" && !cleanupMode)
@@ -231,7 +282,9 @@ export async function executeNativeCheckout(options: {
       ].includes(operation.kind)
     )
       return provider.nativeWrite(env, control, operation, assertGranted);
-    return provider.nativeRead(env, control, operation, signal);
+    const response = await provider.nativeRead(env, control, operation, signal);
+    observeRead(operation.kind, response.body);
+    return response;
   };
   let result: { state: string; paymentAvailable: boolean } = {
     state: "recovery_required",
@@ -239,7 +292,7 @@ export async function executeNativeCheckout(options: {
   };
   let dispatchFence: number | undefined;
   try {
-    const prebooking = provider.prebooking(env, control, contract);
+    const prebooking = provider.prebooking(env, control, contract, observeRead);
     const operations = nativeBookingOperations({
       scope,
       exchange,
@@ -250,17 +303,27 @@ export async function executeNativeCheckout(options: {
       prebooking: {
         invalidate: () => prebooking.invalidate(),
         revalidate: async (value, index) => {
-          await assertGranted();
-          const identity = await provider.identity(env, control);
-          const allowance = z
-            .object({ remaining: z.number().int().nonnegative().safe() })
-            .safeParse(identity.bookingAllowance);
-          if (
-            !allowance.success ||
-            allowance.data.remaining < value.sessions.length - (index ?? 0)
-          )
-            throw new ApiError(503, "native_booking_allowance_unavailable");
-          return prebooking.revalidate(value, index);
+          let stage: NonNullable<typeof diagnostic>["stage"] = "identity";
+          lastOperation = undefined;
+          representation = undefined;
+          try {
+            await assertGranted();
+            const identity = await provider.identity(env, control);
+            stage = "allowance";
+            const allowance = z
+              .object({ remaining: z.number().int().nonnegative().safe() })
+              .safeParse(identity.bookingAllowance);
+            if (
+              !allowance.success ||
+              allowance.data.remaining < value.sessions.length - (index ?? 0)
+            )
+              throw new ApiError(503, "native_booking_allowance_unavailable");
+            stage = "prebooking";
+            return await prebooking.revalidate(value, index);
+          } catch (error) {
+            retainFailure(error, stage, index);
+            throw error;
+          }
         },
       },
       batchSignature: (id, hash) => nativeBookingSignature(id, hash, secret),
@@ -330,7 +393,8 @@ export async function executeNativeCheckout(options: {
       );
       result = { state: "associated", paymentAvailable: true };
     }
-  } catch {
+  } catch (error) {
+    retainFailure(error, "execution");
     // A lost reply may have created native state. Retain the original attempt;
     // this one-use grant never resumes writes or exposes raw provider errors.
     if (dispatchFence !== undefined)
@@ -372,7 +436,7 @@ export async function executeNativeCheckout(options: {
   )
     .bind(
       result.state === "associated" ? "complete" : "blocked",
-      JSON.stringify(result),
+      JSON.stringify(diagnostic ? { ...result, diagnostic } : result),
       attemptId,
     )
     .run();

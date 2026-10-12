@@ -65,6 +65,7 @@ export class ProviderSession {
     env: Env,
     control: ProviderControl,
     contract?: NativeAccountContract,
+    observe?: (operation: NativeRequest["kind"], body?: unknown) => void,
   ) {
     const p = policy(env),
       secrets = this.bindScope(env);
@@ -75,7 +76,12 @@ export class ProviderSession {
         companyLogin: secrets.company,
       },
       this.catalogueReads,
-      (request, signal) => this.nativeRead(env, control, request, signal),
+      async (request, signal) => {
+        observe?.(request.kind);
+        const response = await this.nativeRead(env, control, request, signal);
+        observe?.(request.kind, response.body);
+        return response;
+      },
       contract,
     );
   }

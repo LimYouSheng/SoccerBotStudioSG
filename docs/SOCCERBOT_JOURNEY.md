@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## Native prerequisite diagnosis source — 12 October 2026
+
+Inspection found orchestration deliberately converted preflight failures into prerequisites_unavailable while the finite checkout retained no private cause. Added a bounded private diagnostic in the existing grant result, with observation of existing prebooking reads. The customer result, one-use write boundary and all prebooking checks stay intact. Synthetic regression covers malformed eligibility, unsupported required fields and exhausted allowance, verifies structural evidence without provider/contact values, and proves no booking effect or replay. Provider acceptance remains pending; private original execution and closure evidence is retained separately and does not become synthetic success. Campaign accounting is carried forward, never replenished by a stopped proof.
+
 ## Signing amendment execution and closure — 12 October 2026
 
 YS explicitly approved the prepared signing amendment. Execution applied only0015/0016, preserved every historical row, uploaded the exact sealed native release and installed the missing encrypted binding. The initial asset bucket returned documented202 but the helper expected200 and stopped. Preserved the first failure; official Cloudflare schema establishes202 intermediate and201 completed responses. Continued from the same ledger/deadline, with content-addressed missing-asset discovery, no repeated migration, no budget reset and no provider effects.

@@ -1,5 +1,9 @@
 # SoccerBotStudio — Service Contracts
 
+## Internal native prerequisite diagnosis — 12 October 2026
+
+Native checkout still returns the established state and paymentAvailable fields. When identity, allowance or prebooking fails before dispatch, its existing private result_json additionally records diagnostic stage, optional sessionIndex, safe code, operation kind, structural representation and providerUsed. Unexpected exceptions use internal_error, never exception text. Structural evidence contains only array/object/null/primitive and an optional count; no field names or values. The first captured failure is preserved through recovery. Customer status/replay reads never return this diagnostic. The provider-session observer reports existing reads to the checkout owner without changing dispatch, admission, freshness or response validation. Synthetic rejection tests assert no native write/effect and no replay.
+
 ## Native proof observations and safe RPC errors — 12 October 2026
 
 The signing prerequisite is installed and migrations0015/0016 are applied. The finite availability request returned503 before any provider dispatch or durable availability claim. Its original response code was not retained by the operator, and RPC exceptions did not preserve ApiError identity. No native attempt was prepared. Do not infer a particular account/configuration cause from that generic result.

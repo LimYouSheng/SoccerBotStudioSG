@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## Current task — preserve private prerequisite evidence, 12 October 2026
+
+The finite native checkout's prerequisite failure previously discarded its cause. Source now retains bounded private stage/code/operation/representation evidence in the existing grant result while preserving the customer response and one-use behavior. Selected synthetic cases cover eligibility representation, required fields and booking allowance, with zero booking effects, no replay and no raw provider/customer values retained. Full local Worker verification passed218/218 with no skips; source, policy, types, lint and formatting passed. Exact final CI belongs to the PR. Next ready task is a reviewable diagnostic/account-proof scope against the actual remaining budget; do not rerun a closed packet or reset counters. The latest execution/closure receipts and exact accounting remain private under work/native-completion/installed-native-proof, which supersedes older deployment/counter snapshots below. Native provider acceptance, payment and combined physical testing remain pending.
+
 ## Current task — native HTTP/RPC diagnosis after verified closure, 12 October 2026
 
 Approved signing amendment is executed and explicitly closed. Encrypted signing binding installed;0015/0016 applied and immutable. Deployed source remains510a1d7, closed version85bcd347-aaf8-48a5-b119-ed85db6400e9. Identity/provider disabled/end0, schedules empty, guest revoked, both new grants expired, every historical row preserved. Zero provider calls/bookings/links/payments/notifications. Availability returned503 before its claim; live cause remains unresolved.

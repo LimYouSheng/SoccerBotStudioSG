@@ -1,5 +1,9 @@
 # SoccerBotStudioSG engineering
 
+## Native prerequisite diagnostics — 12 October
+
+The finite checkout now retains a private failure stage, session index, safe API code, operation kind and response structure/count in its existing grant result. Customer responses and replay behavior remain unchanged; no raw provider values, error messages, credentials or contact details enter this evidence. Synthetic coverage checks malformed eligibility, unsupported required fields, exhausted booking allowance, zero booking effects and private/public separation. Current-account acceptance remains pending. Detailed execution evidence and remaining campaign accounting stay in the private operator record; no closed proof may be reopened.
+
 ## 12 October — signing installed; backend proof stopped before provider dispatch
 
 The approved amendment applied0015/0016 and deployed the sealed native source with the missing encrypted signing binding. Availability then failed before any provider call; no booking or link exists from this proof. The Worker is independently verified disabled/end0, guest revoked, grants explicitly expired, schedules unchanged and all historical rows preserved. The applied migrations are now immutable and must never be replayed.

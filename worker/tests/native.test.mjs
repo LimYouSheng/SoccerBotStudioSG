@@ -1082,6 +1082,115 @@ test("native finite checkout composes fresh checks one booking protected payment
   }
 });
 
+test("native prerequisite diagnostics retain safe private evidence without writes or customer disclosure", async () => {
+  for (const scenario of ["eligibility", "required-fields", "allowance"]) {
+    const data = await prepared(false, true, true);
+    await grantNative(data);
+    const wall = new Date(
+      data.scope.intent.sessions[0].startMs + 8 * 3600000,
+    ).toISOString();
+    const standard = nativeProviderReply(data, wall);
+    const before = calls.length;
+    reply = async (request, body) => {
+      if (
+        scenario === "allowance" &&
+        request.url.endsWith("/admin/tariff/current")
+      )
+        return Response.json({
+          limits: [{ key: "sheduler_limit", total: 100, rest: 0 }],
+        });
+      if (scenario === "eligibility" && body?.method === "getAvailableUnits")
+        return Response.json({
+          jsonrpc: "2.0",
+          id: body.id,
+          result: { private_customer_value: "must-not-be-retained" },
+        });
+      if (
+        scenario === "required-fields" &&
+        body?.method === "getAdditionalFields"
+      )
+        return Response.json({
+          jsonrpc: "2.0",
+          id: body.id,
+          result: [{ secret: "must-not-be-retained" }],
+        });
+      return standard(request, body);
+    };
+    try {
+      const response = await call("finite-checkout", data);
+      assert.equal(response.status, 200);
+      assert.equal(response.result.state, "prerequisites_unavailable");
+      assert.equal(response.result.paymentAvailable, false);
+      assert.equal(Object.hasOwn(response.result, "diagnostic"), false);
+      const row = await db
+        .prepare(
+          "SELECT result_json,state FROM native_checkout_grants WHERE attempt_id=?",
+        )
+        .bind(data.scope.attemptId)
+        .first();
+      const diagnostic = JSON.parse(row.result_json).diagnostic;
+      assert.equal(row.state, "blocked");
+      assert.equal(diagnostic.sessionIndex, 0);
+      assert.equal(
+        diagnostic.stage,
+        scenario === "allowance" ? "allowance" : "prebooking",
+      );
+      assert.equal(
+        diagnostic.code,
+        scenario === "allowance"
+          ? "native_booking_allowance_unavailable"
+          : scenario === "eligibility"
+            ? "eligibility_representation_unavailable"
+            : "native_prebooking_unavailable",
+      );
+      if (scenario !== "allowance") {
+        assert.equal(
+          diagnostic.operation,
+          scenario === "eligibility"
+            ? "eligible-instructors"
+            : "required-fields",
+        );
+        assert.deepEqual(diagnostic.representation, {
+          kind: scenario === "eligibility" ? "object" : "array",
+          count: 1,
+        });
+      }
+      assert.doesNotMatch(
+        row.result_json,
+        /must-not-be-retained|private_customer_value|secret|synthetic-admin-token|synthetic-public-token/,
+      );
+      assert.equal(
+        (
+          await db
+            .prepare(
+              "SELECT count(*) n FROM session_effects WHERE attempt_id=?",
+            )
+            .bind(data.scope.attemptId)
+            .first()
+        ).n,
+        0,
+      );
+      assert.equal(
+        calls
+          .slice(before)
+          .some(
+            (x) =>
+              ["book", "createBatch", "closeBatch"].includes(x.body?.method) ||
+              x.url.endsWith("/payment-link"),
+          ),
+        false,
+      );
+      const sent = calls.length;
+      const replay = await call("finite-checkout", data);
+      assert.equal(replay.reserved, 0);
+      assert.equal(calls.length, sent);
+      assert.equal(Object.hasOwn(replay.result, "diagnostic"), false);
+    } finally {
+      reply = undefined;
+    }
+  }
+});
+
 test("native batch rechecks guest revocation after reservation before creating a booking", async () => {
   const data = await prepared(true, true);
   const result = await call("orchestrate", {

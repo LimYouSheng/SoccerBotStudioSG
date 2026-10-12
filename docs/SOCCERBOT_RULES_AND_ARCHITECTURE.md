@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Private native prerequisite evidence — 12 October 2026
+
+The existing finite checkout/grant owns native failure diagnostics. Retain only the failed stage, selected session index, server-defined safe API code, operation kind, structural response kind/count and cumulative provider usage. Never retain response values, exception messages, contact details or credentials. This evidence is stored only in the existing grant result and is excluded from customer checkout/status responses. It adds no migration, endpoint, provider dispatch, retry, grant, budget or payment authority. Current-account acceptance remains separate from synthetic checks; historical windows/counters and original failed receipts remain intact.
+
 ## Native amendment executed and closed — 12 October 2026
 
 The owner approved installing the missing encrypted signing binding during the planned closed deployment. Both additive migrations are now applied and historical-row preservation was verified. The sealed native source is deployed; identity/provider access is disabled and campaign end is0. Its exact closed version and private execution ledger are retained in the operator evidence. The new guest is revoked, both new grants are explicitly expired, and schedules remain empty. No provider call, booking, checkout link, cancellation, payment or notification occurred. Native acceptance remains pending after availability failed before its durable read claim.
