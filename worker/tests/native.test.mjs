@@ -3070,3 +3070,131 @@ test("native inspection reports every independent predicate despite missing invo
     effects.results,
   );
 });
+
+test("native date-scoped owner exception reaches fresh availability and exact two-date preparation only", async () => {
+  const anchor = Date.parse("2026-10-12T23:40:00+08:00");
+  for (const enabled of [false, true]) {
+    const data = await prepared(false, true, true);
+    await grantNative(data);
+    const cap = createHash("sha256")
+      .update(data.cookie.split("=")[1])
+      .digest("hex");
+    const row = await db
+      .prepare(
+        "SELECT contract_json FROM native_checkout_grants WHERE capability_hash=?",
+      )
+      .bind(cap)
+      .first();
+    const contract = {
+      ...JSON.parse(row.contract_json),
+      serviceId: "2",
+      confirmedAtMs: anchor - 1000,
+      expiresAtMs: anchor + 599000,
+      ...(enabled ? { trialLeadTimeException: "owner-2026-10-14-15" } : {}),
+    };
+    await db
+      .prepare(
+        "UPDATE guest_access SET issued_ms=?,expires_ms=? WHERE capability_hash=?",
+      )
+      .bind(anchor - 1000, anchor + 600000, cap)
+      .run();
+    await db
+      .prepare(
+        "UPDATE native_checkout_grants SET attempt_id=NULL,intent_hash=NULL,contract_json=?,not_before_ms=?,expires_ms=?,available_dates_json=? WHERE capability_hash=?",
+      )
+      .bind(
+        JSON.stringify(contract),
+        anchor - 1000,
+        anchor + 590000,
+        JSON.stringify(["2026-10-14", "2026-10-15"]),
+        cap,
+      )
+      .run();
+    const standard = nativeProviderReply(data, "");
+    reply = (request, body) => {
+      const replies = {
+        getEventList: {
+          2: {
+            id: 2,
+            name: "Synthetic Session",
+            duration: 40,
+            is_active: 1,
+            is_public: 1,
+            is_recurring: 0,
+            price: "88.0000",
+            currency: "SGD",
+            unit_map: [3],
+          },
+        },
+        getUnitList: { 3: { id: 3, name: "Synthetic Trainer", is_active: 1 } },
+      };
+      if (body?.method in replies)
+        return Response.json({
+          jsonrpc: "2.0",
+          id: body.id,
+          result: replies[body.method],
+        });
+      if (body?.method === "getStartTimeMatrix")
+        return Response.json({
+          jsonrpc: "2.0",
+          id: body.id,
+          result: { [body.params[0]]: ["09:00:00"] },
+        });
+      return standard(request, body);
+    };
+    const invoke = (action, value) =>
+      call(action, { ...data, value, fixtureClockOffset: anchor - Date.now() });
+    try {
+      const first = await invoke("customer-availability", {
+        date: "2026-10-14",
+        serviceId: "2",
+      });
+      assert.equal(first.status, 200, JSON.stringify(first));
+      assert.equal(first.result.offers.length, enabled ? 1 : 0);
+      assert.equal(first.reserved, first.finished);
+      if (!enabled) continue;
+      const second = await invoke("customer-availability", {
+        date: "2026-10-15",
+        serviceId: "2",
+      });
+      assert.equal(second.result.offers.length, 1);
+      const sessions = [first.result.offers[0], second.result.offers[0]].map(
+        (v) => ({
+          serviceId: v.serviceId,
+          instructorId: v.instructorId,
+          startMs: v.startMs,
+          players: 1,
+          totalMinor: v.priceMinor,
+        }),
+      );
+      const value = {
+        key: crypto.randomUUID(),
+        accepted: true,
+        contact: data.scope.intent.contact,
+        sessions,
+      };
+      for (const rejected of [
+        { ...value, sessions: sessions.slice(0, 1) },
+        { ...value, sessions: [sessions[0], sessions[0]] },
+        {
+          ...value,
+          sessions: sessions.map((v) => ({ ...v, instructorId: "2" })),
+        },
+        { ...value, trialLeadTimeException: "owner-2026-10-14-15" },
+      ]) {
+        const out = await invoke("customer-prepare", rejected);
+        assert.equal(out.status, 409);
+        assert.equal(out.reserved, 0);
+      }
+      const before = calls.length;
+      const preparedResult = await invoke("customer-prepare", value);
+      assert.equal(preparedResult.status, 200, JSON.stringify(preparedResult));
+      assert.equal(preparedResult.reserved, 0);
+      const replay = await invoke("customer-prepare", value);
+      assert.equal(replay.result.attemptId, preparedResult.result.attemptId);
+      assert.equal(calls.length, before);
+    } finally {
+      reply = undefined;
+    }
+  }
+});

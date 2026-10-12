@@ -71,11 +71,42 @@ export const nativeAccountContractSchema = z
     bufferAfterMinutes: z.literal(10),
     clientLoginRequired: z.literal(false),
     providerSchedules: z.literal("non-overlapping"),
+    trialLeadTimeException: z.literal("owner-2026-10-14-15").optional(),
     confirmedAtMs: z.number().int().positive().safe(),
     expiresAtMs: z.number().int().positive().safe(),
   })
   .refine((value) => value.expiresAtMs > value.confirmedAtMs);
 export type NativeAccountContract = z.infer<typeof nativeAccountContractSchema>;
+// This date-specific owner exception exists only in an externally installed
+// developer contract. Customer DTOs cannot supply it; all other trials retain48h.
+export function nativeTrialLeadMs(
+  contractValue: unknown,
+  binding: CatalogueBinding,
+  session: { serviceId: string; instructorId: string; startMs: number },
+  now: number,
+) {
+  const parsed = nativeAccountContractSchema.safeParse(contractValue);
+  if (!parsed.success) return NATIVE_TRIAL_LEAD_MS;
+  const contract = parsed.data;
+  const date = new Date(session.startMs + 8 * 3600000)
+    .toISOString()
+    .slice(0, 10);
+  if (
+    contract.trialLeadTimeException === "owner-2026-10-14-15" &&
+    contract.accountId === binding.accountId &&
+    contract.environmentId === binding.environmentId &&
+    contract.companyLogin === binding.companyLogin &&
+    contract.serviceId === "2" &&
+    session.serviceId === "2" &&
+    session.instructorId === "3" &&
+    (date === "2026-10-14" || date === "2026-10-15") &&
+    contract.confirmedAtMs <= now &&
+    contract.expiresAtMs > now &&
+    contract.expiresAtMs <= Date.parse("2026-10-14T00:00:00+08:00")
+  )
+    return 24 * 3600000;
+  return NATIVE_TRIAL_LEAD_MS;
+}
 // Server-owned pre-write implementation. Reads documented current catalogue,
 // service relationship, exact slot/eligibility and required fields; never trusts
 // browser snapshots and never infers shared capacity or tax. The owner-approved
@@ -102,7 +133,10 @@ export class NativePrebooking {
     if (!Number.isInteger(sessionIndex) || !session)
       throw new ApiError(409, "native_session_missing");
     providerSelectionSchema.parse(sessionSelection(session));
-    if (session.startMs - now < NATIVE_TRIAL_LEAD_MS)
+    if (
+      session.startMs - now <
+      nativeTrialLeadMs(this.accountContract, this.binding, session, now)
+    )
       throw new ApiError(409, "native_trial_lead_time");
     if (session.startMs % 60000 !== 0)
       throw new ApiError(409, "native_start_precision_unsupported");
@@ -176,7 +210,10 @@ export class NativePrebooking {
       slot.receivedAtMs,
     ])
       freshReceipt(receipt, completed);
-    if (session.startMs - completed < NATIVE_TRIAL_LEAD_MS)
+    if (
+      session.startMs - completed <
+      nativeTrialLeadMs(this.accountContract, this.binding, session, completed)
+    )
       throw new ApiError(409, "native_trial_lead_time");
     if (
       !ids.includes(instructor.id) ||

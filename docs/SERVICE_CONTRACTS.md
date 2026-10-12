@@ -1,5 +1,45 @@
 # SoccerBotStudio — Service Contracts
 
+## Owner roster and instructor priority — 12 October 2026
+
+YS supplied the October 2026 roster and explicitly set instructor priority **Faisal → Caelan → Nabil** when multiple instructors are available. Apply priority only among instructors eligible and freshly available for the entire selected session; do not replace an unavailable preferred instructor with an unverified one. The observed developer IDs are Faisal 2, Caelan 4 and Nabil 3; these are developer mappings, not client-production IDs. The owner also states **no scheduled breaks**. Preserve gaps and end limits explicitly shown in the roster as unavailable time, and intersect “whole day”, “until” and “onwards” with studio hours 09:00–21:00 Singapore. The roster guides desired availability; it does not replace authoritative provider reads or the 40-minute session/10-minute buffer, 48-hour lead, shared-capacity and write-boundary checks.
+
+For the next developer acceptance test, YS subsequently instructed **“just use 14/15”**: select one fresh eligible session on 14 October and one on 15 October, with Nabil (developer instructor 3), service 2 and no scheduled breaks. Exclude 18 October onward as requested; no 16–17 October opening or provider schedule mutation is planned. The proposed 16 October correction and related Friday-settings request are withdrawn. Only 15 October has live availability evidence so far; 14 October remains subject to a new fresh provider read.
+
+The 48-hour limit is a conservative supervised-trial guard, not a provider-reported customer policy. YS selected 14/15 after the 48-hour conflict was explained; implement that instruction as a finite developer-contract exception, preserving a 24-hour minimum. The externally installed, source-bound native grant must explicitly carry `trialLeadTimeException: "owner-2026-10-14-15"`, service 2, exactly the approved dates, and a contract expiring before 14 October 00:00 Singapore. Availability, preparation and pre-write review only shorten the guard for matching account/environment/company, service 2, instructor 3 and those dates while the contract is valid. Preparation must contain exactly one session on each date. Customer DTOs cannot supply the exception; absent, malformed, expired, foreign or widened authority retains the default 48-hour guard or rejects. Recheck lead time after provider reads. All current eligibility, price, capacity, freshness, money, association and no-replay checks remain. This source change grants no live window, changes no provider schedule and does not claim 14 October availability.
+
+Owner-image transcription, October 2026, Singapore time. Dates 18–31 are retained as provisional reference and excluded from the next test. The image caption limits Faisal evidence to 1–10 October and Caelan evidence to 18–31 October; do not extrapolate missing dates. In particular, 19 October 13:40 is the driving-test start, not a confirmed Caelan availability start.
+
+| October date | Availability shown                                                                                    |
+| ------------ | ----------------------------------------------------------------------------------------------------- |
+| 1            | Faisal 10:00–14:45                                                                                    |
+| 2            | Faisal 10:00–15:30                                                                                    |
+| 3            | Faisal 09:00–12:00 and 13:00–15:45                                                                    |
+| 4            | Faisal until 11:00 and from 12:00                                                                     |
+| 5            | Faisal whole day                                                                                      |
+| 6            | Nabil whole day; Faisal until 14:45                                                                   |
+| 7            | Faisal until 15:30                                                                                    |
+| 8            | Nabil whole day; Faisal until 14:45                                                                   |
+| 9            | Faisal until 15:30                                                                                    |
+| 10           | Nabil 08:00–12:00; Faisal whole day                                                                   |
+| 11           | Nabil from 14:00                                                                                      |
+| 12–15        | Nabil whole day                                                                                       |
+| 16–17        | No availability listed; do not invent opening                                                         |
+| 18           | Caelan until 19:30; Nabil from 14:00                                                                  |
+| 19           | Caelan after driving test (test starts 13:40; finish/availability start unspecified); Nabil whole day |
+| 20           | Caelan and Nabil whole day                                                                            |
+| 21–22        | Caelan until 18:45; Nabil whole day                                                                   |
+| 23           | Caelan until 17:10                                                                                    |
+| 24           | Caelan until 19:30                                                                                    |
+| 25           | Caelan whole day; Nabil from 14:00                                                                    |
+| 26–27        | Caelan until 18:45; Nabil whole day                                                                   |
+| 28           | Caelan and Nabil whole day                                                                            |
+| 29           | Caelan until 18:45; Nabil whole day                                                                   |
+| 30           | Caelan until 18:45                                                                                    |
+| 31           | Caelan until 19:30                                                                                    |
+
+Live state remains independently closed at 387/512 calls, active 0, source `3af1323` / version `bd48335e-de9b-4b11-b0ba-b6ed5267f2f5`; all prior inspection authority is consumed. Single and same-date acceptance remain passed. This update records owner priority, withdraws the 16 October proposal and implements only the date-scoped developer lead-time exception. General multi-instructor priority assignment and provider schedule configuration are not deployed by this change.
+
 ## Approved setup inspection completed and closed — 12 October 2026
 
 YS explicitly approved this packet and amended limits: carry 378; up to 16 new provider calls (394/512), 40 management requests, 16 Worker requests, 4 deployments and 20 minutes; aggregate deployment ceiling 16→19, other cumulative ceilings unchanged; start before 13 October 00:35 and finish by 01:00 Singapore. The packet is now consumed. Actual use: 9 provider calls, 23 management requests, 10 Worker requests and 3 deployments in 379.696 seconds, with no unknown requests. Totals: 387 provider, 176/208 management, 78/96 Worker, 18/19 deployments, 3/4 actual attempts, 5/8 conservative book allowances and 1/1 migration. Remaining ordinary provider calls: 109; recovery reserve: 16. Unused limits do not authorize another packet or provider mutation.

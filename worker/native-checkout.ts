@@ -10,14 +10,17 @@ import {
   recordObservation,
   requireRecovery,
 } from "./journal";
-import { nativeAccountContractSchema, offeredStarts } from "./prebooking";
+import {
+  nativeAccountContractSchema,
+  offeredStarts,
+  nativeTrialLeadMs,
+} from "./prebooking";
 import {
   nativeAvailabilitySchema,
   nativePrepareSchema,
   nativeCurrentSchema,
   type nativeOfferSchema,
 } from "../src/domain/native-checkout";
-import { NATIVE_TRIAL_LEAD_MS } from "../src/domain/booking-policy";
 import { freshReceipt } from "./catalogue";
 import { orchestrateBooking } from "./orchestration";
 import {
@@ -544,27 +547,48 @@ async function customerNativeWindow(request: Request, env: Env) {
     .array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/))
     .max(2)
     .parse(JSON.parse(grant.available_dates_json));
-  return { p, access, grant, contract, dates };
+  if (
+    contract.trialLeadTimeException &&
+    (contract.serviceId !== "2" ||
+      dates.length !== 2 ||
+      [...dates].sort().join(",") !== "2026-10-14,2026-10-15" ||
+      contract.expiresAtMs > Date.parse("2026-10-14T00:00:00+08:00"))
+  )
+    throw new ApiError(503, "native_trial_exception_scope");
+  const binding = {
+    accountId: p.DEPLOYMENT_ACCOUNT_ID,
+    environmentId: p.ENVIRONMENT,
+    companyLogin: contract.companyLogin,
+  };
+  return { p, access, grant, contract, dates, binding };
 }
 export async function prepareCustomerNative(
   request: Request,
   env: Env,
   value: unknown,
 ) {
-  const { p, access, grant, contract, dates } = await customerNativeWindow(
-    request,
-    env,
-  );
+  const { p, access, grant, contract, dates, binding } =
+    await customerNativeWindow(request, env);
   const input = nativePrepareSchema.parse(value),
     now = Date.now();
   if (grant.read_state !== "available")
     throw new ApiError(503, "native_availability_unavailable");
   if (
     input.sessions.length > 2 ||
+    (contract.trialLeadTimeException &&
+      (input.sessions.length !== 2 ||
+        input.sessions.some((session) => session.instructorId !== "3") ||
+        input.sessions
+          .map((session) =>
+            new Date(session.startMs + 8 * 3600000).toISOString().slice(0, 10),
+          )
+          .sort()
+          .join(",") !== "2026-10-14,2026-10-15")) ||
     input.sessions.some(
       (session) =>
         session.serviceId !== contract.serviceId ||
-        session.startMs - now < NATIVE_TRIAL_LEAD_MS ||
+        session.startMs - now <
+          nativeTrialLeadMs(contract, binding, session, now) ||
         !dates.includes(
           new Date(session.startMs + 8 * 3600000).toISOString().slice(0, 10),
         ),
@@ -649,10 +673,8 @@ export async function customerNativeAvailability(options: {
   accounting: () => { used: number; active: number };
 }) {
   const { request, env, provider, date, serviceId } = options;
-  const { grant, access, contract, dates } = await customerNativeWindow(
-    request,
-    env,
-  );
+  const { grant, access, contract, dates, binding } =
+    await customerNativeWindow(request, env);
   if (
     !dates.includes(date) ||
     serviceId !== contract.serviceId ||
@@ -729,7 +751,17 @@ export async function customerNativeAvailability(options: {
       observedAtMs = Math.min(observedAtMs, response.receivedAtMs);
       for (const time of offeredStarts(response.body, date)) {
         const startMs = Date.parse(`${date}T${time}+08:00`);
-        if (startMs - Date.now() < NATIVE_TRIAL_LEAD_MS) continue;
+        const now = Date.now();
+        if (
+          startMs - now <
+          nativeTrialLeadMs(
+            contract,
+            binding,
+            { serviceId, instructorId: instructor.id, startMs },
+            now,
+          )
+        )
+          continue;
         // Unexpected simultaneous eligibility is configuration drift. Never pick
         // a provider by order or silently hide a competing studio allocation.
         if (
