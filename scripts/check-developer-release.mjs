@@ -287,6 +287,8 @@ try {
     "webhook_capture_windows",
     "webhook_receipts",
     "webhook_subscription_grants",
+    "webhook_recovery_scopes",
+    "webhook_pending_hints",
   ])
     assert.equal(
       (await db.prepare(`SELECT count(*) n FROM "${table}"`).first()).n,

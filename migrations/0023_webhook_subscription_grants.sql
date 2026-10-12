@@ -36,3 +36,17 @@ CREATE TABLE webhook_subscription_grants (
   subscription_id TEXT,
   result_json TEXT CHECK(result_json IS NULL OR json_valid(result_json))
 );
+-- Inert until an evidenced mapper is enabled in tested source. This binds a
+-- future hint to one approved new attempt, including callback-before-association.
+CREATE TABLE webhook_recovery_scopes (
+  window_id TEXT PRIMARY KEY NOT NULL REFERENCES webhook_capture_windows(id),
+  attempt_id TEXT UNIQUE NOT NULL REFERENCES attempts(id)
+);
+CREATE TABLE webhook_pending_hints (
+  window_id TEXT NOT NULL REFERENCES webhook_recovery_scopes(window_id),
+  body_digest TEXT NOT NULL,
+  booking_id TEXT NOT NULL CHECK(length(booking_id) BETWEEN 1 AND 15 AND booking_id NOT GLOB '*[^0-9]*' AND substr(booking_id,1,1) BETWEEN '1' AND '9'),
+  state TEXT NOT NULL CHECK(state IN ('pending','matched','ignored')),
+  PRIMARY KEY(window_id,body_digest),
+  FOREIGN KEY(window_id,body_digest) REFERENCES webhook_receipts(window_id,body_digest)
+);

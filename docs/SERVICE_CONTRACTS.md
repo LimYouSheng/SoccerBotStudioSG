@@ -14,6 +14,8 @@ Use Nabil3/service2 on15October at/after15:40 Singapore, fresh whole-session ava
 
 Create durably claims once, reads the active subscription snapshot, refuses an existing campaign destination or five new_booking entries, then reserves an uncertain create before POST. Acceptance requires exactly one fresh matching ID and an unchanged prior snapshot. Cleanup independently reads and matches that ID (or the unique new destination against the retained baseline after an uncertain create), reserves DELETE once, then proves the original snapshot restored. An uncertain DELETE is never repeated. An unresolved create with no uniquely identified new subscription cannot be declared closed. Only IDs/event/active/destination digest are retained; response bodies, tokens and contact values are not operator results. A204 delete response is accepted as transport completion, with fresh readback still required.
 
+Migration0023 also creates empty recovery-scope and pending-hint tables: one window binds one attempt; each minimal booking reference must reference an admitted receipt. They are inert in this capture-only source. They reserve durable storage for callbacks arriving before association without assuming the provider field path or granting payment authority.
+
 This supports capture only. Actual payload mapping, callback-driven durable recovery and the no-return live proof remain pending; owner-controlled paid settlement and customer browser acceptance remain separate.
 
 ## Payment correction and authenticated webhook capture — 13 October 2026
