@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## Current source repair — 13 October 2026
+
+YS requested the subscription parser fix. Exact string"0"/"1" and numeric0/1 are now accepted; unknown flags remain rejected with private field codes. Identity/baseline/no-replay checks remain intact. This repair is source-only; the actual closed Worker remains27f03fc at460/640 and the original subscription remains unresolved. See Service Contracts for input/error semantics and Journey for regression evidence. No successor live flight is authorized.
+
 ## Latest result: subscription diagnostic closed — 13 October 2026
 
 Approved packet46b93ebc17fa7 observed a string `is_active`, rejected by the numeric-only subscription validator. Its exact value and subscription identity remain unproven. Independent closure at07:39:36Singapore verified source27f03fc/version35894e44-9bfd-4142-9ff3-91686b87fd78, disabled/end0/active0,460/640 provider calls and23 preserved historical tables. Carried management263, Worker115, deployments27. The read succeeded; the original subscription remains unresolved. No successor live authority or owner acceptance. See the latest Service Contracts and Journey entries for exact evidence and repair boundaries.

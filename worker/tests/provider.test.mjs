@@ -2374,6 +2374,7 @@ async function subscriptionFixture({
   deleteFailure = false,
   maximum = 80,
   changeAfterCreate = false,
+  createdFlag = 1,
 } = {}) {
   let records = structuredClone(entries),
     creates = 0,
@@ -2399,7 +2400,7 @@ async function subscriptionFixture({
           id: 99,
           event: body.event,
           url: body.url,
-          is_active: 1,
+          is_active: createdFlag,
         });
         if (changeAfterCreate) records[0] = { ...records[0], is_active: 0 };
         return createFailure
@@ -2495,6 +2496,116 @@ test("finite webhook subscription preserves prior destinations and deletes only 
     assert.doesNotMatch(
       JSON.stringify([created, closed, await f.row()]),
       /prior\.invalid|X-Token|synthetic-admin-token/,
+    );
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("finite webhook subscription accepts exact string flags and restores mixed representation baselines", async () => {
+  const prior = [
+    {
+      id: "7",
+      event: "new_booking",
+      url: "https://prior.invalid/string",
+      is_active: "1",
+    },
+    {
+      id: 8,
+      event: "new_invoice",
+      url: "https://prior.invalid/number",
+      is_active: 1,
+    },
+  ];
+  const f = await subscriptionFixture({ entries: prior, createdFlag: "1" });
+  try {
+    const created = await f.manage("create");
+    assert.equal(created.body.verified, true, JSON.stringify(created.body));
+    assert.equal((await f.row()).subscription_id, "99");
+    const closed = await f.manage("cleanup");
+    assert.equal(closed.body.verified, true, JSON.stringify(closed.body));
+    assert.equal(closed.body.state, "closed");
+    assert.deepEqual(f.records(), prior);
+    assert.deepEqual(f.deletes, ["99"]);
+    assert.equal(f.creates(), 1);
+    const count = f.calls.length;
+    assert.equal((await f.manage("create")).status, 503);
+    assert.equal((await f.manage("cleanup")).status, 503);
+    assert.equal(f.calls.length, count);
+    assert.doesNotMatch(
+      JSON.stringify([created, closed, await f.row()]),
+      /prior\.invalid|synthetic-admin-token/,
+    );
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("finite webhook subscription string zero remains inactive and malformed flags cannot authorize writes", async () => {
+  for (const flag of [
+    "0",
+    true,
+    false,
+    "true",
+    "false",
+    "",
+    "01",
+    " 1",
+    "1 ",
+    2,
+    null,
+    undefined,
+  ]) {
+    const f = await subscriptionFixture({
+      entries: [
+        {
+          id: "7",
+          event: "new_booking",
+          url: "https://prior.invalid/must-not-escape",
+          is_active: flag,
+        },
+      ],
+    });
+    try {
+      const result = await f.manage("create");
+      assert.equal(result.body.verified, false);
+      assert.equal(result.body.state, "blocked");
+      assert.equal(
+        result.body.reason,
+        flag === "0"
+          ? "webhook_subscription_unavailable"
+          : "setup_subscription_is_active_invalid",
+      );
+      assert.equal(f.creates(), 0);
+      assert.deepEqual(f.deletes, []);
+      assert.equal((await f.row()).subscription_id, null);
+      assert.doesNotMatch(
+        JSON.stringify(result),
+        /prior\.invalid|must-not-escape/,
+      );
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+test("finite webhook subscription retains a private field error after create without replay or unsafe cleanup", async () => {
+  const f = await subscriptionFixture({
+    createdFlag: "private-unsupported-flag",
+  });
+  try {
+    const result = await f.manage("create");
+    assert.equal(result.body.state, "create_unknown");
+    assert.equal(result.body.reason, "setup_subscription_is_active_invalid");
+    assert.equal(f.creates(), 1);
+    assert.equal((await f.row()).subscription_id, null);
+    const count = f.calls.length;
+    assert.equal((await f.manage("create")).status, 503);
+    assert.equal(f.calls.length, count);
+    const cleanup = await f.manage("cleanup");
+    assert.equal(cleanup.body.state, "blocked");
+    assert.equal(cleanup.body.reason, "setup_subscription_is_active_invalid");
+    assert.deepEqual(f.deletes, []);
+    assert.doesNotMatch(
+      JSON.stringify([result, cleanup, await f.row()]),
+      /private-unsupported-flag|synthetic-admin-token/,
     );
   } finally {
     await f.mf.dispose();

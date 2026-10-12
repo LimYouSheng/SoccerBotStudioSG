@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Subscription flag repair prepared — 13 October 2026
+
+The owning subscription normalizer now permits exact string"0"/"1" alongside numeric0/1 and uses the shared flag decision. Unknown forms remain rejected; inactive flags cannot authorize lifecycle actions. Field-level failures use fixed codes without provider values. Unknown-create/no-replay, exact subscription identity and prior-baseline preservation remain mandatory. Service Contracts owns the repaired input/error contract; Journey records the reproduced failure and verification.
+
+This is source work only. The developer Worker remains independently closed on source27f03fc at460/640; the original subscription is unresolved. No cleanup, booking, payment or owner acceptance is authorized by the source repair.
+
 ## Current webhook diagnostic result — 13 October 2026
 
 Approved packet46b93ebc17fa7 completed one read and independently closed at07:39:36Singapore. Actual active-subscription metadata exposes `is_active` as a string; the current numeric0/1-only validator rejects that representation. No values or subscription identity were retained, so this finding is not cleanup or webhook acceptance. Preserve strict flags, association, historical rows and immutable migrations0001–0023 when repairing the owning normalizer.

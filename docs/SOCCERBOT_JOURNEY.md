@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Subscription flag mismatch repaired in its owner — 13 October 2026
+
+YS requested “ok fix” after the read-only diagnostic. A new lifecycle regression with string flags failed on the prior numeric-only parser with `webhook_subscription_proof_incomplete`; the private failing receipt is retained. The normalizer now explicitly permits only string"0"/"1" and existing numeric0/1, delegates the boolean decision to the shared flag owner, and emits fixed field rejection codes. The same lifecycle regression then passed. The actual diagnostic did not retain flag values, so this is a strict representation repair rather than a claim that the live subscription was revalidated or removed.
+
+New coverage preserves mixed-representation baselines, rejects inactive/malformed values, retains create_unknown on rejected post-create read, prevents replay and withholds unsafe cleanup. No external provider operation is part of these synthetic tests. All14 affected setup/lifecycle tests passed with zero failures/skips; strict Worker types, affected lint, source/Worker/policy guards and formatting passed. Fresh exact-source full PR gates remain required. Remote source27f03fc remains closed at460/640 with all23 historical tables preserved; the unresolved subscription and owner acceptance remain pending.
+
 ## Actual subscription string mismatch observed — 13 October 2026
 
 After YS approved packet46b93ebc17fa7, its exact CI-passing source27f03fc executed one active-subscription read. Five physical calls advanced455→460. The response was a one-entry array whose `id`, `url`, `event`, `is_active` and `changed` fields were strings. This establishes the rejected `is_active` type without guessing a boolean alias. Its literal value and subscription identity were intentionally not captured; original post-create failure details remain unavailable.

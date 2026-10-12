@@ -1,5 +1,13 @@
 # SoccerBotStudio — Service Contracts
 
+## Subscription flag repair — 13 October 2026
+
+YS requested the fix after the authenticated diagnostic established string-valued `is_active`. The existing `subscriptionSnapshot` now accepts only numeric0/1 and exact string"0"/"1", then uses the shared provider flag normalizer. It does not coerce booleans, padded strings, arbitrary text or missing values. String"0" remains inactive and cannot authorize the active-subscription lifecycle. Exact ID/event/destination matching, unique IDs, unchanged baseline, one-write claims, budget and recovery-reserve guards remain unchanged.
+
+Schema rejection now returns a fixed source-owned field code for id/event/is_active/url or the envelope, without Zod messages, response values or arbitrary keys. A rejected post-create read still retains `create_unknown`, forbids create replay and withholds DELETE unless fresh exact identity/baseline checks pass. The diagnostic observed the flag's type, not its literal value; this source repair is not live cleanup acceptance.
+
+Regression coverage exercises mixed numeric/string baselines, accepted string flags through create/cleanup, inactive and malformed flags, redacted post-create failure and no unsafe replay/deletion. Release metadata names the actual closed prior version35894e44-9bfd-4142-9ff3-91686b87fd78; no migration is pending. All23 applied migration bytes and closed460/640 remote state remain unchanged. Further live cleanup requires a separately sealed, CI-passing finite packet and explicit authority; no successor is activated by this source fix.
+
 ## Subscription diagnostic executed and closed — 13 October 2026
 
 YS approved read-only packet `46b93ebc17fa78d20c44a108b6ba475a7e9bdb3149c474f3e2a402db00e32464` as a specific exception to the unresolved-effects stop. It executed once on source `27f03fca0ef63cff65a90d27dca6cd6eb228d320`, after all three CI38316237195 gates and artifact11777440913 verified 150 sealed files and 276 Worker tests. Artifact SHA256: `e615eb64461f42abc092b87dd7f6d37a72a47f2b8cb2effc2bc8b3afc5ba1ed6`.

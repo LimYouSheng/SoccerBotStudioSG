@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { ApiError, digest } from "./policy";
-import { bookingWallTime, providerId } from "./provider-normalization";
+import {
+  bookingWallTime,
+  providerFlag,
+  providerId,
+} from "./provider-normalization";
 import type { NativeExchange } from "./provider-transport";
 
 const time = /^([01]\d|2[0-3]):[0-5]\d:00$/;
@@ -95,29 +99,50 @@ export async function inspectNativeSetup(
 }
 
 export async function subscriptionSnapshot(raw: unknown) {
-  const entries = z
+  const parsed = z
     .array(
       z.object({
         id: z.union([z.string(), z.number()]),
         event: events,
-        is_active: z.union([z.literal(0), z.literal(1)]),
+        is_active: z.union([
+          z.literal(0),
+          z.literal(1),
+          z.literal("0"),
+          z.literal("1"),
+        ]),
         url: z
           .url()
           .refine((url) => ["https:", "http:"].includes(new URL(url).protocol)),
       }),
     )
     .max(64)
-    .parse(raw);
+    .safeParse(raw);
+  if (!parsed.success) {
+    // Only fixed field codes leave this boundary; never echo Zod messages,
+    // provider values, arbitrary keys, URLs or response bodies.
+    const field = parsed.error.issues[0]?.path[1];
+    const code =
+      field === "is_active"
+        ? "setup_subscription_is_active_invalid"
+        : field === "id"
+          ? "setup_subscription_id_invalid"
+          : field === "event"
+            ? "setup_subscription_event_invalid"
+            : field === "url"
+              ? "setup_subscription_url_invalid"
+              : "setup_subscription_representation_invalid";
+    throw new ApiError(503, code);
+  }
   const subscriptions = [];
   const ids = new Set<string>();
-  for (const entry of entries) {
+  for (const entry of parsed.data) {
     const id = providerId(entry.id);
     if (ids.has(id)) throw new ApiError(503, "setup_subscription_duplicate");
     ids.add(id);
     subscriptions.push({
       id,
       event: entry.event,
-      active: entry.is_active === 1,
+      active: providerFlag(entry.is_active) === true,
       destinationSha256: await digest(entry.url),
     });
   }
