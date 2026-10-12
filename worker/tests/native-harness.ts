@@ -8,6 +8,8 @@ import {
 import {
   normalizeNativeReads,
   normalizeNativeCreation,
+  normalizeNativeSession,
+  nativeValidationReason,
   minorUnits,
   providerFlag,
   bookingWallTime,
@@ -29,7 +31,8 @@ import { providerRequest, type NativeRequest } from "../provider-transport";
 import { ProviderSession, type ProviderControl } from "../provider-session";
 import { decideStoredConfirmation, checkoutContext } from "../confirmation";
 import { runNativeReadback } from "../recovery";
-import { policy } from "../policy";
+import { recoverNativeResidual } from "../native-residual";
+import { policy, rpcOutcome } from "../policy";
 import { orchestrateBooking, prepareAttempt } from "../index";
 import worker from "../index";
 export { SoccerBotAccountCoordinator } from "../coordinator";
@@ -58,11 +61,13 @@ const harness = {
       fixtureExpireAfter?: number;
       fixtureClockOffset?: number;
       batchRequiresConfirm?: unknown;
+      batchReceipt?: unknown;
     };
     let reserved = 0,
       finished = 0,
       requests = 0;
     const sent: NativeRequest[] = [];
+    let validation: ReturnType<typeof nativeValidationReason>;
     const realNow = Date.now;
     let clockOffset = input.fixtureClockOffset ?? 0;
     if (
@@ -149,17 +154,20 @@ const harness = {
         if (operation.kind === "book") {
           const creation = input.creation as { bookings: unknown[] };
           return {
-            body: {
-              require_confirm: input.batchRequiresConfirm ?? false,
-              invoice: null,
-              batch_id: 601,
-              batch_hash: "synthetic-batch-hash",
-              bookings: [
-                creation.bookings[
-                  sent.filter((item) => item.kind === "book").length - 1
-                ],
-              ],
-            },
+            body:
+              input.batchReceipt !== undefined
+                ? input.batchReceipt
+                : {
+                    require_confirm: input.batchRequiresConfirm ?? false,
+                    invoice: null,
+                    batch_id: 601,
+                    batch_hash: "synthetic-batch-hash",
+                    bookings: [
+                      creation.bookings[
+                        sent.filter((item) => item.kind === "book").length - 1
+                      ],
+                    ],
+                  },
             receivedAtMs: input.now,
           };
         }
@@ -225,6 +233,19 @@ const harness = {
           };
           break;
         }
+        case "validation-rpc":
+          result = await rpcOutcome(async () =>
+            normalizeNativeCreation(input.creation, context),
+          );
+          break;
+        case "session":
+          result = normalizeNativeSession(
+            input.creation,
+            context,
+            0,
+            input.scenario === "batch-item" ? "batch-item" : "finalized",
+          );
+          break;
         case "creation": {
           const created = normalizeNativeCreation(input.creation, context);
           result = {
@@ -314,6 +335,21 @@ const harness = {
           });
           break;
         }
+        case "residual-diagnostic":
+          result = await recoverNativeResidual({
+            db: env.STATE,
+            scope: input.scope,
+            exchange,
+            signingSecret: "synthetic-signing-secret",
+            expiresMs: input.now + 120000,
+            authority: {
+              sourceRevision: "c".repeat(40),
+              expectedBookingIds: ["701"],
+            },
+            assertGranted: async () => {},
+            invalidate: () => {},
+          });
+          break;
         case "compensate": {
           result = await compensateNativeAttempt({
             operatorRecovery: input.operatorRecovery,
@@ -421,6 +457,9 @@ const harness = {
             batchSignature: async (id, hash) =>
               nativeBookingSignature(id, hash, "synthetic-signing-secret"),
           });
+          operations.onFailure = (error) => {
+            validation ??= nativeValidationReason(error);
+          };
           result = await orchestrateBooking(
             new Request("https://soccerbot.test/", {
               headers: { cookie: input.cookie },
@@ -484,11 +523,19 @@ const harness = {
         default:
           throw new Error("unknown fixture action");
       }
-      return Response.json({ result, reserved, finished, requests, sent });
+      return Response.json({
+        result,
+        reserved,
+        finished,
+        requests,
+        sent,
+        validation,
+      });
     } catch (error) {
       return Response.json(
         {
           error: error instanceof Error ? error.message : "failed",
+          validation: nativeValidationReason(error),
           reserved,
           finished,
           requests,

@@ -1,3 +1,4 @@
+import { nativeValidationReason } from "./provider-normalization";
 import { z } from "zod";
 import { ApiError, policy } from "./policy";
 import {
@@ -131,7 +132,12 @@ export async function recoverNativeResidual(options: {
   } catch (error) {
     return {
       state: "recovery_required",
-      diagnostic: { code: safeNativeFailure(error), operation, representation },
+      diagnostic: {
+        code: safeNativeFailure(error),
+        validation: nativeValidationReason(error),
+        operation,
+        representation,
+      },
     };
   } finally {
     clearTimeout(timer);

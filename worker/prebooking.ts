@@ -51,7 +51,7 @@ export function offeredStarts(raw: unknown, date: string): string[] {
 export function eligibleInstructors(raw: unknown): string[] {
   if (!Array.isArray(raw) || raw.length > CATALOGUE_RECORD_LIMIT)
     throw new ApiError(503, "eligibility_representation_unavailable");
-  const ids = raw.map(providerId);
+  const ids = raw.map((value) => providerId(value));
   if (new Set(ids).size !== ids.length)
     throw new ApiError(503, "eligibility_representation_unavailable");
   return ids;

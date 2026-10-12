@@ -9,6 +9,10 @@ import {
   normalizeNativeReads,
   providerId,
   bookingWallTime,
+  nativeRecord,
+  nativeSingle,
+  nativeHash,
+  rejectNative,
 } from "./provider-normalization";
 import type { BookingOperations } from "./orchestration";
 import { nativeBookFields, type NativeExchange } from "./provider-transport";
@@ -114,7 +118,7 @@ export function nativeBookingOperations(options: {
           throw new ApiError(409, "native_batch_not_claimed");
         await context.assertCurrent();
         const batch = await options.exchange({ kind: "batch-create" });
-        batchId = providerId(batch.body);
+        batchId = providerId(batch.body, "batch.id");
         await options.db
           .prepare(
             "UPDATE session_effects SET outcome='observed',reference_id=? WHERE attempt_id=? AND step='native-batch' AND outcome='unknown'",
@@ -153,33 +157,27 @@ export function nativeBookingOperations(options: {
       // Retain the returned reference before validating its business fields.
       // This is a recovery candidate, never an accepted association. A missing
       // key still leaves the known ID in the journal without authorizing reads.
-      const receipt = z
-        .object({
-          bookings: z
-            .array(
-              z.object({
-                id: z.unknown(),
-                hash: z.unknown().optional(),
-                client_id: z.unknown().optional(),
-              }),
-            )
-            .length(1),
-        })
-        .parse(response.body).bookings[0];
+      const receipt = nativeSingle(
+        nativeRecord(response.body, "creation").bookings,
+        "creation.bookings",
+      );
       const receiptHash = z
         .string()
         .regex(/^[A-Za-z0-9_-]{8,256}$/)
         .safeParse(receipt.hash);
       let receiptCustomerId: string | undefined;
       try {
-        receiptCustomerId = providerId(receipt.client_id);
+        receiptCustomerId = providerId(
+          receipt.client_id,
+          "creation.booking.client_id",
+        );
       } catch {
         /* Missing client evidence is not invented. */
       }
       await retainNativeBookingKey(
         options.db,
         options.scope.attemptId,
-        providerId(receipt.id),
+        providerId(receipt.id, "creation.booking.id"),
         receiptHash.success ? receiptHash.data : undefined,
         context.sessionIndex,
         intent.sessions.length,
@@ -197,35 +195,36 @@ export function nativeBookingOperations(options: {
         intent.sessions.length > 1 &&
         context.sessionIndex === 0
       ) {
-        const customer = z
-          .object({
-            bookings: z
-              .array(
-                z.object({
-                  client_hash: z.string().regex(/^[A-Za-z0-9_-]{8,256}$/),
-                }),
-              )
-              .length(1),
-          })
-          .parse(response.body);
-        clientHash = customer.bookings[0].client_hash;
+        clientHash = nativeHash(
+          receipt.client_hash,
+          "creation.booking.client_hash",
+        );
       }
       if (bookingIds.includes(key.bookingId))
         throw new ApiError(409, "native_duplicate_booking");
       bookingIds.push(key.bookingId);
       if (batchId) {
-        const batch = z
-          .object({
-            batch_id: z.union([z.string(), z.number()]),
-            batch_hash: z.string().regex(/^[A-Za-z0-9_-]{8,256}$/),
-          })
-          .parse(response.body);
-        if (
-          providerId(batch.batch_id) !== batchId ||
-          (batchHash !== undefined && batchHash !== batch.batch_hash)
-        )
-          throw new ApiError(409, "native_batch_mismatch");
-        batchHash = batch.batch_hash;
+        const batch = nativeRecord(response.body, "creation");
+        const returnedId = providerId(batch.batch_id, "creation.batch_id");
+        const returnedHash = nativeHash(
+          batch.batch_hash,
+          "creation.batch_hash",
+        );
+        if (returnedId !== batchId)
+          rejectNative(
+            "creation.batch_id",
+            "mismatch",
+            409,
+            "native_batch_mismatch",
+          );
+        if (batchHash !== undefined && batchHash !== returnedHash)
+          rejectNative(
+            "creation.batch_hash",
+            "mismatch",
+            409,
+            "native_batch_mismatch",
+          );
+        batchHash = returnedHash;
       } else {
         created = normalizeNativeCreation(response.body, {
           ...options.scope,
@@ -669,23 +668,34 @@ async function readNativeKeySet(options: {
       { kind: "booking-read", bookingId: key.bookingId, signature },
       options.signal,
     );
-    const booking = z
-      .object({
-        id: z.unknown(),
-        invoice_id: z.unknown(),
-        client_id: z.unknown(),
-      })
-      .parse(response.body);
-    const nativeInvoice = providerId(booking.invoice_id),
-      nativeCustomer = providerId(booking.client_id);
+    const booking = nativeRecord(response.body, "booking");
+    const nativeInvoice = providerId(booking.invoice_id, "booking.invoice_id"),
+      nativeCustomer = providerId(booking.client_id, "booking.client_id");
+    if (providerId(booking.id, "booking.id") !== key.bookingId)
+      rejectNative(
+        "booking.id",
+        "mismatch",
+        409,
+        "native_recovery_association_conflict",
+      );
     if (
-      providerId(booking.id) !== key.bookingId ||
       (key.nativeCustomerId !== undefined &&
         key.nativeCustomerId !== nativeCustomer) ||
-      (invoiceId !== undefined && invoiceId !== nativeInvoice) ||
       (nativeCustomerId !== undefined && nativeCustomerId !== nativeCustomer)
     )
-      throw new ApiError(409, "native_recovery_association_conflict");
+      rejectNative(
+        "booking.client_id",
+        "mismatch",
+        409,
+        "native_recovery_association_conflict",
+      );
+    if (invoiceId !== undefined && invoiceId !== nativeInvoice)
+      rejectNative(
+        "booking.invoice_id",
+        "mismatch",
+        409,
+        "native_recovery_association_conflict",
+      );
     invoiceId = nativeInvoice;
     nativeCustomerId = nativeCustomer;
     bookings.push(response.body);

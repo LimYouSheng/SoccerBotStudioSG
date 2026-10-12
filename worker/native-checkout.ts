@@ -1,3 +1,5 @@
+import { nativeValidationReason } from "./provider-normalization";
+import { safeNativeFailure } from "./native-residual";
 import { z } from "zod";
 import { authenticate } from "./access";
 import { ApiError, digest, policy } from "./policy";
@@ -213,7 +215,7 @@ export async function executeNativeCheckout(options: {
   let representation:
     | { kind: "array" | "object" | "primitive" | "null"; count?: number }
     | undefined;
-  const observeRead = (
+  const observeResponse = (
     kind: NonNullable<typeof lastOperation>,
     body?: unknown,
   ) => {
@@ -235,6 +237,7 @@ export async function executeNativeCheckout(options: {
           "identity" | "allowance" | "prebooking" | "execution" | "cleanup";
         sessionIndex?: number;
         code: string;
+        validation?: ReturnType<typeof nativeValidationReason>;
         operation?: typeof lastOperation;
         representation?: typeof representation;
         providerUsed: number;
@@ -251,12 +254,8 @@ export async function executeNativeCheckout(options: {
     const failure = {
       stage,
       sessionIndex,
-      code:
-        error instanceof ApiError && /^[a-z][a-z0-9_]{0,100}$/.test(error.code)
-          ? error.code
-          : error instanceof z.ZodError
-            ? "provider_schema_invalid"
-            : "internal_error",
+      code: safeNativeFailure(error),
+      validation: nativeValidationReason(error),
       operation: lastOperation,
       representation,
       providerUsed: options.accounting().used,
@@ -286,12 +285,20 @@ export async function executeNativeCheckout(options: {
         "payment-link",
         "booking-cancel",
       ].includes(operation.kind)
-    )
-      return provider.nativeWrite(env, control, operation, assertGranted);
+    ) {
+      const response = await provider.nativeWrite(
+        env,
+        control,
+        operation,
+        assertGranted,
+      );
+      observeResponse(operation.kind, response.body);
+      return response;
+    }
     signal?.throwIfAborted();
     await provider.identity(env, control);
     const response = await provider.nativeRead(env, control, operation, signal);
-    observeRead(operation.kind, response.body);
+    observeResponse(operation.kind, response.body);
     return response;
   };
   let result: { state: string; paymentAvailable: boolean } = {
@@ -300,7 +307,12 @@ export async function executeNativeCheckout(options: {
   };
   let dispatchFence: number | undefined;
   try {
-    const prebooking = provider.prebooking(env, control, contract, observeRead);
+    const prebooking = provider.prebooking(
+      env,
+      control,
+      contract,
+      observeResponse,
+    );
     const operations = nativeBookingOperations({
       scope,
       exchange,

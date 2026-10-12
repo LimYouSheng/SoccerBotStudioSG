@@ -1723,11 +1723,34 @@ test("native checkout retains independent execution and cleanup failures private
     assert.equal(saved.diagnostic.operation, "book");
     assert.equal(saved.cleanupDiagnostic.stage, "cleanup");
     assert.equal(saved.cleanupDiagnostic.operation, "booking-read");
-    assert.equal(typeof saved.diagnostic.code, "string");
+    assert.equal(saved.diagnostic.code, "native_representation_unverified");
+    assert.deepEqual(saved.diagnostic.validation, {
+      field: "creation.booking.unit_id",
+      problem: "mismatch",
+    });
+    assert.deepEqual(saved.diagnostic.representation, {
+      kind: "object",
+      count: Object.keys(data.creation).length,
+    });
+    assert.deepEqual(saved.cleanupDiagnostic.validation, {
+      field: "booking.invoice_id",
+      problem: "missing",
+    });
     assert.ok(!row.result_json.includes("synthetic-booking-hash"));
     const count = calls.length;
     assert.equal((await call("finite-checkout", data)).reserved, 0);
     assert.equal(calls.length, count);
+    assert.equal(
+      (
+        await db
+          .prepare(
+            "SELECT result_json FROM native_checkout_grants WHERE attempt_id=?",
+          )
+          .bind(data.scope.attemptId)
+          .first()
+      ).result_json,
+      row.result_json,
+    );
     assert.equal(
       calls.slice(before).filter((c) => c.body?.method === "book").length,
       1,
@@ -2192,4 +2215,350 @@ test("native customer availability preserves provider offers caches bounded read
   } finally {
     reply = undefined;
   }
+});
+
+test("native creation diagnostics distinguish missing malformed and mismatched fields without provider values", async () => {
+  const cases = [
+    ["require_confirm", undefined, "creation.require_confirm", "missing"],
+    [
+      "require_confirm",
+      "sensitive-marker",
+      "creation.require_confirm",
+      "malformed",
+    ],
+    ["require_confirm", true, "creation.require_confirm", "mismatch"],
+    ["bookings", null, "creation.bookings", "missing"],
+    ["bookings", "sensitive-marker", "creation.bookings", "malformed"],
+    ["bookings", [], "creation.bookings", "mismatch"],
+    [
+      "bookings.0.require_payment",
+      undefined,
+      "creation.booking.require_payment",
+      "missing",
+    ],
+    [
+      "bookings.0.require_payment",
+      "sensitive-marker",
+      "creation.booking.require_payment",
+      "malformed",
+    ],
+    [
+      "bookings.0.is_confirmed",
+      false,
+      "creation.booking.is_confirmed",
+      "mismatch",
+    ],
+    ["bookings.0.client_id", "52", "creation.booking.client_id", "mismatch"],
+    ["bookings.0.event_id", "13", "creation.booking.event_id", "mismatch"],
+    ["bookings.0.unit_id", undefined, "creation.booking.unit_id", "missing"],
+    [
+      "bookings.0.unit_id",
+      "sensitive-marker",
+      "creation.booking.unit_id",
+      "malformed",
+    ],
+    ["bookings.0.unit_id", "15", "creation.booking.unit_id", "mismatch"],
+    [
+      "bookings.0.start_date_time",
+      "2026-10-10 09:01:00",
+      "creation.booking.start_date_time",
+      "mismatch",
+    ],
+    [
+      "bookings.0.start_date_time",
+      "2026-02-30 09:00:00",
+      "creation.booking.start_date_time",
+      "malformed",
+    ],
+    [
+      "bookings.0.end_date_time",
+      "2026-10-10 09:40:00",
+      "creation.booking.end_date_time",
+      "mismatch",
+    ],
+    ["bookings.0.hash", undefined, "creation.booking.hash", "missing"],
+    [
+      "bookings.0.hash",
+      { secret: "sensitive-marker" },
+      "creation.booking.hash",
+      "malformed",
+    ],
+    ["bookings.0.id", undefined, "creation.booking.id", "missing"],
+    ["bookings.0.id", "sensitive-marker", "creation.booking.id", "malformed"],
+  ];
+  for (const [path, value, field, problem] of cases) {
+    const data = input(false);
+    const parts = path.split(".");
+    const target = parts.slice(0, -1).reduce((o, key) => o[key], data.creation);
+    if (value === undefined) delete target[parts.at(-1)];
+    else target[parts.at(-1)] = value;
+    data.creation["sensitive-marker"] = { password: "sensitive-marker" };
+    const result = await call("session", data);
+    assert.equal(result.status, 409, path);
+    assert.equal(result.error, "native_representation_unverified", path);
+    assert.deepEqual(result.validation, { field, problem }, path);
+    assert.equal(result.requests, 0);
+    assert.doesNotMatch(
+      JSON.stringify(result),
+      /sensitive-marker|synthetic-booking-hash|guest@example/,
+    );
+  }
+});
+
+test("native invoice and readback diagnostics identify exact financial ownership time and set predicates", async () => {
+  const cases = [
+    ["invoice", null, "invoice", "missing"],
+    ["invoice.amount", undefined, "invoice.amount", "missing"],
+    ["invoice.amount", "sensitive-marker", "invoice.amount", "malformed"],
+    ["invoice.amount", 89, "invoice.amount", "mismatch"],
+    ["invoice.client_id", "52", "invoice.client_id", "mismatch"],
+    ["invoice.currency", "USD", "invoice.currency", "mismatch"],
+    ["invoice.rest_amount", 1, "invoice.rest_amount", "mismatch"],
+    ["invoice.taxes", {}, "invoice.taxes", "malformed"],
+    ["invoice.lines", [], "invoice.lines", "mismatch"],
+    ["invoice.lines.0.booking_ids", [], "invoice.line.booking_ids", "mismatch"],
+    [
+      "invoice.lines.0.bookings.0.client_id",
+      "52",
+      "invoice.line.booking.client_id",
+      "mismatch",
+    ],
+    [
+      "invoice.lines.0.bookings.0.end_datetime",
+      "2026-10-10 09:40:00",
+      "invoice.line.booking.end_datetime",
+      "mismatch",
+    ],
+    ["invoice.lines.0.qty", 2, "invoice.line.qty", "mismatch"],
+    [
+      "invoice.lines.0.discount_ratio",
+      1,
+      "invoice.line.discount_ratio",
+      "mismatch",
+    ],
+    ["invoice.lines.0.tickets", null, "invoice.line.tickets", "missing"],
+    ["booking.invoice_id", undefined, "booking.invoice_id", "missing"],
+    ["booking.invoice_id", "902", "booking.invoice_id", "mismatch"],
+    ["booking.unit_id", "15", "booking.unit_id", "mismatch"],
+    [
+      "booking.company_login",
+      "sensitive-marker",
+      "booking.company_login",
+      "mismatch",
+    ],
+    [
+      "booking.event_buffertime_after",
+      0,
+      "booking.event_buffertime_after",
+      "mismatch",
+    ],
+    [
+      "booking.end_date_time",
+      "2026-10-10 09:40:00",
+      "booking.end_date_time",
+      "mismatch",
+    ],
+    [
+      "booking.is_confirmed",
+      "sensitive-marker",
+      "booking.is_confirmed",
+      "malformed",
+    ],
+    [
+      "booking.invoice_payment_received",
+      undefined,
+      "booking.invoice_payment_received",
+      "missing",
+    ],
+  ];
+  for (const [path, value, field, problem] of cases) {
+    const data = input(false);
+    const parts = path.split(".");
+    const target = parts.slice(0, -1).reduce((o, key) => o[key], data);
+    if (value === undefined) delete target[parts.at(-1)];
+    else target[parts.at(-1)] = value;
+    const result = await call("normalize", data);
+    assert.equal(result.error, "native_representation_unverified", path);
+    assert.deepEqual(result.validation, { field, problem }, path);
+    assert.equal(result.requests, 0);
+    assert.doesNotMatch(
+      JSON.stringify(result),
+      /sensitive-marker|synthetic-booking-hash|guest@example/,
+    );
+  }
+});
+
+test("native batch and client metadata diagnostics retain known effects without finalization or replay", async () => {
+  for (const [field, value, problem] of [
+    ["client_hash", null, "missing"],
+    ["client_hash", { secret: "sensitive-marker" }, "malformed"],
+    ["batch_id", null, "missing"],
+    ["batch_id", "sensitive-marker", "malformed"],
+    ["batch_id", 602, "mismatch"],
+    ["batch_hash", null, "missing"],
+    ["batch_hash", { secret: "sensitive-marker" }, "malformed"],
+  ]) {
+    const data = await prepared(true, true);
+    const receipt = {
+      require_confirm: true,
+      invoice: null,
+      batch_id: 601,
+      batch_hash: "synthetic-batch-hash",
+      bookings: [structuredClone(data.creation.bookings[0])],
+    };
+    if (field === "client_hash") receipt.bookings[0][field] = value;
+    else receipt[field] = value;
+    const result = await call("orchestrate", {
+      ...data,
+      batchReceipt: receipt,
+    });
+    assert.equal(result.result.state, "recovery_required");
+    assert.deepEqual(result.validation, {
+      field:
+        field === "client_hash"
+          ? "creation.booking.client_hash"
+          : `creation.${field}`,
+      problem,
+    });
+    assert.deepEqual(
+      result.sent.map((r) => r.kind),
+      ["batch-create", "book"],
+    );
+    assert.doesNotMatch(
+      JSON.stringify(result.validation),
+      /sensitive-marker|synthetic-/,
+    );
+    const row = await db
+      .prepare("SELECT association_json FROM attempts WHERE id=?")
+      .bind(data.scope.attemptId)
+      .first();
+    assert.equal(row.association_json, null);
+    const key = await db
+      .prepare(
+        "SELECT reference_id FROM session_effects WHERE attempt_id=? AND step='native-booking-key:0'",
+      )
+      .bind(data.scope.attemptId)
+      .first();
+    assert.equal(JSON.parse(key.reference_id).bookingId, "701");
+    assert.equal((await call("orchestrate", data)).requests, 0);
+  }
+});
+
+test("native finalization diagnostics keep confirmation invoice and complete-set guards strict", async () => {
+  for (const [mutate, field, problem] of [
+    [
+      (d) => {
+        d.creation.require_confirm = true;
+      },
+      "creation.require_confirm",
+      "mismatch",
+    ],
+    [
+      (d) => {
+        d.creation.invoice = null;
+      },
+      "creation.invoice",
+      "missing",
+    ],
+    [
+      (d) => {
+        d.creation.invoice.amount = 1;
+      },
+      "invoice.amount",
+      "mismatch",
+    ],
+    [
+      (d) => {
+        d.creation.invoice.lines.pop();
+      },
+      "invoice.lines",
+      "mismatch",
+    ],
+    [
+      (d) => {
+        d.creation.invoice.lines[1] = structuredClone(
+          d.creation.invoice.lines[0],
+        );
+      },
+      "invoice.lines.booking_set",
+      "mismatch",
+    ],
+  ]) {
+    const data = await prepared(true, true);
+    mutate(data);
+    const result = await call("orchestrate", data);
+    assert.equal(result.result.state, "recovery_required");
+    assert.deepEqual(result.validation, { field, problem });
+    assert.deepEqual(
+      result.sent.map((r) => r.kind),
+      ["batch-create", "book", "book", "batch-close"],
+    );
+    assert.equal(
+      (
+        await db
+          .prepare("SELECT association_json FROM attempts WHERE id=?")
+          .bind(data.scope.attemptId)
+          .first()
+      ).association_json,
+      null,
+    );
+    assert.equal((await call("orchestrate", data)).requests, 0);
+  }
+});
+
+test("native private validation reason stops at RPC while its permanent failure code survives", async () => {
+  const data = input(false);
+  data.creation.invoice.amount = "sensitive-marker";
+  const response = await call("validation-rpc", data);
+  assert.deepEqual(response.result, {
+    ok: false,
+    error: { status: 503, code: "native_representation_unverified" },
+  });
+  assert.doesNotMatch(
+    JSON.stringify(response),
+    /validation|sensitive-marker|invoice.amount/,
+  );
+  const candidate = await prepared();
+  await call("orchestrate", candidate);
+  candidate.invoice.amount = "sensitive-marker";
+  await db
+    .prepare("UPDATE recovery_work SET ready_ms=? WHERE attempt_id=?")
+    .bind(Date.now() - 1, candidate.scope.attemptId)
+    .run();
+  const read = await call("readback", candidate);
+  assert.equal(read.result.reads, 2);
+  assert.equal(read.result.outcomes[0].reason, "reconciliation_unsupported");
+  assert.equal(read.result.outcomes[0].state, "manual_review");
+  assert.equal((await call("readback", candidate)).requests, 0);
+});
+
+test("native residual diagnostic names missing invoice evidence without cancelling an unfinished cart", async () => {
+  const data = await prepared(false, true);
+  data.creation.bookings[0].unit_id = "99";
+  await call("orchestrate", data);
+  delete data.booking.invoice_id;
+  data.now = Date.now();
+  const result = await call("residual-diagnostic", data);
+  assert.equal(result.result.state, "recovery_required");
+  assert.deepEqual(result.result.diagnostic.validation, {
+    field: "booking.invoice_id",
+    problem: "missing",
+  });
+  assert.equal(
+    result.result.diagnostic.code,
+    "native_representation_unverified",
+  );
+  assert.equal(result.result.diagnostic.operation, "booking-read");
+  assert.equal(
+    result.result.diagnostic.representation.invoiceReference,
+    "missing",
+  );
+  assert.deepEqual(
+    result.sent.map((r) => r.kind),
+    ["booking-read"],
+  );
+  assert.doesNotMatch(
+    JSON.stringify(result.result),
+    /synthetic-booking-hash|synthetic-signing-secret|guest@example/,
+  );
 });

@@ -1,8 +1,12 @@
 # SoccerBotStudioSG engineering
 
-## Approved preparation of192-call checkout continuation — 12 October
+## Current native diagnostic continuation — 12 October
 
-YS approved preparing a cumulative192 continuation after preflight proved the remaining22 ordinary calls cannot enter availability's32-call checkout reservation. Carry90 used, active0 and reserve16; at most102 further calls,86 ordinary. Default remains80 and no existing grant/window/counter is reset. Pending0018 preserves every grant field while widening its maximum to176; applied0001–0017 remain immutable. Complete exact-source CI, verify the sealed artifact and prepare a finite two-session/unopened-link packet under section5. Booking25 stays untouched. This approval permits preparation only, not deployment, provider calls, payment, browser execution or merge.
+Owner requests precise private field/rule failures and evidence-based diagnosis before another booking trial. The latest192 packet executed and closed, superseding its preparation notes:0018 applied with preservation; all0001–0018 immutable. One new cart remains unresolved after our book-response validation; no second booking, batch finalization, link or cancellation was verified. Earlier cart untouched. Original raw creation response was discarded, so the exact live predicate remains unknown. Do not infer it from synthetic tests, a missing unfinished-cart invoice or a screenshot.
+
+Source now preserves generic customer/RPC errors while retaining missing/malformed/mismatched private reasons and separate first execution/cleanup failures; every booking/payment guard and permanent-failure rule remains. Release metadata has no pending migration and the reported closed prior Worker version. PROGRESS carries125/192/active0,624 measured management plus unknown activity, at least50 deployments, original deadline and evidence limits. In this fresh workspace prior private execution/artifact files are absent; handover evidence is not a fresh remote check.
+
+Complete affected non-browser checks, publish to existing draft PR21 and obtain final-source CI. Service Contracts owns the next exact-record read-only evidence design; its read-only executor and finite packet must be prepared before live approval. Do not reopen prior packets, create another speculative booking, finalize/cancel old carts, merge or run browsers. Actual provider mismatch/native acceptance remains unproved.
 
 ## Cart-stage lifecycle correction — 12 October
 

@@ -1,6 +1,18 @@
 # SoccerBotStudioSG current progress
 
-## Current task — approved192 checkout-proof preparation, 12 October2026
+## Current task — precise native diagnostics, 12 October 2026
+
+Owner requested specific private validation errors and evidence-based diagnosis before another booking trial. Continued draft PR21 from5dacab5 on feat/native-checkout-completion-20261011; main25aac892 is unchanged. Source now identifies missing/malformed/mismatched creation, client/batch, invoice, finalization and readback/cleanup fields; records write shape; preserves first independent errors, generic customer/RPC output, permanent-failure classification and every existing authority/payment/capacity guard. No migration or live operation is added.
+
+Latest approved192 proof is executed/closed, superseding preparation entries below. Per owner handover,0018 applied with preservation;0001–0018 immutable. New cart remains unresolved after first book-response rejection; no second booking, closeBatch, link or cancellation was verified. Earlier cart was untouched by the proof. Release metadata now has no pending migration and prior closed versionffe7d675-a36f-4add-9c66-b988f595cf5d. No current provider state or cause is inferred from the later owner UI status observation.
+
+Fresh checkout recovery and GitHub CI38202525561 are independently verified. Prior private receipts/artifact/screenshot are missing here; execution/closure/counters are explicitly carried owner evidence, not freshly queried. Carried management624 plus unknown Dashboard; deployments at least50 plus unknown; provider125/192 active0,67 remaining including16 recovery,51 ordinary before176; historical closed80 separate; email8/siteverify8, native notifications unmeasured. Original12October16:18:56Singapore deadline and one-agent/24-active-hour/72-elapsed-hour/60-loop/six-repair limits remain; prior unmeasured effort stays unknown.
+
+Validation: original-source diagnostic regression failed at the missing private reason; corrected55/55 native tests passed with no skips. Source/layer/strict types and affected lint passed. Full Worker verification passed235/235 with zero failures/skips; source/policy/types/affected lint/format passed. Exact-source CI remains required; do not substitute the earlier229-case CI. No browser execution by the assistant.
+
+Next ready task: finish exact-source publication/checks, then resolve the endpoint-specific evidence gap under Service Contracts' narrowly scoped evidence plan. The lost creation body means the actual live rejected field is still unknown. Do not change the50-minute end guard, rerun checkout, reopen old grants, or use cancellation-capable residual recovery to inspect a cart. Read-only execution requires its own reviewed composition, complete finite sealed packet and exact approval; no live approval is requested by this source checkpoint. Native/payment/webhook/combined physical acceptance and merge remain pending.
+
+## Historical checkpoint — approved192 checkout-proof preparation, 12 October2026
 
 Owner approved preparation only: carry90 used toward192, reserve16, at most102 further provider calls (86 ordinary). Existing128 policy cannot start availability with22 ordinary calls because32 must remain for checkout. New0018 is pending and preserves all native grants; applied0001–0017 immutable. Default remains disabled/end0/80. No live deployment, migration, provider call or reopened packet.
 
@@ -8,7 +20,7 @@ Local229/229 Worker checks passed, including the expanded128/192 restart and gra
 
 Next: exact-source CI, sealed artifact, reviewed finite backend proof with two unpaid sessions and one unopened link; existing booking25 untouched. Final exact live approval still required by AGENTS section5. Original deadline12October16:18:56SGT and all campaign limits remain. Carried management591 plus unknown Dashboard, deployment lower bound47 plus unknown, provider90/128 active0; email8/siteverify8 unchanged. Native/payment/webhook/combined physical acceptance pending.
 
-## Current task — correct the cart lifecycle, 12 October 2026
+## Historical checkpoint — correct the cart lifecycle, 12 October 2026
 
 Residual-only recovery is closed and booking/cart unchanged. The owner corrected our premature expectation of an invoice for an unfinished cart. No cancellation was attempted. Latest private evidence is residual-recovery/execution/outcome.md. Carried management591 measured plus unknown Dashboard; deployments lower bound47 plus unknown; provider90/128 active0,16 reserved (38 overall remaining,22 before ordinary112). Explicit email8/siteverify8 unchanged; native notifications unmeasured. Existing campaign deadline12October16:18:56 Singapore and all effort/loop bounds persist.
 
@@ -18,7 +30,7 @@ Next ready task: complete exact-source checks and PR CI for this bounded correct
 
 Local full Worker verification passed229/229 with no failures/skips; source/policy, strict types, affected lint and formatting passed. The before-fix regression receipt is retained. Exact-source CI remains required.
 
-## Current task — existing residual recovery, 12 October 2026
+## Historical checkpoint — existing residual recovery, 12 October 2026
 
 The corrected identity proof is closed with one retained native booking and no verified link or cancellation. Native booking is not settled. The precise checkout and cleanup errors were discarded; retain new diagnostics and inspect only that existing attempt before any further booking. The screenshot supports pending-cart state, not authoritative payment/ownership evidence. Private identity-continuation/execution/outcome.md owns exact residual identity and receipts.
 
@@ -34,7 +46,7 @@ The corrected identity source passed backend and live-email CI, including224 Wor
 
 The preview server now separates handler exceptions from missing static files, returns explicit503 with no retry and retains only bounded error codes in its server diagnostic. A non-browser injected transport-failure regression verifies unavailable JSON, no static fallback and no private message leakage. Existing browser actions/assertions/timeouts are unchanged; the checkout must still return200. This corrects a proved diagnostic defect, not the unproven underlying transient. Exact updated CI is required before live proof; earlier passing jobs are not substituted.
 
-## Current task — identity refresh across native reads, 12 October 2026
+## Historical checkpoint — identity refresh across native reads, 12 October 2026
 
 The approved idle procedure passed exact baseline/activation/closure readiness. Native checkout reached a distinct retained failure: provider_identity_expired on sessionIndex1, catalogue-instructors, before booking. No booking or checkout link was created. Closed source/version, historical preservation and exact consumed accounting are recorded privately in work/native-completion/idle-continuation/execution/outcome.md; this supersedes older snapshots below without resetting them.
 
@@ -42,27 +54,27 @@ YS requested repair and immediate testing. Explicit identity checks now precede 
 
 Full local Worker verification passed224/224 with zero skips, plus source/policy checks, strict Worker types and affected lint. Exact-source CI remains required.
 
-## Current task — test coordinator idle-lifecycle activation, 12 October 2026
+## Historical checkpoint — test coordinator idle-lifecycle activation, 12 October 2026
 
 The protected-readiness proof isolated an actual mismatch: active Worker, same-source coordinator still on the preceding closed configuration. Four observations exhausted the packet's readiness bound before creating native authority or making any provider request. Closure is verified; no booking, payment or unpaid residual record was created. Exact latest deployment/accounting and historical preservation receipts are private under work/native-completion/coordinator-continuation/execution/outcome.md; older snapshots below are historical.
 
 Owner authorized trying the deployment correction. Next ready task: seal and offline-validate a finite same-installed-source continuation with a quiet interval before coordinator readiness, retaining all exact source/version/mode/end/accounting checks and adding coordinator closure verification. Cloudflare documents idle hibernation/eviction; rapid polling may retain an old instance, but that mechanism is not yet proved here. No application code, migration, assets, secrets, counters or business policy changes are needed for this controlled experiment. Existing exact-source CI remains valid; no physical test or merge. Final exact live approval remains required.
 
-## Current task — coordinator readiness and private window diagnosis, 12 October 2026
+## Historical checkpoint — coordinator readiness and private window diagnosis, 12 October 2026
 
 The exact approved128 proof executed and closed. Migration0017 preserved all existing rows; availability stopped at customer-window admission before any provider call, attempt or booking. No unpaid records were created. Closure verified disabled/end0, expired new grants, revoked new guest, unchanged schedules and preserved history. Applied0001–0017 are immutable. Detailed counters and evidence are retained privately in work/native-completion/ceiling-continuation/execution/outcome.md and supersede prior snapshots below.
 
 The saved customer response cannot identify which admission predicate failed. Add coordinator-local readiness through the existing protected operator read and first-rejection predicate names in the grant's private result. Source continues autonomously; no live retry follows from this work. Full local Worker verification passed222/222 with no skips; source, policy, types, affected lint and formatting passed. Initial focused execution lacked local-loopback permission; its receipts remain private. One new negative fixture violated the existing database time CHECK; corrected that fixture to legal-but-denied windows without changing assertions or production bounds. Next ready task: verify/publish exact source, seal a finite continuation that checks the coordinator before forward calls, then obtain its exact live approval. The remaining provider allowance carries forward without reset. Native acceptance, payment/webhooks and combined physical flight remain pending; no merge.
 
-## Current task — exact128-call continuation preparation, 12 October 2026
+## Historical checkpoint — exact128-call continuation preparation, 12 October 2026
 
 YS approved preparing a finite128-call cumulative policy, carrying33 used and reserving16 for recovery; no live action is approved. Source keeps the same campaign and persistent coordinator ledger. Default configuration is80, exact128 requires its deployment binding, and larger/unknown settings reject. Ordinary admission ends112 and recovery ends128; existing grants retain their own smaller bounds. Pending0017 copies all grant fields unchanged into the same final table with a112 schema bound; applied0001–0016 are untouched. Full local Worker gate passed220/220 with no skips; source/policy/types/lint and focused restart, grant authority, checker and migration-preservation checks passed. Next: complete exact-source verification/CI and seal the finite migration/deploy/proof/closure packet for final approval. No merge or physical test.
 
-## Current task — preserve private prerequisite evidence, 12 October 2026
+## Historical checkpoint — preserve private prerequisite evidence, 12 October 2026
 
 The finite native checkout's prerequisite failure previously discarded its cause. Source now retains bounded private stage/code/operation/representation evidence in the existing grant result while preserving the customer response and one-use behavior. Selected synthetic cases cover eligibility representation, required fields and booking allowance, with zero booking effects, no replay and no raw provider/customer values retained. Full local Worker verification passed218/218 with no skips; source, policy, types, lint and formatting passed. Exact final CI belongs to the PR. Next ready task is a reviewable diagnostic/account-proof scope against the actual remaining budget; do not rerun a closed packet or reset counters. The latest execution/closure receipts and exact accounting remain private under work/native-completion/installed-native-proof, which supersedes older deployment/counter snapshots below. Native provider acceptance, payment and combined physical testing remain pending.
 
-## Current task — native HTTP/RPC diagnosis after verified closure, 12 October 2026
+## Historical checkpoint — native HTTP/RPC diagnosis after verified closure, 12 October 2026
 
 Approved signing amendment is executed and explicitly closed. Encrypted signing binding installed;0015/0016 applied and immutable. Deployed source remains510a1d7, closed version85bcd347-aaf8-48a5-b119-ed85db6400e9. Identity/provider disabled/end0, schedules empty, guest revoked, both new grants expired, every historical row preserved. Zero provider calls/bookings/links/payments/notifications. Availability returned503 before its claim; live cause remains unresolved.
 
@@ -70,13 +82,13 @@ Private receipts: work/native-completion/signing-amendment/execution, including 
 
 Source repair now preserves safe native ApiError status/code across RPC and adds a real HTTP/coordinator regression. The valid local journey passes; the foreign-company case first failed with a generic error and now passes with the expected safe code. Unknown internal errors stay generic and denied requests perform no provider work. Updated future release metadata to no pending migrations and the current closed rollback version. Full local Worker gate passed217/217 with zero skips; source, policy, types, lint and formatting passed. Next: exact-head CI/artifact, then prepare a new bounded account proof that diagnoses configuration before booking. No new physical test, merge or live deployment is authorized by this source repair. Detailed internal packets stay private; redacted evidence may be published.
 
-## Current task — missing deployed signing binding, 12 October 2026
+## Historical checkpoint — missing deployed signing binding, 12 October 2026
 
 Approved native backend proof stopped after two read-only management requests: required signing binding absent from the developer Worker. No migration, deployment, activation, provider request, booking, checkout link, cancellation, payment or notification occurred. First failure and original ledger are preserved privately under work/native-completion/acceptance. Measured management total366 plus unknown Dashboard; provider last measured15/80 (not freshly queried), deployment lower bound26 plus unknown, email8/bot8 and historical closed80 unchanged.
 
 Source510a1d7 passed all three CI38153002446 gates; artifact11707193454 is sealed and unchanged. A private signing amendment is prepared and offline-validated under work/native-completion/signing-amendment; it is not authorized or executed. It adds only the absent encrypted binding during the already planned closed deployment and carries prior accounting. The specific owner approval question is pending. After approval, execute the amended finite packet once; retain exact source/artifact and no-replay/provider/closure limits. Do not rerun the stopped original packet, reset campaign budgets, publish detailed internal execution metadata, merge or claim native acceptance. Global deadline remains12October16:18:56SGT. Physical testing remains the later combined native/webhook flight.
 
-## Current task — native failure-path closure, 11 October 2026
+## Historical checkpoint — native failure-path closure, 11 October 2026
 
 Continuation on PR21/feat/native-checkout-completion-20261011 from5e89220, actual main25aac892 unchanged. Implemented pre-validation reference retention, durable post-booking handoff recovery, strict known-reference compensation and default-denied finite cleanup permission in source-only0016. No external account operations, bookings, cancellations, payments, email or browser execution occurred. Provider usage remains15/80 plus historical closed80; all other carried counters/unknown intervals and12October16:18:56SGT deadline remain unchanged.
 
