@@ -178,9 +178,19 @@ export async function captureWebhook(
   if (!result) {
     const duplicate = await db
       .prepare(
-        "SELECT r.body_digest FROM webhook_receipts r JOIN webhook_capture_windows w ON w.id=r.window_id WHERE r.window_id=? AND r.body_digest=? AND w.state='open' AND w.expires_ms>?",
+        "SELECT r.body_digest FROM webhook_receipts r JOIN webhook_capture_windows w ON w.id=r.window_id WHERE r.window_id=? AND r.body_digest=? AND w.state='open' AND w.source_revision=? AND w.account_id=? AND w.company_login=? AND w.environment=? AND w.origin=? AND w.opened_ms<=? AND w.expires_ms>?",
       )
-      .bind(window.id, digest, clock())
+      .bind(
+        window.id,
+        digest,
+        env.SOURCE_REVISION,
+        env.DEPLOYMENT_ACCOUNT_ID,
+        company,
+        env.ENVIRONMENT,
+        env.APP_ORIGIN,
+        clock(),
+        clock(),
+      )
       .first();
     if (!duplicate) throw unavailable();
   }
