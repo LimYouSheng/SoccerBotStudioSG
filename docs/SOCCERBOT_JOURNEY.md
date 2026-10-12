@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Approved128 proof closed before provider dispatch — 12 October 2026
+
+YS approved the exact finite packet. It applied0017 while preserving all historical rows and installed the reviewed128 policy. Customer availability rejected native_customer_window_unavailable before provider admission, immutable preparation or booking. No unpaid records were created. Closure independently verified disabled/end0, expired new grants, revoked guest, unchanged schedules and preserved history. Full private evidence/counters remain in the operator record; this packet cannot reopen.
+
+The specific failed predicate was not retained, so no deployment-propagation cause is claimed. Source now adds protected coordinator readiness and private first customer-window rejection checks while retaining every admission condition and the customer's generic response. Local Worker gate passed222/222 with zero skips, plus source/policy/types/affected lint/formatting. The first new fixture used an impossible database interval and was corrected to valid stored windows that admission rejects; the first failed receipt is preserved. Next: exact-source CI and a reviewable successor packet. Native provider checkout acceptance and the combined physical flight remain outstanding.
+
 ## Owner-approved128-call preparation — 12 October 2026
 
 YS approved preparing a128-call cumulative continuation with33 already consumed and16 reserved for recovery. Implemented an explicit80-or128 configuration policy with80 as the committed default, preserving the account/campaign ledger and old per-grant limits. Focused restart tests carry33 to34, stop ordinary admission112, admit recovery113 and reject at128 across restart; restoring80 does not erase usage. Native grant tests reject112 authority under80 or an invalid129 policy, and accept the exact128 policy without creating bookings in the negative fixture.

@@ -29,12 +29,7 @@ export async function developerOperation(
       state: row.state,
       result: row.result_json ? (JSON.parse(row.result_json) as unknown) : null,
       ...(operation === "native_field_discovery"
-        ? {
-            accounting:
-              await env.COORDINATOR.getByName(
-                coordinatorName,
-              ).discoveryAccounting(),
-          }
+        ? await env.COORDINATOR.getByName(coordinatorName).discoveryReadiness()
         : {}),
     };
   if (String(env.PROVIDER_ACCESS) !== "trusted-reads")

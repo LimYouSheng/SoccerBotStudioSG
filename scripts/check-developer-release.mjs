@@ -137,9 +137,7 @@ try {
     .run();
   const grants = (await db.prepare("SELECT * FROM developer_operations").all())
     .results;
-  assert.deepEqual(manifest.pendingRemoteMigrations, [
-    "0017_native_grant_ceiling.sql",
-  ]);
+  assert.deepEqual(manifest.pendingRemoteMigrations, []);
   // Old-state compatibility remains tested locally, never re-applied remotely.
   for (const name of names.slice(5, 8)) await migrate(name);
   const appliedEight = {
@@ -174,7 +172,7 @@ try {
       .n,
     0,
   );
-  // Exercise the pending compatible table rebuild with a real retained grant.
+  // Exercise the applied compatible table rebuild with a real retained grant.
   await db
     .prepare(
       "INSERT INTO native_checkout_grants(capability_hash,source_revision,contract_json,not_before_ms,expires_ms,starting_used,maximum_used,state,result_json) SELECT capability_hash,?, '{}',1,2,15,64,'blocked',? FROM guest_access LIMIT 1",
@@ -323,7 +321,7 @@ try {
         checks: [
           "file hashes",
           "root export",
-          "0001–0016 state and pending0017 preserve all existing fields, identities, unknown effects and closed grants",
+          "applied0001–0017 preserve all existing fields, identities, unknown effects and closed grants",
           "empty identity delivery authority and default-closed HTTP",
           "exact Worker revision",
           "protected checkout unavailable",

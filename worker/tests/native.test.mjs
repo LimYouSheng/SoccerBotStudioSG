@@ -1822,6 +1822,67 @@ test("native customer preparation rejects price drift unapproved dates and incom
   });
 });
 
+test("native customer window retains first private rejection without admitting provider calls or exposing diagnostics", async () => {
+  for (const [field, value, failed] of [
+    ["source_revision", "d".repeat(40), "source"],
+    ["maximum_used", 112, "ceiling"],
+    ["not_before_ms", Date.now() + 120000, "start"],
+    ["expires_ms", Date.now() + 100000, "remaining"],
+    ["expires_ms", Date.now() + 700000, "end"],
+  ]) {
+    const data = await prepared(false, true, true);
+    await grantNative(data);
+    await db
+      .prepare(
+        `UPDATE native_checkout_grants SET ${field}=? WHERE attempt_id=?`,
+      )
+      .bind(value, data.scope.attemptId)
+      .run();
+    const before = calls.length;
+    const rejected = await call("customer-availability", {
+      ...data,
+      value: { date: "2026-10-15", serviceId: "12" },
+    });
+    assert.equal(rejected.error, "native_customer_window_unavailable");
+    assert.equal(rejected.reserved, 0);
+    assert.equal(calls.length, before);
+    const row = await db
+      .prepare(
+        "SELECT state,result_json FROM native_checkout_grants WHERE attempt_id=?",
+      )
+      .bind(data.scope.attemptId)
+      .first();
+    assert.equal(row.state, "granted");
+    const diagnostic = JSON.parse(row.result_json).diagnostic;
+    assert.deepEqual(Object.keys(diagnostic).sort(), ["failedChecks", "stage"]);
+    assert.equal(diagnostic.stage, "customer_window");
+    assert.ok(diagnostic.failedChecks.includes(failed));
+    assert.doesNotMatch(JSON.stringify(rejected), /diagnostic|failedChecks/);
+    await db
+      .prepare(
+        "UPDATE native_checkout_grants SET maximum_used=112 WHERE attempt_id=?",
+      )
+      .bind(data.scope.attemptId)
+      .run();
+    await call("customer-availability", {
+      ...data,
+      value: { date: "2026-10-15", serviceId: "12" },
+    });
+    assert.equal(
+      (
+        await db
+          .prepare(
+            "SELECT result_json FROM native_checkout_grants WHERE attempt_id=?",
+          )
+          .bind(data.scope.attemptId)
+          .first()
+      ).result_json,
+      row.result_json,
+    );
+    assert.equal(calls.length, before);
+  }
+});
+
 test("native customer availability preserves provider offers caches bounded reads and rejects foreign dates", async () => {
   const data = await prepared(false, true, true);
   await grantNative(data);

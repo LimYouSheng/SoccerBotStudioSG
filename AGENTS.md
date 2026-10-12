@@ -1,5 +1,11 @@
 # SoccerBotStudioSG engineering
 
+## Coordinator readiness after the closed developer proof — 12 October
+
+The approved128 continuation applied0017 and preserved all historical rows. Availability rejected at customer-window admission before any provider dispatch or booking; the specific predicate was not retained. Closure is independently verified, with no unpaid records created. Applied0001–0017 are now immutable. Exact execution accounting and deployment receipts remain private; no closed proof may reopen.
+
+The next source increment reports coordinator-local configuration through the existing authenticated operator grant and retains the first customer-window rejection checks privately. Worker health alone cannot establish coordinator readiness. No guard, deadline, counter or business policy is weakened; stale propagation remains a hypothesis pending evidence. Next: exact-source checks/CI, then a reviewed finite continuation with coordinator readiness before native forward work. Native checkout and combined physical acceptance remain pending.
+
 ## Approved preparation of128-call continuation — 12 October
 
 YS approved preparing a cumulative128 provider-call continuation, carrying forward33 used and preserving16 recovery calls. This is source/packet preparation, not live permission. The default binding remains80; only an exact approved deployment may select128. Pending0017 preserves every grant field while widening its schema bound to112; applied0001–0016 stay unchanged. Same campaign/account/DO ledger, no reset, new grant or reopened window. Final CI, sealed packet and explicit live approval remain required.

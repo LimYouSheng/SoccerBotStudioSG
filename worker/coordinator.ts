@@ -444,9 +444,29 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       });
     });
   }
+  // Retain the earlier RPC during rolling deployment; it grants no authority.
   discoveryAccounting() {
     policy(this.env);
     return this.providerAccounting();
+  }
+  discoveryReadiness() {
+    const p = policy(this.env),
+      now = Date.now();
+    // Only exposed through the authenticated, existing operator grant. Read the
+    // coordinator's own bindings: Worker health cannot establish RPC readiness.
+    return {
+      accounting: this.providerAccounting(),
+      coordinator: {
+        revision: p.SOURCE_REVISION,
+        versionId: this.env.CF_VERSION_METADATA?.id ?? null,
+        providerAccess: p.PROVIDER_ACCESS,
+        campaignEndMs: p.CAMPAIGN_END_MS,
+        effectiveProviderAccess:
+          p.PROVIDER_ACCESS === "trusted-reads" && now < p.CAMPAIGN_END_MS
+            ? "trusted-reads"
+            : "disabled",
+      },
+    };
   }
   private providerAccounting() {
     const used =

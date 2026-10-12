@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Coordinator readiness and admission diagnostics — 12 October 2026
+
+The approved finite128 deployment applied0017 without changing historical rows and is now explicitly closed. All17 applied migrations are immutable. Its customer availability failed before provider dispatch; the precise window predicate is unproven. Coordinator-local source/version/mode/end/effective mode and accounting are available only through the existing authenticated operator grant, with no provider dispatch or state reset. The Worker health response is separate evidence and cannot establish that coordinator's configuration.
+
+Customer-window admission retains the same checks and generic error. The first failed predicate names are recorded privately in an otherwise empty grant result, without reopening/consuming the grant or exposing values, contact details or diagnostics to the customer. Closed/previous results are not overwritten. This supports diagnosis; it neither authorizes a live operation nor establishes account acceptance.
+
 ## Explicit developer budget continuation — 12 October 2026
 
 Owner approved preparation of cumulative128 calls, carrying33 used rather than starting a new ledger, with16 reserved for recovery. PROVIDER_CALL_CEILING accepts only80 or128 and defaults80; the committed deployment stays disabled/end0/80. Existing campaign identity, account singleton, durable reservations, cooldown/concurrency and unknown effects are unchanged. Under explicitly deployed128, ordinary admission ends112 and recovery128. Each grant still enforces its own smaller allowance and one-use/time/source boundaries. No implicit expansion of old grants or live permission follows from source preparation.

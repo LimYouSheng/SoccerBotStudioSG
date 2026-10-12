@@ -782,6 +782,57 @@ test("provider missing credentials and client mapping refuse before authenticati
 
 // Synthetic metadata only. No retained account response or field identifier.
 const discoveryOperation = "native_field_discovery";
+test("operator readiness reports coordinator bindings with carried accounting and no provider dispatch", async () => {
+  for (const mode of ["disabled", "trusted-reads", "expired"]) {
+    const end = mode === "expired" ? Date.now() - 1000 : Date.now() + 600000;
+    const f = await fixture({
+      mode: mode === "disabled" ? "disabled" : "trusted-reads",
+      end,
+      secrets: {
+        PROVIDER_CALL_CEILING: "128",
+        SOURCE_REVISION: "c".repeat(40),
+      },
+    });
+    try {
+      await f.sql(
+        "INSERT OR REPLACE INTO budget(campaign,used,cooldown_ms) VALUES('developer-20261008',33,0)",
+      );
+      const token = await f.grant(Date.now() + 180000, discoveryOperation);
+      const result = await f.call(token, "GET", discoveryOperation);
+      assert.equal(result.status, 200);
+      assert.equal(result.body.state, "granted");
+      assert.deepEqual(result.body.accounting, {
+        used: 33,
+        active: 0,
+        ceiling: 128,
+        recoveryReserve: 16,
+      });
+      assert.deepEqual(result.body.coordinator, {
+        revision: "c".repeat(40),
+        versionId: null,
+        providerAccess: mode === "disabled" ? "disabled" : "trusted-reads",
+        campaignEndMs: end,
+        effectiveProviderAccess:
+          mode === "trusted-reads" ? "trusted-reads" : "disabled",
+      });
+      for (const invalid of [
+        "f".repeat(64),
+        await f.grant(Date.now() - 1, discoveryOperation),
+      ]) {
+        const denied = await f.call(invalid, "GET", discoveryOperation);
+        assert.equal(denied.status, 401);
+        assert.equal(Object.hasOwn(denied.body, "coordinator"), false);
+      }
+      assert.equal(f.calls.length, 0);
+      assert.doesNotMatch(
+        JSON.stringify(result),
+        /synthetic-public-secret|synthetic-admin-secret/,
+      );
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
 const syntheticField = {
   name: "synthetic_players",
   title: "Number of players",

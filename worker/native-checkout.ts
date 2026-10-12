@@ -453,19 +453,36 @@ async function customerNativeWindow(request: Request, env: Env) {
     .prepare("SELECT * FROM native_checkout_grants WHERE capability_hash=?")
     .bind(access.capability_hash)
     .first<Grant>();
-  if (
-    !grant ||
-    grant.state !== "granted" ||
-    p.PROVIDER_ACCESS !== "trusted-reads" ||
-    grant.source_revision !== p.SOURCE_REVISION ||
-    !/^[a-f0-9]{40}$/.test(grant.source_revision) ||
-    grant.maximum_used > p.PROVIDER_CALL_CEILING - 16 ||
-    now < grant.not_before_ms ||
-    now + 180000 >= grant.expires_ms ||
-    grant.expires_ms > grant.not_before_ms + 1200000 ||
-    p.CAMPAIGN_END_MS < grant.expires_ms
-  )
+  if (!grant) throw new ApiError(503, "native_customer_window_unavailable");
+  const failedChecks = Object.entries({
+    state: grant.state === "granted",
+    access: p.PROVIDER_ACCESS === "trusted-reads",
+    source:
+      grant.source_revision === p.SOURCE_REVISION &&
+      /^[a-f0-9]{40}$/.test(grant.source_revision),
+    ceiling: grant.maximum_used <= p.PROVIDER_CALL_CEILING - 16,
+    start: now >= grant.not_before_ms,
+    remaining: now + 180000 < grant.expires_ms,
+    duration: grant.expires_ms <= grant.not_before_ms + 1200000,
+    end: p.CAMPAIGN_END_MS >= grant.expires_ms,
+  })
+    .filter(([, passed]) => !passed)
+    .map(([name]) => name);
+  if (failedChecks.length) {
+    // Preserve the first rejection privately without consuming/reopening the
+    // grant or changing the customer error. No raw values or contacts persist.
+    await env.STATE.prepare(
+      "UPDATE native_checkout_grants SET result_json=? WHERE capability_hash=? AND state='granted' AND result_json IS NULL",
+    )
+      .bind(
+        JSON.stringify({
+          diagnostic: { stage: "customer_window", failedChecks },
+        }),
+        access.capability_hash,
+      )
+      .run();
     throw new ApiError(503, "native_customer_window_unavailable");
+  }
   const contract = nativeAccountContractSchema.parse(
     JSON.parse(grant.contract_json),
   );

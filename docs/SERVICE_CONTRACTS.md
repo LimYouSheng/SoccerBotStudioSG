@@ -1,5 +1,11 @@
 # SoccerBotStudio — Service Contracts
 
+## Native readiness contract after verified closure — 12 October 2026
+
+The existing authenticated native-field-discovery GET now returns coordinator-local revision, version ID, provider mode, end time and effective mode alongside unchanged cumulative accounting. It reads no provider data, grants no authority and dispatches zero provider calls. Invalid/expired bearer grants receive no readiness information. Finite execution must match this coordinator evidence as well as Worker health before customer availability; only a concrete reviewed packet may bound observations of known prior deployments.
+
+A customer-window rejection retains its generic503 response and identical source/state/mode/ceiling/time predicates. Its first failed predicate names may be saved in the grant's private result, with no raw values and no overwrite of earlier evidence. Missing or closed grants gain no authority. The latest finite proof applied0017, preserved history, stopped before provider admission and verified closure; no booking/checkout contract is accepted by that result. All applied migrations0001–0017 remain immutable and future release manifests have no pending migration.
+
 ## Finite128-call policy contract — 12 October 2026
 
 PROVIDER_CALL_CEILING is an operator binding accepting only80 or128, default80. The coordinator reports that configured ceiling while reading the same campaign's existing used counter. Normal admission stops ceiling-minus16; explicitly granted recovery stops at the ceiling and remains at most16 per recovery allowance. Customer availability, native creation and scheduled readback validate their grant maximum against the active policy; changing policy never rewrites an existing grant. A128 binding without an approved finite grant/window enables no provider operation.
