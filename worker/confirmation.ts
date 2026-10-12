@@ -39,14 +39,9 @@ export async function confirmation(
   const p = policy(env);
   if (now >= row.deadline_ms) {
     report?.({ deadlineMs: row.deadline_ms, nextCheckMs: now, remaining: 0 });
-    return {
-      status: "unresolved",
-      reason:
-        row.state === "recovery_required"
-          ? "recovery_required"
-          : "verification_window_elapsed",
-      pollAfterMs: p.POLL_INTERVAL_MS,
-    };
+    // The deadline ends checking, not the validity of fresh authoritative proof.
+    // Preserve the shared booking/money/paid decision without reopening polls.
+    return decideStoredConfirmation(row, access, now, p);
   }
   const quota = await env.STATE.prepare(
     "UPDATE attempts SET confirmation_next_ms=?,confirmation_checks=confirmation_checks+1 WHERE id=? AND owner_id=? AND confirmation_next_ms<=? AND confirmation_checks<120 RETURNING confirmation_next_ms,confirmation_checks",

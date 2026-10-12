@@ -33,6 +33,7 @@ const commands = [
       "worker/tests/native.test.mjs",
       "worker/tests/runtime.test.mjs",
       "worker/tests/recovery.test.mjs",
+      "worker/tests/webhook.test.mjs",
     ],
   ],
 ];

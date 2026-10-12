@@ -1,5 +1,11 @@
 # North Star: dependable customer booking and quick rebooking
 
+## Current focus: technical payment and webhook acceptance — 13 October 2026
+
+Native booking creation/association/unopened handoff is accepted. YS now requests payment and webhook technical acceptance before owner-controlled testing. Finish authoritative payment reconciliation, authenticated provider delivery, durable deduplicated mapping to existing recovery, and bounded no-return/missing-callback fallback. Retain owner checkout/payment/browser/device acceptance as the following gate.
+
+The first source increment repairs late-payment HTTP confirmation and prepares authenticated payload capture. It does not yet prove real provider notification delivery or payment settlement. Follow the current contract and acceptance gaps in Service Contracts; PROGRESS owns the next action and closed ledger.
+
 ## Developer native booking accepted and independently closed — 13 October 2026
 
 Packet `217dfd4e4df2` executed once after YS approved the exact packet and amended resource limits. Source `8bd66c1` passed all three CI gates in run `38273011816`; artifact `11758121123` matched 148 sealed files, 257 Worker tests and all 21 immutable migrations. Fresh availability selected Nabil (instructor 3), service 2, **14 October 09:00 and 15 October 14:50 Singapore**. One new attempt `a8e47c99-9016-4db4-8d18-96b52675536c` completed batch 8, bookings 36/37 and exact invoice 28, SGD176 with zero tax. Both signed booking reads were confirmed; authoritative invoice readback was unpaid; the native checkout link remains unopened.

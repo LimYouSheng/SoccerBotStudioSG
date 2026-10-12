@@ -1,5 +1,11 @@
 # SoccerBotStudioSG engineering
 
+## Payment and webhook continuation — 13 October 2026
+
+YS requested an attempt to settle payment and webhook technical acceptance, stopping before owner-controlled acceptance. PR21 is merged as `383cc2e`; its independent main CI `38276366243` and demo publication passed. Continue on a new feature branch/PR; the PR21 merge approval is consumed.
+
+Current increment fixes protected confirmation discarding fresh verified late payment and adds a default-closed authenticated webhook **capture** endpoint. Capture stores bounded structure only; it does not implement event mapping or enqueue recovery. Do not describe webhook or paid provider acceptance as complete. Service Contracts owns the remaining exact payload/delivery and no-return proof. Preserve applied migrations0001–0021;0022 is additive and source-only. Live state stays closed at443/512, active0. The previous attempt/link/migration limits are exhausted; no new live packet or replacement numeric/time authority has been granted. Do not open checkout or perform owner payment/browser/device acceptance.
+
 ## Developer native booking accepted and independently closed — 13 October 2026
 
 Packet `217dfd4e4df2` executed once after YS approved the exact packet and amended resource limits. Source `8bd66c1` passed all three CI gates in run `38273011816`; artifact `11758121123` matched 148 sealed files, 257 Worker tests and all 21 immutable migrations. Fresh availability selected Nabil (instructor 3), service 2, **14 October 09:00 and 15 October 14:50 Singapore**. One new attempt `a8e47c99-9016-4db4-8d18-96b52675536c` completed batch 8, bookings 36/37 and exact invoice 28, SGD176 with zero tax. Both signed booking reads were confirmed; authoritative invoice readback was unpaid; the native checkout link remains unopened.

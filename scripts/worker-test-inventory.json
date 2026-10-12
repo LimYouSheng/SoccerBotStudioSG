@@ -213,6 +213,7 @@
   "recovery cannot replace a newer retained observation with an older provider snapshot",
   "invalid retained evidence cannot trap due work in perpetual failed claims",
   "completion resamples trusted time after storage validation and refuses an expired lease",
+  "protected confirmation preserves fresh late paid evidence without reopening checking",
   "health identifies disabled development mode",
   "guest ownership is generated and only capability digests are stored",
   "missing capability denies before protected storage reads",
@@ -255,5 +256,12 @@
   "elapsed checking deadline returns unresolved without modifying recovery or dispatch state",
   "synthetic fixture awaits evidence without a stale pending snapshot and reuses its attempt",
   "readiness reports effective expiry served identity and bounded nonce without provider calls",
-  "single statement discovery closure returns expiry then independent D1 read preserves evidence"
+  "single statement discovery closure returns expiry then independent D1 read preserves evidence",
+  "webhook capture defaults closed and requires exact source account environment and origin",
+  "webhook HMAC verifies exact raw bytes before retaining only bounded structure",
+  "webhook missing forged signatures malformed envelopes and stale timestamps leave no receipts",
+  "webhook concurrent duplicates are durable and later distinct hints remain separate within the cap",
+  "webhook finite closure rejects replay and database failure is never acknowledged",
+  "webhook body limits and HTTP boundaries reject before capture",
+  "webhook slow streamed bodies time out and never acknowledge a receipt"
 ]

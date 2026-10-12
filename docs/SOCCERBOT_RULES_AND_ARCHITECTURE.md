@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Payment and callback boundaries — 13 October 2026
+
+Owner direction now prioritizes server-side payment/webhook acceptance and stops before owner-controlled acceptance. PR21 is merged; accepted native creation and unopened handoff remain the baseline. A checking deadline ends polling authority, not the shared domain's ability to recognize fresh, complete, valid paid evidence. The protected HTTP reader must use that domain decision even after the deadline, retaining authentication and reporting zero remaining checks. It must not refresh providers or confirm invalid/cancelled bookings.
+
+`worker/webhook.ts` is a discovery boundary, not a second payment authority. Default-empty exact-source capture windows permit at most16 distinct signed deliveries for at most20minutes. Exact bytes are authenticated before parsing; a minimal structural receipt commits before202 acknowledgement. No callback value can create attempts, associate records, enqueue recovery or dispatch provider requests in this increment. This deliberately incomplete mapping remains closed until a current-account delivery contract is established. Additive0022 changes no applied0001–0021 migration bytes.
+
 ## Developer native booking accepted and independently closed — 13 October 2026
 
 Packet `217dfd4e4df2` executed once after YS approved the exact packet and amended resource limits. Source `8bd66c1` passed all three CI gates in run `38273011816`; artifact `11758121123` matched 148 sealed files, 257 Worker tests and all 21 immutable migrations. Fresh availability selected Nabil (instructor 3), service 2, **14 October 09:00 and 15 October 14:50 Singapore**. One new attempt `a8e47c99-9016-4db4-8d18-96b52675536c` completed batch 8, bookings 36/37 and exact invoice 28, SGD176 with zero tax. Both signed booking reads were confirmed; authoritative invoice readback was unpaid; the native checkout link remains unopened.

@@ -871,3 +871,52 @@ test("completion resamples trusted time after storage validation and refuses an 
   assert.equal((await row(a)).state, "claimed");
   assert.equal((await claim(a, c.ready_ms)).generation, 2);
 });
+
+test("protected confirmation preserves fresh late paid evidence without reopening checking", async () => {
+  now -= 600001;
+  const a = await dispatched();
+  await associate(a);
+  const at = Date.now();
+  await db
+    .prepare(
+      "UPDATE attempts SET observation_json=?,state='observed' WHERE id=?",
+    )
+    .bind(JSON.stringify(observation(a, at)), a.id)
+    .run();
+  const response = await mf.dispatchFetch(
+    origin + `/api/attempts/${a.id}/confirmation`,
+    { headers: { cookie: a.cookie } },
+  );
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).status, "confirmed");
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT confirmation_checks FROM attempts WHERE id=?")
+        .bind(a.id)
+        .first()
+    ).confirmation_checks,
+    0,
+  );
+  const unpaid = observation(a, Date.now(), "unpaid");
+  await db
+    .prepare("UPDATE attempts SET observation_json=? WHERE id=?")
+    .bind(JSON.stringify(unpaid), a.id)
+    .run();
+  const pending = await mf.dispatchFetch(
+    origin + `/api/attempts/${a.id}/confirmation`,
+    { headers: { cookie: a.cookie } },
+  );
+  assert.equal((await pending.json()).reason, "verification_window_elapsed");
+  const invalid = observation(a, Date.now());
+  invalid.bookings[0].status = "cancelled";
+  await db
+    .prepare("UPDATE attempts SET observation_json=? WHERE id=?")
+    .bind(JSON.stringify(invalid), a.id)
+    .run();
+  const cancelled = await mf.dispatchFetch(
+    origin + `/api/attempts/${a.id}/confirmation`,
+    { headers: { cookie: a.cookie } },
+  );
+  assert.equal((await cancelled.json()).reason, "paid_booking_invalid");
+});

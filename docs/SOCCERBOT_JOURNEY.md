@@ -1,5 +1,17 @@
 # SoccerBotStudio — Journey
 
+## Payment/webhook investigation and first repair — 13 October 2026
+
+YS approved merging PR21 because of its size. It merged as383cc2e at00:17:30Singapore; main CI38276366243 passed frontend/backend/live-email and demo deployment. YS then requested an attempt to settle payment and webhook acceptance and stop before owner-controlled acceptance. A new feature branch starts from that actual merged main.
+
+Inspection found a genuine disagreement between the payment domain and protected HTTP reader: the domain permits fresh valid paid evidence after the checking deadline, while the reader returned unresolved before evaluating it. A new regression reproduced unresolved instead of confirmed. The owning reader now delegates to the same domain, retaining zero post-deadline checks, access protection and no provider calls; unpaid and paid-cancelled cases remain unconfirmed.
+
+Current official REST webhook documentation establishes exact-body HMAC and signed timestamp/algorithm fields but not the full account event payload or settlement event. Implemented bounded authenticated capture to obtain structural evidence without guessing that payload. A receipt is diagnostic only, not payment or recovery acceptance. The full webhook mapper and no-return live reconciliation remain pending actual delivery evidence. All live authority stays closed and owner-controlled checkout/payment/browser work has not started.
+
+Verification first exposed test setup trying to mutate immutable attempt/foundation identity fields; fixtures were corrected to create an already-expired checking window and assert the environment constraint, preserving production immutability. A generated Worker type requires explicit TextDecoder ignoreBOM; the source was corrected. The expected database-failure HTTP status was aligned to the existing503 safe error boundary. Original regression/focused failure logs are retained privately; no production assertion, timeout, retry or skip was weakened.
+
+Local verification: all265 Worker runtime tests passed, zero failures/skips/provider requests; generated types, Worker/source/policy boundaries and affected lint passed. The first wrapper receipt rejected the misplaced new inventory title; corrected ordering was independently matched to the saved successful265-test log without repeating unchanged tests. Exact-source CI remains required before live use.
+
 ## Developer native booking accepted and independently closed — 13 October 2026
 
 Packet `217dfd4e4df2` executed once after YS approved the exact packet and amended resource limits. Source `8bd66c1` passed all three CI gates in run `38273011816`; artifact `11758121123` matched 148 sealed files, 257 Worker tests and all 21 immutable migrations. Fresh availability selected Nabil (instructor 3), service 2, **14 October 09:00 and 15 October 14:50 Singapore**. One new attempt `a8e47c99-9016-4db4-8d18-96b52675536c` completed batch 8, bookings 36/37 and exact invoice 28, SGD176 with zero tax. Both signed booking reads were confirmed; authoritative invoice readback was unpaid; the native checkout link remains unopened.
