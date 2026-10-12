@@ -1,5 +1,15 @@
 # SoccerBotStudio — Journey
 
+## Native campaign stopped on actual date availability — 12 October2026
+
+Sealed packet3f6019db7880 ran sourcee122ba5 after all-three CI38236452119/artifact11740802365 passed. The authenticated15–29October calendar returned14 start times on15October and no other offered date. The deterministic selection therefore stopped before native-grant installation, prepare or book. No new attempt, booking, invoice or link was created. This is an availability blocker, not evidence of another booking-normalization defect; dates outside the read range remain unknown.
+
+Independent closure18:42:07Singapore verified sourcee122ba5/version0c5102c2-01d6-4ae3-8855-891d6a504042, provider/identity disabled/end0,378/512/active0, all three new capability denial checks401, empty schedules,18 unchanged historical table snapshots and21 unchanged migrations.0001–0021 immutable; none pending. Current100% deployment and immutable version bindings matched Worker/coordinator readiness.
+
+Flight5 used5 provider/25 management/11 direct Worker/3 deployments. Campaign totals:378 provider,153/208 management,68/96 Worker,15/16 deployments,5/5 bounded flights,3/4 actual attempts,5/8 conservative book allowances,1/1 migration.118 ordinary provider calls and16 recovery calls remain; unused calls do not authorize another flight. One remaining deployment slot cannot support the required baseline/active/closed proof. Cumulative904 measured management plus unknown Dashboard, at least77 deployments plus unknown; email8/siteverify8 unchanged, native notifications unmeasured.
+
+Native integration is partially accepted: single booking35/invoice27 and same-date bookings33/34/invoice26 passed full association, signed confirmed/unpaid readback and unopened checkout links. Different-date remains blocked. Stop this campaign closed. Resume requires a second eligible date on the developer provider account, then a newly bounded exact-source different-date proof; schedule changes and additional deployment authority are not included in this consumed packet. Do not guess new dates, reopen grants, retry historical effects, merge or deploy production. The later owner-operated payment/browser/webhook flight remains separate.
+
 ## Actual calendar discovery before the final native gate — 12 October2026
 
 Flight4 accepted single booking35/invoice27; its independent22October availability probe returned zero offers. Two Cloudflare settings GET timeouts during closure were both charged as unknown management reads. Closure was proved through current100% deployment plus immutable version resources/bindings, matched Worker/coordinator readiness,401 denials, empty schedules and full prior-row/migration preservation. No effect or closure write was replayed. Instead of guessing another date, add one bounded calendar range read using the documented getStartTimeMatrix contract (https://help.simplybook.me/wiki/Company_public_service_methods and https://help.simplybook.me/wiki/User_API_guide). Validate actual returned dates/times before binding two dates for the final attempt. This does not imply provider availability exists on another date.

@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Native campaign stopped on actual date availability — 12 October2026
+
+Calendar discovery passed its live contract, but the approved range contained only one offered date. Treat absent second-date availability as a business prerequisite: never manufacture availability, relax the distinct-date acceptance requirement or infer a validator defect. The existing single and same-date booking authority chain remains accepted. Native integration is partially accepted: single booking35/invoice27 and same-date bookings33/34/invoice26 passed full association, signed confirmed/unpaid readback and unopened checkout links. Different-date remains blocked. Stop this campaign closed. Resume requires a second eligible date on the developer provider account, then a newly bounded exact-source different-date proof; schedule changes and additional deployment authority are not included in this consumed packet. Do not guess new dates, reopen grants, retry historical effects, merge or deploy production. The later owner-operated payment/browser/webhook flight remains separate.
+
 ## Actual calendar discovery before the final native gate — 12 October2026
 
 Read-only calendar discovery uses the existing one-use operator capability and coordinator/transport owners. A source/account-bound trusted scope fixes service2/instructor3, a maximum15-day date range,180-second expiry and at most6 physical calls from an exact carried counter while preserving16 recovery calls. Only validated date/time offers are returned. A calendar result never grants booking authority: a separate short-lived native grant must bind exactly two selected dates, and normal fresh availability, capacity, contact, price and write-boundary checks remain mandatory. No new schema, schedule changes, historical provider reads or booking replay.

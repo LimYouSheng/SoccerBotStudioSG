@@ -1,5 +1,9 @@
 # North Star: dependable customer booking and quick rebooking
 
+## Native campaign stopped on actual date availability — 12 October2026
+
+Native integration is partially accepted: single booking35/invoice27 and same-date bookings33/34/invoice26 passed full association, signed confirmed/unpaid readback and unopened checkout links. Different-date remains blocked. Stop this campaign closed. Resume requires a second eligible date on the developer provider account, then a newly bounded exact-source different-date proof; schedule changes and additional deployment authority are not included in this consumed packet. Do not guess new dates, reopen grants, retry historical effects, merge or deploy production. The later owner-operated payment/browser/webhook flight remains separate.
+
 ## Actual calendar discovery before the final native gate — 12 October2026
 
 Single and same-date native integration have passed full invoice association, signed confirmed/unpaid readback and unopened native link. Different-date acceptance is the final native gate. Use one bounded read-only15–29October calendar probe to discover real offered dates; select and bind exactly two dates before preparation. Stop closed if the provider has fewer than two eligible dates. The later owner-operated payment/browser/webhook flight remains separate.

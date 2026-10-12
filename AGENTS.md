@@ -1,5 +1,11 @@
 # SoccerBotStudioSG engineering
 
+## Native campaign stopped on actual date availability — 12 October2026
+
+Independent closure18:42:07Singapore verified sourcee122ba5/version0c5102c2-01d6-4ae3-8855-891d6a504042, provider/identity disabled/end0,378/512/active0, all three new capability denial checks401, empty schedules,18 unchanged historical table snapshots and21 unchanged migrations.0001–0021 immutable; none pending. Current100% deployment and immutable version bindings matched Worker/coordinator readiness.
+
+Native integration is partially accepted: single booking35/invoice27 and same-date bookings33/34/invoice26 passed full association, signed confirmed/unpaid readback and unopened checkout links. Different-date remains blocked. Stop this campaign closed. Resume requires a second eligible date on the developer provider account, then a newly bounded exact-source different-date proof; schedule changes and additional deployment authority are not included in this consumed packet. Do not guess new dates, reopen grants, retry historical effects, merge or deploy production. The later owner-operated payment/browser/webhook flight remains separate. Final checkpoint changes documentation/release metadata only; preserve the249-test application and all migration bytes. Publish final-source CI without reopening live access.
+
 ## Actual calendar discovery before the final native gate — 12 October2026
 
 The next source adds a bounded read-only calendar probe to select actual dates for the remaining different-date gate. Single and same-date integration are accepted; current closure is24153c3/version6978f217-4486-4c78-aded-202f3a6bb022,373/512/active0. Flight4 also proved22October has zero offers. No provider schedule/configuration changes are authorized. Final flight first reads15–29October, then binds exactly two offered dates before any prepare/book; otherwise stop closed without an attempt. All existing campaign limits remain.
