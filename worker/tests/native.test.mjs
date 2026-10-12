@@ -838,6 +838,96 @@ test("native multi-session rejects missing duplicate foreign and financially inc
     assert.equal((await call("normalize", data)).status, 409);
   }
 });
+test("native batch closure validates the complete invoice independently of allocation envelope fields", async () => {
+  for (const bookings of [{ 701: true, 702: true }, undefined]) {
+    const data = await prepared(true);
+    data.batchClosure = {
+      bookings,
+      invoice: structuredClone(data.creation.invoice),
+    };
+    const first = await call("orchestrate", data);
+    assert.equal(first.result.state, "associated", JSON.stringify(first));
+    assert.deepEqual(
+      first.sent.map((x) => x.kind),
+      ["batch-create", "book", "book", "batch-close"],
+    );
+    const row = await db
+      .prepare("SELECT association_json FROM attempts WHERE id=?")
+      .bind(data.scope.attemptId)
+      .first();
+    assert.deepEqual(JSON.parse(row.association_json).bookingIds, [
+      "701",
+      "702",
+    ]);
+    const second = await call("orchestrate", data);
+    assert.equal(second.sent.length, 0);
+  }
+});
+test("native batch closure rejects incomplete foreign changed unpaid and confirmation evidence without replay", async () => {
+  for (const mutate of [
+    (c) => {
+      c.invoice = null;
+    },
+    (c) => {
+      c.invoice.lines.pop();
+    },
+    (c) => {
+      c.invoice.lines[1] = structuredClone(c.invoice.lines[0]);
+    },
+    (c) => {
+      c.invoice.lines[1].bookings[0].client_id = "52";
+    },
+    (c) => {
+      c.invoice.lines[1].bookings[0].service_id = "99";
+    },
+    (c) => {
+      c.invoice.lines[1].bookings[0].start_datetime = "2026-10-12 09:00:00";
+    },
+    (c) => {
+      c.invoice.lines[1].bookings[0].is_confirmed = false;
+    },
+    (c) => {
+      c.invoice.lines[1].amount = 87;
+    },
+    (c) => {
+      c.invoice.amount = 88;
+    },
+    (c) => {
+      c.invoice.currency = "USD";
+    },
+    (c) => {
+      c.invoice.status = "paid";
+      c.invoice.payment_received = true;
+      c.invoice.payment_processor = "hitpay";
+    },
+    (c) => {
+      c.require_confirm = true;
+    },
+    (c) => {
+      c.require_confirm = "invalid";
+    },
+  ]) {
+    const data = await prepared(true);
+    data.batchClosure = {
+      bookings: { 701: true, 702: true },
+      invoice: structuredClone(data.creation.invoice),
+    };
+    mutate(data.batchClosure);
+    const result = await call("orchestrate", data);
+    assert.equal(result.result.state, "recovery_required");
+    assert.equal(result.sent.filter((x) => x.kind === "batch-close").length, 1);
+    assert.equal(
+      result.sent.filter((x) => x.kind === "payment-link").length,
+      0,
+    );
+    const row = await db
+      .prepare("SELECT association_json FROM attempts WHERE id=?")
+      .bind(data.scope.attemptId)
+      .first();
+    assert.equal(row.association_json, null);
+    assert.equal((await call("orchestrate", data)).sent.length, 0);
+  }
+});
 test("native batch reserves once finalizes all sessions and cannot repeat across adapter instances", async () => {
   const data = await prepared(true);
   const first = await call("orchestrate", data);
@@ -1631,9 +1721,11 @@ test("native batch permits unavailable interim payment flags only with strict fi
           bookings: [booking],
         };
       });
+      // Closure payment evidence belongs to its complete invoice, while
+      // allocation flags remain validated only on the book endpoint.
       if (finalState === "missing")
-        delete data.creation.bookings[0].require_payment;
-      if (finalState === null) data.creation.bookings[0].require_payment = null;
+        delete data.creation.invoice.payment_received;
+      if (finalState === null) data.creation.invoice.payment_received = null;
       if (finalState === "missing-invoice") data.creation.invoice = null;
       if (finalState === "requires-confirmation")
         data.creation.require_confirm = true;

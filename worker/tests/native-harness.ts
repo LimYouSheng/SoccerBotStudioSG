@@ -63,6 +63,7 @@ const harness = {
       batchRequiresConfirm?: unknown;
       batchReceipt?: unknown;
       batchReceipts?: unknown[];
+      batchClosure?: unknown;
     };
     let reserved = 0,
       finished = 0,
@@ -151,7 +152,10 @@ const harness = {
           return { body: 601, receivedAtMs: input.now };
         }
         if (operation.kind === "batch-close")
-          return { body: input.creation, receivedAtMs: input.now };
+          return {
+            body: input.batchClosure ?? input.creation,
+            receivedAtMs: input.now,
+          };
         if (operation.kind === "book") {
           const creation = input.creation as { bookings: unknown[] };
           const index = sent.filter((item) => item.kind === "book").length - 1;

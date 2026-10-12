@@ -89,6 +89,8 @@
   "native lost readback stops the pair without replaying booking or link effects",
   "native multi-session invoice joins every booking irrespective of provider response order",
   "native multi-session rejects missing duplicate foreign and financially inconsistent invoice lines",
+  "native batch closure validates the complete invoice independently of allocation envelope fields",
+  "native batch closure rejects incomplete foreign changed unpaid and confirmation evidence without replay",
   "native batch reserves once finalizes all sessions and cannot repeat across adapter instances",
   "native batch receipts select the unique new booking from the complete unordered retained set",
   "native batch receipt sets reject absent duplicate foreign changed and premature members without replay",

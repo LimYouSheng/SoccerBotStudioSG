@@ -1,5 +1,9 @@
 # North Star: dependable customer booking and quick rebooking
 
+## Native campaign flight1 — closure contract correction, 12 October2026
+
+Flight1 passed both intermediate receipts and retained exact bookings31/32 in batch6, then stopped on the closeBatch envelope at creation.require_confirm/missing. Its bookings field was an object with two entries; no entry values or map-key semantics were retained. Native acceptance remains pending. Carry281/512/active0, three remaining flights/six booking dispatches maximum and20:30Singapore deadline. Applied0001–0021 are now immutable. Continue the fixed acceptance checklist through a separate invoice-based closure validator, exact-source CI and the next sealed packet; never repeat batch6 closure or touch its records. Service Contracts and Journey own the contract/evidence.
+
 ## Current North Star — complete native-booking acceptance, 12 October2026
 
 YS requested a fixed North Star and continued execution until native booking is accepted. Complete the supported developer-account booking integration, then report each acceptance gate against actual evidence. A succession of narrower validation fixes is progress, not completion. Preserve the overarching quoted customer journey and stable M2/M4/M5 milestones below; YS confirmed native-booking integration first, retaining the later combined payment/webhook/owner-device acceptance flight.

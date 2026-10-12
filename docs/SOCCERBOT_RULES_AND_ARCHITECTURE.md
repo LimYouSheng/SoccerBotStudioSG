@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Separate allocation and batch closure evidence — 12 October2026
+
+Observed closeBatch is a distinct endpoint envelope; do not route it through book allocation normalization or default a missing confirmation flag to false. Retained validated session keys fix the only admissible booking set. The authenticated closure invoice must independently satisfy every existing invoice line, nested booking/customer/service/provider/time/duration, money/tax, unique membership, confirmed and unpaid predicate. Its root bookings container is redundant endpoint output and is not an identity/confirmation authority; its observed object shape does not justify inferred map keys, aliases or fabricated allocation fields. A supplied non-null require_confirm still must be a recognized false flag. Single-book normalization remains strict. Signed authoritative booking and invoice reads remain mandatory before creating a checkout link, including their cross-invoice/line/paid-state checks. Unknown finalization stays durable and is never replayed.
+
 ## Acceptance-driven native continuation — 12 October2026
 
 YS requests continued execution against a drafted North Star until native booking is accepted. Keep the original quoted journey and M2/M4/M5 IDs. Completion requires the entire named native acceptance checklist, not successive passing field predicates. Every repair needs endpoint-specific evidence, a reproduced failure and meaningful rejection cases. Improve safe structural diagnostics so a failure records the relevant collection shape/count without retaining raw bodies, contact details or signing material. Never accept first/last/any matching receipt without exact attempt/session membership and uniqueness.

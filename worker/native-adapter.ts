@@ -5,6 +5,7 @@ import { ApiError, digest } from "./policy";
 import { intentSchema, associationSchema } from "./journal";
 import {
   normalizeNativeCreation,
+  normalizeNativeBatchClosure,
   normalizeNativeSession,
   normalizeNativeReads,
   inspectNativeBooking,
@@ -306,11 +307,15 @@ export function nativeBookingOperations(options: {
           batchId,
           signature,
         });
-        created = normalizeNativeCreation(response.body, {
-          ...options.scope,
-          bookingObservedAtMs: response.receivedAtMs,
-          invoiceObservedAtMs: response.receivedAtMs,
-        });
+        created = normalizeNativeBatchClosure(
+          response.body,
+          {
+            ...options.scope,
+            bookingObservedAtMs: response.receivedAtMs,
+            invoiceObservedAtMs: response.receivedAtMs,
+          },
+          bookingKeys,
+        );
       }
       if (
         !created ||

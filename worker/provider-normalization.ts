@@ -1064,6 +1064,56 @@ export function normalizeNativeSession(
     nativeCustomerId,
   };
 }
+// closeBatch returns the final invoice, not another book allocation receipt.
+// The retained keys identify the exact allocated set; the invoice must prove
+// every session/customer/money predicate. Checkout still requires signed reads.
+// The separate closure bookings container has no authority over that set.
+export function normalizeNativeBatchClosure(
+  raw: unknown,
+  context: Omit<NativeReadContext, "association">,
+  retained: ReturnType<typeof normalizeNativeSession>[],
+) {
+  const response = nativeRecord(raw, "creation"),
+    invoice = nativeRecord(response.invoice, "creation.invoice"),
+    intent = boundIntent(context.intent);
+  if (intent.sessions.length < 2 || retained.length !== intent.sessions.length)
+    rejectNative("association.bookingIds", "mismatch");
+  const bookingIds = retained.map((key) => {
+    nativeHash(key.hash, "creation.booking.hash");
+    return providerId(key.bookingId, "creation.booking.id");
+  });
+  if (new Set(bookingIds).size !== bookingIds.length)
+    rejectNative("association.bookingIds", "mismatch");
+  const nativeCustomerId = providerId(
+    retained[0].nativeCustomerId,
+    "creation.booking.client_id",
+  );
+  if (retained.some((key) => key.nativeCustomerId !== nativeCustomerId))
+    rejectNative("creation.booking.client_id", "mismatch");
+  // A supplied flag must remain valid and non-conflicting. Absence does not
+  // establish confirmation; the complete invoice and signed reads do that.
+  if (response.require_confirm != null)
+    equal(
+      flag(response.require_confirm, "creation.require_confirm"),
+      false,
+      "creation.require_confirm",
+    );
+  const association = {
+    bookingIds,
+    invoiceId: providerId(invoice.id, "invoice.id"),
+    ...(intent.customerMode === "booking-contact" ? { nativeCustomerId } : {}),
+  };
+  const normalized = invoiceEvidence(invoice, { ...context, association });
+  if (normalized.lines.some((line) => !line.nestedConfirmed))
+    rejectNative("invoice.line.booking.is_confirmed", "mismatch");
+  equal(normalized.invoice.status, "unpaid", "creation.invoice.status");
+  return {
+    association,
+    bookingHash: retained[0].hash,
+    bookingKeys: retained,
+    invoice: normalized.invoice,
+  };
+}
 export function normalizeNativeCreation(
   raw: unknown,
   context: Omit<NativeReadContext, "association">,

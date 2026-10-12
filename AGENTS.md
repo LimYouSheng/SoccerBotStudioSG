@@ -1,5 +1,11 @@
 # SoccerBotStudioSG engineering
 
+## Campaign flight1 closed — 12 October2026
+
+Packet dea4fe21baae is consumed. Sourcea206106 passed all three CI38226503628 gates and artifact11736683975 validation, applied0021 preserving history and reached signed closeBatch for batch6/bookings31/32. First closure validation failed creation.require_confirm/missing; root object count2 and bookings object count2. Entry/key semantics were not retained. No readback/link/payment/cancellation/retry followed. Both booking keys remain retained; finalization is unknown locally.
+
+Independent closure17:09:05Singapore: sourcea206106/version370dfdad-e364-4257-a502-011ae9f12898, disabled provider/identity/end0,281/512/active0, expired grants/revoked guest, empty schedules,18 historical tables preserved and21 migrations. No migration pending;0001–0021 immutable. Campaign has three flights/six book dispatches at most remaining. Existing autonomous approval/deadline20:30 persists. Next correction separates closeBatch invoice validation from book allocation fields without weakening exact invoice/session/customer/money or signed-readback requirements. Source CI/sealed packet required before next flight; exclude every historical attempt and booking.
+
 ## Native acceptance North Star requested — 12 October2026
 
 YS requests a drafted North Star and execution until native booking is fully accepted. Source/research/test/PR work proceeds on the existing branch. NORTH_STAR points to the fixed acceptance checklist in Service Contracts; do not equate another field passing with completion. Begin with current second-response collection evidence and precise structural diagnostics. Existing closed238/256/active0, immutable0001–0020 and consumed packet remain unchanged. YS explicitly approved the finite512/four-flight/eight-booking/20:30Singapore campaign in Service Contracts and automatic execution of newly sealed exact-source packets after all three CI gates, replacing section5's separate per-packet confirmation only within this campaign. Native integration comes first; the combined owner-operated payment/acceptance flight remains later. Pending0021 preserves0001–0020; source/default-disabled and carry238 rules persist. No payment/cancellation/old-record/merge/production authority. Stop on acceptance or any limit.
