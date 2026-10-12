@@ -1,5 +1,11 @@
 # SoccerBotStudioSG engineering
 
+## Retained-record inspection executed and closed — 12 October
+
+Owner approved exact packet120046b5. Tested source8ac2227 read the latest retained booking once, using5 provider requests. All13 independent booking predicates matched, including40-minute service/10-minute buffer and50-minute occupied end; confirmed flag/status were recognized. Invoice reference was null; creation-only flags/keys/batch metadata were absent from getBookingDetails. This establishes the current read shape, not the discarded book envelope or its original rejection. Do not relax the occupied-end guard or infer the creation cause.
+
+Closed Worker/coordinator version40ffaeed-c57b-4ed8-a044-f1e286454c3d is independently verified disabled/end0; new grants expired, schedules empty, all18 historical tables preserved. Ledger130/192/active0; management652 measured plus unknown activity; deployments at least53 plus unknown. Original deadline and16-call recovery reserve persist. Private work/native-inspection/execution owns receipts. The packet is consumed. Record this outcome and publish the metadata/docs checkpoint; no new live operation, merge or booking proof is authorized.
+
 ## Read the retained booking format — 12 October
 
 YS asks for an actual current read and validation of all applicable fields. Source adds an explicit inspect mode to the existing one-use operator residual scope. It reads only one exact retained booking, uses shared normalizer predicates to collect independent field results, and cannot fetch invoices, compensate, finalize or write provider data. Scheduler/replay exclusions, source/attempt/key fencing and physical accounting remain. Six ordinary physical calls maximum (cold identity plus one signed read); no recovery reserve. Current read is not the discarded creation response. Prepare the final CI artifact and sealed finite packet; section5 still governs deployment approval. No live read/deployment has occurred.

@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Current provider read evidence — 12 October 2026
+
+The approved single-record inspection ran against tested source8ac2227 and independently closed. The current signed getBookingDetails object had54 fields. All13 independent allowlisted predicates passed: ID/customer/company/service/provider, duration, both buffers, start/end, price/currency and confirmation representation. The observed end matched the50-minute occupied interval; the service/buffer fields matched40+10. No source time comparison is changed by this evidence.
+
+Invoice joins remain unavailable with a null invoice reference; creation-specific flags, keys and batch metadata were absent from this endpoint. Current readback does not reconstruct the discarded creation envelope or establish the original failure. Native checkout/payment acceptance remains pending. Closure verified source8ac2227/version40ffaeed-c57b-4ed8-a044-f1e286454c3d, disabled provider/identity and end0 in Worker/coordinator,130/192/active0, expired new grants, empty schedules and preservation of all18 historical tables. The finite packet is consumed; subsequent deployment/read/write authority requires its own exact scope.
+
 ## Existing-record inspection boundary — 12 October 2026
 
 The owner requests actual current-account format evidence before another trial. Explicit residual mode inspect uses the existing operator endpoint and one-use grant, bound to source/attempt/single retained observed key. It bypasses compensation and scheduled recovery selection; it changes no attempt, association, recovery work or booking effect. Both adapter and coordinator restrict it to one signed booking read after admitted identity verification. Source/expiry/attempt fences are checked before and after the response. Six ordinary calls maximum under the same cumulative ledger; recovery reserve cannot be selected.

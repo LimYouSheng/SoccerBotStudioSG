@@ -1,5 +1,25 @@
 # SoccerBotStudio — Service Contracts
 
+## Executed existing-record inspection — 12 October 2026
+
+Owner-approved packet120046b5 deployed exact CI38209299723 live-email artifact11728402137/source8ac2227. Archive/file/tree verification preceded deployment. One source-bound inspect grant dispatched one signed getBookingDetails, with cold authentication/account checks using5 physical provider calls total. No invoice read, provider write, new guest, email/siteverify, migration or schedule operation occurred.
+
+| Current read evidence                                                                                                                   | Result                                                                             |
+| --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| id, client_id, company_login, event_id, unit_id                                                                                         | All bound identity comparisons matched; IDs were integer strings.                  |
+| event_duration, event_buffertime_before, event_buffertime_after                                                                         | Integer strings matched40-minute service,0 before and10 after.                     |
+| start_date_time, end_date_time                                                                                                          | Wall-time strings matched the selected start and50-minute occupied end.            |
+| event_price, event_currency                                                                                                             | Decimal-string price and currency matched the immutable expected quote.            |
+| is_confirmed, status                                                                                                                    | Recognized confirmation flag true and status confirmed.                            |
+| invoice_id, invoice_line_id, invoice_line_amount, invoice_currency, invoice_payment_received, invoice_status, invoice_payment_processor | Null; invoice-dependent validation unavailable.                                    |
+| invoice_amount                                                                                                                          | Decimal-string representation only; no authoritative invoice comparison performed. |
+| require_payment, require_confirm, hash, client_hash, batch_id, batch_hash                                                               | Absent from this endpoint; no creation-envelope conclusion.                        |
+| client_timezone                                                                                                                         | Null, observed only.                                                               |
+
+All13 independent predicates matched. Unknown returned keys/values and raw body were discarded; private evidence retains only the28 allowlisted field results, object count54 and derived status/time classification. This read does not prove the discarded book response had the same representation, nor identify its original rejection. It provides no basis for weakening the time, ownership or price guards. Next evidence must address the intermediate book envelope itself through authoritative endpoint documentation/provider-supplied sanitized shape or the already implemented private diagnostics in a separately justified future proof; do not repeat this read or create a booking merely to guess.
+
+Execution used28 management requests,14 direct Worker requests and3 deployments within the approved48/24/4 bounds; provider usage125→130/192 with active0. Remaining62 total includes16 reserved and46 ordinary. Cumulative measured management652 plus unknown Dashboard activity; deployment lower bound53 plus unknown; explicit email/siteverify8 each unchanged. Original12October16:18:56Singapore deadline persists. Both new grants are expired; Worker/coordinator independently verify disabled/end0 at closed version40ffaeed-c57b-4ed8-a044-f1e286454c3d. Empty schedules,18 applied immutable migrations and all18 pre-existing table snapshots are preserved. Current private receipts are under work/native-inspection/execution. This packet cannot reopen.
+
 ## Native validation diagnosis contract — 12 October 2026
 
 `native_representation_unverified` is an integration validation failure, not a SimplyBook error or evidence that a booking was not created. Latest proof diagnostics identify book/session0 and an independent booking-read cleanup failure, but not their rejected fields. Source now adds private `validation: {field, problem}` to the existing first execution/cleanup/residual diagnostic. `problem` is exactly missing (null/absent required evidence), malformed (unsupported type/encoding/shape) or mismatch (recognized evidence violates an expected equality, cardinality or set rule). No provider values or arbitrary property/message text is copied.
