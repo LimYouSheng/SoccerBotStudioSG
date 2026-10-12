@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## Approved live-test amendment preparation — 12 October2026
+
+YS requested a live test and explicitly approved cumulative256 with196 carried/16 reserved and deadline17:30Singapore today. Corrected source3e3628d passed all three CI38220464328 gates. Prepared explicit256 policy and pending0020 preserving all native-grant fields. Full Worker verification passed241/241 with zero failures/skips; restart/grant admission and prior/new schema-boundary checks remain. Local migration verification preserved17 application tables and15 fields across all four grant states, kept19 applied migrations unchanged, accepted240/rejected241 and retained foreign keys. Source/policy/types/affected lint/format and release-profile checks passed; exact packaged D1 preservation remains a CI gate. No live operation or counter reset. Deployed4671f37/version63a25341 remains closed at196/224/active0. Prior management717 measured plus unknown, deployments at least59 plus unknown, email8/siteverify8 and native notifications unmeasured persist. Next: checks, final-source CI/artifact and one sealed packet for exact approval. The new deadline supersedes the old elapsed deadline only; other campaign bounds and unknown effort persist.
+
 ## Current task — synthetic batch-membership experiment, 12 October2026
 
 YS asked to start an experiment. Rechecked clean6759773/remote PR21 and the closed196/224 ledger evidence. Public createBatch/book docs and provider staff sequence specify carrying the ID from createBatch into book and signed closeBatch. Current adapter already retains that ID and verifies the finalized booking set; a mandatory intermediate echo adds an unsupported presence requirement demonstrated by the latest live failure. No new account or Cloudflare request occurred.

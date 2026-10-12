@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Owner-approved live-test limits — 12 October2026
+
+YS explicitly approved preparation of one new trial with cumulative256 provider calls,196 carried and16 recovery calls preserved, ending12October17:30Singapore. The deadline supersedes the earlier16:18:56Singapore deadline and its72-hour elapsed cap; the9October08:18:56UTC start,24 aggregate active hours,60 loops and six repairs per cause remain. Unmeasured effort stays unknown. Keep the same account/campaign/DO ledger, default80/disabled/end0, immutable0001–0019 and independent closure. Service Contracts owns the exact operation limits; source preparation is not deployment approval. No old packet is reusable.
+
 ## Batch association from retained creation identity — 12 October2026
 
 The local experiment replaces the mandatory intermediate batch_id echo with the documented retained-createBatch identity. The server creates and journals that ID, supplies it to every book request and signs closure using that same ID and the validated, unchanged batch hash. A supplied non-null echo must parse and match; no recurring alias, response-derived replacement ID or fabricated hash is accepted. Only successful final normalization and equality with the complete retained booking-ID set can establish an association. Identity, selected sessions, invoice/money/payment and no-replay boundaries remain.

@@ -22,7 +22,7 @@ const schema = z.object({
   ENVIRONMENT: z.literal("developer"),
   PROVIDER_ACCESS: z.enum(["disabled", "trusted-reads"]),
   PROVIDER_CALL_CEILING: z
-    .enum(["80", "128", "192", "224"])
+    .enum(["80", "128", "192", "224", "256"])
     .default("80")
     .transform(Number),
   ACCESS_LIFETIME_MS: duration(60000, 3600000),

@@ -1,5 +1,9 @@
 # SoccerBotStudioSG engineering
 
+## Approved limits for the next live-test preparation — 12 October2026
+
+YS requested live testing and explicitly approved the amended limits: cumulative256 provider calls, carrying196 used with16 reserved, and deadline12October17:30Singapore. This deadline supersedes the prior16:18:56 and72-hour elapsed cap; original start,24 active hours,60 loops and six repairs per cause remain, with unmeasured effort unknown. Prepare pending0020 and exact-source CI/artifact/packet; section5 still requires exact finite deployment approval. Old packet remains consumed; current deployed4671f37/version63a25341 stays closed. Service Contracts owns the new scope. Applied0001–0019 remain immutable.
+
 ## Batch-association local experiment — 12 October
 
 YS requested the next experiment. Existing live packet is consumed and196/224 leaves12 ordinary calls; no new live trial or budget increase is made. Service Contracts now records the evidence-backed association rule: use the trusted createBatch ID in each request and signed closure, validate a supplied batch_id echo if present, retain strict batch_hash continuity and require final exact booking membership/invoice checks. No alias or invented hash. Local regression reproduces the observed missing-echo failure before correction. Complete changed checks, docs and final-source PR21 CI; deployed4671f37/version63a25341 stays closed and0001–0019 immutable. Original16:18:56Singapore deadline persists.
