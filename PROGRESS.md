@@ -839,6 +839,8 @@ The resulting final commit and its matching `verify / frontend` run are recorded
 - Current official API and SBPay documentation reviewed. Native hosted-checkout operation/entitlement and exact invoice/payment/status joins remain blocked. Proposed first proof is documented, unexecuted and conditional on the complete account/contract packet and YS approval. No new probe was needed for a prerequisite failure.
 - Scope: seven documentation files only; application, dependency pins, tests, inventories, workflows, runtime and environment unchanged. Affected checks: formatting, source/policy, relative-link/fence and invariant/receipt preservation; exact diff reviewed. Evidence: `/workspace/work/developer-payment-proof/`. Final candidate SHA and required CI are recorded in the new draft PR after publication; no successful local application suites are repeated.
 
+CI follow-up for the setup inspector: run38263707092 passed253/254 Worker tests in both backend lanes; the existing identity-expiry fixture expected exactly two identity reads but wall-clock CI delay produced three. The fixture now freezes its base clock only when explicit expiry injection is requested, retaining the six-second call-boundary advance and all exact count, accounting, foreign-account and replay assertions. Production clocks and TTLs are unchanged. The failed CI evidence remains retained; replacement exact-source CI is required.
+
 ## Next run
 
 Use the single next-ready task in the current ledger above and the proposed ordering in NORTH_STAR. Historical discovery/email setup instructions below are not fresh authority.

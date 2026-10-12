@@ -71,12 +71,17 @@ const harness = {
     const sent: NativeRequest[] = [];
     let validation: ReturnType<typeof nativeValidationReason>;
     const realNow = Date.now;
+    const fixtureNow = realNow();
     let clockOffset = input.fixtureClockOffset ?? 0;
     if (
       input.fixtureExpireAfter !== undefined ||
       input.fixtureClockOffset !== undefined
     )
-      Date.now = () => realNow() + clockOffset;
+      // Explicit expiry fixtures advance only at their chosen physical-call boundary.
+      // CI runtime must not inject extra identity expirations into this assertion.
+      Date.now = () =>
+        (input.fixtureExpireAfter !== undefined ? fixtureNow : realNow()) +
+        clockOffset;
     const control: ProviderControl = {
       reserve: async () => {
         reserved++;
