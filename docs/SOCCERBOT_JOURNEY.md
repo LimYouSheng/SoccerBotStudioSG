@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Actual subscription string mismatch observed — 13 October 2026
+
+After YS approved packet46b93ebc17fa7, its exact CI-passing source27f03fc executed one active-subscription read. Five physical calls advanced455→460. The response was a one-entry array whose `id`, `url`, `event`, `is_active` and `changed` fields were strings. This establishes the rejected `is_active` type without guessing a boolean alias. Its literal value and subscription identity were intentionally not captured; original post-create failure details remain unavailable.
+
+The flight independently closed at07:39:36Singapore on version35894e44-9bfd-4142-9ff3-91686b87fd78. Both Worker and coordinator are disabled/end0/active0; new grants expired and denied401; all23 historical tables and migration records are preserved. Actual cost5 provider/23 management/10 Worker/3 deployments. No subscription changes or owner-controlled actions occurred. Read acceptance does not resolve the earlier subscription; the campaign remains stopped. Service Contracts records the full packet/artifact and next repair boundary.
+
 ## Webhook flight stopped; access closed, subscription unresolved — 13 October 2026
 
 Packet `b918a81d06e991549f9d67e449098bf87e8109bc9ea6affc98d69d7773d06a99` executed once under the approved campaign on source `f2e0a3e91824f569a161f29447471d5081259719`. All three gates passed in CI38313369930; artifact11776470322/SHA256 `ed0207005a4ce1a38bc3f8c9302e05895be968d9afbeddf40a05d5725c3d1e14` matched150 sealed files and273 strict Worker tests. Migrations0022/0023 applied;0001–0023 are now immutable.

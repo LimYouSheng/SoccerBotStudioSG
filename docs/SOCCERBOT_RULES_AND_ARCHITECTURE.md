@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Current webhook diagnostic result — 13 October 2026
+
+Approved packet46b93ebc17fa7 completed one read and independently closed at07:39:36Singapore. Actual active-subscription metadata exposes `is_active` as a string; the current numeric0/1-only validator rejects that representation. No values or subscription identity were retained, so this finding is not cleanup or webhook acceptance. Preserve strict flags, association, historical rows and immutable migrations0001–0023 when repairing the owning normalizer.
+
+Deployed source27f03fc/version35894e44-9bfd-4142-9ff3-91686b87fd78 is closed: provider/identity disabled, end0,460/640 calls, active0. All23 historical tables are preserved. The original subscription remains unresolved; no successor live flight is authorized. Service Contracts owns the exact observed fields, authority, counters and closure; Journey owns this execution evidence. Payment, signed delivery, no-return recovery and owner acceptance remain pending.
+
 ## Webhook flight stopped; access closed, subscription unresolved — 13 October 2026
 
 Packet `b918a81d06e991549f9d67e449098bf87e8109bc9ea6affc98d69d7773d06a99` executed once under the approved campaign on source `f2e0a3e91824f569a161f29447471d5081259719`. All three gates passed in CI38313369930; artifact11776470322/SHA256 `ed0207005a4ce1a38bc3f8c9302e05895be968d9afbeddf40a05d5725c3d1e14` matched150 sealed files and273 strict Worker tests. Migrations0022/0023 applied;0001–0023 are now immutable.

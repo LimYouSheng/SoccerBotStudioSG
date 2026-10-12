@@ -1,5 +1,15 @@
 # SoccerBotStudio — Service Contracts
 
+## Subscription diagnostic executed and closed — 13 October 2026
+
+YS approved read-only packet `46b93ebc17fa78d20c44a108b6ba475a7e9bdb3149c474f3e2a402db00e32464` as a specific exception to the unresolved-effects stop. It executed once on source `27f03fca0ef63cff65a90d27dca6cd6eb228d320`, after all three CI38316237195 gates and artifact11777440913 verified 150 sealed files and 276 Worker tests. Artifact SHA256: `e615eb64461f42abc092b87dd7f6d37a72a47f2b8cb2effc2bc8b3afc5ba1ed6`.
+
+The authenticated active-subscription GET returned an array with one object. Its five fields, `id`, `url`, `event`, `is_active` and `changed`, were all strings. The current `subscriptionSnapshot` accepts only numeric0/1 for `is_active`, so this observed representation is rejected. This is a specific parser mismatch; the diagnostic deliberately withheld values and does not establish the exact flag literal, subscription identity, destination/event association or removal. Do not infer those from count1, coerce arbitrary truthy strings, or claim the original discarded response was recovered.
+
+At **13 October07:39:36 Singapore**, independent closure verified Worker/coordinator source27f03fc/version `35894e44-9bfd-4142-9ff3-91686b87fd78`, provider/identity disabled, end0,460/640 provider calls, active0 and recovery16 untouched. Both new operator grants expired and returned401, schedules remain empty, all23 historical table snapshots and migration records are preserved. Cost:5 provider,23 management,10 direct Worker and3 deployments. No subscription mutation, booking, payment, cancellation, migration, cron, email/siteverify or retry occurred.
+
+The diagnostic read is accepted and closed. The prior subscription remains unresolved and untouched; durable campaign state remains `access-closed-effect-unresolved`, with no automatic successor. Carried totals are460 provider,263 management,115 Worker and27 deployments. Next source work must narrowly validate the observed string representation and retain rejection evidence; any cleanup must first prove the unique original subscription against the preserved baseline and obtain fresh finite authority. Actual signed delivery, mapping, no-return reconciliation and owner-controlled acceptance remain pending.
+
 ## Webhook flight stopped; access closed, subscription unresolved — 13 October 2026
 
 Packet `b918a81d06e991549f9d67e449098bf87e8109bc9ea6affc98d69d7773d06a99` executed once under the approved campaign on source `f2e0a3e91824f569a161f29447471d5081259719`. All three gates passed in CI38313369930; artifact11776470322/SHA256 `ed0207005a4ce1a38bc3f8c9302e05895be968d9afbeddf40a05d5725c3d1e14` matched150 sealed files and273 strict Worker tests. Migrations0022/0023 applied;0001–0023 are now immutable.

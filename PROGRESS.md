@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## Latest result: subscription diagnostic closed — 13 October 2026
+
+Approved packet46b93ebc17fa7 observed a string `is_active`, rejected by the numeric-only subscription validator. Its exact value and subscription identity remain unproven. Independent closure at07:39:36Singapore verified source27f03fc/version35894e44-9bfd-4142-9ff3-91686b87fd78, disabled/end0/active0,460/640 provider calls and23 preserved historical tables. Carried management263, Worker115, deployments27. The read succeeded; the original subscription remains unresolved. No successor live authority or owner acceptance. See the latest Service Contracts and Journey entries for exact evidence and repair boundaries.
+
 ## Webhook flight stopped; access closed, subscription unresolved — 13 October 2026
 
 Packet `b918a81d06e991549f9d67e449098bf87e8109bc9ea6affc98d69d7773d06a99` executed once under the approved campaign on source `f2e0a3e91824f569a161f29447471d5081259719`. All three gates passed in CI38313369930; artifact11776470322/SHA256 `ed0207005a4ce1a38bc3f8c9302e05895be968d9afbeddf40a05d5725c3d1e14` matched150 sealed files and273 strict Worker tests. Migrations0022/0023 applied;0001–0023 are now immutable.
