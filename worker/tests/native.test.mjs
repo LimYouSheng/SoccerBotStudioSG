@@ -1261,9 +1261,17 @@ test("native prerequisite diagnostics retain safe private evidence without write
 });
 
 test("native extended grant needs the exact approved ceiling and retains the carried counter", async () => {
-  for (const fixtureCeiling of ["80", "128", "129"]) {
+  for (const [fixtureCeiling, startingUsed, maximumUsed, allowed] of [
+    ["80", 33, 112, false],
+    ["128", 33, 112, true],
+    ["129", 33, 112, false],
+    ["80", 90, 176, false],
+    ["128", 90, 176, false],
+    ["192", 90, 176, true],
+    ["193", 90, 176, false],
+  ]) {
     const data = await prepared(false, true, true);
-    await grantNative(data, { startingUsed: 33, maximumUsed: 112 });
+    await grantNative(data, { startingUsed, maximumUsed });
     const wall = new Date(
       data.scope.intent.sessions[0].startMs + 8 * 3600000,
     ).toISOString();
@@ -1278,10 +1286,10 @@ test("native extended grant needs the exact approved ceiling and retains the car
       const result = await call("finite-checkout", {
         ...data,
         fixtureCeiling,
-        fixtureUsed: 33,
+        fixtureUsed: startingUsed,
       });
       assert.equal(result.result?.paymentAvailable ?? false, false);
-      if (fixtureCeiling === "128") {
+      if (allowed) {
         assert.equal(result.status, 200);
         assert.equal(result.result.state, "prerequisites_unavailable");
         assert.ok(result.reserved > 0);
@@ -1293,7 +1301,7 @@ test("native extended grant needs the exact approved ceiling and retains the car
           .first();
         assert.equal(
           JSON.parse(row.result_json).diagnostic.providerUsed,
-          33 + result.reserved,
+          startingUsed + result.reserved,
         );
       } else {
         assert.equal(result.status, 409);

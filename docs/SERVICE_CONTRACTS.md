@@ -1,5 +1,11 @@
 # SoccerBotStudio — Service Contracts
 
+## Finite192-call continuation contract — 12 October 2026
+
+PROVIDER_CALL_CEILING additionally accepts192, only by explicit approved deployment; default80 and prior128 behavior remain. Same durable campaign counter carries90 used. Ordinary maximum176 and recovery maximum192 yield at most102 further physical calls, including16 reserved. Availability retains its32-call checkout reservation, and native dispatch keeps its own20-call admission floor. No token refresh escapes physical accounting.
+
+Pending0018_native_grant_ceiling_192.sql copies every grant column/row unchanged and replaces only the schema maximum112 with176. Release declares precisely this pending migration. Populated-release verification checks retained fields, foreign keys and176/177 acceptance/rejection. Runtime tests cover both prior128 and new192 continuity across restart and reject grants under older/unsupported policies. Old grants remain closed and binding changes alone admit no operation. Live preparation creates no provider effect; final exact packet approval governs deployment, migration and proof.
+
 ## Documented native lifecycle and validation phases — 12 October 2026
 
 For multiple sessions, the sequence is createBatch → book each selected item → signed closeBatch → validate complete invoice/booking association → authoritative readback → native hosted payment link. SimplyBook's [API reference](https://be.simplybook.me/api/doc) describes closeBatch as returning the invoice when payment is required; its [staff support explanation](https://tech-support.simplybook.me/t/575-multiple-products-added-when-booking-with-count/581) gives the batch sequence/signature. The [public booking contract](https://help.simplybook.me/wiki/Company_public_service_methods#book) permits require_confirm=true in a booking receipt. These public contracts do not prove current-account response shapes or payment acceptance.

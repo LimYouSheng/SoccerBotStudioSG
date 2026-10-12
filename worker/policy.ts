@@ -21,7 +21,10 @@ const schema = z.object({
   SOURCE_REVISION: z.string().regex(/^(unpublished|[a-f0-9]{40})$/),
   ENVIRONMENT: z.literal("developer"),
   PROVIDER_ACCESS: z.enum(["disabled", "trusted-reads"]),
-  PROVIDER_CALL_CEILING: z.enum(["80", "128"]).default("80").transform(Number),
+  PROVIDER_CALL_CEILING: z
+    .enum(["80", "128", "192"])
+    .default("80")
+    .transform(Number),
   ACCESS_LIFETIME_MS: duration(60000, 3600000),
   OBSERVATION_MAX_AGE_MS: duration(1000, 60000),
   POLL_INTERVAL_MS: duration(1000, 30000),

@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Approved192 continuation preparation — 12 October 2026
+
+The owner approved preparation of a cumulative192-call policy, carrying90 consumed rather than resetting the campaign. Ordinary admission stops176 and16 calls remain reserved for recovery. Runtime accepts only80,128 or192 and still defaults80. All per-grant limits, one-use authority, identity/price/capacity checks, original campaign deadline and closed history persist. Pending0018 compatibly rebuilds the native grant table with maximum_used<=176 and exact retained fields; it adds no authority or counter. Applied0001–0017 are immutable.
+
+The existing128 ceiling leaves22 ordinary calls; availability rejects because it must preserve32 for checkout. Do not open a knowingly unusable proof or weaken that reservation. New proof targets two unpaid sessions and one unopened native link; existing booking25 is outside its mutation scope. Final exact-source CI/artifact and finite packet approval remain necessary. Provider acceptance, payment/webhook and combined physical acceptance stay pending.
+
 ## Cart allocation and invoice finalization are separate — 12 October 2026
 
 A returned multi-booking item is provisional evidence of the exact allocated session. It is not an invoice, payment or customer confirmation. The native adapter alone selects the batch-item validation phase after creating a native batch. It still validates recognized flags, active allocation, exact service/provider/time/customer and signing key, then validates the batch identity/hash before continuing. Intermediate require_confirm=true must not prevent reaching batch finalization. Unknown flags and foreign/inactive session evidence still stop writes.

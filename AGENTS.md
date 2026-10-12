@@ -1,5 +1,9 @@
 # SoccerBotStudioSG engineering
 
+## Approved preparation of192-call checkout continuation — 12 October
+
+YS approved preparing a cumulative192 continuation after preflight proved the remaining22 ordinary calls cannot enter availability's32-call checkout reservation. Carry90 used, active0 and reserve16; at most102 further calls,86 ordinary. Default remains80 and no existing grant/window/counter is reset. Pending0018 preserves every grant field while widening its maximum to176; applied0001–0017 remain immutable. Complete exact-source CI, verify the sealed artifact and prepare a finite two-session/unopened-link packet under section5. Booking25 stays untouched. This approval permits preparation only, not deployment, provider calls, payment, browser execution or merge.
+
 ## Cart-stage lifecycle correction — 12 October
 
 The approved residual pass is closed with booking/cart unchanged. Its signed booking read had no invoice reference; no cancellation was dispatched. Owner corrected the interpretation: invoice absence in an unfinished cart is not a booking failure. Private residual-recovery/execution/outcome.md owns execution, closure and carried accounting. Do not repeat recovery solely because an unfinished cart lacks an invoice.

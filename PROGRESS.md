@@ -1,5 +1,13 @@
 # SoccerBotStudioSG current progress
 
+## Current task — approved192 checkout-proof preparation, 12 October2026
+
+Owner approved preparation only: carry90 used toward192, reserve16, at most102 further provider calls (86 ordinary). Existing128 policy cannot start availability with22 ordinary calls because32 must remain for checkout. New0018 is pending and preserves all native grants; applied0001–0017 immutable. Default remains disabled/end0/80. No live deployment, migration, provider call or reopened packet.
+
+Local229/229 Worker checks passed, including the expanded128/192 restart and grant-admission cases; strict types, affected lint/format and source/policy checks passed.
+
+Next: exact-source CI, sealed artifact, reviewed finite backend proof with two unpaid sessions and one unopened link; existing booking25 untouched. Final exact live approval still required by AGENTS section5. Original deadline12October16:18:56SGT and all campaign limits remain. Carried management591 plus unknown Dashboard, deployment lower bound47 plus unknown, provider90/128 active0; email8/siteverify8 unchanged. Native/payment/webhook/combined physical acceptance pending.
+
 ## Current task — correct the cart lifecycle, 12 October 2026
 
 Residual-only recovery is closed and booking/cart unchanged. The owner corrected our premature expectation of an invoice for an unfinished cart. No cancellation was attempted. Latest private evidence is residual-recovery/execution/outcome.md. Carried management591 measured plus unknown Dashboard; deployments lower bound47 plus unknown; provider90/128 active0,16 reserved (38 overall remaining,22 before ordinary112). Explicit email8/siteverify8 unchanged; native notifications unmeasured. Existing campaign deadline12October16:18:56 Singapore and all effort/loop bounds persist.

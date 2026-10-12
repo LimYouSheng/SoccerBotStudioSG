@@ -608,66 +608,78 @@ test("persistent budget reserves sixteen calls for recovery and caps at eighty",
   );
 });
 test("explicit provider ceiling extension preserves used calls and the sixteen-call recovery reserve across restart", async () => {
-  const coordinator = "budget-extension";
-  let storage = await mf.unsafeGetDurableObjectStorage(
-    "soccerbot-test",
-    "SoccerBotAccountCoordinator",
-    { name: coordinator },
-  );
-  await storage.exec(
-    "INSERT INTO budget(campaign,used) VALUES(?,33)",
-    config.vars.CAMPAIGN_ID,
-  );
-  await mf.dispose();
-  await start("128");
-  try {
-    storage = await mf.unsafeGetDurableObjectStorage(
+  for (const [ceiling, carried] of [
+    [128, 33],
+    [192, 90],
+  ]) {
+    const coordinator = `budget-extension-${ceiling}`;
+    let storage = await mf.unsafeGetDurableObjectStorage(
       "soccerbot-test",
       "SoccerBotAccountCoordinator",
       { name: coordinator },
     );
-    const continued = await result("/test/admit", { coordinator });
-    assert.equal(continued.used, 34);
-    await result("/test/finish", {
-      coordinator,
-      id: continued.id,
-      cooldown: 0,
-    });
     await storage.exec(
-      "UPDATE budget SET used=111 WHERE campaign=?",
+      "INSERT INTO budget(campaign,used) VALUES(?,?)",
       config.vars.CAMPAIGN_ID,
-    );
-    const last = await result("/test/admit", { coordinator });
-    assert.equal(last.used, 112);
-    await result("/test/finish", { coordinator, id: last.id, cooldown: 0 });
-    assert.equal(
-      (await result("/test/admit", { coordinator })).reason,
-      "budget_exhausted",
-    );
-    const recovery = await result("/test/admit", {
-      coordinator,
-      recovery: true,
-    });
-    assert.equal(recovery.used, 113);
-    await result("/test/finish", { coordinator, id: recovery.id, cooldown: 0 });
-    await storage.exec(
-      "UPDATE budget SET used=128 WHERE campaign=?",
-      config.vars.CAMPAIGN_ID,
+      carried,
     );
     await mf.dispose();
-    await start("128");
+    await start(String(ceiling));
+    try {
+      storage = await mf.unsafeGetDurableObjectStorage(
+        "soccerbot-test",
+        "SoccerBotAccountCoordinator",
+        { name: coordinator },
+      );
+      const continued = await result("/test/admit", { coordinator });
+      assert.equal(continued.used, carried + 1);
+      await result("/test/finish", {
+        coordinator,
+        id: continued.id,
+        cooldown: 0,
+      });
+      await storage.exec(
+        "UPDATE budget SET used=? WHERE campaign=?",
+        ceiling - 17,
+        config.vars.CAMPAIGN_ID,
+      );
+      const last = await result("/test/admit", { coordinator });
+      assert.equal(last.used, ceiling - 16);
+      await result("/test/finish", { coordinator, id: last.id, cooldown: 0 });
+      assert.equal(
+        (await result("/test/admit", { coordinator })).reason,
+        "budget_exhausted",
+      );
+      const recovery = await result("/test/admit", {
+        coordinator,
+        recovery: true,
+      });
+      assert.equal(recovery.used, ceiling - 15);
+      await result("/test/finish", {
+        coordinator,
+        id: recovery.id,
+        cooldown: 0,
+      });
+      await storage.exec(
+        "UPDATE budget SET used=? WHERE campaign=?",
+        ceiling,
+        config.vars.CAMPAIGN_ID,
+      );
+      await mf.dispose();
+      await start(String(ceiling));
+      assert.equal(
+        (await result("/test/admit", { coordinator, recovery: true })).reason,
+        "budget_exhausted",
+      );
+    } finally {
+      await mf.dispose();
+      await start();
+    }
     assert.equal(
       (await result("/test/admit", { coordinator, recovery: true })).reason,
       "budget_exhausted",
     );
-  } finally {
-    await mf.dispose();
-    await start();
   }
-  assert.equal(
-    (await result("/test/admit", { coordinator, recovery: true })).reason,
-    "budget_exhausted",
-  );
 });
 
 test("shared refresh and token generation claims reject stale completion", async () => {

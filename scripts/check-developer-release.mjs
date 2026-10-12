@@ -137,7 +137,9 @@ try {
     .run();
   const grants = (await db.prepare("SELECT * FROM developer_operations").all())
     .results;
-  assert.deepEqual(manifest.pendingRemoteMigrations, []);
+  assert.deepEqual(manifest.pendingRemoteMigrations, [
+    "0018_native_grant_ceiling_192.sql",
+  ]);
   // Old-state compatibility remains tested locally, never re-applied remotely.
   for (const name of names.slice(5, 8)) await migrate(name);
   const appliedEight = {
@@ -198,6 +200,29 @@ try {
         .all()
     ).results,
     retainedNative,
+  );
+  // The new schema admits only the reviewed ceiling and preserves retained fields.
+  await db.prepare("UPDATE native_checkout_grants SET maximum_used=176").run();
+  await assert.rejects(
+    db.prepare("UPDATE native_checkout_grants SET maximum_used=177").run(),
+  );
+  await db
+    .prepare("UPDATE native_checkout_grants SET maximum_used=?")
+    .bind(retainedNative[0].maximum_used)
+    .run();
+  assert.deepEqual(
+    (
+      await db
+        .prepare(
+          "SELECT * FROM native_checkout_grants ORDER BY capability_hash",
+        )
+        .all()
+    ).results,
+    retainedNative,
+  );
+  assert.deepEqual(
+    (await db.prepare("PRAGMA foreign_key_check").all()).results,
+    [],
   );
   for (const table of priorTables)
     assert.deepEqual(

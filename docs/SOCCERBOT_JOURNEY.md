@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## 12 October 2026 — owner-approved192 preparation after budget preflight
+
+Cart lifecycle source9843246 passed all three CI38201415046 gates and229 local Worker tests. User requested the live checkout proof. Source inspection found a deterministic pre-dispatch blocker: carried90 used with ordinary maximum112 meets availability's rejection predicate90>=112-32. No live operation was attempted. Owner approved preparing192 cumulative, preserving90 and the16-call recovery reserve, with two unpaid sessions and one unopened link; booking25 remains untouched.
+
+Source extends the explicit policy and adds preserving0018 without changing0001–0017. Existing counter/restart and native-grant tests now exercise both128 and192, including denial under old/unsupported policies. Exact-source verification and sealing remain required before new live approval. Carried management591 plus unknown Dashboard, deployments lower bound47 plus unknown, provider90/128 active0; explicit email8/siteverify8 unchanged. Preparation does not change these live counters or the12October16:18:56 Singapore campaign deadline.
+
 ## Owner corrected unfinished-cart interpretation — 12 October 2026
 
 The approved residual-only pass installed the verified source, passed readiness and read the retained booking. No invoice reference was present. It dispatched no cancellation or new booking and independently closed Worker/coordinator access, expired its grants and preserved original state. Owner correctly identified that the record was still in a cart. The assistant had applied invoice-based recovery prematurely; absence of an invoice there is not evidence of booking malfunction. Detailed receipts and account identifiers stay private in residual-recovery/execution/outcome.md.
