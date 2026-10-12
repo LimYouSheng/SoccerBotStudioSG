@@ -1,18 +1,22 @@
 # SoccerBotStudioSG current progress
 
+## Current task — intermediate contract audit and finite proof preparation, 12 October2026
+
+Compared every consumed creation field with official public docs/examples and staff guidance. Public example is recurring, so current multiple-booking batch_id echo, batch/client hash details and intermediate end representation remain unresolved. Existing flag/customer/request/invoice timing follows the documented contract; no demonstrated code correction or guard relaxation. Service Contracts owns the field matrix and concrete diagnostic proposal, Journey records source limitations. No unchanged application tests repeated;237 Worker cases and all three554d009 CI gates remain prior application evidence.
+
+Prepare final-source docs CI/artifact and one exact packet: one new protected two-session attempt on13October, at most two books, conditional closure and unopened link, no cancellation/payment/retry. Carry130/192/active0, ordinary maximum176 (46 new calls),16 reserved untouched,48 management/24 direct Worker/4 deployments maximum with closure reserves. Original16:18:56Singapore deadline and closed version40ffaeed persist. No live operation is authorized by preparation. Exact approved packet is the next prerequisite; old records/grants/migrations remain preserved.
+
 ## Current task — creation-envelope evidence after the successful read, 12 October 2026
 
 Approved packet120046b5 executed and closed from tested8ac2227. The single retained-booking read passed all13 independent predicates, including50-minute occupied end, with40+10 service/buffer and confirmed status. Invoice reference null and creation-only fields absent; original discarded creation-response failure remains unknown. No guard relaxation or new booking trial follows. Next ready task: establish the endpoint-specific intermediate book envelope contract; preserve current named diagnostics for a separately justified future proof. Native/provider/payment/webhook and physical acceptance remain pending.
 
 Latest independently verified closure: Worker/coordinator source8ac2227/version40ffaeed-c57b-4ed8-a044-f1e286454c3d, provider/identity disabled, end0,130/192/active0, new grants expired, schedules empty and all18 historical table snapshots preserved. Execution used28 management/14 direct Worker/3 deployments/5 provider requests. Carried management652 measured plus unknown, deployments at least53 plus unknown,62 provider calls remaining including16 recovery reserve and46 ordinary. Email8/siteverify8 unchanged; native notifications unmeasured. All0001–0018 immutable, none pending. Campaign deadline12October16:18:56Singapore unchanged. Private evidence: work/native-inspection/execution. Publish this metadata/docs record with exact CI; no further live authority, browser, merge or production action.
 
-
 ## Historical checkpoint — inspect the retained booking format, 12 October 2026
 
 Owner requested an actual existing-record read instead of guessed provider semantics. Read-only source is prepared: explicit one-use inspect mode, one exact retained key, shared independent predicates, no invoice/cancel/finalize/write, no scheduler/replay and no attempt/effect mutation. Local full Worker237/237 and source/policy/types/lint/format passed; all18 migrations unchanged. Six ordinary physical calls maximum; final CI artifact and a newly sealed finite deployment/read/closure packet remain required under AGENTS section5. The preceding a9ecf38 diagnostic checkpoint passed all three CI38207930497 jobs. Current read cannot reconstruct the lost creation envelope.
 
 Carried unchanged: provider125/192, active0,67 remaining including16 recovery reserve; management624 measured plus unknown, deployments at least50 plus unknown; email8/siteverify8, native notifications unmeasured. No remote operation in this continuation. Campaign ends12October08:18:56UTC/16:18:56Singapore; no reset or extension. All0001–0018 are immutable, none pending. Earlier carts/grants remain closed or untouched as reported. Native-provider acceptance remains pending; no merge/browser/production/payment authority.
-
 
 ## Historical checkpoint — precise native diagnostics, 12 October 2026
 

@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Creation-contract comparison and next proof boundary — 12 October 2026
+
+The owner authorized official-contract research, field-by-field comparison, demonstrated corrections and finite proof preparation. Service Contracts now maps every consumed intermediate creation field to its check and evidence. The public response example is recurring; it does not establish the current multiple-booking batch_id echo or batch/client hash paths and continuity. No replacement field or relaxed check is justified. Application code is unchanged; the original failure remains unknown.
+
+A separately approved diagnostic proof may use one new protected two-session attempt and the installed precise diagnostics, with at most two book calls and an unopened native link only after all guards pass. Carry130/192; ordinary maximum176,16 recovery calls untouched, original campaign deadline unchanged. No retry, old-record mutation, cancellation or payment is included; partial results stay unresolved. Exact final-source CI/artifact and finite packet are required before live approval. The current provider/identity windows remain closed. This source audit is not native checkout acceptance.
+
 ## Current provider read evidence — 12 October 2026
 
 The approved single-record inspection ran against tested source8ac2227 and independently closed. The current signed getBookingDetails object had54 fields. All13 independent allowlisted predicates passed: ID/customer/company/service/provider, duration, both buffers, start/end, price/currency and confirmation representation. The observed end matched the50-minute occupied interval; the service/buffer fields matched40+10. No source time comparison is changed by this evidence.

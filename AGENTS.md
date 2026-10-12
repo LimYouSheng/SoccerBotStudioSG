@@ -1,5 +1,9 @@
 # SoccerBotStudioSG engineering
 
+## Intermediate creation contract audited — 12 October
+
+YS authorized all three next steps: official contract research/comparison, demonstrated corrections and bounded proof preparation. Service Contracts owns the field matrix and finite proposal. No current multiple-booking schema settles batch_id echo/hash continuity; the recurring example is not a replacement contract. No application change is justified. Prepare exact final-source CI/artifact and seal one new protected two-session diagnostic packet carrying130/192, ordinary maximum176 and16 untouched recovery calls, original deadline and closed version40ffaeed. No replay, old-record mutation, cancellation or payment; unopened link only if every guard passes. Preparation does not authorize live execution; section5 still requires the exact packet approval.
+
 ## Retained-record inspection executed and closed — 12 October
 
 Owner approved exact packet120046b5. Tested source8ac2227 read the latest retained booking once, using5 provider requests. All13 independent booking predicates matched, including40-minute service/10-minute buffer and50-minute occupied end; confirmed flag/status were recognized. Invoice reference was null; creation-only flags/keys/batch metadata were absent from getBookingDetails. This establishes the current read shape, not the discarded book envelope or its original rejection. Do not relax the occupied-end guard or infer the creation cause.
