@@ -1,5 +1,11 @@
 # SoccerBotStudioSG engineering
 
+## Approved setup inspection completed and closed — 12 October 2026
+
+Independent closure at 23:21:46 Singapore verified source `3af1323` / version `bd48335e-de9b-4b11-b0ba-b6ed5267f2f5`: Worker and coordinator matched, provider and identity access disabled, end 0, 387/512 calls with active 0 and 16 recovery calls untouched. Both new capabilities expired and returned 401; schedules remain empty; all 18 historical table snapshots and 21 applied migrations are preserved. No booking, payment, cancellation, provider configuration change, retry, old-record change or migration occurred.
+
+Single and same-date booking integration remain accepted; different-date booking remains blocked by actual working hours. Next prepare a narrowly scoped, date-specific developer schedule correction with the exact prior state and affected company/service/instructor scopes established, then fresh availability and one different-date booking proof. Do not infer four independent schedule defects from four effective empty results or modify recurring hours broadly. Webhook work separately requires supported callback payload and secret mapping, durable authenticated ingress and authoritative known-invoice reconciliation before registration; an empty active REST list alone is not webhook acceptance. Owner payment/browser/device acceptance stays deferred until technical integration is complete. Access remains closed; further live mutations need a concrete newly authorized packet.
+
 ## Full native acceptance execution resumed — 12 October2026
 
 YS instructed “execute it now” against the consolidated full native acceptance draft. Continue technical implementation, evidence-backed discovery preparation, tests and PR21 publication. The prior20:30Singapore live deadline has passed; its ledger is closed at378/512,153 management,68 Worker requests and15/16 deployments. The new instruction does not specify replacement numeric/time limits. Prepare a concrete new finite packet before seeking the required extension; do not reopen old grants, reset counters or perform payment/browser/production work.

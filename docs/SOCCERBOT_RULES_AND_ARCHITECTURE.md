@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Approved setup inspection completed and closed — 12 October 2026
+
+Packet `87a458a946d513e8e466dcf52f1f0cc9888d7bdf313cd1c0b347224bec94f87e` consumed the explicitly approved read-only scope on source `3af1323eda250b29f2bd95e2583d5dc49cbe161b`. Company, service 2, instructor 3 and combined working-hour reads all returned 15 October 09:00–21:00 Singapore and an empty interval list for 16 October. The active REST webhook subscription list returned an empty array. These are actual developer-account observations; they do not distinguish weekly rules from date exceptions, establish other dates, establish legacy callback configuration or prove a settlement event.
+
+Single and same-date booking integration remain accepted; different-date booking remains blocked by actual working hours. Next prepare a narrowly scoped, date-specific developer schedule correction with the exact prior state and affected company/service/instructor scopes established, then fresh availability and one different-date booking proof. Do not infer four independent schedule defects from four effective empty results or modify recurring hours broadly. Webhook work separately requires supported callback payload and secret mapping, durable authenticated ingress and authoritative known-invoice reconciliation before registration; an empty active REST list alone is not webhook acceptance. Owner payment/browser/device acceptance stays deferred until technical integration is complete. Access remains closed; further live mutations need a concrete newly authorized packet.
+
 ## Full native acceptance execution resumed — 12 October2026
 
 The scheduled recovery parser still capped startingUsed at186 and maximumUsed at192 although policy and the coordinator support the carried512 campaign. New regressions reproduce blocked admission at valid higher counters. Parse safe nonnegative integers and let existing configured policy/coordinator enforce the actual ceiling,16-call reserve,6–30-call window, explicit reserve permission, expiry, account, known attempt, current accounting, durable claims and no replay. Tests cover224/256/512 ceilings,378 carry, ordinary496 edge, explicitly scoped512 edge and rejected over-budget/reset/inverted/oversized windows. This source fix changes neither live budgets nor grant authority.

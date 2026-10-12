@@ -1,5 +1,11 @@
 # North Star: dependable customer booking and quick rebooking
 
+## Approved setup inspection completed and closed — 12 October 2026
+
+Packet `87a458a946d513e8e466dcf52f1f0cc9888d7bdf313cd1c0b347224bec94f87e` consumed the explicitly approved read-only scope on source `3af1323eda250b29f2bd95e2583d5dc49cbe161b`. Company, service 2, instructor 3 and combined working-hour reads all returned 15 October 09:00–21:00 Singapore and an empty interval list for 16 October. The active REST webhook subscription list returned an empty array. These are actual developer-account observations; they do not distinguish weekly rules from date exceptions, establish other dates, establish legacy callback configuration or prove a settlement event.
+
+Single and same-date booking integration remain accepted; different-date booking remains blocked by actual working hours. Next prepare a narrowly scoped, date-specific developer schedule correction with the exact prior state and affected company/service/instructor scopes established, then fresh availability and one different-date booking proof. Do not infer four independent schedule defects from four effective empty results or modify recurring hours broadly. Webhook work separately requires supported callback payload and secret mapping, durable authenticated ingress and authoritative known-invoice reconciliation before registration; an empty active REST list alone is not webhook acceptance. Owner payment/browser/device acceptance stays deferred until technical integration is complete. Access remains closed; further live mutations need a concrete newly authorized packet.
+
 ## Full native acceptance execution resumed — 12 October2026
 
 YS instructed “execute it now” against the consolidated full native acceptance draft. Continue technical implementation, evidence-backed discovery preparation, tests and PR21 publication. The prior20:30Singapore live deadline has passed; its ledger is closed at378/512,153 management,68 Worker requests and15/16 deployments. The new instruction does not specify replacement numeric/time limits. Prepare a concrete new finite packet before seeking the required extension; do not reopen old grants, reset counters or perform payment/browser/production work.
