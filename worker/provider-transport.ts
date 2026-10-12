@@ -104,8 +104,20 @@ export const nativeClientSchema = z
     name: contactText,
     email: contactText.pipe(z.email()),
     phone: contactText,
+    client_id: z
+      .string()
+      .regex(/^[1-9]\d{0,14}$/)
+      .optional(),
+    client_sign: z
+      .string()
+      .regex(/^[a-f0-9]{32}$/)
+      .optional(),
   })
-  .strict();
+  .strict()
+  .refine(
+    (value) =>
+      (value.client_id === undefined) === (value.client_sign === undefined),
+  );
 // Invoice handling is a control, not a discovered custom intake answer.
 export const nativeAdditionalSchema = z
   .object({ handle_invoice: z.literal(true) })
@@ -122,6 +134,23 @@ export type NativeExchange = (
   signal?: AbortSignal,
 ) => Promise<{ body: unknown; receivedAtMs: number }>;
 export type NativeRequest =
+  | { kind: "webhook-subscriptions" }
+  | {
+      kind: "working-hours";
+      from: string;
+      to: string;
+      serviceId: string | null;
+      instructorId: string | null;
+    }
+  | {
+      kind: "availability-range";
+      serviceId: string;
+      instructorId: string;
+      from: string;
+      to: string;
+    }
+  | { kind: "batch-create" }
+  | { kind: "batch-close"; batchId: string; signature: string }
   | { kind: "catalogue-services" }
   | { kind: "catalogue-instructors" }
   | {
@@ -145,8 +174,15 @@ export type NativeRequest =
       time: string;
       client: z.infer<typeof nativeClientSchema>;
       additional: z.infer<typeof nativeAdditionalSchema>;
+      batchId?: string;
     }
   | { kind: "booking-read"; bookingId: string; signature: string }
+  | {
+      kind: "booking-cancel";
+      bookingId: string;
+      signature: string;
+      evidenceObservedAtMs: number;
+    }
   | { kind: "invoice-read"; invoiceId: string }
   | { kind: "payment-link"; invoiceId: string };
 export type ProviderSecrets = {
@@ -228,6 +264,11 @@ export async function providerRequest(
       break;
     case "native": {
       if (!native) throw new ApiError(503, "provider_operation_unavailable");
+      if (native.kind === "webhook-subscriptions") {
+        url = "https://user-api-v2.simplybook.me/admin/webhooks";
+        method = "GET";
+        break;
+      }
       if (native.kind === "invoice-read" || native.kind === "payment-link") {
         const invoiceId = providerId(native.invoiceId);
         url =
@@ -241,7 +282,50 @@ export async function providerRequest(
       method = "POST";
       rpc = true;
       let rpcMethod: string, params: unknown[];
-      if (
+      if (native.kind === "batch-create") {
+        rpcMethod = "createBatch";
+        params = [];
+      } else if (native.kind === "batch-close") {
+        if (!/^[a-f0-9]{32}$/.test(native.signature))
+          throw new ApiError(503, "provider_signature_invalid");
+        rpcMethod = "closeBatch";
+        params = [
+          Number(providerId(native.batchId)),
+          "batch_multiple_booking",
+          native.signature,
+        ];
+      } else if (
+        native.kind === "availability-range" ||
+        native.kind === "working-hours"
+      ) {
+        const from = Date.parse(native.from + "T00:00:00+08:00");
+        const to = Date.parse(native.to + "T00:00:00+08:00");
+        if (
+          !/^\d{4}-\d{2}-\d{2}$/.test(native.from) ||
+          !/^\d{4}-\d{2}-\d{2}$/.test(native.to) ||
+          !Number.isFinite(from) ||
+          !Number.isFinite(to) ||
+          to < from ||
+          to - from > 14 * 86400000
+        )
+          throw new ApiError(503, "provider_date_invalid");
+        rpcMethod =
+          native.kind === "working-hours"
+            ? "getWorkDaysInfo"
+            : "getStartTimeMatrix";
+        const service =
+          native.serviceId === null
+            ? null
+            : Number(providerId(native.serviceId));
+        const instructor =
+          native.instructorId === null
+            ? null
+            : Number(providerId(native.instructorId));
+        params =
+          native.kind === "working-hours"
+            ? [native.from, native.to, instructor, service, 1]
+            : [native.from, native.to, service, instructor, 1];
+      } else if (
         native.kind === "catalogue-services" ||
         native.kind === "catalogue-instructors"
       ) {
@@ -260,11 +344,22 @@ export async function providerRequest(
           `${native.date} ${native.time}`,
           1,
         ];
-      } else if (native.kind === "booking-read") {
+      } else if (
+        native.kind === "booking-read" ||
+        native.kind === "booking-cancel"
+      ) {
         if (!/^[a-f0-9]{32}$/.test(native.signature))
           throw new ApiError(503, "provider_signature_invalid");
-        rpcMethod = "getBookingDetails";
-        params = [providerId(native.bookingId), native.signature];
+        rpcMethod =
+          native.kind === "booking-read"
+            ? "getBookingDetails"
+            : "cancelBooking";
+        params = [
+          native.kind === "booking-cancel"
+            ? Number(providerId(native.bookingId))
+            : providerId(native.bookingId),
+          native.signature,
+        ];
       } else {
         const service = Number(providerId(native.serviceId));
         if (native.kind === "required-fields") {
@@ -290,7 +385,9 @@ export async function providerRequest(
               fields.client,
               fields.additional,
               1,
-              null,
+              native.batchId === undefined
+                ? null
+                : Number(providerId(native.batchId)),
               null,
             ];
           }
@@ -328,6 +425,15 @@ export async function providerRequest(
   let cooldown = 0;
   return await measure("provider", async () => {
     try {
+      if (
+        native?.kind === "booking-cancel" &&
+        (!Number.isSafeInteger(native.evidenceObservedAtMs) ||
+          native.evidenceObservedAtMs > Date.now() ||
+          Date.now() - native.evidenceObservedAtMs > 15000)
+      ) {
+        complete = true;
+        throw new ApiError(503, "native_cleanup_evidence_expired");
+      }
       const response = await fetch(url, {
         method,
         headers,

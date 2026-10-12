@@ -1,4 +1,5 @@
 // Local workerd test driver; never the deployment entry point.
+import { ApiError } from "../policy";
 import worker, {
   SoccerBotAccountCoordinator,
   prepareAttempt,
@@ -105,21 +106,51 @@ const harness = {
           break;
         case "/test/orchestrate": {
           const calls: string[] = [];
+          const validations = new Map<number, number>();
           result = {
             result: await orchestrateBooking(request, env, input.id, {
               supported: input.scenario !== "unsupported",
               hasRecoveryCapacity: async () => input.scenario !== "budget",
               revalidate: async (intent, context) => {
                 calls.push(`validate:${context.sessionIndex}`);
-                if (input.scenario === "revoke" && context.sessionIndex === 1)
+                const count = (validations.get(context.sessionIndex) ?? 0) + 1;
+                validations.set(context.sessionIndex, count);
+                if (
+                  input.scenario === "preflight-unavailable" &&
+                  context.sessionIndex === 1
+                )
+                  throw new ApiError(409, "native_selection_changed");
+                if (
+                  input.scenario === "preflight-price" &&
+                  context.sessionIndex === 1
+                )
+                  throw new ApiError(409, "native_restart_required");
+                if (
+                  input.scenario === "preflight-unknown" &&
+                  context.sessionIndex === 1
+                )
+                  throw new Error("Synthetic unavailable validation");
+                if (
+                  input.scenario === "revoke" &&
+                  context.sessionIndex === 1 &&
+                  count === 2
+                )
                   await env.STATE.prepare(
                     "UPDATE guest_access SET revoked_ms=? WHERE owner_id=?",
                   )
                     .bind(Date.now(), input.owner)
                     .run();
-                if (input.scenario === "fence" && context.sessionIndex === 1)
+                if (
+                  input.scenario === "fence" &&
+                  context.sessionIndex === 1 &&
+                  count === 2
+                )
                   await requireRecovery(env.STATE, input.id, 1);
-                if (input.scenario === "price" && context.sessionIndex === 1)
+                if (
+                  input.scenario === "price" &&
+                  context.sessionIndex === 1 &&
+                  count === 2
+                )
                   return {
                     ...intent,
                     totalMinor: intent.totalMinor + 1,

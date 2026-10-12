@@ -433,7 +433,7 @@ export async function runNativeReadback(
         signal,
         exchange: async (operation, abort) => {
           if (
-            reads >= 2 ||
+            reads >= options.scope.intent.sessions.length + 1 ||
             Date.now() >= options.grantExpiresMs ||
             (operation.kind !== "booking-read" &&
               operation.kind !== "invoice-read")

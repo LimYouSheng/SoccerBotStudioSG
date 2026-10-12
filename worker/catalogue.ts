@@ -69,7 +69,9 @@ export function normalizeCatalogue(
         priceMinor: amount(row.price),
         currency: row.currency,
         instructorIds:
-          map === undefined || map.length === 0 ? null : map.map(providerId),
+          map === undefined || map.length === 0
+            ? null
+            : map.map((value) => providerId(value)),
       };
     }),
   });

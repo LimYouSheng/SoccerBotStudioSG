@@ -241,3 +241,129 @@ test("an adapter cannot mutate the validated input to approve a different draft"
   ).rejects.toMatchObject({ code: "invalid_response" });
   expect(input.players).toBe(1);
 });
+
+test("native availability carries provider identities labels and reviewed prices without Preview fallback", async () => {
+  const fetch = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    Response.json({
+      date: "2026-10-15",
+      observedAtMs: Date.now(),
+      offers: [
+        {
+          serviceId: "2",
+          serviceName: "Current Native Session",
+          instructorId: "33",
+          instructorName: "Current Native Instructor",
+          startMs: Date.parse("2026-10-15T08:10:00+08:00"),
+          priceMinor: 9900,
+          currency: "SGD",
+        },
+      ],
+    }),
+  );
+  const result = await liveBookingService.availability({
+    date: "2026-10-15",
+    players: 4,
+    serviceId: "2",
+  });
+  expect(result).toEqual([
+    {
+      date: "2026-10-15",
+      start: "08:10",
+      instructor: "33",
+      available: true,
+      native: {
+        serviceId: "2",
+        serviceName: "Current Native Session",
+        instructorName: "Current Native Instructor",
+        priceMinor: 9900,
+        currency: "SGD",
+      },
+    },
+  ]);
+  expect(fetch).toHaveBeenCalledWith(
+    "/api/booking/availability/2/2026-10-15",
+    expect.objectContaining({ credentials: "same-origin", redirect: "error" }),
+  );
+});
+
+test("native preparation binds reviewed contact and payment stays under protected confirmation", async () => {
+  const data = {
+    ...draft(),
+    nativeServiceId: "2",
+    slots: [
+      {
+        date: "2026-10-15",
+        start: "08:10",
+        instructor: "33",
+        native: {
+          serviceId: "2",
+          serviceName: "Current Native Session",
+          instructorName: "Current Native Instructor",
+          priceMinor: 8800,
+          currency: "SGD" as const,
+        },
+      },
+    ],
+  };
+  const id = "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa";
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValueOnce(Response.json({ attemptId: id, state: "prepared" }))
+    .mockResolvedValueOnce(
+      Response.json({
+        attemptId: id,
+        state: "associated",
+        paymentAvailable: true,
+      }),
+    );
+  const ready = await liveBookingService.checkout({
+    draft: data,
+    previous: null,
+  });
+  const sent = JSON.parse(String(fetch.mock.calls[0][1]?.body));
+  expect(sent.contact).toEqual(data.contact);
+  expect(sent.sessions[0]).toEqual({
+    serviceId: "2",
+    instructorId: "33",
+    startMs: Date.parse("2026-10-15T08:10:00+08:00"),
+    players: 1,
+    totalMinor: 8800,
+  });
+  const checking = await liveBookingService.pay({
+    attempt: ready,
+    outcome: "success",
+  });
+  expect(checking.status).toBe("checking");
+  expect(checking.booking).toBeNull();
+  expect(fetch.mock.calls[1][1]?.body).toBeUndefined();
+  expect(checking.id).toBe(id);
+});
+
+test("native restore reads the authenticated snapshot and cannot manufacture a paid browser receipt", async () => {
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    Response.json({
+      state: "checking",
+      attemptId: "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa",
+      contact: draft().contact,
+      sessions: [
+        {
+          serviceId: "2",
+          serviceName: "Native",
+          instructorId: "33",
+          instructorName: "Trainer",
+          startMs: Date.parse("2026-10-15T08:10:00+08:00"),
+          players: 4,
+          priceMinor: 8800,
+          currency: "SGD",
+        },
+      ],
+    }),
+  );
+  const restored = await liveBookingService.restore!(
+    new AbortController().signal,
+  );
+  expect(restored?.status).toBe("checking");
+  expect(restored?.booking).toBeNull();
+  expect(restored?.draft.players).toBe(4);
+  expect(restored?.draft.slots[0].instructor).toBe("33");
+});

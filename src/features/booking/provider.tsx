@@ -124,6 +124,7 @@ export function BookingProvider({
     ]),
     Math.floor(now / 60_000),
     sessionKey,
+    value.draft.nativeServiceId,
   );
   // Every start is minute-aligned. Also refresh after a suspended/background tab
   // resumes; action/service guards still sample the clock at dispatch time.
@@ -182,11 +183,35 @@ export function BookingProvider({
         ? loadBooking()
         : { version: 2, draft: blankDraft(), attempt: null },
     );
+    const controller = new AbortController();
+    const revision = latest.current.revision;
+    if (
+      service.mode === "live" &&
+      identityService.mode === "live" &&
+      service.restore
+    ) {
+      void service.restore(controller.signal).then(
+        (attempt) => {
+          if (
+            attempt &&
+            !controller.signal.aborted &&
+            mounted.current &&
+            latest.current.revision === revision &&
+            !active.current
+          )
+            commit({ version: 2, draft: attempt.draft, attempt });
+        },
+        () => {
+          /* A failed protected read cannot restore private state. */
+        },
+      );
+    }
     return () => {
+      controller.abort();
       mounted.current = false;
       cancel();
     };
-  }, [commit, cancel, service]);
+  }, [commit, cancel, service, identityService]);
   const run = useCallback(
     async (operation: Action, outcome: Outcome = "success") => {
       if (active.current || !mounted.current || !latest.current.ready)
@@ -267,7 +292,7 @@ export function BookingProvider({
     [service, commit, setAction, identityService],
   );
   useEffect(() => {
-    if (value.attempt?.status !== "checking") return;
+    if (service.mode !== "demo" || value.attempt?.status !== "checking") return;
     const timer = setTimeout(
       () => {
         void run("resolve");
@@ -275,7 +300,7 @@ export function BookingProvider({
       Math.max(0, value.attempt.checkUntil - Date.now()),
     );
     return () => clearTimeout(timer);
-  }, [value.attempt, run]);
+  }, [value.attempt, run, service.mode]);
   return (
     <Context.Provider
       value={{

@@ -13,11 +13,16 @@ import {
 type Intent = z.infer<typeof intentSchema>;
 type Session = Intent["sessions"][number];
 type Context = { attemptId: string; sessionIndex: number };
+type EffectContext = Context & { assertCurrent: () => Promise<void> };
 const reference = z.string().min(1).max(128);
 const acceptedSession = z.strictObject({
   bookingId: reference,
   accountId: reference,
   customerId: reference,
+  nativeCustomerId: z
+    .string()
+    .regex(/^[1-9]\d{0,14}$/)
+    .optional(),
   serviceId: reference,
   instructorId: reference,
   startMs: z.number().int().safe(),
@@ -31,27 +36,33 @@ const finalizedInvoice = z.strictObject({
   invoiceId: reference,
   accountId: reference,
   customerId: reference,
+  nativeCustomerId: z
+    .string()
+    .regex(/^[1-9]\d{0,14}$/)
+    .optional(),
   currency: z.literal("SGD"),
   totalMinor: z.number().int().nonnegative().safe(),
   taxMinor: z.number().int().nonnegative().safe(),
   bookingIds: z.array(reference).min(1).max(12),
 });
 
-// Application contract, NOT a claim that a SimplyBook batch adapter exists.
-// No production implementation or HTTP booking route supplies this interface.
+// The native adapter supplies this contract only through finite server-owned
+// admission. It does not establish provider acceptance or production readiness.
 export type BookingOperations = {
+  onFailure?: (error: unknown, sessionIndex?: number) => void;
   supported: boolean;
   hasRecoveryCapacity: (sessions: number) => Promise<boolean>;
   revalidate: (intent: Intent, context: Context) => Promise<unknown>;
   createSession: (
     session: Session,
     intent: Intent,
-    context: Context,
+    context: EffectContext,
   ) => Promise<unknown>;
   finalize: (
     bookingIds: string[],
     intent: Intent,
     attemptId: string,
+    assertCurrent: () => Promise<void>,
   ) => Promise<unknown>;
 };
 
@@ -91,6 +102,28 @@ export async function orchestrateBooking(
     !(await operations.hasRecoveryCapacity(intent.sessions.length))
   )
     return { state: "prerequisites_unavailable", paymentAvailable: false };
+  // Validate the whole selected cart before creating its first native booking.
+  // This is not a reservation; each write still revalidates below.
+  try {
+    for (const [sessionIndex] of intent.sessions.entries()) {
+      const fresh = intentSchema.parse(
+        await operations.revalidate(intent, { attemptId: id, sessionIndex }),
+      );
+      if ((await digest(JSON.stringify(fresh))) !== row.intent_hash)
+        throw new ApiError(409, "native_restart_required");
+    }
+  } catch (error) {
+    return {
+      state:
+        error instanceof ApiError && error.code === "native_restart_required"
+          ? "restart_required"
+          : error instanceof ApiError &&
+              error.code === "native_selection_changed"
+            ? "selection_unavailable"
+            : "prerequisites_unavailable",
+      paymentAvailable: false,
+    };
+  }
   // Single atomic winner. A second click or resumed process cannot replay writes.
   let fence: number;
   try {
@@ -100,6 +133,16 @@ export async function orchestrateBooking(
       return { state: "recovery_required", paymentAvailable: false };
     throw error;
   }
+  const assertCurrent = async () => {
+    const now = Date.now();
+    const current = await env.STATE.withSession("first-primary")
+      .prepare(
+        "SELECT 1 FROM attempts WHERE id=? AND version=? AND state='dispatching' AND deadline_ms>? AND EXISTS (SELECT 1 FROM guest_access WHERE capability_hash=? AND owner_id=? AND revoked_ms IS NULL AND issued_ms<=? AND expires_ms>?)",
+      )
+      .bind(id, fence, now, access.capability_hash, access.owner_id, now, now)
+      .first();
+    if (!current) throw new ApiError(409, "effect_fence_lost");
+  };
   const reserve = async (step: string) => {
     const now = Date.now();
     const result = await env.STATE.prepare(
@@ -125,15 +168,28 @@ export async function orchestrateBooking(
     )
       .bind(referenceId, id, step, id, fence)
       .run();
-    if (result.meta.changes !== 1)
-      throw new ApiError(409, "effect_completion_conflict");
+    // The native adapter can retain a receipt before business validation.
+    // Observed effects are immutable: acknowledge the exact same reference
+    // under the current fence, without rewriting or replacing that receipt.
+    const retained =
+      result.meta.changes === 1 ||
+      (await env.STATE.withSession("first-primary")
+        .prepare(
+          "SELECT 1 FROM session_effects e JOIN attempts a ON a.id=e.attempt_id WHERE e.attempt_id=? AND e.step=? AND e.outcome='observed' AND e.reference_id=? AND a.version=? AND a.state='dispatching'",
+        )
+        .bind(id, step, referenceId, fence)
+        .first());
+    if (!retained) throw new ApiError(409, "effect_completion_conflict");
   };
+  let failedSessionIndex: number | undefined;
   try {
     const ids: string[] = [];
+    let nativeCustomerId: string | undefined;
     for (const [sessionIndex, session] of intent.sessions.entries()) {
+      failedSessionIndex = sessionIndex;
       const context = { attemptId: id, sessionIndex };
       // The eventual live adapter must verify identity, eligible instructor,
-      // timetable, shared slot, exact price/tax and persisted player mapping.
+      // timetable, shared slot, exact price/tax. Player information is a non-blocking annotation.
       const fresh = intentSchema.parse(
         await operations.revalidate(intent, context),
       );
@@ -145,7 +201,10 @@ export async function orchestrateBooking(
         throw new ApiError(409, "approved_intent_changed");
       const step = `session:${sessionIndex}`;
       await reserve(step);
-      const raw = await operations.createSession(session, intent, context);
+      const raw = await operations.createSession(session, intent, {
+        ...context,
+        assertCurrent,
+      });
       // Preserve an observed reference even if its association is invalid.
       if (
         raw &&
@@ -167,10 +226,20 @@ export async function orchestrateBooking(
         ids.includes(accepted.bookingId)
       )
         throw new ApiError(409, "booking_association_invalid");
+      if (intent.customerMode === "booking-contact") {
+        if (
+          !accepted.nativeCustomerId ||
+          (nativeCustomerId !== undefined &&
+            nativeCustomerId !== accepted.nativeCustomerId)
+        )
+          throw new ApiError(409, "booking_customer_mismatch");
+        nativeCustomerId = accepted.nativeCustomerId;
+      }
       ids.push(accepted.bookingId);
     }
+    failedSessionIndex = undefined;
     await reserve("finalize");
-    const raw = await operations.finalize(ids, intent, id);
+    const raw = await operations.finalize(ids, intent, id, assertCurrent);
     if (
       raw &&
       typeof raw === "object" &&
@@ -182,6 +251,7 @@ export async function orchestrateBooking(
     if (
       invoice.accountId !== intent.accountId ||
       invoice.customerId !== intent.customerId ||
+      invoice.nativeCustomerId !== nativeCustomerId ||
       invoice.totalMinor !== intent.totalMinor ||
       invoice.taxMinor !== intent.taxMinor ||
       invoice.bookingIds.length !== ids.length ||
@@ -192,12 +262,14 @@ export async function orchestrateBooking(
     await bindAssociation(env.STATE, id, fence, {
       invoiceId: invoice.invoiceId,
       bookingIds: ids,
+      ...(nativeCustomerId ? { nativeCustomerId } : {}),
     });
     // Native checkout/return contract is separately unavailable. Association is
     // not payment, confirmation, a provider settlement or permission to retry.
     return { state: "associated", paymentAvailable: false };
-  } catch {
+  } catch (error) {
     await requireRecovery(env.STATE, id, fence);
+    operations.onFailure?.(error, failedSessionIndex);
     return { state: "recovery_required", paymentAvailable: false };
   }
 }

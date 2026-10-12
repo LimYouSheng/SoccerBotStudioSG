@@ -7,14 +7,64 @@ import { SERVICE_NAME } from "@/domain/demo-catalog";
 import { totalCents } from "@/domain/booking";
 import { money } from "@/domain/dates";
 import { useBooking } from "./provider";
-import { SessionList } from "./summary";
+import { SessionList, PriceSummary } from "./summary";
+import { ProtectedConfirmation } from "./protected-confirmation";
 export function PaymentStep() {
-  const { attempt, pay, check, resolve, action, cancel } = useBooking();
+  const {
+    attempt,
+    pay,
+    check,
+    resolve,
+    action,
+    cancel,
+    bookingService,
+    revision,
+  } = useBooking();
   const [method, setMethod] = useState("card");
   useEffect(() => () => cancel(), [cancel]);
   const error = action.error;
   const busy = action.status === "loading";
   if (!attempt) return null;
+  if (bookingService.mode === "live") {
+    if (attempt.status !== "ready")
+      return (
+        <ProtectedConfirmation
+          attemptId={attempt.id}
+          checkoutMode="live"
+          sessionRevision={revision}
+        />
+      );
+    return (
+      <div className="status-shell">
+        <section className="surface confirmation-card">
+          <h1>Continue to payment</h1>
+          <SessionList slots={attempt.draft.slots} />
+          <PriceSummary draft={attempt.draft} />
+          <p>
+            We’ll check your selected sessions again before opening secure
+            checkout.
+          </p>
+          {error && (
+            <p className="alert" role="alert">
+              {error}
+            </p>
+          )}
+          <button
+            className="button wide"
+            disabled={busy}
+            onClick={() => {
+              void pay("pending");
+            }}
+          >
+            {busy ? "Preparing secure checkout…" : "Continue to secure payment"}
+          </button>
+          <Link className="text-link" href="/book/review/">
+            Back to review
+          </Link>
+        </section>
+      </div>
+    );
+  }
   const waiting = ["checking", "pending", "late"].includes(attempt.status),
     checking = attempt.status === "checking",
     late = attempt.status === "late";

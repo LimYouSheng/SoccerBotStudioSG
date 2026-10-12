@@ -19,7 +19,7 @@ let mf,
   outbound = 0,
   script;
 const origin = "https://soccerbot.test";
-async function start() {
+async function start(ceiling = "80") {
   mf = new Miniflare({
     ...convertV4MiniflareOptions({
       name: "soccerbot-test",
@@ -32,6 +32,7 @@ async function start() {
         ...config.vars,
         APP_ORIGIN: origin,
         CAMPAIGN_END_MS: String(Date.now() + 3600000),
+        PROVIDER_CALL_CEILING: ceiling,
       },
       d1Databases: { STATE: "synthetic-state" },
       d1Persist: path.join(persistence, "d1"),
@@ -606,6 +607,84 @@ test("persistent budget reserves sixteen calls for recovery and caps at eighty",
     "budget_exhausted",
   );
 });
+test("explicit provider ceiling extension preserves used calls and the sixteen-call recovery reserve across restart", async () => {
+  for (const [ceiling, carried] of [
+    [128, 33],
+    [192, 90],
+    [224, 162],
+    [256, 196],
+    [512, 238],
+  ]) {
+    const coordinator = `budget-extension-${ceiling}`;
+    let storage = await mf.unsafeGetDurableObjectStorage(
+      "soccerbot-test",
+      "SoccerBotAccountCoordinator",
+      { name: coordinator },
+    );
+    await storage.exec(
+      "INSERT INTO budget(campaign,used) VALUES(?,?)",
+      config.vars.CAMPAIGN_ID,
+      carried,
+    );
+    await mf.dispose();
+    await start(String(ceiling));
+    try {
+      storage = await mf.unsafeGetDurableObjectStorage(
+        "soccerbot-test",
+        "SoccerBotAccountCoordinator",
+        { name: coordinator },
+      );
+      const continued = await result("/test/admit", { coordinator });
+      assert.equal(continued.used, carried + 1);
+      await result("/test/finish", {
+        coordinator,
+        id: continued.id,
+        cooldown: 0,
+      });
+      await storage.exec(
+        "UPDATE budget SET used=? WHERE campaign=?",
+        ceiling - 17,
+        config.vars.CAMPAIGN_ID,
+      );
+      const last = await result("/test/admit", { coordinator });
+      assert.equal(last.used, ceiling - 16);
+      await result("/test/finish", { coordinator, id: last.id, cooldown: 0 });
+      assert.equal(
+        (await result("/test/admit", { coordinator })).reason,
+        "budget_exhausted",
+      );
+      const recovery = await result("/test/admit", {
+        coordinator,
+        recovery: true,
+      });
+      assert.equal(recovery.used, ceiling - 15);
+      await result("/test/finish", {
+        coordinator,
+        id: recovery.id,
+        cooldown: 0,
+      });
+      await storage.exec(
+        "UPDATE budget SET used=? WHERE campaign=?",
+        ceiling,
+        config.vars.CAMPAIGN_ID,
+      );
+      await mf.dispose();
+      await start(String(ceiling));
+      assert.equal(
+        (await result("/test/admit", { coordinator, recovery: true })).reason,
+        "budget_exhausted",
+      );
+    } finally {
+      await mf.dispose();
+      await start();
+    }
+    assert.equal(
+      (await result("/test/admit", { coordinator, recovery: true })).reason,
+      "budget_exhausted",
+    );
+  }
+});
+
 test("shared refresh and token generation claims reject stale completion", async () => {
   const body = { key: "token:public", generation: 1, coordinator: "refresh" };
   const a = await result("/test/refresh", body);
@@ -679,11 +758,46 @@ test("orchestration withholds all writes when native contracts or recovery capac
     assert.deepEqual(await effects(a), []);
   }
 });
+test("orchestration preflights the complete cart before any effect and preserves selection on failure", async () => {
+  for (const [scenario, state] of [
+    ["preflight-unavailable", "selection_unavailable"],
+    ["preflight-price", "restart_required"],
+    ["preflight-unknown", "prerequisites_unavailable"],
+  ]) {
+    const a = await multiAttempt();
+    const before = await db
+      .prepare("SELECT intent_json FROM attempts WHERE id=?")
+      .bind(a.id)
+      .first();
+    const r = await orchestrate(a, scenario);
+    assert.deepEqual(r.result, { state, paymentAvailable: false });
+    assert.deepEqual(r.calls, ["validate:0", "validate:1"]);
+    assert.deepEqual(await effects(a), []);
+    const after = await db
+      .prepare("SELECT intent_json,state,version FROM attempts WHERE id=?")
+      .bind(a.id)
+      .first();
+    assert.equal(after.intent_json, before.intent_json);
+    assert.equal(after.state, "prepared");
+    assert.equal(after.version, 0);
+    assert.equal(
+      (
+        await db
+          .prepare("SELECT count(*) AS n FROM dispatches WHERE attempt_id=?")
+          .bind(a.id)
+          .first()
+      ).n,
+      0,
+    );
+  }
+});
 test("orchestration associates every session and invoice once without enabling payment", async () => {
   const a = await multiAttempt(),
     r = await orchestrate(a, "complete");
   assert.deepEqual(r.result, { state: "associated", paymentAvailable: false });
   assert.deepEqual(r.calls, [
+    "validate:0",
+    "validate:1",
     "validate:0",
     "create:0",
     "validate:1",
@@ -729,7 +843,13 @@ test("orchestration rechecks exact price and revoked access before each session 
     const a = await multiAttempt(),
       r = await orchestrate(a, scenario);
     assert.equal(r.result.state, "recovery_required");
-    assert.deepEqual(r.calls, ["validate:0", "create:0", "validate:1"]);
+    assert.deepEqual(r.calls, [
+      "validate:0",
+      "validate:1",
+      "validate:0",
+      "create:0",
+      "validate:1",
+    ]);
     assert.equal((await effects(a)).length, 1);
   }
 });
@@ -737,7 +857,13 @@ test("orchestration stale generation cannot dispatch a subsequent session", asyn
   const a = await multiAttempt(),
     r = await orchestrate(a, "fence");
   assert.equal(r.result.state, "recovery_required");
-  assert.deepEqual(r.calls, ["validate:0", "create:0", "validate:1"]);
+  assert.deepEqual(r.calls, [
+    "validate:0",
+    "validate:1",
+    "validate:0",
+    "create:0",
+    "validate:1",
+  ]);
   assert.equal((await effects(a)).length, 1);
 });
 test("orchestration rejects duplicate booking references and incomplete invoice associations", async () => {

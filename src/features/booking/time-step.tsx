@@ -1,8 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/icon";
-import { INSTRUCTORS, PRICE_CENTS } from "@/domain/demo-catalog";
-import { isElapsed, slotKey } from "@/domain/booking";
+
+import {
+  isElapsed,
+  slotKey,
+  sessionInstructorName,
+  sessionPrice,
+} from "@/domain/booking";
 import {
   addDays,
   dateLabel,
@@ -45,8 +50,20 @@ export function TimeStep() {
     result?.status === "success"
       ? result.slots.filter((slot) => slot.date === date)
       : [];
-  function select({ date, start, instructor, rotationAt }: AvailableSlot) {
-    const slot = { date, start, instructor, rotationAt },
+  function select({
+    date,
+    start,
+    instructor,
+    rotationAt,
+    native,
+  }: AvailableSlot) {
+    const slot = {
+        date,
+        start,
+        instructor,
+        rotationAt,
+        ...(native ? { native } : {}),
+      },
       selected = draft.slots.some((item) => slotKey(item) === slotKey(slot));
     if (
       !selected &&
@@ -189,8 +206,10 @@ export function TimeStep() {
                       "Session has started"
                     ) : slot.available ? (
                       <>
-                        <strong>{money(PRICE_CENTS)}</strong>
-                        <span>Trial price</span>
+                        <strong>{money(sessionPrice(slot))}</strong>
+                        <span>
+                          {slot.native ? "Per session" : "Trial price"}
+                        </span>
                       </>
                     ) : (
                       "Unavailable"
@@ -198,7 +217,7 @@ export function TimeStep() {
                   </span>
                   <span className="time-instructor">
                     {slot.available || elapsed
-                      ? INSTRUCTORS[slot.instructor].name
+                      ? sessionInstructorName(slot)
                       : "No instructor available"}
                   </span>
                   {slot.available && slot.rotationAt && (

@@ -35,6 +35,7 @@ export function checkWorker(root) {
             "https://user-api.simplybook.me/login",
             "https://user-api.simplybook.me/",
             "https://user-api-v2.simplybook.me/admin/invoices/",
+            "https://user-api-v2.simplybook.me/admin/webhooks",
             "https://user-api-v2.simplybook.me/admin/auth",
             "https://user-api-v2.simplybook.me/admin/company/info",
             "https://user-api-v2.simplybook.me/admin/tariff/current",
@@ -62,6 +63,7 @@ export function checkWorker(root) {
               "../src/domain/native-checkout",
               "../src/domain/booking-policy",
               "../src/domain/catalog",
+              "../src/domain/contact",
             ].includes(spec)
           )
             errors.push(`Forbidden Worker layer: ${name} -> ${spec}`);
@@ -108,6 +110,7 @@ export function checkWorker(root) {
     config.vars.APP_ORIGIN !==
       "https://soccerbot-dev.limyousheng-94.workers.dev" ||
     config.vars.PROVIDER_ACCESS !== "disabled" ||
+    config.vars.PROVIDER_CALL_CEILING !== "80" ||
     config.vars.IDENTITY_DELIVERY !== "disabled" ||
     config.vars.CAMPAIGN_ID !== "developer-20261008" ||
     config.vars.CAMPAIGN_END_MS !== "0"

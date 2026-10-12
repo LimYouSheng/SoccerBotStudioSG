@@ -1,13 +1,23 @@
+import {
+  executeNativeCheckout,
+  prepareCustomerNative,
+  currentCustomerNative,
+  customerNativeAvailability,
+} from "../native-checkout";
 // Isolated test entry. Never deployed; caller-supplied fixtures have no live authority.
 import {
   normalizeNativeReads,
   normalizeNativeCreation,
+  normalizeNativeSession,
+  nativeValidationReason,
   minorUnits,
   providerFlag,
   bookingWallTime,
 } from "../provider-normalization";
 import {
   nativeBookingOperations,
+  recoverNativeAssociation,
+  compensateNativeAttempt,
   nativeCheckoutLink,
   nativeCheckoutDeadline,
   type NativeCheckoutTiming,
@@ -21,7 +31,8 @@ import { providerRequest, type NativeRequest } from "../provider-transport";
 import { ProviderSession, type ProviderControl } from "../provider-session";
 import { decideStoredConfirmation, checkoutContext } from "../confirmation";
 import { runNativeReadback } from "../recovery";
-import { policy } from "../policy";
+import { recoverNativeResidual } from "../native-residual";
+import { policy, rpcOutcome } from "../policy";
 import { orchestrateBooking, prepareAttempt } from "../index";
 import worker from "../index";
 export { SoccerBotAccountCoordinator } from "../coordinator";
@@ -38,16 +49,39 @@ const harness = {
       creation: unknown;
       now: number;
       bookingAt?: number;
+      operatorRecovery?: { expiresMs: number; expectedBookingIds: string[] };
       invoiceAt?: number;
       value: unknown;
       scenario?: string;
       operation: NativeRequest;
       cookie: string;
       owner: string;
+      fixtureCeiling?: string;
+      fixtureUsed?: number;
+      fixtureExpireAfter?: number;
+      fixtureClockOffset?: number;
+      batchRequiresConfirm?: unknown;
+      batchReceipt?: unknown;
+      batchReceipts?: unknown[];
+      batchClosure?: unknown;
     };
     let reserved = 0,
       finished = 0,
       requests = 0;
+    const sent: NativeRequest[] = [];
+    let validation: ReturnType<typeof nativeValidationReason>;
+    const realNow = Date.now;
+    const fixtureNow = realNow();
+    let clockOffset = input.fixtureClockOffset ?? 0;
+    if (
+      input.fixtureExpireAfter !== undefined ||
+      input.fixtureClockOffset !== undefined
+    )
+      // Explicit expiry fixtures advance only at their chosen physical-call boundary.
+      // CI runtime must not inject extra identity expirations into this assertion.
+      Date.now = () =>
+        (input.fixtureExpireAfter !== undefined ? fixtureNow : realNow()) +
+        clockOffset;
     const control: ProviderControl = {
       reserve: async () => {
         reserved++;
@@ -55,6 +89,7 @@ const harness = {
       },
       finish: () => {
         finished++;
+        if (finished === input.fixtureExpireAfter) clockOffset += 6000;
       },
       claim: () => ({ claim: "synthetic-claim", generation: 1 }),
       complete: () => true,
@@ -62,7 +97,101 @@ const harness = {
     };
     const exchange = async (operation: NativeRequest) => {
       requests++;
-      if (input.scenario === "lost") throw new Error("synthetic lost reply");
+      sent.push(operation);
+      if (
+        input.scenario === "lost" ||
+        (input.scenario === "second-book-lost" &&
+          operation.kind === "book" &&
+          sent.filter((item) => item.kind === "book").length === 2) ||
+        (input.scenario === "batch-close-lost" &&
+          operation.kind === "batch-close")
+      )
+        throw new Error("synthetic lost reply");
+      if (operation.kind === "booking-cancel") {
+        const bookings = (
+          Array.isArray(input.booking) ? input.booking : [input.booking]
+        ) as Record<string, unknown>[];
+        const booking = bookings.find(
+          (value) => String(value.id) === operation.bookingId,
+        )!;
+        booking.status = "cancelled";
+        booking.is_confirmed = "0";
+        const invoice = input.invoice as {
+          lines: {
+            bookings: { id: string | number; is_confirmed: boolean }[];
+          }[];
+          status: string;
+          payment_received: boolean;
+          payment_processor: string | null;
+        };
+        for (const line of invoice.lines)
+          for (const nested of line.bookings)
+            if (String(nested.id) === operation.bookingId)
+              nested.is_confirmed = false;
+        if (input.scenario === "cancelled-invoice") {
+          invoice.status = "cancelled";
+          for (const value of bookings) value.invoice_status = "cancelled";
+        }
+        if (input.scenario === "paid-after-cancel") {
+          invoice.status = "paid";
+          invoice.payment_received = true;
+          invoice.payment_processor = "hitpay";
+          for (const value of bookings) {
+            value.invoice_status = "paid";
+            value.invoice_payment_received = true;
+            value.invoice_payment_processor = "hitpay";
+          }
+        }
+        if (input.scenario === "cancel-lost")
+          throw new Error("synthetic lost cancellation reply");
+        return { body: true, receivedAtMs: input.now };
+      }
+      if (input.scope?.intent.sessions.length > 1) {
+        if (operation.kind === "batch-create") {
+          if (input.scenario === "revoke-after-batch")
+            await env.STATE.prepare(
+              "UPDATE guest_access SET revoked_ms=? WHERE owner_id=(SELECT owner_id FROM attempts WHERE id=?)",
+            )
+              .bind(Date.now(), input.scope.attemptId)
+              .run();
+          return { body: 601, receivedAtMs: input.now };
+        }
+        if (operation.kind === "batch-close")
+          return {
+            body: input.batchClosure ?? input.creation,
+            receivedAtMs: input.now,
+          };
+        if (operation.kind === "book") {
+          const creation = input.creation as { bookings: unknown[] };
+          const index = sent.filter((item) => item.kind === "book").length - 1;
+          return {
+            body:
+              input.batchReceipts !== undefined
+                ? input.batchReceipts[index]
+                : input.batchReceipt !== undefined
+                  ? input.batchReceipt
+                  : {
+                      require_confirm: input.batchRequiresConfirm ?? false,
+                      invoice: null,
+                      batch_id: 601,
+                      batch_hash: "synthetic-batch-hash",
+                      bookings: [
+                        creation.bookings[
+                          sent.filter((item) => item.kind === "book").length - 1
+                        ],
+                      ],
+                    },
+            receivedAtMs: input.now,
+          };
+        }
+        if (operation.kind === "booking-read" && Array.isArray(input.booking))
+          return {
+            body: input.booking.find(
+              (booking: { id: string }) => booking.id === operation.bookingId,
+            ),
+            receivedAtMs: input.now,
+          };
+      }
       return {
         body:
           operation.kind === "book"
@@ -117,6 +246,19 @@ const harness = {
           };
           break;
         }
+        case "validation-rpc":
+          result = await rpcOutcome(async () =>
+            normalizeNativeCreation(input.creation, context),
+          );
+          break;
+        case "session":
+          result = normalizeNativeSession(
+            input.creation,
+            context,
+            0,
+            input.scenario === "batch-item" ? "batch-item" : "finalized",
+          );
+          break;
         case "creation": {
           const created = normalizeNativeCreation(input.creation, context);
           result = {
@@ -196,15 +338,130 @@ const harness = {
             input.operation,
           );
           break;
+        case "recover-association": {
+          result = await recoverNativeAssociation({
+            db: env.STATE,
+            scope: input.scope,
+            exchange,
+            signingSecret: "synthetic-signing-secret",
+            signal: new AbortController().signal,
+          });
+          break;
+        }
+        case "inspect-diagnostic":
+        case "residual-diagnostic":
+          result = await recoverNativeResidual({
+            db: env.STATE,
+            scope: input.scope,
+            exchange,
+            signingSecret: "synthetic-signing-secret",
+            expiresMs: input.now + 120000,
+            authority: {
+              ...(input.action === "inspect-diagnostic"
+                ? { mode: "inspect" as const }
+                : {}),
+              sourceRevision: "c".repeat(40),
+              expectedBookingIds: ["701"],
+            },
+            assertGranted: async () => {},
+            invalidate: () => {},
+          });
+          break;
+        case "compensate": {
+          result = await compensateNativeAttempt({
+            operatorRecovery: input.operatorRecovery,
+            db: env.STATE,
+            scope: input.scope,
+            exchange,
+            signingSecret: "synthetic-signing-secret",
+            signal: new AbortController().signal,
+            assertGranted: async () => {
+              if (input.scenario === "cleanup-revoked")
+                throw new Error("synthetic revoked cleanup grant");
+            },
+            invalidate: () => {},
+          });
+          break;
+        }
+        case "customer-prepare":
+        case "customer-current":
+        case "customer-availability":
+        case "session-expired":
+        case "finite-checkout": {
+          if (input.fixtureCeiling !== undefined)
+            Reflect.set(
+              admittedEnv,
+              "PROVIDER_CALL_CEILING",
+              input.fixtureCeiling,
+            );
+          for (const [key, value] of Object.entries({
+            SOURCE_REVISION: "c".repeat(40),
+            SIMPLYBOOK_DEV_COMPANY_LOGIN: "synthetic-developer",
+            SIMPLYBOOK_DEV_ADMIN_LOGIN: "synthetic-operator",
+            SIMPLYBOOK_DEV_API_KEY: "synthetic-public-key",
+            SIMPLYBOOK_DEV_ADMIN_API_USER_KEY: "synthetic-admin-key",
+            SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret",
+          }))
+            Reflect.set(admittedEnv, key, value);
+          const customerRequest = new Request("https://soccerbot.test/", {
+            headers: { cookie: input.cookie },
+          });
+          if (input.action === "session-expired") {
+            const provider = new ProviderSession();
+            await provider.identity(admittedEnv, control);
+            clockOffset += 6000;
+            result = await provider.nativeRead(admittedEnv, control, {
+              kind: "catalogue-services",
+            });
+            break;
+          }
+          if (input.action === "customer-prepare") {
+            result = await prepareCustomerNative(
+              customerRequest,
+              admittedEnv,
+              input.value,
+            );
+            break;
+          }
+          if (input.action === "customer-current") {
+            result = await currentCustomerNative(customerRequest, admittedEnv);
+            break;
+          }
+          if (input.action === "customer-availability") {
+            const value = input.value as { date: string; serviceId: string };
+            result = await customerNativeAvailability({
+              request: customerRequest,
+              env: admittedEnv,
+              ...value,
+              provider: new ProviderSession(),
+              control,
+              accounting: () => ({
+                used: 15 + reserved,
+                active: reserved - finished,
+              }),
+            });
+            break;
+          }
+          result = await executeNativeCheckout({
+            request: new Request("https://soccerbot.test/", {
+              headers: { cookie: input.cookie },
+            }),
+            env: admittedEnv,
+            attemptId: input.scope.attemptId,
+            provider: new ProviderSession(),
+            control,
+            recoveryControl: control,
+            accounting: () => ({
+              used: (input.fixtureUsed ?? 15) + reserved,
+              active: reserved - finished,
+            }),
+          });
+          break;
+        }
         case "orchestrate": {
           const operations = nativeBookingOperations({
             scope: input.scope,
             exchange,
-            client: {
-              name: "Synthetic Test Guest",
-              email: "guest@example.invalid",
-              phone: "00000000",
-            },
             additional: { handle_invoice: true },
             prebooking: {
               revalidate: async (value) => value,
@@ -212,7 +469,14 @@ const harness = {
             },
             hasRecoveryCapacity: async () => true,
             db: env.STATE,
+            clientSignature: async (id, hash) =>
+              nativeBookingSignature(id, hash, "synthetic-signing-secret"),
+            batchSignature: async (id, hash) =>
+              nativeBookingSignature(id, hash, "synthetic-signing-secret"),
           });
+          operations.onFailure = (error) => {
+            validation ??= nativeValidationReason(error);
+          };
           result = await orchestrateBooking(
             new Request("https://soccerbot.test/", {
               headers: { cookie: input.cookie },
@@ -276,17 +540,32 @@ const harness = {
         default:
           throw new Error("unknown fixture action");
       }
-      return Response.json({ result, reserved, finished, requests });
+      return Response.json({
+        result,
+        reserved,
+        finished,
+        requests,
+        sent,
+        validation,
+      });
     } catch (error) {
       return Response.json(
         {
           error: error instanceof Error ? error.message : "failed",
+          validation: nativeValidationReason(error),
           reserved,
           finished,
           requests,
+          sent,
         },
         { status: 409 },
       );
+    } finally {
+      if (
+        input.fixtureExpireAfter !== undefined ||
+        input.fixtureClockOffset !== undefined
+      )
+        Date.now = realNow;
     }
   },
 };

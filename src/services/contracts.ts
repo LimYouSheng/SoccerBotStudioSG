@@ -13,6 +13,7 @@ export type BookingRequest = { signal?: AbortSignal };
 export type AvailabilityInput = BookingRequest & {
   date: string;
   players: number;
+  serviceId?: string;
 };
 export type CheckoutInput = BookingRequest & {
   draft: BookingDraft;
@@ -22,9 +23,10 @@ export type PayInput = BookingRequest & { attempt: Attempt; outcome: Outcome };
 export type AttemptInput = BookingRequest & { attempt: Attempt };
 export type ResolveInput = AttemptInput & { now?: number };
 export interface BookingService {
+  restore?(signal: AbortSignal): Promise<Attempt | null>;
   readonly mode: BookingMode;
   readonly operations: Readonly<
-    Record<BookingOperation, "demo" | "unavailable">
+    Record<BookingOperation, "demo" | "live" | "unavailable">
   >;
   availability(input: AvailabilityInput): Promise<AvailableSlot[]>;
   checkout(input: CheckoutInput): Promise<Attempt>;

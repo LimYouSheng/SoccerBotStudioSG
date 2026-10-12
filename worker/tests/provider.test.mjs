@@ -196,7 +196,9 @@ async function fixture({
           ? "/api/developer/provider-identity"
           : operation === "native_field_discovery"
             ? "/api/developer/native-field-discovery"
-            : "/api/developer/historical-comparison"),
+            : operation === "native_recovery_window"
+              ? "/api/developer/native-readback"
+              : "/api/developer/historical-comparison"),
       { method, headers: { origin, authorization: "Bearer " + token } },
     );
     return {
@@ -780,6 +782,360 @@ test("provider missing credentials and client mapping refuse before authenticati
 
 // Synthetic metadata only. No retained account response or field identifier.
 const discoveryOperation = "native_field_discovery";
+test("operator readiness reports coordinator bindings with carried accounting and no provider dispatch", async () => {
+  for (const mode of ["disabled", "trusted-reads", "expired"]) {
+    const end = mode === "expired" ? Date.now() - 1000 : Date.now() + 600000;
+    const f = await fixture({
+      mode: mode === "disabled" ? "disabled" : "trusted-reads",
+      end,
+      secrets: {
+        PROVIDER_CALL_CEILING: "128",
+        SOURCE_REVISION: "c".repeat(40),
+      },
+    });
+    try {
+      await f.sql(
+        "INSERT OR REPLACE INTO budget(campaign,used,cooldown_ms) VALUES('developer-20261008',33,0)",
+      );
+      const token = await f.grant(Date.now() + 180000, discoveryOperation);
+      const result = await f.call(token, "GET", discoveryOperation);
+      assert.equal(result.status, 200);
+      assert.equal(result.body.state, "granted");
+      assert.deepEqual(result.body.accounting, {
+        used: 33,
+        active: 0,
+        ceiling: 128,
+        recoveryReserve: 16,
+      });
+      assert.deepEqual(result.body.coordinator, {
+        revision: "c".repeat(40),
+        versionId: null,
+        providerAccess: mode === "disabled" ? "disabled" : "trusted-reads",
+        campaignEndMs: end,
+        effectiveProviderAccess:
+          mode === "trusted-reads" ? "trusted-reads" : "disabled",
+      });
+      for (const invalid of [
+        "f".repeat(64),
+        await f.grant(Date.now() - 1, discoveryOperation),
+      ]) {
+        const denied = await f.call(invalid, "GET", discoveryOperation);
+        assert.equal(denied.status, 401);
+        assert.equal(Object.hasOwn(denied.body, "coordinator"), false);
+      }
+      assert.equal(f.calls.length, 0);
+      assert.doesNotMatch(
+        JSON.stringify(result),
+        /synthetic-public-secret|synthetic-admin-secret/,
+      );
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+
+async function calendarFixture({
+  matrix,
+  scopeChanges = {},
+  used = 373,
+  ...options
+} = {}) {
+  const from = new Date(Date.now() + 4 * 86400000).toISOString().slice(0, 10);
+  const to = new Date(Date.parse(from) + 14 * 86400000)
+    .toISOString()
+    .slice(0, 10);
+  const scope = {
+    kind: "native-calendar",
+    sourceRevision: "c".repeat(40),
+    accountId: config.vars.DEPLOYMENT_ACCOUNT_ID,
+    serviceId: "2",
+    instructorId: "3",
+    from,
+    to,
+    startingUsed: used,
+    maxCalls: 6,
+    ...scopeChanges,
+  };
+  const f = await fixture({
+    ...options,
+    secrets: { SOURCE_REVISION: "c".repeat(40), PROVIDER_CALL_CEILING: "512" },
+    respond: async (request, body) => {
+      if (new URL(request.url).pathname === "/") {
+        assert.equal(body.method, "getStartTimeMatrix");
+        assert.deepEqual(body.params, [from, to, 2, 3, 1]);
+        return Response.json({
+          id: body.id,
+          result: matrix
+            ? matrix(from, to)
+            : { [from]: ["10:40:00", "09:00:00"], [to]: [] },
+          error: null,
+        });
+      }
+    },
+  });
+  await f.sql(
+    "INSERT OR REPLACE INTO budget(campaign,used,cooldown_ms) VALUES('developer-20261008',?,0)",
+    used,
+  );
+  const token = await f.grant(Date.now() + 120000, discoveryOperation);
+  await f.db
+    .prepare(
+      "UPDATE developer_operations SET result_json=? WHERE capability_hash=?",
+    )
+    .bind(
+      JSON.stringify(scope),
+      createHash("sha256").update(token).digest("hex"),
+    )
+    .run();
+  return { ...f, token, scope };
+}
+test("calendar probe binds source account range and carried budget and never replays", async () => {
+  const f = await calendarFixture();
+  try {
+    const r = await f.call(f.token, "POST", discoveryOperation);
+    assert.equal(r.body.state, "complete");
+    assert.deepEqual(r.body.result.dates, [
+      { date: f.scope.from, starts: ["09:00:00", "10:40:00"] },
+    ]);
+    assert.deepEqual(r.body.result.accounting, {
+      used: 378,
+      active: 0,
+      ceiling: 512,
+      recoveryReserve: 16,
+    });
+    assert.equal(f.calls.length, 5);
+    assert.deepEqual(
+      (await f.call(f.token, "POST", discoveryOperation)).body.result,
+      r.body.result,
+    );
+    assert.equal(f.calls.length, 5);
+    assert.doesNotMatch(
+      JSON.stringify(r),
+      /synthetic-public-secret|synthetic-admin-secret|must-not-escape/,
+    );
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("calendar probe rejects foreign stale overbroad and recovery-reserve scopes before dispatch", async () => {
+  for (const options of [
+    { scopeChanges: { sourceRevision: "d".repeat(40) } },
+    { scopeChanges: { accountId: "foreign" } },
+    { scopeChanges: { startingUsed: 372 } },
+    { scopeChanges: { from: "2026-02-30" } },
+    { scopeChanges: { from: "2020-01-01" } },
+    { scopeChanges: { to: "2099-01-01" } },
+    { scopeChanges: { serviceId: "3" } },
+    { scopeChanges: { maxCalls: 7 } },
+    { scopeChanges: { extra: true } },
+    { used: 491 },
+  ]) {
+    const f = await calendarFixture(options);
+    try {
+      assert.equal(
+        (await f.call(f.token, "POST", discoveryOperation)).body.state,
+        "blocked",
+      );
+      assert.equal(f.calls.length, 0);
+      await f.call(f.token, "POST", discoveryOperation);
+      assert.equal(f.calls.length, 0);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+test("calendar probe rejects malformed out-of-range duplicate and invalid times without replay", async () => {
+  for (const matrix of [
+    () => [],
+    () => ({ "2099-01-01": ["09:00:00"] }),
+    (from) => ({ [from]: { starts: ["09:00:00"] } }),
+    (from) => ({ [from]: ["09:00:00", "09:00:00"] }),
+    (from) => ({ [from]: ["24:00:00"] }),
+    (from) => ({ [from]: ["09:00:01"] }),
+  ]) {
+    const f = await calendarFixture({ matrix });
+    try {
+      const r = await f.call(f.token, "POST", discoveryOperation);
+      assert.equal(r.body.state, "blocked");
+      assert.equal(r.body.result.accounting.used, 378);
+      assert.equal(Object.hasOwn(r.body.result, "dates"), false);
+      await f.call(f.token, "POST", discoveryOperation);
+      assert.equal(f.calls.length, 5);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+
+async function setupFixture({
+  mutateHours,
+  mutateHooks,
+  scopeChanges = {},
+} = {}) {
+  const from = new Date(Date.now() + 4 * 86400000).toISOString().slice(0, 10);
+  const to = new Date(Date.parse(from) + 86400000).toISOString().slice(0, 10);
+  let layer = 0;
+  const f = await fixture({
+    secrets: { SOURCE_REVISION: "c".repeat(40), PROVIDER_CALL_CEILING: "512" },
+    respond: async (request, body) => {
+      const url = new URL(request.url);
+      if (url.pathname === "/") {
+        assert.equal(body.method, "getWorkDaysInfo");
+        assert.equal(request.headers.get("X-Token"), "synthetic-public-token");
+        const [instructor, service] = [
+          [null, null],
+          [null, 2],
+          [3, null],
+          [3, 2],
+        ][layer++];
+        assert.deepEqual(body.params, [from, to, instructor, service, 1]);
+        const hours = {
+          [from]: [
+            {
+              from: "09:00:00",
+              to: "24:00:00",
+              privateValue: "must-not-escape",
+            },
+          ],
+          [to]: [],
+        };
+        return Response.json({
+          id: body.id,
+          result: mutateHours ? mutateHours(hours) : hours,
+          error: null,
+        });
+      }
+      if (url.pathname === "/admin/webhooks") {
+        assert.equal(request.method, "GET");
+        assert.equal(url.search, "");
+        assert.equal(request.headers.get("X-Token"), "synthetic-admin-token");
+        const hooks = [
+          {
+            id: 5,
+            event: "new_invoice",
+            is_active: 1,
+            url: "https://example.test/must-not-escape",
+            privateValue: "must-not-escape",
+          },
+        ];
+        return Response.json(mutateHooks ? mutateHooks(hooks) : hooks);
+      }
+    },
+  });
+  await f.sql(
+    "INSERT OR REPLACE INTO budget(campaign,used,cooldown_ms) VALUES('developer-20261008',378,0)",
+  );
+  const token = await f.grant(Date.now() + 120000, discoveryOperation);
+  const scope = {
+    kind: "native-setup",
+    sourceRevision: "c".repeat(40),
+    accountId: config.vars.DEPLOYMENT_ACCOUNT_ID,
+    serviceId: "2",
+    instructorId: "3",
+    from,
+    to,
+    startingUsed: 378,
+    maxCalls: 16,
+    ...scopeChanges,
+  };
+  await f.db
+    .prepare(
+      "UPDATE developer_operations SET result_json=? WHERE capability_hash=?",
+    )
+    .bind(
+      JSON.stringify(scope),
+      createHash("sha256").update(token).digest("hex"),
+    )
+    .run();
+  return { ...f, token, scope };
+}
+test("native setup reads exact working-hour layers and subscription metadata once without leaking destinations", async () => {
+  const f = await setupFixture();
+  try {
+    const r = await f.call(f.token, "POST", discoveryOperation);
+    assert.equal(r.body.state, "complete", JSON.stringify(r.body));
+    assert.deepEqual(Object.keys(r.body.result.hours), [
+      "company",
+      "service",
+      "instructor",
+      "combined",
+    ]);
+    assert.equal(r.body.result.hours.combined[f.scope.from][0].to, "24:00:00");
+    assert.deepEqual(r.body.result.subscriptions, [
+      {
+        id: "5",
+        event: "new_invoice",
+        active: true,
+        destinationSha256: createHash("sha256")
+          .update("https://example.test/must-not-escape")
+          .digest("hex"),
+      },
+    ]);
+    assert.equal(r.body.result.accounting.used, 387);
+    assert.equal(f.calls.length, 9);
+    assert.doesNotMatch(
+      JSON.stringify(r),
+      /must-not-escape|synthetic-admin-secret|synthetic-public-secret/,
+    );
+    await f.call(f.token, "POST", discoveryOperation);
+    assert.equal(f.calls.length, 9);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("native setup rejects changed authority and ranges before any provider request", async () => {
+  for (const scopeChanges of [
+    { maxCalls: 6 },
+    { startingUsed: 377 },
+    { sourceRevision: "d".repeat(40) },
+    { to: "2099-01-01" },
+    { instructorId: "4" },
+  ]) {
+    const f = await setupFixture({ scopeChanges });
+    try {
+      assert.equal(
+        (await f.call(f.token, "POST", discoveryOperation)).body.state,
+        "blocked",
+      );
+      assert.equal(f.calls.length, 0);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+test("native setup rejects unknown subscription envelopes and malformed hours with bounded private diagnostics", async () => {
+  for (const options of [
+    { mutateHours: () => ({ "2099-01-01": [] }) },
+    {
+      mutateHours: (hours) => ({
+        [Object.keys(hours)[0]]: [{ from: "24:00:00", to: "24:00:00" }],
+      }),
+    },
+    { mutateHooks: (hooks) => ({ data: hooks }) },
+    { mutateHooks: (hooks) => [...hooks, ...hooks] },
+    { mutateHooks: (hooks) => [{ ...hooks[0], event: "payment_settled" }] },
+  ]) {
+    const f = await setupFixture(options);
+    try {
+      const r = await f.call(f.token, "POST", discoveryOperation);
+      assert.equal(r.body.state, "blocked");
+      assert.equal(r.body.result.verified, false);
+      assert.ok(r.body.result.stage);
+      assert.equal(Object.hasOwn(r.body.result, "hours"), false);
+      assert.equal(Object.hasOwn(r.body.result, "subscriptions"), false);
+      assert.doesNotMatch(
+        JSON.stringify(r),
+        /must-not-escape|payment_settled|2099/,
+      );
+      const calls = f.calls.length;
+      await f.call(f.token, "POST", discoveryOperation);
+      assert.equal(f.calls.length, calls);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+
 const syntheticField = {
   name: "synthetic_players",
   title: "Number of players",
@@ -1177,8 +1533,10 @@ async function scheduledAttempt(f, options = {}) {
       json,
       createHash("sha256").update(json).digest("hex"),
       now,
-      now + 600000,
-      JSON.stringify({ bookingIds: ["701"], invoiceId: "901" }),
+      options.deadline ?? now + 600000,
+      options.unassociated
+        ? null
+        : JSON.stringify({ bookingIds: ["701"], invoiceId: "901" }),
     )
     .run();
   await f.db
@@ -1196,7 +1554,8 @@ async function scheduledAttempt(f, options = {}) {
       JSON.stringify({ bookingId: "701", hash: "synthetic-booking-hash" }),
     )
     .run();
-  const key = createHash("sha256").update(crypto.randomUUID()).digest("hex");
+  const token = createHash("sha256").update(crypto.randomUUID()).digest("hex");
+  const key = createHash("sha256").update(token).digest("hex");
   const scope = {
     attemptId: id,
     notBeforeMs: now,
@@ -1215,7 +1574,7 @@ async function scheduledAttempt(f, options = {}) {
       JSON.stringify(scope),
     )
     .run();
-  return { id, key };
+  return { id, key, token };
 }
 function nativeReadResponse(_request, body) {
   if (body?.method === "getBookingDetails")
@@ -1287,6 +1646,471 @@ test("scheduled native recovery confirms from authoritative reads without browse
     await f.mf.dispose();
   }
 });
+test("scheduled native readback uses the recovery reserve only under explicit finite authority", async () => {
+  for (const allowed of [false, true]) {
+    const f = await fixture({
+      full: true,
+      respond: nativeReadResponse,
+      secrets: { SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret" },
+    });
+    try {
+      await f.sql(
+        "INSERT INTO budget(campaign,used) VALUES('developer-20261008',64)",
+      );
+      const a = await scheduledAttempt(f, {
+        scope: {
+          startingUsed: 64,
+          maximumUsed: 70,
+          ...(allowed ? { useRecoveryReserve: true } : {}),
+        },
+      });
+      await tick(f);
+      assert.equal(f.calls.length, allowed ? 6 : 0);
+      assert.equal(
+        (await f.sql("SELECT used FROM budget"))[0].used,
+        allowed ? 70 : 64,
+      );
+      const grant = await f.db
+        .prepare(
+          "SELECT state FROM developer_operations WHERE capability_hash=?",
+        )
+        .bind(a.key)
+        .first();
+      assert.equal(grant.state, allowed ? "complete" : "blocked");
+      await tick(f);
+      assert.equal(f.calls.length, allowed ? 6 : 0);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+
+test("scheduled recovery admits carried counters through the configured ceiling without resetting or replay", async () => {
+  for (const ceiling of [224, 256, 512]) {
+    const used = ceiling === 512 ? 378 : 196;
+    const f = await fixture({
+      full: true,
+      respond: nativeReadResponse,
+      secrets: {
+        SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret",
+        PROVIDER_CALL_CEILING: String(ceiling),
+      },
+    });
+    try {
+      await f.sql(
+        "INSERT INTO budget(campaign,used) VALUES('developer-20261008',?)",
+        used,
+      );
+      const a = await scheduledAttempt(f, {
+        scope: { startingUsed: used, maximumUsed: used + 6 },
+      });
+      await Promise.all([tick(f), tick(f)]);
+      const grant = await f.db
+        .prepare(
+          "SELECT state FROM developer_operations WHERE capability_hash=?",
+        )
+        .bind(a.key)
+        .first();
+      assert.equal(grant.state, "complete");
+      assert.equal(f.calls.length, 6);
+      assert.equal((await f.sql("SELECT used FROM budget"))[0].used, used + 6);
+      const observation = await f.db
+        .prepare("SELECT observation_json FROM attempts WHERE id=?")
+        .bind(a.id)
+        .first();
+      assert.equal(
+        JSON.parse(observation.observation_json).invoice.status,
+        "paid",
+      );
+      await tick(f);
+      assert.equal(f.calls.length, 6);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+test("scheduled recovery at carried512 keeps ordinary reserve scope and global ceiling fences", async () => {
+  for (const entry of [
+    { used: 490, max: 496, allowed: true },
+    { used: 491, max: 497, allowed: false },
+    { used: 506, max: 512, reserve: true, allowed: true },
+    { used: 506, max: 513, reserve: true, allowed: false },
+    { used: 378, max: 409, allowed: false },
+    { used: 495, max: 512, reserve: true, allowed: false },
+    { used: 378, start: 379, max: 385, allowed: false },
+    { used: 378, max: 383, allowed: false },
+  ]) {
+    const f = await fixture({
+      full: true,
+      respond: nativeReadResponse,
+      secrets: {
+        SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret",
+        PROVIDER_CALL_CEILING: "512",
+      },
+    });
+    try {
+      await f.sql(
+        "INSERT INTO budget(campaign,used) VALUES('developer-20261008',?)",
+        entry.used,
+      );
+      const a = await scheduledAttempt(f, {
+        scope: {
+          startingUsed: entry.start ?? entry.used,
+          maximumUsed: entry.max,
+          ...(entry.reserve ? { useRecoveryReserve: true } : {}),
+        },
+      });
+      await tick(f);
+      const grant = await f.db
+        .prepare(
+          "SELECT state FROM developer_operations WHERE capability_hash=?",
+        )
+        .bind(a.key)
+        .first();
+      assert.equal(grant.state, entry.allowed ? "complete" : "blocked");
+      assert.equal(f.calls.length, entry.allowed ? 6 : 0);
+      assert.equal(
+        (await f.sql("SELECT used FROM budget"))[0].used,
+        entry.used + (entry.allowed ? 6 : 0),
+      );
+      await tick(f);
+      assert.equal(f.calls.length, entry.allowed ? 6 : 0);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+
+test("operator native readback consumes only its named window and cannot be invoked by guest access", async () => {
+  const f = await fixture({
+    full: true,
+    respond: nativeReadResponse,
+    secrets: { SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret" },
+  });
+  try {
+    const untouched = await scheduledAttempt(f);
+    const target = await scheduledAttempt(f);
+    const guest = await f.mf.dispatchFetch(origin + "/api/access", {
+      method: "POST",
+      headers: { origin },
+    });
+    assert.equal(guest.status, 201);
+    const cookie = guest.headers.get("set-cookie").split(";")[0];
+    const denied = await f.mf.dispatchFetch(
+      origin + "/api/developer/native-readback",
+      { method: "POST", headers: { origin, cookie } },
+    );
+    assert.equal(denied.status, 401);
+    assert.equal(
+      (await f.call("f".repeat(64), "POST", "native_recovery_window")).status,
+      401,
+    );
+    assert.equal(f.calls.length, 0);
+    const before = await f.call(target.token, "GET", "native_recovery_window");
+    assert.equal(before.body.state, "granted");
+    assert.equal(f.calls.length, 0);
+    const invoked = await Promise.all([
+      f.call(target.token, "POST", "native_recovery_window"),
+      f.call(target.token, "POST", "native_recovery_window"),
+    ]);
+    assert.ok(
+      invoked.some((result) => result.body.state === "complete"),
+      JSON.stringify(invoked),
+    );
+    assert.equal(f.calls.length, 6);
+    assert.equal(
+      (
+        await f.db
+          .prepare(
+            "SELECT state FROM developer_operations WHERE capability_hash=?",
+          )
+          .bind(untouched.key)
+          .first()
+      ).state,
+      "granted",
+    );
+    const readback = await f.call(
+      target.token,
+      "GET",
+      "native_recovery_window",
+    );
+    assert.equal(readback.body.state, "complete");
+    assert.equal(
+      (await f.call(target.token, "POST", "native_recovery_window")).body.state,
+      "complete",
+    );
+    assert.equal(f.calls.length, 6);
+    assert.ok(!JSON.stringify(readback).includes("synthetic-booking-hash"));
+  } finally {
+    await f.mf.dispose();
+  }
+});
+
+test("operator inspection reads one retained booking under the carried192 ledger without invoice cleanup scheduler or replay", async () => {
+  for (const scenario of [
+    "inspect",
+    "wrong-id",
+    "wrong-source",
+    "revoked",
+    "stale-attempt",
+  ]) {
+    const booking = structuredClone(nativeResponses.bookingBefore);
+    delete booking.invoice_id;
+    booking.end_date_time = "2026-10-10 09:40:00";
+    booking.event_price = "private-price-marker";
+    let target;
+    const methods = [];
+    const f = await fixture({
+      full: true,
+      secrets: {
+        SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret",
+        SOURCE_REVISION: "1".repeat(40),
+        PROVIDER_CALL_CEILING: "192",
+      },
+      respond: async (_request, body) => {
+        if (body?.method === "getBookingDetails") {
+          methods.push(body.method);
+          assert.equal(String(body.params[0]), "701");
+          if (scenario === "revoked")
+            await f.db
+              .prepare(
+                "UPDATE developer_operations SET state='blocked' WHERE capability_hash=?",
+              )
+              .bind(target.key)
+              .run();
+          if (scenario === "stale-attempt")
+            await f.db
+              .prepare("UPDATE attempts SET version=version+1 WHERE id=?")
+              .bind(target.id)
+              .run();
+          return Response.json({
+            jsonrpc: "2.0",
+            id: body.id,
+            result: booking,
+          });
+        }
+      },
+    });
+    try {
+      await f.sql(
+        "INSERT INTO budget(campaign,used) VALUES(?,125)",
+        config.vars.CAMPAIGN_ID,
+      );
+      target = await scheduledAttempt(f, {
+        unassociated: true,
+        deadline: Date.now() - 1,
+        scope: {
+          startingUsed: 125,
+          maximumUsed: 131,
+          residual: {
+            mode: "inspect",
+            sourceRevision: (scenario === "wrong-source" ? "f" : "1").repeat(
+              40,
+            ),
+            expectedBookingIds: [scenario === "wrong-id" ? "702" : "701"],
+          },
+        },
+      });
+      await f.db
+        .prepare("UPDATE attempts SET state='recovery_required' WHERE id=?")
+        .bind(target.id)
+        .run();
+      await f.db
+        .prepare(
+          "INSERT INTO session_effects VALUES(?,'session:0','observed','701')",
+        )
+        .bind(target.id)
+        .run();
+      const before = await f.db
+        .prepare("SELECT * FROM attempts WHERE id=?")
+        .bind(target.id)
+        .first();
+      await tick(f);
+      assert.equal(f.calls.length, 0, "scheduler must not claim inspection");
+      await Promise.all([
+        f.call(target.token, "POST", "native_recovery_window"),
+        f.call(target.token, "POST", "native_recovery_window"),
+      ]);
+      const saved = await f.db
+        .prepare(
+          "SELECT state,result_json FROM developer_operations WHERE capability_hash=?",
+        )
+        .bind(target.key)
+        .first();
+      const result = JSON.parse(saved.result_json);
+      if (scenario === "inspect") {
+        assert.equal(result.state, "inspected", JSON.stringify(saved));
+        assert.equal(result.inspection.endInterval, "play");
+        assert.equal(
+          result.inspection.fields["booking.end_date_time"].result,
+          "mismatch",
+        );
+        assert.equal(
+          result.inspection.fields["booking.event_price"].result,
+          "malformed",
+        );
+        assert.equal(f.calls.length, 5);
+        assert.deepEqual(
+          await f.db
+            .prepare("SELECT * FROM attempts WHERE id=?")
+            .bind(target.id)
+            .first(),
+          before,
+        );
+      } else assert.notEqual(result.state, "inspected");
+      if (["wrong-id", "wrong-source"].includes(scenario))
+        assert.equal(f.calls.length, 0);
+      else assert.deepEqual(methods, ["getBookingDetails"]);
+      assert.ok(f.calls.every((c) => !c.url.includes("invoices")));
+      assert.doesNotMatch(
+        saved.result_json,
+        /private-price-marker|synthetic-booking-hash|synthetic-signing-secret/,
+      );
+      const count = f.calls.length;
+      await f.call(target.token, "POST", "native_recovery_window");
+      assert.equal(f.calls.length, count);
+      const budget = await f.sql(
+        "SELECT used FROM budget WHERE campaign=?",
+        config.vars.CAMPAIGN_ID,
+      );
+      assert.equal(budget[0].used, 125 + count);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+
+test("operator residual recovery scopes cleanup to retained bookings and preserves unsafe records", async () => {
+  for (const scenario of [
+    "unpaid",
+    "missing-invoice",
+    "paid",
+    "wrong-id",
+    "wrong-source",
+    "revoked",
+  ]) {
+    const booking = structuredClone(nativeResponses.bookingBefore),
+      invoice = structuredClone(nativeResponses.invoiceBefore);
+    let target,
+      cancellations = 0;
+    const f = await fixture({
+      full: true,
+      secrets: {
+        SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret",
+        SOURCE_REVISION: "1".repeat(40),
+      },
+      respond: async (request, body) => {
+        if (body?.method === "getBookingDetails") {
+          if (scenario === "missing-invoice") delete booking.invoice_id;
+          if (scenario === "revoked")
+            await f.db
+              .prepare(
+                "UPDATE developer_operations SET state='blocked' WHERE capability_hash=?",
+              )
+              .bind(target.key)
+              .run();
+          return Response.json({
+            jsonrpc: "2.0",
+            id: body.id,
+            result: booking,
+          });
+        }
+        if (new URL(request.url).pathname === "/admin/invoices/901")
+          return Response.json(invoice);
+        if (body?.method === "cancelBooking") {
+          cancellations++;
+          booking.status = "cancelled";
+          booking.is_confirmed = "0";
+          invoice.lines[0].bookings[0].is_confirmed = false;
+          return Response.json({ jsonrpc: "2.0", id: body.id, result: true });
+        }
+      },
+    });
+    try {
+      if (scenario === "paid")
+        Object.assign(invoice, {
+          status: "paid",
+          payment_received: true,
+          payment_processor: "hitpay",
+        });
+      const deadline = Date.now() - 1;
+      target = await scheduledAttempt(f, {
+        deadline,
+        scope: {
+          maximumUsed: 16,
+          residual: {
+            sourceRevision:
+              scenario === "wrong-source" ? "f".repeat(40) : "1".repeat(40),
+            expectedBookingIds: scenario === "wrong-id" ? ["702"] : ["701"],
+          },
+        },
+      });
+      await f.db
+        .prepare("UPDATE attempts SET state='recovery_required' WHERE id=?")
+        .bind(target.id)
+        .run();
+      await f.db
+        .prepare(
+          "INSERT INTO session_effects VALUES(?,'session:0','observed','701')",
+        )
+        .bind(target.id)
+        .run();
+      await tick(f);
+      assert.equal(
+        f.calls.length,
+        0,
+        "scheduler cannot consume cleanup authority",
+      );
+      const response = await f.call(
+        target.token,
+        "POST",
+        "native_recovery_window",
+      );
+      assert.equal(response.status, 200, JSON.stringify(response));
+      const readback = await f.call(
+        target.token,
+        "GET",
+        "native_recovery_window",
+      );
+      assert.equal(
+        cancellations,
+        scenario === "unpaid" ? 1 : 0,
+        JSON.stringify(readback),
+      );
+      assert.ok(!JSON.stringify(readback).includes("synthetic-booking-hash"));
+      if (["wrong-source", "wrong-id"].includes(scenario))
+        assert.equal(f.calls.length, 0);
+      if (scenario === "missing-invoice") {
+        const row = await f.db
+          .prepare(
+            "SELECT result_json FROM developer_operations WHERE capability_hash=?",
+          )
+          .bind(target.key)
+          .first();
+        assert.equal(
+          JSON.parse(row.result_json).diagnostic.representation
+            .invoiceReference,
+          "missing",
+        );
+      }
+      const calls = f.calls.length;
+      await f.call(target.token, "POST", "native_recovery_window");
+      assert.equal(f.calls.length, calls);
+      assert.equal(
+        (
+          await f.db
+            .prepare("SELECT deadline_ms FROM attempts WHERE id=?")
+            .bind(target.id)
+            .first()
+        ).deadline_ms,
+        deadline,
+      );
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+
 test("scheduled recovery rejects closed expired future unknown and unsigned windows without provider calls", async () => {
   for (const variant of [
     "closed",
@@ -1360,6 +2184,184 @@ test("scheduled native recovery preserves conflicting paid evidence for manual r
     assert.equal(row.observation_json, null);
     await tick(f);
     assert.equal(f.calls.length, 6);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+
+test("native availability and preparation cross the real HTTP coordinator boundary under a finite grant", async () => {
+  const start = Date.now();
+  const end = start + 1200000;
+  const date = new Date(start + 3 * 86400000).toISOString().slice(0, 10);
+  const revision = "c".repeat(40);
+  const f = await fixture({
+    full: true,
+    end,
+    secrets: { SOURCE_REVISION: revision },
+    respond: (_request, body) => {
+      const results = {
+        getEventList: {
+          2: {
+            id: 2,
+            name: "Synthetic Session",
+            duration: "40",
+            is_active: "1",
+            is_public: "1",
+            is_recurring: "0",
+            price: "88",
+            currency: "SGD",
+            unit_map: [2],
+          },
+        },
+        getUnitList: {
+          2: { id: 2, name: "Synthetic Trainer", is_active: "1" },
+        },
+        getStartTimeMatrix: { [date]: ["10:00:00", "10:50:00"] },
+      };
+      if (body && Object.hasOwn(results, body.method))
+        return Response.json({
+          jsonrpc: "2.0",
+          id: body.id,
+          result: results[body.method],
+        });
+    },
+  });
+  try {
+    await f.sql(
+      "INSERT INTO budget(campaign,used) VALUES(?,15)",
+      config.vars.CAMPAIGN_ID,
+    );
+    const guest = await f.mf.dispatchFetch(origin + "/api/access", {
+      method: "POST",
+      headers: { origin },
+    });
+    assert.equal(guest.status, 201);
+    const cookie = guest.headers.get("set-cookie").split(";")[0];
+    const hash = createHash("sha256")
+      .update(cookie.split("=")[1])
+      .digest("hex");
+    const contract = {
+      accountId: config.vars.DEPLOYMENT_ACCOUNT_ID,
+      environmentId: "developer",
+      companyLogin: "synthetic-developer",
+      serviceId: "2",
+      priceMinor: 8800,
+      currency: "SGD",
+      taxMinor: 0,
+      durationMinutes: 40,
+      bufferAfterMinutes: 10,
+      clientLoginRequired: false,
+      providerSchedules: "non-overlapping",
+      confirmedAtMs: start,
+      expiresAtMs: end,
+    };
+    await f.db
+      .prepare(
+        "INSERT INTO native_checkout_grants(capability_hash,source_revision,contract_json,not_before_ms,expires_ms,starting_used,maximum_used,cleanup_allowed,state,available_dates_json) VALUES(?,?,?,?,?,15,64,1,'granted',?)",
+      )
+      .bind(
+        hash,
+        revision,
+        JSON.stringify(contract),
+        start,
+        end,
+        JSON.stringify([date]),
+      )
+      .run();
+    await f.db
+      .prepare(
+        "UPDATE native_checkout_grants SET contract_json=? WHERE capability_hash=?",
+      )
+      .bind(
+        JSON.stringify({ ...contract, companyLogin: "synthetic-foreign" }),
+        hash,
+      )
+      .run();
+    const rejected = await f.mf.dispatchFetch(
+      origin + "/api/booking/availability/2/" + date,
+      { headers: { origin, cookie } },
+    );
+    const rejectedBody = await rejected.json();
+    assert.equal(rejected.status, 503);
+    assert.deepEqual(rejectedBody, {
+      error: "native_account_contract_unavailable",
+    });
+    assert.equal(f.calls.length, 0);
+    assert.equal(
+      (
+        await f.db
+          .prepare(
+            "SELECT read_state FROM native_checkout_grants WHERE capability_hash=?",
+          )
+          .bind(hash)
+          .first()
+      ).read_state,
+      "available",
+    );
+    await f.db
+      .prepare(
+        "UPDATE native_checkout_grants SET contract_json=? WHERE capability_hash=?",
+      )
+      .bind(JSON.stringify(contract), hash)
+      .run();
+    const response = await f.mf.dispatchFetch(
+      origin + "/api/booking/availability/2/" + date,
+      { headers: { origin, cookie } },
+    );
+    const availability = await response.json();
+    assert.equal(
+      response.status,
+      200,
+      JSON.stringify({ availability, logs: f.logs }),
+    );
+    assert.equal(availability.offers.length, 2);
+    const before = f.calls.length;
+    const selection = {
+      key: crypto.randomUUID(),
+      accepted: true,
+      contact: {
+        name: "Synthetic Guest",
+        email: "guest@example.com",
+        phone: "00000000",
+        contactMethod: "email",
+        academy: "Synthetic school",
+      },
+      sessions: availability.offers.map((offer, index) => ({
+        serviceId: offer.serviceId,
+        instructorId: offer.instructorId,
+        startMs: offer.startMs,
+        players: index ? 4 : 1,
+        totalMinor: 8800,
+      })),
+    };
+    const prepared = await f.mf.dispatchFetch(origin + "/api/booking/prepare", {
+      method: "POST",
+      headers: { origin, cookie, "content-type": "application/json" },
+      body: JSON.stringify(selection),
+    });
+    const result = await prepared.json();
+    assert.equal(prepared.status, 201, JSON.stringify(result));
+    assert.equal(result.state, "prepared");
+    assert.equal(f.calls.length, before);
+    const checkout = await f.mf.dispatchFetch(
+      origin + "/api/booking/native/" + result.attemptId,
+      { method: "POST", headers: { origin, cookie } },
+    );
+    assert.equal(checkout.status, 503);
+    assert.deepEqual(await checkout.json(), {
+      error: "native_signing_unavailable",
+    });
+    assert.equal(f.calls.length, before);
+    await f.db.exec("DROP TABLE native_checkout_grants");
+    const unknown = await f.mf.dispatchFetch(
+      origin + "/api/booking/availability/2/" + date,
+      { headers: { origin, cookie } },
+    );
+    assert.equal(unknown.status, 503);
+    assert.deepEqual(await unknown.json(), {
+      error: "temporarily_unavailable",
+    });
+    assert.equal(f.calls.length, before);
   } finally {
     await f.mf.dispose();
   }

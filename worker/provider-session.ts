@@ -1,6 +1,6 @@
 import { discoveryFields } from "./field-discovery";
 import { CatalogueReads } from "./catalogue";
-import { NativePrebooking } from "./prebooking";
+import { NativePrebooking, type NativeAccountContract } from "./prebooking";
 import { measure } from "./diagnostics";
 import { ApiError, policy } from "./policy";
 import { historicalComparison } from "./provider-normalization";
@@ -31,6 +31,15 @@ const object = (value: unknown): Record<string, unknown> => {
 export class ProviderSession {
   private catalogueReads = new CatalogueReads();
   private boundScope: string | undefined;
+  invalidateCatalogue(env: Env) {
+    const p = policy(env),
+      secrets = this.bindScope(env);
+    this.catalogueReads.invalidate({
+      accountId: p.DEPLOYMENT_ACCOUNT_ID,
+      environmentId: p.ENVIRONMENT,
+      companyLogin: secrets.company,
+    });
+  }
   private bindScope(env: Env) {
     const secrets = providerSecrets(env);
     const key = JSON.stringify([
@@ -57,11 +66,20 @@ export class ProviderSession {
         environmentId: p.ENVIRONMENT,
         companyLogin: secrets.company,
       },
-      (request, signal) => this.nativeRead(env, control, request, signal),
+      async (request, signal) => {
+        signal?.throwIfAborted();
+        await this.identity(env, control);
+        return this.nativeRead(env, control, request, signal);
+      },
       fresh,
     );
   }
-  prebooking(env: Env, control: ProviderControl) {
+  prebooking(
+    env: Env,
+    control: ProviderControl,
+    contract?: NativeAccountContract,
+    observe?: (operation: NativeRequest["kind"], body?: unknown) => void,
+  ) {
     const p = policy(env),
       secrets = this.bindScope(env);
     return new NativePrebooking(
@@ -71,7 +89,17 @@ export class ProviderSession {
         companyLogin: secrets.company,
       },
       this.catalogueReads,
-      (request, signal) => this.nativeRead(env, control, request, signal),
+      async (request, signal) => {
+        observe?.(request.kind);
+        signal?.throwIfAborted();
+        // A multi-read review can outlast identity freshness. Refresh explicitly
+        // through the same finite admission owner, never inside nativeRead.
+        await this.identity(env, control);
+        const response = await this.nativeRead(env, control, request, signal);
+        observe?.(request.kind, response.body);
+        return response;
+      },
+      contract,
     );
   }
   // One named discovery only. Caller supplies the existing durable admission owner,
@@ -145,9 +173,8 @@ export class ProviderSession {
     }
   }
 
-  // Internal adapter transport. No customer route or operator grant exposes it.
-  // Current admission permits reads only; native writes remain unavailable until
-  // a separately reviewed finite write grant is installed.
+  // Read-only internal transport. Finite checkout uses the separate nativeWrite
+  // entry with durable grant validation; a read grant can never dispatch writes.
   async nativeRead(
     env: Env,
     control: ProviderControl,
@@ -159,7 +186,13 @@ export class ProviderSession {
       Number(env.CAMPAIGN_END_MS) <= Date.now()
     )
       throw new ApiError(503, "provider_access_disabled");
-    if (request.kind === "book" || request.kind === "payment-link")
+    if (
+      request.kind === "book" ||
+      request.kind === "payment-link" ||
+      request.kind === "batch-create" ||
+      request.kind === "batch-close" ||
+      request.kind === "booking-cancel"
+    )
       throw new ApiError(503, "native_write_grant_unavailable");
     signal?.throwIfAborted();
     const secrets = this.bindScope(env);
@@ -169,7 +202,11 @@ export class ProviderSession {
     // automatic reauthentication may consume the two-read recovery reserve.
     if (!this.cachedIdentity || this.cachedIdentity.until <= Date.now())
       throw new ApiError(503, "provider_identity_expired");
-    const family = request.kind === "invoice-read" ? "admin" : "public";
+    const family =
+      request.kind === "invoice-read" ||
+      request.kind === "webhook-subscriptions"
+        ? "admin"
+        : "public";
     const token = this.tokens.get(family);
     if (!token || token.until <= Date.now())
       throw new ApiError(503, "provider_auth_expired");
@@ -180,6 +217,48 @@ export class ProviderSession {
       control,
       request,
       signal,
+    );
+    return { body, receivedAtMs: Date.now() };
+  }
+
+  // Trusted finite-grant composition only. The callback checks the durable
+  // grant, guest capability, attempt and budget immediately before each write.
+  async nativeWrite(
+    env: Env,
+    control: ProviderControl,
+    request: NativeRequest,
+    assertGranted: () => Promise<void>,
+  ) {
+    const p = policy(env);
+    if (
+      p.PROVIDER_ACCESS !== "trusted-reads" ||
+      p.CAMPAIGN_END_MS <= Date.now()
+    )
+      throw new ApiError(503, "provider_access_disabled");
+    if (
+      ![
+        "book",
+        "batch-create",
+        "batch-close",
+        "payment-link",
+        "booking-cancel",
+      ].includes(request.kind)
+    )
+      throw new ApiError(503, "provider_operation_unavailable");
+    await assertGranted();
+    await this.identity(env, control);
+    const secrets = this.bindScope(env);
+    const family = request.kind === "payment-link" ? "admin" : "public";
+    const token = this.tokens.get(family);
+    if (!token || token.until <= Date.now())
+      throw new ApiError(503, "provider_auth_expired");
+    await assertGranted();
+    const body = await providerRequest(
+      "native",
+      secrets,
+      token.value,
+      control,
+      request,
     );
     return { body, receivedAtMs: Date.now() };
   }

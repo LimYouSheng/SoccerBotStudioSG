@@ -429,6 +429,18 @@
   },
   {
     "file": "src/services/async-booking.test.ts",
+    "title": "native availability carries provider identities labels and reviewed prices without Preview fallback"
+  },
+  {
+    "file": "src/services/async-booking.test.ts",
+    "title": "native preparation binds reviewed contact and payment stays under protected confirmation"
+  },
+  {
+    "file": "src/services/async-booking.test.ts",
+    "title": "native restore reads the authenticated snapshot and cannot manufacture a paid browser receipt"
+  },
+  {
+    "file": "src/services/async-booking.test.ts",
     "title": "transport rejection is a stable safe error without leaking raw response details"
   },
   {
@@ -718,6 +730,10 @@
   {
     "file": "tests/live-email.spec.ts",
     "title": "live guest denial stays on account without Preview fallback"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "native guest journey preserves players contact and one checkout across refresh"
   },
   {
     "file": "tests/live-email.spec.ts",

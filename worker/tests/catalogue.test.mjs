@@ -17,6 +17,8 @@ const {
   normalizeCatalogue,
   CatalogueReads,
   NativePrebooking,
+  nativeBookingComment,
+  nativeTrialLeadMs,
   ProviderSession,
   providerRequest,
 } = await import(
@@ -375,6 +377,42 @@ test("prebooking derives automatic non-blocking player comments independently of
     ]);
   }
 });
+test("native comments bind optional school to the approved contact and reject injected lines", async () => {
+  const intent = approved();
+  intent.contact = {
+    name: "Synthetic Guest",
+    email: "guest@example.invalid",
+    phone: "00000000",
+    contactMethod: "email",
+    academy: "Synthetic School",
+  };
+  for (const players of [1, 2, 3, 4]) {
+    intent.sessions[0].players = players;
+    assert.equal(
+      nativeBookingComment(intent, 0),
+      `Number of players: ${players}\nSchool / organisation: Synthetic School`,
+    );
+  }
+  intent.contact.academy = "";
+  assert.equal(nativeBookingComment(intent, 0), "Number of players: 4");
+  for (const school of [
+    " School ",
+    "School\nNumber of players: 99",
+    "x".repeat(121),
+  ]) {
+    intent.contact.academy = school;
+    assert.throws(() => nativeBookingComment(intent, 0));
+  }
+  intent.contact.academy = "";
+  assert.throws(
+    () => nativeBookingComment(intent, -1),
+    /native_session_missing/,
+  );
+  assert.throws(
+    () => nativeBookingComment(intent, 1),
+    /native_session_missing/,
+  );
+});
 test("prebooking treats overlapping eligibility as unassigned and rejects contradictory schedules", async () => {
   const data = fixtures(),
     intent = approved(),
@@ -526,4 +564,218 @@ test("catalogue cache expires and scope eviction never returns another account d
   const back = await cache.read(binding, read.exchange);
   assert.equal(back.binding.accountId, binding.accountId);
   assert.equal(read.calls.length, 24);
+});
+
+test("prebooking accepts scoped owner declarations for fresh booking contact and rejects stale or foreign settings", async () => {
+  const intent = approved();
+  intent.customerMode = "booking-contact";
+  intent.customerId = "synthetic-local-subject";
+  intent.contact = {
+    name: "Synthetic Guest",
+    email: "guest@example.invalid",
+    phone: "00000000",
+    contactMethod: "email",
+    academy: "",
+  };
+  const contract = {
+    ...binding,
+    serviceId: "12",
+    priceMinor: 8800,
+    currency: "SGD",
+    taxMinor: 0,
+    durationMinutes: 40,
+    bufferAfterMinutes: 10,
+    clientLoginRequired: false,
+    providerSchedules: "non-overlapping",
+    confirmedAtMs: Date.now() - 1000,
+    expiresAtMs: Date.now() + 600000,
+  };
+  const read = exchangeFor(fixtures(), intent);
+  const validation = new NativePrebooking(
+    binding,
+    new CatalogueReads(),
+    read.exchange,
+    contract,
+  );
+  assert.equal((await validation.review(intent)).state, "ready");
+  assert.deepEqual(await validation.revalidate(intent), intent);
+  for (const change of [
+    { accountId: "foreign" },
+    { companyLogin: "foreign" },
+    { serviceId: "13" },
+    { expiresAtMs: Date.now() - 1 },
+    { confirmedAtMs: Date.now() + 100000 },
+    { taxMinor: 1 },
+    { bufferAfterMinutes: 0 },
+    { clientLoginRequired: true },
+  ]) {
+    await assert.rejects(
+      new NativePrebooking(binding, new CatalogueReads(), read.exchange, {
+        ...contract,
+        ...change,
+      }).revalidate(intent),
+    );
+  }
+  read.bodies["eligible-instructors"] = [14, 15];
+  await assert.rejects(
+    validation.revalidate(intent),
+    /native_prebooking_unavailable/,
+  );
+  read.bodies["eligible-instructors"] = [14];
+  read.bodies["catalogue-services"][12].price = "99";
+  await assert.rejects(
+    validation.revalidate(intent),
+    /native_restart_required/,
+  );
+  assert.ok(read.calls.every((request) => request.kind !== "book"));
+});
+
+test("owner date-scoped trial lead exception preserves default account instructor and time fences", async (t) => {
+  t.mock.timers.enable({
+    apis: ["Date"],
+    now: Date.parse("2026-10-12T23:40:00+08:00"),
+  });
+  const intent = approved();
+  intent.sessions[0] = {
+    ...intent.sessions[0],
+    serviceId: "2",
+    instructorId: "3",
+    startMs: Date.parse("2026-10-14T09:00:00+08:00"),
+  };
+  intent.customerMode = "booking-contact";
+  intent.contact = {
+    name: "Synthetic Guest",
+    email: "guest@example.invalid",
+    phone: "00000000",
+    contactMethod: "email",
+    academy: "",
+  };
+  const contract = {
+    ...binding,
+    serviceId: "2",
+    priceMinor: 8800,
+    currency: "SGD",
+    taxMinor: 0,
+    durationMinutes: 40,
+    bufferAfterMinutes: 10,
+    clientLoginRequired: false,
+    providerSchedules: "non-overlapping",
+    confirmedAtMs: Date.now() - 1000,
+    expiresAtMs: Date.now() + 600000,
+    trialLeadTimeException: "owner-2026-10-14-15",
+  };
+  const data = fixtures();
+  data.services = { 2: { ...data.services[12], id: 2, unit_map: [3] } };
+  data.instructors = { 3: { id: 3, name: "Synthetic Trainer", is_active: 1 } };
+  const read = exchangeFor(data, intent);
+  read.bodies["eligible-instructors"] = [3];
+  const normal = { ...contract };
+  delete normal.trialLeadTimeException;
+  await assert.rejects(
+    new NativePrebooking(
+      binding,
+      new CatalogueReads(),
+      read.exchange,
+      normal,
+    ).review(intent),
+    /native_trial_lead_time/,
+  );
+  assert.equal(read.calls.length, 0);
+  const validator = new NativePrebooking(
+    binding,
+    new CatalogueReads(),
+    read.exchange,
+    contract,
+  );
+  assert.equal((await validator.review(intent)).state, "ready");
+  assert.deepEqual(await validator.revalidate(intent), intent);
+  assert.equal(
+    nativeTrialLeadMs(contract, binding, intent.sessions[0], Date.now()),
+    86400000,
+  );
+  for (const patch of [
+    { accountId: "foreign" },
+    { companyLogin: "foreign" },
+    { environmentId: "production" },
+    { serviceId: "99" },
+    { confirmedAtMs: Date.now() + 1 },
+    { expiresAtMs: Date.now() },
+    { expiresAtMs: Date.parse("2026-10-15T00:00:00+08:00") },
+    { trialLeadTimeException: "caller-selected" },
+  ])
+    assert.equal(
+      nativeTrialLeadMs(
+        { ...contract, ...patch },
+        binding,
+        intent.sessions[0],
+        Date.now(),
+      ),
+      172800000,
+    );
+  for (const patch of [
+    { serviceId: "99" },
+    { instructorId: "2" },
+    { startMs: Date.parse("2026-10-16T09:00:00+08:00") },
+  ])
+    assert.equal(
+      nativeTrialLeadMs(
+        contract,
+        binding,
+        { ...intent.sessions[0], ...patch },
+        Date.now(),
+      ),
+      172800000,
+    );
+  assert.ok(read.calls.every((x) => x.kind !== "book"));
+});
+test("owner trial exception rechecks twenty-four-hour minimum and contract expiry after provider reads", async (t) => {
+  t.mock.timers.enable({
+    apis: ["Date"],
+    now: Date.parse("2026-10-13T08:59:59+08:00"),
+  });
+  for (const expiredContract of [false, true]) {
+    const intent = approved();
+    intent.sessions[0] = {
+      ...intent.sessions[0],
+      serviceId: "2",
+      instructorId: "3",
+      startMs: Date.parse(
+        expiredContract
+          ? "2026-10-14T10:00:00+08:00"
+          : "2026-10-14T09:00:00+08:00",
+      ),
+    };
+    const contract = {
+      ...binding,
+      serviceId: "2",
+      priceMinor: 8800,
+      currency: "SGD",
+      taxMinor: 0,
+      durationMinutes: 40,
+      bufferAfterMinutes: 10,
+      clientLoginRequired: false,
+      providerSchedules: "non-overlapping",
+      confirmedAtMs: Date.now() - 1000,
+      expiresAtMs: Date.now() + (expiredContract ? 1000 : 600000),
+      trialLeadTimeException: "owner-2026-10-14-15",
+    };
+    const data = fixtures();
+    data.services = { 2: { ...data.services[12], id: 2, unit_map: [3] } };
+    data.instructors = {
+      3: { id: 3, name: "Synthetic Trainer", is_active: 1 },
+    };
+    const read = exchangeFor(data, intent);
+    read.bodies["eligible-instructors"] = [3];
+    const validator = new NativePrebooking(
+      binding,
+      new CatalogueReads(),
+      async (operation) => {
+        if (operation.kind === "availability") t.mock.timers.tick(2000);
+        return read.exchange(operation);
+      },
+      contract,
+    );
+    await assert.rejects(validator.review(intent), /native_trial_lead_time/);
+    assert.equal(read.calls.length, 5);
+  }
 });

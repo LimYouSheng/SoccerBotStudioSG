@@ -1,9 +1,12 @@
 "use client";
 import Link from "next/link";
 import { Icon } from "@/components/icon";
-import { INSTRUCTORS, PRICE_CENTS, SERVICE_NAME } from "@/domain/demo-catalog";
+import { PRICE_CENTS, SERVICE_NAME } from "@/domain/demo-catalog";
 import {
   orderedSlots,
+  sessionInstructorName,
+  sessionPrice,
+  instructorSchema,
   isElapsed,
   selectionErrors,
   slotKey,
@@ -42,7 +45,7 @@ export function SessionList({
                 {slot.start}–{endTime(slot.start)} SGT
               </span>
               <span className="session-instructor">
-                {INSTRUCTORS[slot.instructor].name}
+                {sessionInstructorName(slot)}
               </span>
               {showRotation && slot.rotationAt && (
                 <span className="rotation-notice">
@@ -55,7 +58,7 @@ export function SessionList({
                   Session has started — remove to continue.
                 </span>
               )}
-              {remove && <small>{money(PRICE_CENTS)}</small>}
+              {remove && <small>{money(sessionPrice(slot))}</small>}
             </div>
             {remove && (
               <button
@@ -80,7 +83,10 @@ export function PriceSummary({ draft }: { draft: BookingDraft }) {
       <div className="line-item">
         <span>
           {draft.slots.length} × 40 min session
-          <small>{money(PRICE_CENTS)} each</small>
+          <small>
+            {money(draft.slots[0] ? sessionPrice(draft.slots[0]) : PRICE_CENTS)}{" "}
+            each
+          </small>
         </span>
         <strong>{money(totalCents(draft))}</strong>
       </div>
@@ -88,7 +94,9 @@ export function PriceSummary({ draft }: { draft: BookingDraft }) {
         <span>Total due</span>
         <strong>{money(totalCents(draft))}</strong>
       </div>
-      <p className="hint">SGD · Inclusive of GST</p>
+      <p className="hint">
+        {draft.nativeServiceId ? "SGD · Final total" : "SGD · Inclusive of GST"}
+      </p>
     </div>
   );
 }
@@ -108,7 +116,9 @@ export function Summary({ basket = false }: { basket?: boolean }) {
       ),
     );
   const instructors = [
-    ...new Set(orderedSlots(draft.slots).map((slot) => slot.instructor)),
+    ...new Map(
+      orderedSlots(draft.slots).map((slot) => [slot.instructor, slot]),
+    ).values(),
   ];
   return (
     <div className="aside-wrap">
@@ -122,7 +132,10 @@ export function Summary({ basket = false }: { basket?: boolean }) {
           </span>
         </div>
         <div className="summary-body">
-          <h2>{SERVICE_NAME}</h2>
+          <h2>
+            {draft.slots[0]?.native?.serviceName ??
+              (draft.nativeServiceId ? "Your session" : SERVICE_NAME)}
+          </h2>
           <p className="subline">
             {draft.players} {draft.players === 1 ? "player" : "players"} ·
             Instructor included
@@ -169,7 +182,11 @@ export function Summary({ basket = false }: { basket?: boolean }) {
             <span>Total</span>
             <strong>{money(totalCents(draft))}</strong>
           </div>
-          <p className="hint">SGD · Inclusive of GST</p>
+          <p className="hint">
+            {draft.nativeServiceId
+              ? "SGD · Final total"
+              : "SGD · Inclusive of GST"}
+          </p>
           {basket &&
             (draft.slots.length > 0 && valid ? (
               <Link
@@ -208,8 +225,24 @@ export function Summary({ basket = false }: { basket?: boolean }) {
           <h2 className="sr-only" id="instructors-heading">
             Your instructors
           </h2>
-          {instructors.map((id) => (
-            <InstructorProfile key={id} id={id} />
+          {instructors.map((slot) => (
+            <InstructorProfile
+              key={slot.instructor}
+              {...(slot.native
+                ? {
+                    profile: {
+                      name: sessionInstructorName(slot),
+                      initials: sessionInstructorName(slot)
+                        .split(/\s+/)
+                        .map((part) => part[0])
+                        .slice(0, 2)
+                        .join(""),
+                      role: "Instructor",
+                      bio: "",
+                    },
+                  }
+                : { id: instructorSchema.parse(slot.instructor) })}
+            />
           ))}
         </section>
       )}

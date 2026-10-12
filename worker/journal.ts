@@ -1,3 +1,4 @@
+import { contactSchema, contactErrors } from "../src/domain/contact";
 import {
   START_INTERVAL_MINUTES,
   MAX_PLAYERS,
@@ -10,6 +11,21 @@ export const intentSchema = z
     accountId: z.string().min(1).max(128),
     environmentId: z.literal("developer"),
     customerId: z.string().min(1).max(128),
+    // New guest attempts use a server-owned local subject. The returned native
+    // client ID is bound only to this attempt's newly created bookings.
+    customerMode: z.literal("booking-contact").optional(),
+    // Optional only for compatibility with previously journalled attempts.
+    // New native creation requires the submitted snapshot; it is not identity proof.
+    contact: contactSchema
+      .strict()
+      .refine(
+        (value) =>
+          Object.keys(contactErrors(value)).length === 0 &&
+          Object.values(value).every(
+            (text) => text === text.trim() && !/[\x00-\x1f\x7f]/.test(text),
+          ),
+      )
+      .optional(),
     currency: z.literal("SGD"),
     totalMinor: z.number().int().nonnegative().safe(),
     taxMinor: z.number().int().nonnegative().safe(),
@@ -28,6 +44,8 @@ export const intentSchema = z
       .max(12),
   })
   .superRefine((v, ctx) => {
+    if (v.customerMode === "booking-contact" && !v.contact)
+      ctx.addIssue({ code: "custom", message: "contact required" });
     if (
       v.taxMinor > v.totalMinor ||
       v.sessions.some((s) => s.taxMinor > s.totalMinor) ||
@@ -137,6 +155,10 @@ export async function requireRecovery(
 export const associationSchema = z
   .strictObject({
     invoiceId: z.string().min(1).max(128),
+    nativeCustomerId: z
+      .string()
+      .regex(/^[1-9]\d{0,14}$/)
+      .optional(),
     bookingIds: z.array(z.string().min(1).max(128)).min(1).max(12),
   })
   .refine((v) => new Set(v.bookingIds).size === v.bookingIds.length);

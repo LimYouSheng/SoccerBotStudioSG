@@ -1,5 +1,6 @@
+import { sessionInstructorName } from "@/domain/booking";
 import { ADDRESS } from "@/domain/catalog";
-import { INSTRUCTORS, SERVICE_NAME } from "@/domain/demo-catalog";
+import { SERVICE_NAME } from "@/domain/demo-catalog";
 import { dateLabel, endTime, money } from "@/domain/dates";
 import type { Booking } from "@/domain/booking";
 function download(blob: Blob, filename: string) {
@@ -40,7 +41,7 @@ export function calendarText(booking: Booking): string {
       `DTEND:${utcTime(slot.date, endTime(slot.start))}`,
       `SUMMARY:${escapeICS(SERVICE_NAME)}`,
       `LOCATION:${escapeICS(`${slot.studio}, ${ADDRESS}`)}`,
-      `DESCRIPTION:${escapeICS(`Preview booking ${booking.reference}. Instructor: ${INSTRUCTORS[slot.instructor].name}. Arrive 10 minutes early.`)}`,
+      `DESCRIPTION:${escapeICS(`Preview booking ${booking.reference}. Instructor: ${sessionInstructorName(slot)}. Arrive 10 minutes early.`)}`,
       "END:VEVENT",
     ]),
     "END:VCALENDAR",
@@ -95,7 +96,7 @@ export async function downloadBooking(booking: Booking) {
   y += 5;
   booking.slots.forEach((slot) =>
     line(
-      `${dateLabel(slot.date)} | ${slot.start}-${endTime(slot.start)} SGT | ${slot.studio} | ${INSTRUCTORS[slot.instructor].name}`,
+      `${dateLabel(slot.date)} | ${slot.start}-${endTime(slot.start)} SGT | ${slot.studio} | ${sessionInstructorName(slot)}`,
     ),
   );
   y += 5;

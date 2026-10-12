@@ -29,6 +29,7 @@ test("rejects Worker orphan cycle and UI imports", () => {
     ["export const value=1", "Unreachable"],
     ['import "../src/components/icon";', "Forbidden Worker layer"],
     ['import "../src/domain/demo-catalog";', "Forbidden Worker layer"],
+    ['import "../src/domain/contact-extra";', "Forbidden Worker layer"],
     ['import "./absent";', "Missing Worker import"],
   ])
     assert.ok(
@@ -66,6 +67,10 @@ test("rejects provider redirects alternate hosts and unreserved dispatch", () =>
       "https://other.invalid/siteverify",
     ],
     ["user-api-v2.simplybook.me/admin/auth", "other.invalid/admin/auth"],
+    [
+      "user-api-v2.simplybook.me/admin/webhooks",
+      "other.invalid/admin/webhooks",
+    ],
     ['https://user-api.simplybook.me/"', 'https://other.invalid/"'],
     [
       'https://user-api-v2.simplybook.me/admin/invoices/"',
@@ -116,6 +121,18 @@ test("rejects production account alternate entry and enabled providers", () => {
   );
 });
 test("rejects extra resource and API static-routing changes", () => {
+  for (const ceiling of ["128", "129", undefined])
+    assert.ok(
+      fixture((root) => {
+        const p = path.join(root, "wrangler.jsonc");
+        const c = ts.parseConfigFileTextToJson(
+          p,
+          readFileSync(p, "utf8"),
+        ).config;
+        c.vars.PROVIDER_CALL_CEILING = ceiling;
+        writeFileSync(p, JSON.stringify(c));
+      }).some((e) => e.includes("deployment boundary")),
+    );
   assert.ok(
     fixture((root) => {
       const p = path.join(root, "wrangler.jsonc"),

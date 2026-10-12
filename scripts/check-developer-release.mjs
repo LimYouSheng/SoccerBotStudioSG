@@ -137,9 +137,7 @@ try {
     .run();
   const grants = (await db.prepare("SELECT * FROM developer_operations").all())
     .results;
-  assert.deepEqual(manifest.pendingRemoteMigrations, [
-    "0015_contact_profiles.sql",
-  ]);
+  assert.deepEqual(manifest.pendingRemoteMigrations, []);
   // Old-state compatibility remains tested locally, never re-applied remotely.
   for (const name of names.slice(5, 8)) await migrate(name);
   const appliedEight = {
@@ -167,13 +165,116 @@ try {
       (await db.prepare(`SELECT * FROM "${table}" ORDER BY rowid`).all())
         .results,
     );
-  for (const name of manifest.pendingRemoteMigrations) await migrate(name);
+  // Retain additive-upgrade coverage even though these migrations are now applied.
+  for (const name of names.slice(14, 16)) await migrate(name);
+  assert.equal(
+    (await db.prepare("SELECT COUNT(*) n FROM native_checkout_grants").first())
+      .n,
+    0,
+  );
+  // Exercise the applied compatible table rebuild with a real retained grant.
+  await db
+    .prepare(
+      "INSERT INTO native_checkout_grants(capability_hash,source_revision,contract_json,not_before_ms,expires_ms,starting_used,maximum_used,state,result_json) SELECT capability_hash,?, '{}',1,2,15,64,'blocked',? FROM guest_access LIMIT 1",
+    )
+    .bind(
+      "a".repeat(40),
+      JSON.stringify({ state: "prerequisites_unavailable" }),
+    )
+    .run();
+  const retainedNative = (
+    await db
+      .prepare("SELECT * FROM native_checkout_grants ORDER BY capability_hash")
+      .all()
+  ).results;
+  assert.equal(retainedNative.length, 1);
+  for (const name of names.slice(16, 18)) await migrate(name);
+  assert.deepEqual(
+    (
+      await db
+        .prepare(
+          "SELECT * FROM native_checkout_grants ORDER BY capability_hash",
+        )
+        .all()
+    ).results,
+    retainedNative,
+  );
+  // The new schema admits only the reviewed ceiling and preserves retained fields.
+  await db.prepare("UPDATE native_checkout_grants SET maximum_used=176").run();
+  await assert.rejects(
+    db.prepare("UPDATE native_checkout_grants SET maximum_used=177").run(),
+  );
+  await migrate("0019_native_grant_ceiling_224.sql");
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT maximum_used FROM native_checkout_grants")
+        .first()
+    ).maximum_used,
+    176,
+  );
+  await db.prepare("UPDATE native_checkout_grants SET maximum_used=208").run();
+  await assert.rejects(
+    db.prepare("UPDATE native_checkout_grants SET maximum_used=209").run(),
+  );
+  await migrate("0020_native_grant_ceiling_256.sql");
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT maximum_used FROM native_checkout_grants")
+        .first()
+    ).maximum_used,
+    208,
+  );
+  await db.prepare("UPDATE native_checkout_grants SET maximum_used=240").run();
+  await assert.rejects(
+    db.prepare("UPDATE native_checkout_grants SET maximum_used=241").run(),
+  );
+  await migrate("0021_native_grant_ceiling_512.sql");
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT maximum_used FROM native_checkout_grants")
+        .first()
+    ).maximum_used,
+    240,
+  );
+  await db.prepare("UPDATE native_checkout_grants SET maximum_used=496").run();
+  await assert.rejects(
+    db.prepare("UPDATE native_checkout_grants SET maximum_used=497").run(),
+  );
+  await db
+    .prepare("UPDATE native_checkout_grants SET maximum_used=?")
+    .bind(retainedNative[0].maximum_used)
+    .run();
+  assert.deepEqual(
+    (
+      await db
+        .prepare(
+          "SELECT * FROM native_checkout_grants ORDER BY capability_hash",
+        )
+        .all()
+    ).results,
+    retainedNative,
+  );
+  assert.deepEqual(
+    (await db.prepare("PRAGMA foreign_key_check").all()).results,
+    [],
+  );
   for (const table of priorTables)
     assert.deepEqual(
       (await db.prepare(`SELECT * FROM "${table}" ORDER BY rowid`).all())
         .results,
       snapshots.get(table),
     );
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT COUNT(*) AS n FROM native_checkout_grants")
+        .first()
+    ).n,
+    1,
+  );
   assert.equal(
     (await db.prepare("SELECT COUNT(*) AS n FROM remembered_identity").first())
       .n,
@@ -282,7 +383,7 @@ try {
         checks: [
           "file hashes",
           "root export",
-          "0001–0014 application state and pending0015 preserve all existing columns identities unknown effects and operator grants",
+          "applied0001–0017 preserve all existing fields, identities, unknown effects and closed grants",
           "empty identity delivery authority and default-closed HTTP",
           "exact Worker revision",
           "protected checkout unavailable",

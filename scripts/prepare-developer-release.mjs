@@ -98,8 +98,8 @@ const manifest = {
   identityDelivery: "disabled",
   providerAccess: "disabled",
   campaignEndMs: 0,
-  pendingRemoteMigrations: ["0015_contact_profiles.sql"],
-  priorWorkerVersion: "6c2730a6-9591-4c06-8830-803cb6d30790",
+  pendingRemoteMigrations: [],
+  priorWorkerVersion: "d9fa3712-f536-43e8-b7ad-ad882fdd031f",
   acceptance:
     profile.name === "live-email"
       ? "synthetic live-email frontend; delivery closed; no provider or mailbox acceptance"
