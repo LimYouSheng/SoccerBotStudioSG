@@ -1008,7 +1008,10 @@ export function normalizeNativeSession(
   if (phase === "batch-item") {
     if (intent.sessions.length < 2) rejectNative("creation.phase", "mismatch");
   } else equal(requiresConfirmation, false, "creation.require_confirm");
-  flag(booking.require_payment, "creation.booking.require_payment");
+  // Live intermediate receipts can omit this flag or return null. Neither
+  // establishes payment state; finalized responses still require the flag.
+  if (phase !== "batch-item" || booking.require_payment != null)
+    flag(booking.require_payment, "creation.booking.require_payment");
   equal(
     flag(booking.is_confirmed, "creation.booking.is_confirmed"),
     true,

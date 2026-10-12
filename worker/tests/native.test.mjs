@@ -1390,6 +1390,75 @@ test("native batch accepts pending cart receipts but requires a complete invoice
   }
 });
 
+test("native batch permits unavailable interim payment flags only with strict finalization", async () => {
+  for (const interim of ["missing", null]) {
+    for (const finalState of [
+      "valid",
+      "missing",
+      null,
+      "missing-invoice",
+      "requires-confirmation",
+      "wrong-total",
+    ]) {
+      const data = await prepared(true, true);
+      const batchReceipts = data.creation.bookings.map((value) => {
+        const booking = structuredClone(value);
+        if (interim === "missing") delete booking.require_payment;
+        else booking.require_payment = interim;
+        return {
+          require_confirm: true,
+          invoice: null,
+          batch_id: 601,
+          batch_hash: "synthetic-batch-hash",
+          bookings: [booking],
+        };
+      });
+      if (finalState === "missing")
+        delete data.creation.bookings[0].require_payment;
+      if (finalState === null) data.creation.bookings[0].require_payment = null;
+      if (finalState === "missing-invoice") data.creation.invoice = null;
+      if (finalState === "requires-confirmation")
+        data.creation.require_confirm = true;
+      if (finalState === "wrong-total") data.creation.invoice.amount = 88;
+      const result = await call("orchestrate", { ...data, batchReceipts });
+      assert.deepEqual(
+        result.sent.map((r) => r.kind),
+        ["batch-create", "book", "book", "batch-close"],
+        JSON.stringify(result),
+      );
+      assert.equal(
+        result.result.state,
+        finalState === "valid" ? "associated" : "recovery_required",
+      );
+      assert.equal(result.result.paymentAvailable, false);
+      const row = await db
+        .prepare("SELECT association_json FROM attempts WHERE id=?")
+        .bind(data.scope.attemptId)
+        .first();
+      assert.equal(row.association_json !== null, finalState === "valid");
+      assert.equal(
+        (await call("orchestrate", { ...data, batchReceipts })).requests,
+        0,
+      );
+    }
+  }
+});
+
+test("native batch rejects malformed non-null interim payment flags without further writes", async () => {
+  for (const value of ["unknown", "", 2, {}, []]) {
+    const data = await prepared(true, true);
+    data.creation.bookings[0].require_payment = value;
+    const result = await call("orchestrate", data);
+    assert.equal(result.result.state, "recovery_required");
+    assert.equal(result.result.paymentAvailable, false);
+    assert.deepEqual(
+      result.sent.map((r) => r.kind),
+      ["batch-create", "book"],
+    );
+    assert.equal((await call("orchestrate", data)).requests, 0);
+  }
+});
+
 test("native pending cart receipt still rejects invalid flags and foreign session evidence", async () => {
   for (const mismatch of [
     "flag",

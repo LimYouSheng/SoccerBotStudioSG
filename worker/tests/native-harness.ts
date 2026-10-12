@@ -62,6 +62,7 @@ const harness = {
       fixtureClockOffset?: number;
       batchRequiresConfirm?: unknown;
       batchReceipt?: unknown;
+      batchReceipts?: unknown[];
     };
     let reserved = 0,
       finished = 0,
@@ -153,21 +154,24 @@ const harness = {
           return { body: input.creation, receivedAtMs: input.now };
         if (operation.kind === "book") {
           const creation = input.creation as { bookings: unknown[] };
+          const index = sent.filter((item) => item.kind === "book").length - 1;
           return {
             body:
-              input.batchReceipt !== undefined
-                ? input.batchReceipt
-                : {
-                    require_confirm: input.batchRequiresConfirm ?? false,
-                    invoice: null,
-                    batch_id: 601,
-                    batch_hash: "synthetic-batch-hash",
-                    bookings: [
-                      creation.bookings[
-                        sent.filter((item) => item.kind === "book").length - 1
+              input.batchReceipts !== undefined
+                ? input.batchReceipts[index]
+                : input.batchReceipt !== undefined
+                  ? input.batchReceipt
+                  : {
+                      require_confirm: input.batchRequiresConfirm ?? false,
+                      invoice: null,
+                      batch_id: 601,
+                      batch_hash: "synthetic-batch-hash",
+                      bookings: [
+                        creation.bookings[
+                          sent.filter((item) => item.kind === "book").length - 1
+                        ],
                       ],
-                    ],
-                  },
+                    },
             receivedAtMs: input.now,
           };
         }

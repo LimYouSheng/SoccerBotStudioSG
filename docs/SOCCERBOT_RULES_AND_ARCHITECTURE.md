@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Latest creation evidence and correction boundary — 12 October2026
+
+Approved exact diagnostic packet5a170ff0 ran on47b37db and stopped at creation.booking.require_payment/missing on the first book response. This diagnostic represents absent or null. It establishes that this intermediate receipt lacked a usable payment flag, not that the booking is paid or unpaid. Only trusted batch-item normalization may accept nullish require_payment; supplied values must remain recognized flags, and finalized/single responses still require the flag. Session/customer/key, confirmation, batch metadata, invoice/payment and no-replay checks remain strict. Later unchecked fields and current native-checkout acceptance remain pending. The older lost creation response is not reconstructed by this result.
+
+One new batch/booking was retained with no second book, closeBatch, link, cancellation or payment. Independent closure verified deployed source47b37db/version67f84456-5f76-495b-b21e-50afac542d7b, disabled provider/identity/end0,162/192/active0, expired new grants/revoked new guest, empty schedules and18 historical tables preserved. All0001–0018 immutable. The source correction is not live deployment evidence. Packet consumed;14 ordinary calls and16 recovery reserve remain under the unchanged192 ceiling, insufficient for existing normal proof admission. Original campaign deadline12October16:18:56Singapore remains unchanged.
+
 ## Creation-contract comparison and next proof boundary — 12 October 2026
 
 The owner authorized official-contract research, field-by-field comparison, demonstrated corrections and finite proof preparation. Service Contracts now maps every consumed intermediate creation field to its check and evidence. The public response example is recurring; it does not establish the current multiple-booking batch_id echo or batch/client hash paths and continuity. No replacement field or relaxed check is justified. Application code is unchanged; the original failure remains unknown.
