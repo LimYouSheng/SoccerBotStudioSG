@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Preview failure reporting during identity-fix CI — 12 October 2026
+
+The corrected identity source passed backend and live-email CI, including224 Worker cases and their browser/release gates. Frontend passed68/69 browser cases; one tablet synthetic checkout received HTML404 instead of200. The original artifact and trace are retained privately. Its network evidence proves the response came from the static preview error fallback, not the protected Worker's JSON response. The underlying fixture exception was swallowed and cannot be identified retrospectively.
+
+The preview server now separates handler exceptions from missing static files, returns explicit503 with no retry and retains only bounded error codes in its server diagnostic. A non-browser injected transport-failure regression verifies unavailable JSON, no static fallback and no private message leakage. Existing browser actions/assertions/timeouts are unchanged; the checkout must still return200. This corrects a proved diagnostic defect, not the unproven underlying transient. Exact updated CI is required before live proof; earlier passing jobs are not substituted.
+
 ## Idle readiness passed; identity expiry reproduced and repaired — 12 October 2026
 
 The exact approved idle-lifecycle experiment passed baseline, activation and closure readiness. Availability and immutable preparation succeeded; native checkout stopped before effects at provider_identity_expired while reading catalogue instructors for the second session. Worker and coordinator disabled/end0, closed new grants, revoked guest, unchanged schedules and preserved history were independently verified. No booking, payment link or unpaid residual was created. Exact private receipts/accounting remain in idle-continuation/execution/outcome.md. The observed readiness result does not establish Cloudflare's internal lifecycle cause.

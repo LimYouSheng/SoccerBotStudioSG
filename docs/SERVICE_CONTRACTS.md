@@ -1,5 +1,9 @@
 # SoccerBotStudio — Service Contracts
 
+## Preview handler error boundary
+
+The optional local preview handler owns API/fixture responses. A thrown handler error returns503 preview_handler_unavailable and no-store, or closes an already-started response; it never falls through to the static404 page. Server diagnostics contain only bounded error codes, not exception messages, cookies or request data. This is local test infrastructure and adds no live authority or retry.
+
 ## Forward-read identity contract — 12 October 2026
 
 ProviderSession catalogue/prebooking composition and the native checkout/availability owners call identity before each forward nativeRead. Cached identity remains valid for five seconds only. When stale, its named identity/tariff requests use the same provided durable reservation owner, finite grant and cumulative ceiling as the following read. An aborted read is rejected before refresh where a signal exists; refresh failure prevents its dependent native read and booking write. No failed native request is replayed.

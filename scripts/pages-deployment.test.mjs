@@ -141,6 +141,40 @@ for (const basePath of ["", "/SoccerBotStudioSG"]) {
     }
   });
 }
+test("preview handler failure stays unavailable and never becomes a static missing page", async (t) => {
+  const { root } = fixture(t, "/SoccerBotStudioSG");
+  const messages = [];
+  t.mock.method(console, "error", (message) =>
+    messages.push(JSON.parse(message)),
+  );
+  const server = exportServer(root, "/SoccerBotStudioSG", async () => {
+    const error = new Error("synthetic private diagnostic");
+    error.code = "ECONNRESET";
+    error.cause = { code: "private detail must not leak" };
+    throw error;
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  t.after(
+    () =>
+      new Promise((resolve) => {
+        server.closeAllConnections();
+        server.close(resolve);
+      }),
+  );
+  const response = await fetch(
+    `http://127.0.0.1:${server.address().port}/api/attempts/synthetic/checkout`,
+  );
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get("content-type"), "application/json");
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.deepEqual(await response.json(), {
+    error: "preview_handler_unavailable",
+  });
+  assert.deepEqual(messages, [
+    { event: "preview_handler_failed", code: "ECONNRESET", causeCode: null },
+  ]);
+});
+
 for (const [name, mutate, error] of [
   [
     "README homepage",

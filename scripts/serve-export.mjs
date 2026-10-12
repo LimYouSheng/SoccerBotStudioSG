@@ -18,8 +18,35 @@ const types = {
 export function exportServer(directory, basePath, handler) {
   const root = resolve(directory);
   return createServer(async (request, response) => {
+    if (handler) {
+      try {
+        if (await handler(request, response)) return;
+      } catch (error) {
+        const safeCode = (value) =>
+          typeof value === "string" && /^[A-Z][A-Z0-9_]{0,63}$/.test(value)
+            ? value
+            : null;
+        console.error(
+          JSON.stringify({
+            event: "preview_handler_failed",
+            code: safeCode(error?.code),
+            causeCode: safeCode(error?.cause?.code),
+          }),
+        );
+        if (response.headersSent) response.destroy();
+        else {
+          response.writeHead(503, {
+            "content-type": "application/json",
+            "cache-control": "no-store",
+          });
+          response.end(
+            JSON.stringify({ error: "preview_handler_unavailable" }),
+          );
+        }
+        return;
+      }
+    }
     try {
-      if (handler && (await handler(request, response))) return;
       const pathname = decodeURIComponent(
         new URL(request.url, "http://localhost").pathname,
       );

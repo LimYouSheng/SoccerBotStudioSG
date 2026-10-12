@@ -1,5 +1,11 @@
 # SoccerBotStudioSG current progress
 
+## Preview failure reporting during identity-fix CI — 12 October 2026
+
+The corrected identity source passed backend and live-email CI, including224 Worker cases and their browser/release gates. Frontend passed68/69 browser cases; one tablet synthetic checkout received HTML404 instead of200. The original artifact and trace are retained privately. Its network evidence proves the response came from the static preview error fallback, not the protected Worker's JSON response. The underlying fixture exception was swallowed and cannot be identified retrospectively.
+
+The preview server now separates handler exceptions from missing static files, returns explicit503 with no retry and retains only bounded error codes in its server diagnostic. A non-browser injected transport-failure regression verifies unavailable JSON, no static fallback and no private message leakage. Existing browser actions/assertions/timeouts are unchanged; the checkout must still return200. This corrects a proved diagnostic defect, not the unproven underlying transient. Exact updated CI is required before live proof; earlier passing jobs are not substituted.
+
 ## Current task — identity refresh across native reads, 12 October 2026
 
 The approved idle procedure passed exact baseline/activation/closure readiness. Native checkout reached a distinct retained failure: provider_identity_expired on sessionIndex1, catalogue-instructors, before booking. No booking or checkout link was created. Closed source/version, historical preservation and exact consumed accounting are recorded privately in work/native-completion/idle-continuation/execution/outcome.md; this supersedes older snapshots below without resetting them.
