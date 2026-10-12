@@ -1,5 +1,13 @@
 # SoccerBotStudio — Service Contracts
 
+## Observed missing intermediate batch echo — 12 October2026
+
+Exact approved packet a14dfea95559 returned first failure execution/session0/book, creation.batch_id/missing, object field count5, used196. The diagnostic maps both absent and null to missing; it records neither a raw body nor an alternative batch field. Source4671f37 calls normalizeNativeSession and validates the first booking-contact client_hash before reading batch_id. Their successful completion establishes this receipt's supported allocation confirmation, customer/service/provider, selected start/50-minute occupied end, booking ID/signing key and client-signature representation. It does not establish later batch_hash continuity or final invoice/set/payment checks, and does not reconstruct older discarded responses.
+
+The existing adapter requires a positive root batch_id echo matching the createBatch result. This receipt provides no usable echo. The next correction needs authoritative endpoint evidence for associating this receipt with the trusted created batch and obtaining the signed closeBatch hash. Do not silently substitute a recurring-batch alias, default a batch ID/hash or remove membership validation. The current source remains unchanged beyond applied-migration/release metadata; failure stays recovery_required without payment authority.
+
+Approved migration0019 is applied and row/foreign-key preservation verified. Source4671f37/version63a25341 is independently closed at196/224/active0, provider/identity disabled/end0, grants expired, guest revoked and schedules empty. New batch4/booking28 retained; no second book, closeBatch, link, cancellation or post-failure provider read. All previous bookings25/26/27 and attempts remain untouched. Twelve ordinary calls and16 reserved remain; original12October16:18:56Singapore deadline and no-replay boundary persist. No pending migrations or further live authority.
+
 ## Next finite experiment prepared — 12 October2026
 
 YS requested another experiment after the nullish intermediate require_payment correction. Latest source d21e2b8 passed all three CI38216192722 gates (239 Worker cases); deployed47b37db remains independently closed at version67f84456-5f76-495b-b21e-50afac542d7b. Carry162 used;14 ordinary calls remaining under192 cannot admit the existing protected flow. Prepare a proposed cumulative224 ceiling, ordinary maximum208 and46 new calls, with16 recovery calls untouched. Default80/disabled/end0 and the same campaign/account/DO counter remain; no reset, reserve use or live budget increase during preparation.

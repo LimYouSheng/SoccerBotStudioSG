@@ -1,5 +1,11 @@
 # SoccerBotStudioSG engineering
 
+## Latest experiment executed and closed — 12 October
+
+YS approved exact packet a14dfea95559 with “approved, go”. Source4671f37 deployed,0019 applied with preservation; all0001–0019 now immutable, none pending. First new book passed intermediate session/client/key checks, then failed creation.batch_id/missing (absent or null). Batch4/booking28 retained; no second book, closeBatch, link, cancellation or payment. Do not remove the batch-membership guard or infer a replacement field without evidence; batch_hash and later stages remain unproved. Packet consumed.
+
+Independent closure source4671f37/version63a25341-7f30-4709-8556-d20ab7c951af: provider/identity disabled,end0,196/224/active0, new grants expired/guest revoked, schedules empty,18 historical tables preserved and19 migrations. Execution34 provider/34 management/15 direct Worker/3 deployments; cumulative717 measured management plus unknown, at least59 deployments plus unknown. Remaining12 ordinary plus16 reserved cannot admit another normal proof. Original12October16:18:56Singapore deadline and campaign bounds persist. Record outcome/release metadata and final-source PR21 CI; no further live authority, browser, merge or production action.
+
 ## Next finite experiment prepared — 12 October2026
 
 YS requests another experiment. Service Contracts owns the proposed224 cumulative ceiling, one-attempt limits and pending0019 migration. Carry162 used and16 reserved; no live authority or counter reset during preparation. Applied0001–0018 remain immutable. Complete affected checks, final-source PR21 CI and artifact/packet validation, then request exact approval under section5. Original12October16:18:56Singapore deadline persists; previous packet is consumed.

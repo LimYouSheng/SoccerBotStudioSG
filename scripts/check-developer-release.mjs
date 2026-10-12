@@ -137,9 +137,7 @@ try {
     .run();
   const grants = (await db.prepare("SELECT * FROM developer_operations").all())
     .results;
-  assert.deepEqual(manifest.pendingRemoteMigrations, [
-    "0019_native_grant_ceiling_224.sql",
-  ]);
+  assert.deepEqual(manifest.pendingRemoteMigrations, []);
   // Old-state compatibility remains tested locally, never re-applied remotely.
   for (const name of names.slice(5, 8)) await migrate(name);
   const appliedEight = {

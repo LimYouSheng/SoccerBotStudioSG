@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Follow-up evidence and accepted boundary — 12 October2026
+
+The approved224-ceiling experiment executed on4671f37. Its first intermediate receipt passed session/customer/time/booking-key and first client-signature validation, then failed creation.batch_id/missing. Missing denotes absent or null. This narrows the unresolved contract to batch association; it does not authorize accepting a booking into a batch without a supported membership check. Batch hash, complete-set finalization, invoice/payment and checkout acceptance remain unproved. No validator relaxation follows from this checkpoint.
+
+Migration0019 is now applied with verified preservation;0001–0019 are immutable. One new batch4/booking28 was retained, with no second booking, finalization, link, cancellation or payment. Independently closed source4671f37/version63a25341-7f30-4709-8556-d20ab7c951af verifies disabled provider/identity/end0,196/224/active0, expired new grants/revoked guest, empty schedules and all18 historical tables preserved. Remaining12 ordinary/16 recovery calls and original12October16:18:56Singapore deadline persist. The exact packet is consumed; subsequent live activity needs new exact authority.
+
 ## Next finite experiment prepared — 12 October2026
 
 YS requested a new experiment after the intermediate payment-flag correction passed final-source CI. Prepare explicit224 policy support and pending0019 grant-bound migration while retaining the same campaign/account/counter, default80/disabled/end0 and immutable0001–0018. Service Contracts owns the proposed one-attempt scope, cumulative budget and closure limits. This source preparation activates no provider access or grant. Current deployed47b37db/version67f84456 remains closed at162/192/active0; native checkout acceptance remains pending. Original12October16:18:56Singapore deadline and separate exact packet approval still apply.
