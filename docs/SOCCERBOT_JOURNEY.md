@@ -1,5 +1,15 @@
 # SoccerBotStudio — Journey
 
+## Availability-only stop and actual-attempt accounting — 12 October2026
+
+Flight3 consumed packet8e6824f42e2b on ee2853a (all-three CI38230887077/artifact11739086074).16October returned zero offers. The grant cache and request ledger prove no prepare/native POST, no attempt and no booking dispatch. No application-code failure or retry is inferred. Access was independently closed17:49:25Singapore: sourceee2853a/versionecf0c3fe-8f06-4776-8d32-9c2238f64fbb,339/512/active0, disabled provider/identity/end0, expired grants/revoked guest, denied401, empty schedules,18 preserved historical tables and21 unchanged migrations.
+
+Actual9 provider/28 management/11 direct Worker/3 deployments. Campaign3 flights but2 actual attempts,4 conservative book dispatches,94/208 management,41/96 Worker,9/16 deployments,1/1 migration.157 ordinary provider calls plus16 untouched recovery remain. Cumulative845 measured management plus unknown Dashboard, at least71 deployments plus unknown; email8/siteverify8 unchanged and native notifications unmeasured.0001–0021 immutable, none pending.
+
+The exact owner approval says “up to4 new attempts and8 booking dispatches”. Earlier local wording conflated attempts with flights. This availability-only stop created no attempt, so two of four actual attempts remain. Correct that bookkeeping interpretation without extending resource authority: original512/496/16 provider bounds,208 management/96 Worker/16 aggregate deployments, per-flight64/52/24/4/20minutes, one migration already consumed and20:30Singapore deadline are unchanged. Cap execution at five flights total including this one availability-only stop, and at four actual prepare dispatches (unknown prepare outcomes count). Original approval/hash and pre-reconciliation ledger are retained; private campaign-authority-v2 links them. Only the proved zero-effect flight releases its reserved book/link allowances; provider/request/deployment counters never decrease.
+
+Same-date native integration remains accepted. Next single-session packet uses15October at/after14:00 and separately reads22October as a future-date availability probe; only the15October session enters the intent. Then one different-date attempt may use15/22October if fresh offers and every bound permit. All prior bookings/attempts remain excluded, links unopened, and payments/cancellations/merge/production remain outside scope.
+
 ## 12 October — same-date native checkout accepted
 
 Flight2 used exact-source6ac6165 from all-green CI38229148061/artifact11737163517 under sealed packet5eb211c4ac62. New15October12:20/13:10Singapore selections completed batch7/bookings33/34 and invoice26. The full closure invoice, both signed booking reads and authoritative unpaid invoice all validated S$176/tax0 and the exact customer/session set. The one native checkout link was retained but never opened. This is the first complete same-date developer integration proof; no payment is claimed.

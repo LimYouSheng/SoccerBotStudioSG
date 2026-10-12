@@ -1,5 +1,13 @@
 # North Star: dependable customer booking and quick rebooking
 
+## Availability-only stop and actual-attempt accounting — 12 October2026
+
+Flight3 consumed packet8e6824f42e2b on ee2853a (all-three CI38230887077/artifact11739086074).16October returned zero offers. The grant cache and request ledger prove no prepare/native POST, no attempt and no booking dispatch. No application-code failure or retry is inferred. Access was independently closed17:49:25Singapore: sourceee2853a/versionecf0c3fe-8f06-4776-8d32-9c2238f64fbb,339/512/active0, disabled provider/identity/end0, expired grants/revoked guest, denied401, empty schedules,18 preserved historical tables and21 unchanged migrations.
+
+The exact owner approval says “up to4 new attempts and8 booking dispatches”. Earlier local wording conflated attempts with flights. This availability-only stop created no attempt, so two of four actual attempts remain. Correct that bookkeeping interpretation without extending resource authority: original512/496/16 provider bounds,208 management/96 Worker/16 aggregate deployments, per-flight64/52/24/4/20minutes, one migration already consumed and20:30Singapore deadline are unchanged. Cap execution at five flights total including this one availability-only stop, and at four actual prepare dispatches (unknown prepare outcomes count). Original approval/hash and pre-reconciliation ledger are retained; private campaign-authority-v2 links them. Only the proved zero-effect flight releases its reserved book/link allowances; provider/request/deployment counters never decrease.
+
+Same-date native integration remains accepted. Next single-session packet uses15October at/after14:00 and separately reads22October as a future-date availability probe; only the15October session enters the intent. Then one different-date attempt may use15/22October if fresh offers and every bound permit. All prior bookings/attempts remain excluded, links unopened, and payments/cancellations/merge/production remain outside scope.
+
 ## Same-date native acceptance passed — 12 October2026
 
 Flight2 completed same-date native integration: bookings33/34 in batch7, exact invoice26/S$176/tax0, both signed confirmed booking reads, authoritative unpaid invoice and one native checkout link retained unopened. Current contract correction is accepted for this shape; single-session and different-date gates remain pending. Independently closed17:32:35Singapore at330/512/active0. Two flights remain, deadline20:30. Next: exact-source metadata checkpoint/CI and the new single-session flight, then different-date acceptance if within bounds. Historical unknowns remain preserved; no payment/browser/webhook/production acceptance is inferred.
