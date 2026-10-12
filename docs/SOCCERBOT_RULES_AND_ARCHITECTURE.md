@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Binding lifecycle evidence — 12 October 2026
+
+Worker health and coordinator readiness are independently authoritative for their own observed configuration. Latest protected observations found the active Worker and prior closed coordinator simultaneously; no provider call was admitted. Deployment sequencing must accommodate their independent lifecycle without weakening configuration checks or accepting elapsed time as evidence.
+
+Owner authorized preparation of an idle-lifecycle experiment against unchanged installed code. Preserve the same account singleton and durable budget, all applied migrations, guest/grant scope and native reconciliation owners. A quiet no-RPC interval precedes readiness; coordinator closure is checked before expiring the read-only audit capability. No storage clearing, forced abort, caller-supplied configuration override or new deployment authority is introduced. Exact finite approval still governs live execution.
+
 ## Coordinator readiness and admission diagnostics — 12 October 2026
 
 The approved finite128 deployment applied0017 without changing historical rows and is now explicitly closed. All17 applied migrations are immutable. Its customer availability failed before provider dispatch; the precise window predicate is unproven. Coordinator-local source/version/mode/end/effective mode and accounting are available only through the existing authenticated operator grant, with no provider dispatch or state reset. The Worker health response is separate evidence and cannot establish that coordinator's configuration.

@@ -1,5 +1,11 @@
 # SoccerBotStudioSG engineering
 
+## Idle-lifecycle deployment experiment — 12 October
+
+Protected readiness established a Worker/coordinator configuration mismatch: the Worker was active while the same-source coordinator retained the preceding disabled/end0 configuration through all bounded observations. The finite proof stopped before native authority or provider dispatch and independently closed. Detailed versions, counters and receipts remain private in the coordinator-continuation operator outcome.
+
+Owner authorized trying the proposed correction. Prepare a finite experiment that reuses installed CI-passed code and leaves the coordinator idle before checking configuration, following Cloudflare lifecycle documentation. Elapsed time is never evidence of readiness. Keep exact Worker/coordinator checks, existing state/counters, closed historical windows and native guards; no forced object abort or code workaround. Verify coordinator closure as well as Worker closure. The hypothesis remains unproven, and a new exact live packet requires approval under section5.
+
 ## Coordinator readiness after the closed developer proof — 12 October
 
 The approved128 continuation applied0017 and preserved all historical rows. Availability rejected at customer-window admission before any provider dispatch or booking; the specific predicate was not retained. Closure is independently verified, with no unpaid records created. Applied0001–0017 are now immutable. Exact execution accounting and deployment receipts remain private; no closed proof may reopen.

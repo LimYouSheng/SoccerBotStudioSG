@@ -1,5 +1,11 @@
 # SoccerBotStudioSG current progress
 
+## Current task — test coordinator idle-lifecycle activation, 12 October 2026
+
+The protected-readiness proof isolated an actual mismatch: active Worker, same-source coordinator still on the preceding closed configuration. Four observations exhausted the packet's readiness bound before creating native authority or making any provider request. Closure is verified; no booking, payment or unpaid residual record was created. Exact latest deployment/accounting and historical preservation receipts are private under work/native-completion/coordinator-continuation/execution/outcome.md; older snapshots below are historical.
+
+Owner authorized trying the deployment correction. Next ready task: seal and offline-validate a finite same-installed-source continuation with a quiet interval before coordinator readiness, retaining all exact source/version/mode/end/accounting checks and adding coordinator closure verification. Cloudflare documents idle hibernation/eviction; rapid polling may retain an old instance, but that mechanism is not yet proved here. No application code, migration, assets, secrets, counters or business policy changes are needed for this controlled experiment. Existing exact-source CI remains valid; no physical test or merge. Final exact live approval remains required.
+
 ## Current task — coordinator readiness and private window diagnosis, 12 October 2026
 
 The exact approved128 proof executed and closed. Migration0017 preserved all existing rows; availability stopped at customer-window admission before any provider call, attempt or booking. No unpaid records were created. Closure verified disabled/end0, expired new grants, revoked new guest, unchanged schedules and preserved history. Applied0001–0017 are immutable. Detailed counters and evidence are retained privately in work/native-completion/ceiling-continuation/execution/outcome.md and supersede prior snapshots below.

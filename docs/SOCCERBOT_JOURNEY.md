@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Configuration mismatch isolated; owner requests a controlled fix — 12 October 2026
+
+The latest finite proof confirmed Worker activation while protected coordinator readiness retained the previous disabled configuration. All bounded observations agreed; execution stopped before native authority, provider calls or bookings, then verified closure. No unpaid records remain from that attempt. Private operator evidence owns exact deployment/accounting details.
+
+YS questioned repeated attempts, and we clarified that the configuration mismatch is proved but its underlying retention mechanism is not. YS then authorized trying the proposed fix. Prepare a same-source, finite idle-lifecycle experiment: let the coordinator become idle before checking configuration, require exact readiness before booking and verify both components at closure. Cloudflare documents idle eviction and binding-only instance reuse; rapid polling is a plausible contributor, not a confirmed cause. Do not describe this preparation as a successful fix or reopen a closed packet. Native checkout and the combined physical flight remain pending.
+
 ## Approved128 proof closed before provider dispatch — 12 October 2026
 
 YS approved the exact finite packet. It applied0017 while preserving all historical rows and installed the reviewed128 policy. Customer availability rejected native_customer_window_unavailable before provider admission, immutable preparation or booking. No unpaid records were created. Closure independently verified disabled/end0, expired new grants, revoked guest, unchanged schedules and preserved history. Full private evidence/counters remain in the operator record; this packet cannot reopen.

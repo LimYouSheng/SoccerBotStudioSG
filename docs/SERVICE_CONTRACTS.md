@@ -1,5 +1,11 @@
 # SoccerBotStudio — Service Contracts
 
+## Idle-lifecycle configuration experiment — 12 October 2026
+
+Protected operator readiness observed an active Worker with a coordinator still reporting its prior closed configuration. The proof stopped before provider admission and verified closure. A successor experiment keeps the installed source/artifact and all existing checks, but provides a fixed no-RPC interval before configuration observation. It must also observe the coordinator after disable before closing its blocked read-only audit grant; native authority and guest access close first. No audit grant can dispatch a provider operation.
+
+[Cloudflare lifecycle documentation](https://developers.cloudflare.com/durable-objects/concepts/durable-object-lifecycle/) describes idle hibernation and eviction, and [binding documentation](https://developers.cloudflare.com/workers/runtime-apis/bindings/) explains instance reuse for binding-only changes. Frequent polling may keep an older instance resident. This is the experiment's hypothesis, not established causality or guaranteed propagation. Time passing never substitutes for exact source/version/mode/end/accounting evidence. No native replay, application timeout relaxation, counter reset or forced object abort follows from this design.
+
 ## Native readiness contract after verified closure — 12 October 2026
 
 The existing authenticated native-field-discovery GET now returns coordinator-local revision, version ID, provider mode, end time and effective mode alongside unchanged cumulative accounting. It reads no provider data, grants no authority and dispatches zero provider calls. Invalid/expired bearer grants receive no readiness information. Finite execution must match this coordinator evidence as well as Worker health before customer availability; only a concrete reviewed packet may bound observations of known prior deployments.
