@@ -1343,6 +1343,72 @@ test("native batch rechecks guest revocation after reservation before creating a
   );
 });
 
+test("native batch accepts pending cart receipts but requires a complete invoice at finalization", async () => {
+  for (const finalState of [
+    "valid",
+    "missing-invoice",
+    "requires-confirmation",
+    "wrong-total",
+  ]) {
+    const data = await prepared(true, true);
+    if (finalState === "missing-invoice") data.creation.invoice = null;
+    if (finalState === "requires-confirmation")
+      data.creation.require_confirm = true;
+    if (finalState === "wrong-total") data.creation.invoice.amount = 88;
+    const result = await call("orchestrate", {
+      ...data,
+      batchRequiresConfirm: true,
+    });
+    assert.deepEqual(
+      result.sent.map((r) => r.kind),
+      ["batch-create", "book", "book", "batch-close"],
+      JSON.stringify(result),
+    );
+    assert.equal(
+      result.result.state,
+      finalState === "valid" ? "associated" : "recovery_required",
+    );
+    assert.equal(result.result.paymentAvailable, false);
+    const row = await db
+      .prepare("SELECT association_json FROM attempts WHERE id=?")
+      .bind(data.scope.attemptId)
+      .first();
+    assert.equal(row.association_json !== null, finalState === "valid");
+    assert.equal(
+      (await call("orchestrate", { ...data, batchRequiresConfirm: true }))
+        .requests,
+      0,
+    );
+  }
+});
+
+test("native pending cart receipt still rejects invalid flags and foreign session evidence", async () => {
+  for (const mismatch of [
+    "flag",
+    "client",
+    "service",
+    "time",
+    "inactive",
+    "hash",
+  ]) {
+    const data = await prepared(true, true);
+    const booking = data.creation.bookings[1];
+    if (mismatch === "client") booking.client_id = "99";
+    if (mismatch === "service") booking.event_id = "99";
+    if (mismatch === "time") booking.start_date_time = "2026-01-01 09:00:00";
+    if (mismatch === "inactive") booking.is_confirmed = "0";
+    if (mismatch === "hash") delete booking.hash;
+    const result = await call("orchestrate", {
+      ...data,
+      batchRequiresConfirm: mismatch === "flag" ? "unknown" : true,
+    });
+    assert.equal(result.result.state, "recovery_required");
+    assert.equal(result.result.paymentAvailable, false);
+    assert.equal(result.sent.filter((r) => r.kind === "batch-close").length, 0);
+    assert.equal((await call("orchestrate", data)).requests, 0);
+  }
+});
+
 test("native lost batch finalization reconciles all retained IDs without replay and rejects invoice conflicts", async () => {
   for (const mismatch of [false, true]) {
     const data = await prepared(true, true);

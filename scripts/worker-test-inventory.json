@@ -100,6 +100,8 @@
   "native prerequisite diagnostics retain safe private evidence without writes or customer disclosure",
   "native extended grant needs the exact approved ceiling and retains the carried counter",
   "native batch rechecks guest revocation after reservation before creating a booking",
+  "native batch accepts pending cart receipts but requires a complete invoice at finalization",
+  "native pending cart receipt still rejects invalid flags and foreign session evidence",
   "native lost batch finalization reconciles all retained IDs without replay and rejects invoice conflicts",
   "native malformed creation retains its reference for strict readback without accepting or replaying it",
   "native recovery and compensation reject reassigned clients and previously bound invoice changes",

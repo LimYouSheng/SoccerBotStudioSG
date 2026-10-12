@@ -1,5 +1,13 @@
 # SoccerBotStudio — Service Contracts
 
+## Documented native lifecycle and validation phases — 12 October 2026
+
+For multiple sessions, the sequence is createBatch → book each selected item → signed closeBatch → validate complete invoice/booking association → authoritative readback → native hosted payment link. SimplyBook's [API reference](https://be.simplybook.me/api/doc) describes closeBatch as returning the invoice when payment is required; its [staff support explanation](https://tech-support.simplybook.me/t/575-multiple-products-added-when-booking-with-count/581) gives the batch sequence/signature. The [public booking contract](https://help.simplybook.me/wiki/Company_public_service_methods#book) permits require_confirm=true in a booking receipt. These public contracts do not prove current-account response shapes or payment acceptance.
+
+normalizeNativeSession defaults to finalized validation. Only nativeBookingOperations with a created multi-session batch supplies batch-item: recognized require_confirm may be true or false while item identity, active allocation, session times/customer and key remain strict. normalizeNativeCreation never uses that interim allowance. It continues to require the supported finalized confirmation state and full invoice/booking set; null/missing invoice, changed totals and pending finalization remain unavailable. This corrects a premature flag gate, not an invoice read that previously occurred before closeBatch.
+
+For a single session, handle_invoice remains requested in additional data. [Provider staff guidance](https://tech-support.simplybook.me/t/701-how-to-implement-payment-after-booking/707) identifies that option for invoice creation. No new payment confirmation method, independent processor flow, endpoint or cart cancellation is introduced. An unfinished cart without an invoice remains outside invoice-based compensation; no write is authorized by absent financial evidence.
+
 ## Residual-only recovery and post-write diagnostics — 12 October 2026
 
 Native orchestration reports its first execution exception through an internal callback after recording recovery_required. The native checkout grant stores execution and cleanup diagnostics independently: bounded server code, stage/session index, last operation and structural counts only. Customer output remains unchanged. Provider payloads, arbitrary exception text, contacts and signatures are excluded.

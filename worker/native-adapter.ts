@@ -189,6 +189,7 @@ export function nativeBookingOperations(options: {
         response.body,
         { ...options.scope, nativeCustomerId },
         context.sessionIndex,
+        batchId ? "batch-item" : "finalized",
       );
       nativeCustomerId = key.nativeCustomerId;
       if (

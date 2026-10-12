@@ -1,5 +1,13 @@
 # SoccerBotStudio — Journey
 
+## Owner corrected unfinished-cart interpretation — 12 October 2026
+
+The approved residual-only pass installed the verified source, passed readiness and read the retained booking. No invoice reference was present. It dispatched no cancellation or new booking and independently closed Worker/coordinator access, expired its grants and preserved original state. Owner correctly identified that the record was still in a cart. The assistant had applied invoice-based recovery prematurely; absence of an invoice there is not evidence of booking malfunction. Detailed receipts and account identifiers stay private in residual-recovery/execution/outcome.md.
+
+Current public SimplyBook reference/staff guidance places invoice production after closeBatch for a multiple-booking batch. Inspection found our invoice normalization already after that call, but require_confirm=false was incorrectly demanded on each earlier item. A new synthetic pending-item test first failed after batch-create and one book, with no closeBatch; the receipt explicitly had invoice:null. With a separately selected batch-item phase, both items reach closeBatch. Final invoice/confirmation/total failures still prevent association, and foreign/inactive/malformed item evidence prevents finalization. The original live response was not retained, so this cannot be labelled its proven exact cause.
+
+The user authorized this source correction and documentation research, keeping live operations closed. No physical test, provider call, new booking, cancellation or deployment occurred in this source continuation.
+
 ## Corrected identity proof retained a partial booking — 12 October 2026
 
 Exact-source CI for6e845cb passed all three gates after the preview diagnostic correction. Its approved developer proof passed baseline/active readiness, availability and immutable preparation, then returned recovery_required. One booking reference and native batch were retained; no second booking, complete association, finalization, native payment link or cancellation effect was observed. Closure independently verified disabled/end0, revoked guest, closed grants, unchanged schedules and historical preservation. No payment was submitted. Detailed account identifiers, packet receipts and counters remain in the private identity-continuation execution record.

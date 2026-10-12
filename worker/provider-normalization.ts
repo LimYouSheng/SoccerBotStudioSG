@@ -409,13 +409,20 @@ export function normalizeNativeSession(
     nativeCustomerId?: string;
   },
   sessionIndex: number,
+  phase: "batch-item" | "finalized" = "finalized",
 ) {
   const response = record(raw),
     booking = single(response.bookings),
     intent = boundIntent(context.intent);
   const expected = intent.sessions[sessionIndex];
   if (!Number.isInteger(sessionIndex) || !expected) reject();
-  equal(flag(response.require_confirm), false);
+  const requiresConfirmation = flag(response.require_confirm);
+  // A batch item is an allocation receipt, not a finalized invoice. The
+  // provider may still require confirmation until closeBatch. Never carry
+  // that allowance into single-booking or finalization validation.
+  if (phase === "batch-item") {
+    if (intent.sessions.length < 2) reject();
+  } else equal(requiresConfirmation, false);
   flag(booking.require_payment);
   equal(flag(booking.is_confirmed), true);
   const nativeCustomerId = providerId(booking.client_id);

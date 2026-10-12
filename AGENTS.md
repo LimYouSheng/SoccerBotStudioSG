@@ -1,5 +1,11 @@
 # SoccerBotStudioSG engineering
 
+## Cart-stage lifecycle correction — 12 October
+
+The approved residual pass is closed with booking/cart unchanged. Its signed booking read had no invoice reference; no cancellation was dispatched. Owner corrected the interpretation: invoice absence in an unfinished cart is not a booking failure. Private residual-recovery/execution/outcome.md owns execution, closure and carried accounting. Do not repeat recovery solely because an unfinished cart lacks an invoice.
+
+YS authorized documented lifecycle investigation and source correction with live tests closed. Public provider documentation places the multiple-booking invoice at closeBatch. Source already deferred invoice validation to that call, but prematurely required require_confirm=false on each intermediate item. A reproduced synthetic case stopped after the first item. A trusted batch-item phase now accepts a valid pending-confirmation flag while preserving allocated-record, session/customer/key validation; single booking and finalization still require the complete supported invoice state. The original live exception remains unknown; this is a source correction, not current-account acceptance. Complete exact-source checks/CI; no new live packet, merge or browser test is requested.
+
 ## Residual recovery after the corrected native proof — 12 October
 
 The latest approved proof passed identity/readiness and retained one native booking before entering recovery_required. No checkout link or cancellation was verified. Closure is independently verified; all windows remain closed. The exact checkout and compensation errors were discarded, so neither the pending-cart screenshot nor retained ID establishes the missing provider contract. Private execution/outcome.md in identity-continuation owns exact residual identity and accounting.

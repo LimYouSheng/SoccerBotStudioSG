@@ -57,6 +57,7 @@ const harness = {
       fixtureUsed?: number;
       fixtureExpireAfter?: number;
       fixtureClockOffset?: number;
+      batchRequiresConfirm?: unknown;
     };
     let reserved = 0,
       finished = 0,
@@ -149,7 +150,8 @@ const harness = {
           const creation = input.creation as { bookings: unknown[] };
           return {
             body: {
-              require_confirm: false,
+              require_confirm: input.batchRequiresConfirm ?? false,
+              invoice: null,
               batch_id: 601,
               batch_hash: "synthetic-batch-hash",
               bookings: [

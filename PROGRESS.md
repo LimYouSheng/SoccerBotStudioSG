@@ -1,5 +1,15 @@
 # SoccerBotStudioSG current progress
 
+## Current task — correct the cart lifecycle, 12 October 2026
+
+Residual-only recovery is closed and booking/cart unchanged. The owner corrected our premature expectation of an invoice for an unfinished cart. No cancellation was attempted. Latest private evidence is residual-recovery/execution/outcome.md. Carried management591 measured plus unknown Dashboard; deployments lower bound47 plus unknown; provider90/128 active0,16 reserved (38 overall remaining,22 before ordinary112). Explicit email8/siteverify8 unchanged; native notifications unmeasured. Existing campaign deadline12October16:18:56 Singapore and all effort/loop bounds persist.
+
+Public SimplyBook reference and staff guidance establish multiple-item invoice creation at closeBatch. Source already deferred invoice normalization until then, but rejected intermediate require_confirm=true first. New batch-item validation accepts that recognized interim flag while retaining all allocation/customer/session/key checks. Single booking/finalization and hosted-payment guards remain unchanged. Regression failed on old source before finalization, then passed with the correction; negative finalization and mismatched item cases still stop. The original live exception remains unknown.
+
+Next ready task: complete exact-source checks and PR CI for this bounded correction. No new live test packet is prepared or requested; review the lifecycle evidence before any later account proof. Existing cart remains untouched; native-provider/payment/webhook and combined physical acceptance stay pending. No merge or production deployment.
+
+Local full Worker verification passed229/229 with no failures/skips; source/policy, strict types, affected lint and formatting passed. The before-fix regression receipt is retained. Exact-source CI remains required.
+
 ## Current task — existing residual recovery, 12 October 2026
 
 The corrected identity proof is closed with one retained native booking and no verified link or cancellation. Native booking is not settled. The precise checkout and cleanup errors were discarded; retain new diagnostics and inspect only that existing attempt before any further booking. The screenshot supports pending-cart state, not authoritative payment/ownership evidence. Private identity-continuation/execution/outcome.md owns exact residual identity and receipts.

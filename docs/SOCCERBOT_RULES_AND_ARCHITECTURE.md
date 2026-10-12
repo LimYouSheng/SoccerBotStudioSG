@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Cart allocation and invoice finalization are separate — 12 October 2026
+
+A returned multi-booking item is provisional evidence of the exact allocated session. It is not an invoice, payment or customer confirmation. The native adapter alone selects the batch-item validation phase after creating a native batch. It still validates recognized flags, active allocation, exact service/provider/time/customer and signing key, then validates the batch identity/hash before continuing. Intermediate require_confirm=true must not prevent reaching batch finalization. Unknown flags and foreign/inactive session evidence still stop writes.
+
+Only the complete finalized booking/invoice association may proceed toward hosted checkout. Single-booking and closeBatch normalization keep their existing confirmation, complete-set, amount/tax/currency and customer guards; payment readback remains independent and unchanged. No invoice is synthesized from a cart, and missing invoice evidence cannot authorize cancellation or payment. Original live failure details were discarded, so source reproduction is not proof of the exact account failure.
+
 ## Existing-residual operator recovery — 12 October 2026
 
 An expired customer checkout is never reopened to recover its retained effects. Separately installed operator authority is bound to an exact source revision, attempt and ordered retained booking-ID set, expires within three minutes, and is consumed once through the authenticated native-readback endpoint. The existing developer_operations row owns it; no new table, scheduler, customer grant or counter is introduced. Scheduled selection excludes residual cleanup authority.
