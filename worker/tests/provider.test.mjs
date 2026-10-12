@@ -1230,7 +1230,7 @@ async function scheduledAttempt(f, options = {}) {
       json,
       createHash("sha256").update(json).digest("hex"),
       now,
-      now + 600000,
+      options.deadline ?? now + 600000,
       JSON.stringify({ bookingIds: ["701"], invoiceId: "901" }),
     )
     .run();
@@ -1442,6 +1442,137 @@ test("operator native readback consumes only its named window and cannot be invo
     assert.ok(!JSON.stringify(readback).includes("synthetic-booking-hash"));
   } finally {
     await f.mf.dispose();
+  }
+});
+
+test("operator residual recovery scopes cleanup to retained bookings and preserves unsafe records", async () => {
+  for (const scenario of [
+    "unpaid",
+    "missing-invoice",
+    "paid",
+    "wrong-id",
+    "wrong-source",
+    "revoked",
+  ]) {
+    const booking = structuredClone(nativeResponses.bookingBefore),
+      invoice = structuredClone(nativeResponses.invoiceBefore);
+    let target,
+      cancellations = 0;
+    const f = await fixture({
+      full: true,
+      secrets: {
+        SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret",
+        SOURCE_REVISION: "1".repeat(40),
+      },
+      respond: async (request, body) => {
+        if (body?.method === "getBookingDetails") {
+          if (scenario === "missing-invoice") delete booking.invoice_id;
+          if (scenario === "revoked")
+            await f.db
+              .prepare(
+                "UPDATE developer_operations SET state='blocked' WHERE capability_hash=?",
+              )
+              .bind(target.key)
+              .run();
+          return Response.json({
+            jsonrpc: "2.0",
+            id: body.id,
+            result: booking,
+          });
+        }
+        if (new URL(request.url).pathname === "/admin/invoices/901")
+          return Response.json(invoice);
+        if (body?.method === "cancelBooking") {
+          cancellations++;
+          booking.status = "cancelled";
+          booking.is_confirmed = "0";
+          invoice.lines[0].bookings[0].is_confirmed = false;
+          return Response.json({ jsonrpc: "2.0", id: body.id, result: true });
+        }
+      },
+    });
+    try {
+      if (scenario === "paid")
+        Object.assign(invoice, {
+          status: "paid",
+          payment_received: true,
+          payment_processor: "hitpay",
+        });
+      const deadline = Date.now() - 1;
+      target = await scheduledAttempt(f, {
+        deadline,
+        scope: {
+          maximumUsed: 16,
+          residual: {
+            sourceRevision:
+              scenario === "wrong-source" ? "f".repeat(40) : "1".repeat(40),
+            expectedBookingIds: scenario === "wrong-id" ? ["702"] : ["701"],
+          },
+        },
+      });
+      await f.db
+        .prepare("UPDATE attempts SET state='recovery_required' WHERE id=?")
+        .bind(target.id)
+        .run();
+      await f.db
+        .prepare(
+          "INSERT INTO session_effects VALUES(?,'session:0','observed','701')",
+        )
+        .bind(target.id)
+        .run();
+      await tick(f);
+      assert.equal(
+        f.calls.length,
+        0,
+        "scheduler cannot consume cleanup authority",
+      );
+      const response = await f.call(
+        target.token,
+        "POST",
+        "native_recovery_window",
+      );
+      assert.equal(response.status, 200, JSON.stringify(response));
+      const readback = await f.call(
+        target.token,
+        "GET",
+        "native_recovery_window",
+      );
+      assert.equal(
+        cancellations,
+        scenario === "unpaid" ? 1 : 0,
+        JSON.stringify(readback),
+      );
+      assert.ok(!JSON.stringify(readback).includes("synthetic-booking-hash"));
+      if (["wrong-source", "wrong-id"].includes(scenario))
+        assert.equal(f.calls.length, 0);
+      if (scenario === "missing-invoice") {
+        const row = await f.db
+          .prepare(
+            "SELECT result_json FROM developer_operations WHERE capability_hash=?",
+          )
+          .bind(target.key)
+          .first();
+        assert.equal(
+          JSON.parse(row.result_json).diagnostic.representation
+            .invoiceReference,
+          "missing",
+        );
+      }
+      const calls = f.calls.length;
+      await f.call(target.token, "POST", "native_recovery_window");
+      assert.equal(f.calls.length, calls);
+      assert.equal(
+        (
+          await f.db
+            .prepare("SELECT deadline_ms FROM attempts WHERE id=?")
+            .bind(target.id)
+            .first()
+        ).deadline_ms,
+        deadline,
+      );
+    } finally {
+      await f.mf.dispose();
+    }
   }
 });
 

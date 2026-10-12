@@ -231,7 +231,8 @@ export async function executeNativeCheckout(options: {
   };
   let diagnostic:
     | {
-        stage: "identity" | "allowance" | "prebooking" | "execution";
+        stage:
+          "identity" | "allowance" | "prebooking" | "execution" | "cleanup";
         sessionIndex?: number;
         code: string;
         operation?: typeof lastOperation;
@@ -239,6 +240,7 @@ export async function executeNativeCheckout(options: {
         providerUsed: number;
       }
     | undefined;
+  let cleanupDiagnostic: typeof diagnostic;
   const retainFailure = (
     error: unknown,
     stage: NonNullable<typeof diagnostic>["stage"],
@@ -246,17 +248,21 @@ export async function executeNativeCheckout(options: {
   ) => {
     // Only server-defined codes and structural counts belong in private evidence.
     // Never retain provider values, exception messages, contacts or credentials.
-    diagnostic ??= {
+    const failure = {
       stage,
       sessionIndex,
       code:
         error instanceof ApiError && /^[a-z][a-z0-9_]{0,100}$/.test(error.code)
           ? error.code
-          : "internal_error",
+          : error instanceof z.ZodError
+            ? "provider_schema_invalid"
+            : "internal_error",
       operation: lastOperation,
       representation,
       providerUsed: options.accounting().used,
     };
+    if (stage === "cleanup") cleanupDiagnostic ??= failure;
+    else diagnostic ??= failure;
   };
   const exchange: NativeExchange = async (operation, signal) => {
     lastOperation = operation.kind;
@@ -332,6 +338,8 @@ export async function executeNativeCheckout(options: {
       batchSignature: (id, hash) => nativeBookingSignature(id, hash, secret),
       clientSignature: (id, hash) => nativeBookingSignature(id, hash, secret),
     });
+    operations.onFailure = (error, index) =>
+      retainFailure(error, "execution", index);
     result = await orchestrateBooking(request, env, attemptId, operations);
     if (result.state === "associated") {
       const associated = await env.STATE.withSession("first-primary")
@@ -426,7 +434,8 @@ export async function executeNativeCheckout(options: {
         invalidate: () =>
           provider.prebooking(env, control, contract).invalidate(),
       });
-    } catch {
+    } catch (error) {
+      retainFailure(error, "cleanup");
       // Unknown cancellation/readback stays in the immutable effect journal.
       // Partial cleanup is never reported as successful booking or payment.
     } finally {
@@ -439,7 +448,11 @@ export async function executeNativeCheckout(options: {
   )
     .bind(
       result.state === "associated" ? "complete" : "blocked",
-      JSON.stringify(diagnostic ? { ...result, diagnostic } : result),
+      JSON.stringify({
+        ...result,
+        ...(diagnostic ? { diagnostic } : {}),
+        ...(cleanupDiagnostic ? { cleanupDiagnostic } : {}),
+      }),
       attemptId,
     )
     .run();

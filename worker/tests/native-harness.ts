@@ -46,6 +46,7 @@ const harness = {
       creation: unknown;
       now: number;
       bookingAt?: number;
+      operatorRecovery?: { expiresMs: number; expectedBookingIds: string[] };
       invoiceAt?: number;
       value: unknown;
       scenario?: string;
@@ -55,14 +56,18 @@ const harness = {
       fixtureCeiling?: string;
       fixtureUsed?: number;
       fixtureExpireAfter?: number;
+      fixtureClockOffset?: number;
     };
     let reserved = 0,
       finished = 0,
       requests = 0;
     const sent: NativeRequest[] = [];
     const realNow = Date.now;
-    let clockOffset = 0;
-    if (input.fixtureExpireAfter !== undefined)
+    let clockOffset = input.fixtureClockOffset ?? 0;
+    if (
+      input.fixtureExpireAfter !== undefined ||
+      input.fixtureClockOffset !== undefined
+    )
       Date.now = () => realNow() + clockOffset;
     const control: ProviderControl = {
       reserve: async () => {
@@ -309,6 +314,7 @@ const harness = {
         }
         case "compensate": {
           result = await compensateNativeAttempt({
+            operatorRecovery: input.operatorRecovery,
             db: env.STATE,
             scope: input.scope,
             exchange,
@@ -489,7 +495,11 @@ const harness = {
         { status: 409 },
       );
     } finally {
-      if (input.fixtureExpireAfter !== undefined) Date.now = realNow;
+      if (
+        input.fixtureExpireAfter !== undefined ||
+        input.fixtureClockOffset !== undefined
+      )
+        Date.now = realNow;
     }
   },
 };

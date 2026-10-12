@@ -10,6 +10,11 @@ import {
   recoverNativeAssociation,
 } from "./native-adapter";
 import { providerSecrets } from "./provider-transport";
+import {
+  residualGrant,
+  recoverNativeResidual,
+  type ResidualAuthority,
+} from "./native-residual";
 import { DurableObject } from "cloudflare:workers";
 import { traced, measure, instrumentStorage } from "./diagnostics";
 import { ApiError, policy, rpcOutcome } from "./policy";
@@ -306,6 +311,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       expiresMs: number;
       invocationId: string;
       useRecoveryReserve?: boolean;
+      residual?: ResidualAuthority;
     },
     correlationId: string,
   ) {
@@ -361,7 +367,9 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       );
       if (typeof secret !== "string")
         throw new ApiError(503, "native_signing_unavailable");
-      const maximumCalls = intent.sessions.length + 5;
+      const maximumCalls = scope.residual
+        ? Math.min(16, scope.maximumUsed - initial.used)
+        : intent.sessions.length + 5;
       if (initial.used + maximumCalls > scope.maximumUsed)
         throw new ApiError(503, "recovery_window_unavailable");
       const control = this.providerControl(scope.useRecoveryReserve === true);
@@ -370,6 +378,11 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       const bounded = {
         ...control,
         reserve: async () => {
+          if (scope.residual)
+            await residualGrant(this.env, {
+              ...scope,
+              residual: scope.residual,
+            });
           const delay = Math.max(0, last + 300 - Date.now());
           if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
           if (
@@ -384,6 +397,49 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           return control.reserve();
         },
       };
+      if (scope.residual) {
+        const authority = scope.residual;
+        const assertGranted = () =>
+          residualGrant(this.env, { ...scope, residual: authority });
+        await assertGranted();
+        return recoverNativeResidual({
+          db: this.env.STATE,
+          scope: {
+            attemptId: scope.attemptId,
+            companyLogin: providerSecrets(this.env).company,
+            timezone: "Asia/Singapore",
+            intent,
+          },
+          authority,
+          expiresMs: scope.expiresMs,
+          signingSecret: secret,
+          assertGranted,
+          invalidate: () => this.provider.invalidateCatalogue(this.env),
+          exchange: async (operation, signal) => {
+            await assertGranted();
+            signal?.throwIfAborted();
+            if (operation.kind === "booking-cancel")
+              return this.provider.nativeWrite(
+                this.env,
+                bounded,
+                operation,
+                assertGranted,
+              );
+            if (
+              operation.kind !== "booking-read" &&
+              operation.kind !== "invoice-read"
+            )
+              throw new ApiError(503, "native_residual_operation_unavailable");
+            await this.provider.identity(this.env, bounded);
+            return this.provider.nativeRead(
+              this.env,
+              bounded,
+              operation,
+              signal,
+            );
+          },
+        });
+      }
       await this.provider.identity(this.env, bounded);
       const company = providerSecrets(this.env).company;
       if (!refs) {

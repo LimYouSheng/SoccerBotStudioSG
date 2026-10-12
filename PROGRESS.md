@@ -1,5 +1,15 @@
 # SoccerBotStudioSG current progress
 
+## Current task — existing residual recovery, 12 October 2026
+
+The corrected identity proof is closed with one retained native booking and no verified link or cancellation. Native booking is not settled. The precise checkout and cleanup errors were discarded; retain new diagnostics and inspect only that existing attempt before any further booking. The screenshot supports pending-cart state, not authoritative payment/ownership evidence. Private identity-continuation/execution/outcome.md owns exact residual identity and receipts.
+
+Carried accounting: management562 measured plus unknown Dashboard activity; deployment lower bound44 plus unknown; provider85/128 active0 with16 reserved.43 provider requests remain overall,27 below the ordinary112 boundary. Historical closed80 is separate; explicit email8/siteverify8 unchanged. Native configured notifications remain unmeasured. Campaign start9October08:18:56UTC/deadline12October08:18:56UTC,24 active hours/72 elapsed/60 loops/6 repairs per cause persist; no unmeasured activity is invented.
+
+Source work adds independent execution/cleanup diagnostics and a one-use source/attempt/retained-ID operator residual recovery scope using existing storage and endpoint. No new booking, batch finalization, checkout, payment, migration, secret or browser work. Original deadlines/grants/history stay unchanged. Next ready task: finish checks and exact-source CI, then seal the residual-only finite packet for section5 approval. No live packet is currently open, and no merge or production deployment is authorized.
+
+Local full Worker verification passed227/227 with zero failures/skips; source/policy, strict types and affected lint passed. Initial fixture failures and the corrected ordered inventory preparation are preserved privately. Exact-source CI and sealed recovery packet remain next.
+
 ## Preview failure reporting during identity-fix CI — 12 October 2026
 
 The corrected identity source passed backend and live-email CI, including224 Worker cases and their browser/release gates. Frontend passed68/69 browser cases; one tablet synthetic checkout received HTML404 instead of200. The original artifact and trace are retained privately. Its network evidence proves the response came from the static preview error fallback, not the protected Worker's JSON response. The underlying fixture exception was swallowed and cannot be identified retrospectively.

@@ -49,6 +49,7 @@ const finalizedInvoice = z.strictObject({
 // The native adapter supplies this contract only through finite server-owned
 // admission. It does not establish provider acceptance or production readiness.
 export type BookingOperations = {
+  onFailure?: (error: unknown, sessionIndex?: number) => void;
   supported: boolean;
   hasRecoveryCapacity: (sessions: number) => Promise<boolean>;
   revalidate: (intent: Intent, context: Context) => Promise<unknown>;
@@ -180,10 +181,12 @@ export async function orchestrateBooking(
         .first());
     if (!retained) throw new ApiError(409, "effect_completion_conflict");
   };
+  let failedSessionIndex: number | undefined;
   try {
     const ids: string[] = [];
     let nativeCustomerId: string | undefined;
     for (const [sessionIndex, session] of intent.sessions.entries()) {
+      failedSessionIndex = sessionIndex;
       const context = { attemptId: id, sessionIndex };
       // The eventual live adapter must verify identity, eligible instructor,
       // timetable, shared slot, exact price/tax. Player information is a non-blocking annotation.
@@ -234,6 +237,7 @@ export async function orchestrateBooking(
       }
       ids.push(accepted.bookingId);
     }
+    failedSessionIndex = undefined;
     await reserve("finalize");
     const raw = await operations.finalize(ids, intent, id, assertCurrent);
     if (
@@ -263,8 +267,9 @@ export async function orchestrateBooking(
     // Native checkout/return contract is separately unavailable. Association is
     // not payment, confirmation, a provider settlement or permission to retry.
     return { state: "associated", paymentAvailable: false };
-  } catch {
+  } catch (error) {
     await requireRecovery(env.STATE, id, fence);
+    operations.onFailure?.(error, failedSessionIndex);
     return { state: "recovery_required", paymentAvailable: false };
   }
 }

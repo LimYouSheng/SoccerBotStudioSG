@@ -2,6 +2,7 @@ import { z } from "zod";
 import { coordinatorName, verifyBindings } from "./bindings";
 import { policy } from "./policy";
 import { traced } from "./diagnostics";
+import { residualSchema, safeNativeFailure } from "./native-residual";
 const windowSchema = z
   .strictObject({
     attemptId: z.string().uuid(),
@@ -9,6 +10,7 @@ const windowSchema = z
     startingUsed: z.number().int().min(0).max(122),
     maximumUsed: z.number().int().min(6).max(128),
     useRecoveryReserve: z.boolean().optional(),
+    residual: residualSchema.optional(),
   })
   .refine(
     (value) =>
@@ -35,7 +37,7 @@ export async function runScheduledRecovery(
       .parse(capabilityHash);
   const row = await env.STATE.withSession("first-primary")
     .prepare(
-      "SELECT capability_hash,expires_ms,result_json FROM developer_operations WHERE operation='native_recovery_window' AND state='granted' AND expires_ms>? AND json_valid(result_json) AND json_extract(result_json,'$.notBeforeMs')<=? AND (? IS NULL OR capability_hash=?) ORDER BY expires_ms,capability_hash LIMIT 1",
+      "SELECT capability_hash,expires_ms,result_json FROM developer_operations WHERE operation='native_recovery_window' AND state='granted' AND expires_ms>? AND json_valid(result_json) AND json_extract(result_json,'$.notBeforeMs')<=? AND ((? IS NULL AND json_extract(result_json,'$.residual') IS NULL) OR capability_hash=?) ORDER BY expires_ms,capability_hash LIMIT 1",
     )
     .bind(now, now, capabilityHash ?? null, capabilityHash ?? null)
     .first<{
@@ -64,19 +66,22 @@ export async function runScheduledRecovery(
     )
       throw new Error("window_invalid");
     const correlationId = crypto.randomUUID();
-    result = await traced(correlationId, "scheduled", () =>
-      env.COORDINATOR.getByName(coordinatorName).nativeRecovery(
-        {
-          ...scope,
-          expiresMs: row.expires_ms,
-          invocationId: row.capability_hash,
-        },
-        correlationId,
-      ),
+    result = await traced(
+      correlationId,
+      "scheduled",
+      async () =>
+        await env.COORDINATOR.getByName(coordinatorName).nativeRecovery(
+          {
+            ...scope,
+            expiresMs: row.expires_ms,
+            invocationId: row.capability_hash,
+          },
+          correlationId,
+        ),
     );
     state = "complete";
-  } catch {
-    /* Retain only a fixed reason; no native signature or raw error. */
+  } catch (error) {
+    result = { reason: safeNativeFailure(error) };
   }
   await env.STATE.prepare(
     "UPDATE developer_operations SET state=?,result_json=? WHERE capability_hash=? AND state='running'",

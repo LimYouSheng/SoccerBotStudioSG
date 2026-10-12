@@ -31,6 +31,15 @@ const object = (value: unknown): Record<string, unknown> => {
 export class ProviderSession {
   private catalogueReads = new CatalogueReads();
   private boundScope: string | undefined;
+  invalidateCatalogue(env: Env) {
+    const p = policy(env),
+      secrets = this.bindScope(env);
+    this.catalogueReads.invalidate({
+      accountId: p.DEPLOYMENT_ACCOUNT_ID,
+      environmentId: p.ENVIRONMENT,
+      companyLogin: secrets.company,
+    });
+  }
   private bindScope(env: Env) {
     const secrets = providerSecrets(env);
     const key = JSON.stringify([

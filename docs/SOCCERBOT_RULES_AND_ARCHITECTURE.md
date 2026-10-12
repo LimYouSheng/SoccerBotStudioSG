@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Existing-residual operator recovery — 12 October 2026
+
+An expired customer checkout is never reopened to recover its retained effects. Separately installed operator authority is bound to an exact source revision, attempt and ordered retained booking-ID set, expires within three minutes, and is consumed once through the authenticated native-readback endpoint. The existing developer_operations row owns it; no new table, scheduler, customer grant or counter is introduced. Scheduled selection excludes residual cleanup authority.
+
+Each physical call rechecks the running grant and existing cumulative admission; each cancel additionally requires the unchanged attempt fence, no possible checkout handoff, no previous cancellation effect, fresh complete unpaid invoice/booking ownership, and observed cancellation readback. Original customer deadlines and all historical state remain immutable. Missing invoice/unsupported pending state, paid/foreign evidence, revocation and ambiguous cancellation stop safely without finalizing a batch, creating a booking/link, retrying writes or refunding. Authority permits at most16 requests including authentication, not16 additional recovery requests outside the cumulative budget.
+
 ## Identity freshness between forward reads — 12 October 2026
 
 Trusted forward composition explicitly establishes current provider identity before each catalogue, prebooking, availability and checkout read. A sequence may exceed the five-second identity cache lifetime; a still-valid cached identity is reused, while an expired identity is verified again through the same durable control and physical budget. This is not a retry of a failed native operation and does not extend identity or catalogue freshness. Account mismatch and exhausted/closed grants still stop dispatch.

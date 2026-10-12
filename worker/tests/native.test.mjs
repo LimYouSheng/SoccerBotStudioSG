@@ -1614,6 +1614,114 @@ test("native compensation verifies every cancellation and accepts only an explic
   }
 });
 
+test("native checkout retains independent execution and cleanup failures privately without replay", async () => {
+  const data = await prepared(false, true, true);
+  await grantNative(data);
+  await db
+    .prepare(
+      "UPDATE native_checkout_grants SET cleanup_allowed=1 WHERE attempt_id=?",
+    )
+    .bind(data.scope.attemptId)
+    .run();
+  data.creation.bookings[0].unit_id = "99";
+  delete data.booking.invoice_id;
+  const wall = new Date(
+    data.scope.intent.sessions[0].startMs + 8 * 3600000,
+  ).toISOString();
+  const before = calls.length;
+  reply = nativeProviderReply(data, wall);
+  try {
+    const result = await call("finite-checkout", data);
+    assert.deepEqual(result.result, {
+      attemptId: data.scope.attemptId,
+      state: "recovery_required",
+      paymentAvailable: false,
+    });
+    const row = await db
+      .prepare(
+        "SELECT result_json FROM native_checkout_grants WHERE attempt_id=?",
+      )
+      .bind(data.scope.attemptId)
+      .first();
+    const saved = JSON.parse(row.result_json);
+    assert.equal(saved.diagnostic.stage, "execution");
+    assert.equal(saved.diagnostic.sessionIndex, 0);
+    assert.equal(saved.diagnostic.operation, "book");
+    assert.equal(saved.cleanupDiagnostic.stage, "cleanup");
+    assert.equal(saved.cleanupDiagnostic.operation, "booking-read");
+    assert.equal(typeof saved.diagnostic.code, "string");
+    assert.ok(!row.result_json.includes("synthetic-booking-hash"));
+    const count = calls.length;
+    assert.equal((await call("finite-checkout", data)).reserved, 0);
+    assert.equal(calls.length, count);
+    assert.equal(
+      calls.slice(before).filter((c) => c.body?.method === "book").length,
+      1,
+    );
+    assert.equal(
+      calls.slice(before).filter((c) => c.body?.method === "cancelBooking")
+        .length,
+      0,
+    );
+  } finally {
+    reply = undefined;
+  }
+});
+
+test("native residual cleanup requires exact current operator scope after customer expiry", async () => {
+  for (const scenario of [
+    "none",
+    "wrong-id",
+    "expired",
+    "cleanup-revoked",
+    "allowed",
+  ]) {
+    const data = await prepared(false, true);
+    data.creation.bookings[0].unit_id = "99";
+    await call("orchestrate", data);
+    const deadline = (
+      await db
+        .prepare("SELECT deadline_ms FROM attempts WHERE id=?")
+        .bind(data.scope.attemptId)
+        .first()
+    ).deadline_ms;
+    const fixtureClockOffset = deadline - Date.now() + 1000;
+    const virtualNow = Date.now() + fixtureClockOffset;
+    const operatorRecovery =
+      scenario === "none"
+        ? undefined
+        : {
+            expiresMs:
+              scenario === "expired" ? virtualNow - 1 : virtualNow + 120000,
+            expectedBookingIds: scenario === "wrong-id" ? ["702"] : ["701"],
+          };
+    const result = await call("compensate", {
+      ...data,
+      now: virtualNow,
+      scenario,
+      operatorRecovery,
+      fixtureClockOffset,
+    });
+    if (scenario === "allowed")
+      assert.equal(result.result.state, "cancelled", JSON.stringify(result));
+    else
+      assert.equal(
+        result.sent.filter((r) => r.kind === "booking-cancel").length,
+        0,
+        scenario,
+      );
+    assert.equal(
+      (
+        await db
+          .prepare("SELECT deadline_ms FROM attempts WHERE id=?")
+          .bind(data.scope.attemptId)
+          .first()
+      ).deadline_ms,
+      deadline,
+    );
+  }
+});
+
 test("native finite compensation is separately granted and never exposes payment or replays writes", async () => {
   for (const allowed of [false, true]) {
     const data = await prepared(false, true, true);

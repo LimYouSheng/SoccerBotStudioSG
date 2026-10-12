@@ -726,6 +726,7 @@ export async function compensateNativeAttempt(options: {
   signal: AbortSignal;
   assertGranted: () => Promise<void>;
   invalidate: () => void;
+  operatorRecovery?: { expiresMs: number; expectedBookingIds: string[] };
 }) {
   const intent = validateScope(options.scope);
   const row = await options.db
@@ -786,6 +787,16 @@ export async function compensateNativeAttempt(options: {
     new Set(candidates.map((key) => key.bookingId)).size !== candidates.length
   )
     throw new ApiError(503, "native_cleanup_references_unavailable");
+  const operator = options.operatorRecovery;
+  if (
+    operator &&
+    (!Number.isSafeInteger(operator.expiresMs) ||
+      operator.expiresMs <= Date.now() ||
+      operator.expiresMs > Date.now() + 180000 ||
+      JSON.stringify(candidates.map((key) => key.bookingId)) !==
+        JSON.stringify(operator.expectedBookingIds))
+  )
+    throw new ApiError(409, "native_cleanup_scope_mismatch");
   // A partial invoice must prove exactly the retained subset. Extra/unknown
   // native lines fail normalization; the original immutable cart is unchanged.
   const scope = {
@@ -806,12 +817,21 @@ export async function compensateNativeAttempt(options: {
   const assertCurrent = async () => {
     options.signal.throwIfAborted();
     await options.assertGranted();
+    if (operator && operator.expiresMs <= Date.now())
+      throw new ApiError(409, "native_cleanup_fence_lost");
     const current = await options.db
       .withSession("first-primary")
       .prepare(
-        "SELECT 1 FROM attempts WHERE id=? AND version=? AND state='recovery_required' AND deadline_ms>? AND NOT EXISTS(SELECT 1 FROM session_effects WHERE attempt_id=? AND step='native-link')",
+        "SELECT 1 FROM attempts WHERE id=? AND version=? AND state='recovery_required' AND (? > ? OR deadline_ms>?) AND NOT EXISTS(SELECT 1 FROM session_effects WHERE attempt_id=? AND step='native-link')",
       )
-      .bind(scope.attemptId, row.version, Date.now(), scope.attemptId)
+      .bind(
+        scope.attemptId,
+        row.version,
+        operator?.expiresMs ?? 0,
+        Date.now(),
+        Date.now(),
+        scope.attemptId,
+      )
       .first();
     if (!current) throw new ApiError(409, "native_cleanup_fence_lost");
   };
@@ -859,9 +879,17 @@ export async function compensateNativeAttempt(options: {
     const step = `native-cancel:${candidate.index}`;
     const reserved = await options.db
       .prepare(
-        "INSERT INTO session_effects(attempt_id,step,outcome) SELECT id,?,'unknown' FROM attempts WHERE id=? AND version=? AND state='recovery_required' AND deadline_ms>? AND NOT EXISTS(SELECT 1 FROM session_effects WHERE attempt_id=? AND step='native-link')",
+        "INSERT INTO session_effects(attempt_id,step,outcome) SELECT id,?,'unknown' FROM attempts WHERE id=? AND version=? AND state='recovery_required' AND (? > ? OR deadline_ms>?) AND NOT EXISTS(SELECT 1 FROM session_effects WHERE attempt_id=? AND step='native-link')",
       )
-      .bind(step, scope.attemptId, row.version, Date.now(), scope.attemptId)
+      .bind(
+        step,
+        scope.attemptId,
+        row.version,
+        operator?.expiresMs ?? 0,
+        Date.now(),
+        Date.now(),
+        scope.attemptId,
+      )
       .run();
     if (reserved.meta.changes !== 1)
       throw new ApiError(409, "native_cleanup_not_claimed");

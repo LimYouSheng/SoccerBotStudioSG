@@ -1,5 +1,13 @@
 # SoccerBotStudio — Service Contracts
 
+## Residual-only recovery and post-write diagnostics — 12 October 2026
+
+Native orchestration reports its first execution exception through an internal callback after recording recovery_required. The native checkout grant stores execution and cleanup diagnostics independently: bounded server code, stage/session index, last operation and structural counts only. Customer output remains unchanged. Provider payloads, arbitrary exception text, contacts and signatures are excluded.
+
+The existing native_recovery_window may include residual={sourceRevision,expectedBookingIds}. Only an explicit authenticated invocation can claim this form. It checks exact source, attempt, grant identity/content/expiry and cumulative limits before every physical request. The ordered IDs must equal the retained observed subset before any provider call. Compensation reads that subset and its invoice, preserves all strict normalization/payment guards, reserves each cancellation durably once and verifies readback. A new finite operator expiry can authorize this cleanup after the original customer deadline; it does not alter the deadline or authorize checkout. Maximum16 physical calls and15-second compensation signal remain, with normal/reserve admission explicitly selected by the packet. Private residual results retain safe error/operation/structure and whether a booking invoice reference was missing; no raw response is retained.
+
+No provider batch-close, creation, comment, checkout-link or payment operation is available in this path. An unfinished batch without authoritative invoice/confirmed unpaid evidence remains unresolved. Provider support or a separately reviewed contract may then be needed; a screenshot is not payment evidence.
+
 ## Preview handler error boundary
 
 The optional local preview handler owns API/fixture responses. A thrown handler error returns503 preview_handler_unavailable and no-store, or closes an already-started response; it never falls through to the static404 page. Server diagnostics contain only bounded error codes, not exception messages, cookies or request data. This is local test infrastructure and adds no live authority or retry.

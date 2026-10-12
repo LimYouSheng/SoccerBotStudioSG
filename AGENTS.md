@@ -1,5 +1,11 @@
 # SoccerBotStudioSG engineering
 
+## Residual recovery after the corrected native proof — 12 October
+
+The latest approved proof passed identity/readiness and retained one native booking before entering recovery_required. No checkout link or cancellation was verified. Closure is independently verified; all windows remain closed. The exact checkout and compensation errors were discarded, so neither the pending-cart screenshot nor retained ID establishes the missing provider contract. Private execution/outcome.md in identity-continuation owns exact residual identity and accounting.
+
+YS authorized retaining diagnostics and preparing recovery limited to the existing residual, with no new bookings. Checkout now retains independent execution/cleanup failures privately. A new explicitly named operator native_recovery_window may inspect only its exact retained IDs and cancel only after fresh strict ownership/unpaid evidence, even after the unchanged customer deadline. Scheduler selection excludes cleanup grants; old grants/guests remain closed. Exact source, one-use authority, physical ledger and 16-call bound persist. Complete checks/CI and seal a new recovery-only packet under section5; no live authority follows from source work.
+
 ## Identity freshness correction after the idle experiment — 12 October
 
 The exact approved idle-lifecycle experiment passed baseline, active and closed coordinator readiness. Checkout then stopped before booking with private provider_identity_expired during the second session's catalogue reads. No booking, link or unpaid residual exists; closure and preserved history are verified. Detailed accounting remains private in idle-continuation/execution/outcome.md. This successful readiness observation does not prove the internal lifecycle mechanism.

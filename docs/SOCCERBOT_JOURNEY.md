@@ -1,5 +1,13 @@
 # SoccerBotStudio — Journey
 
+## Corrected identity proof retained a partial booking — 12 October 2026
+
+Exact-source CI for6e845cb passed all three gates after the preview diagnostic correction. Its approved developer proof passed baseline/active readiness, availability and immutable preparation, then returned recovery_required. One booking reference and native batch were retained; no second booking, complete association, finalization, native payment link or cancellation effect was observed. Closure independently verified disabled/end0, revoked guest, closed grants, unchanged schedules and historical preservation. No payment was submitted. Detailed account identifiers, packet receipts and counters remain in the private identity-continuation execution record.
+
+Owner screenshot shows an in-process client cart, supporting an unfinished batch but not proving unpaid status or the exact parsing failure. Both execution and compensation exceptions were swallowed; the underlying provider mismatch cannot be inferred retrospectively. Owner approved diagnostic repair and recovery of the existing residual before another booking. The new source retains separate private failures and uses a named, exact-ID operator recovery grant without reopening customer authority. Physical/provider/payment acceptance remain pending.
+
+Initial residual regression fixtures incorrectly omitted the public attemptId and attempted to update the immutable deadline; preserved failures identified fixture errors. Tests now assert the full customer response, seed an expired attempt or advance only the isolated harness clock, and use a published synthetic source for source-bound authority. Production invariants and assertions are unchanged.
+
 ## Preview failure reporting during identity-fix CI — 12 October 2026
 
 The corrected identity source passed backend and live-email CI, including224 Worker cases and their browser/release gates. Frontend passed68/69 browser cases; one tablet synthetic checkout received HTML404 instead of200. The original artifact and trace are retained privately. Its network evidence proves the response came from the static preview error fallback, not the protected Worker's JSON response. The underlying fixture exception was swallowed and cannot be identified retrospectively.
