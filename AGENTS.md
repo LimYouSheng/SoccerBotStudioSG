@@ -1,5 +1,9 @@
 # SoccerBotStudioSG engineering
 
+## Approved preparation of128-call continuation — 12 October
+
+YS approved preparing a cumulative128 provider-call continuation, carrying forward33 used and preserving16 recovery calls. This is source/packet preparation, not live permission. The default binding remains80; only an exact approved deployment may select128. Pending0017 preserves every grant field while widening its schema bound to112; applied0001–0016 stay unchanged. Same campaign/account/DO ledger, no reset, new grant or reopened window. Final CI, sealed packet and explicit live approval remain required.
+
 ## Native prerequisite diagnostics — 12 October
 
 The finite checkout now retains a private failure stage, session index, safe API code, operation kind and response structure/count in its existing grant result. Customer responses and replay behavior remain unchanged; no raw provider values, error messages, credentials or contact details enter this evidence. Synthetic coverage checks malformed eligibility, unsupported required fields, exhausted booking allowance, zero booking effects and private/public separation. Current-account acceptance remains pending. Detailed execution evidence and remaining campaign accounting stay in the private operator record; no closed proof may be reopened.

@@ -117,6 +117,18 @@ test("rejects production account alternate entry and enabled providers", () => {
   );
 });
 test("rejects extra resource and API static-routing changes", () => {
+  for (const ceiling of ["128", "129", undefined])
+    assert.ok(
+      fixture((root) => {
+        const p = path.join(root, "wrangler.jsonc");
+        const c = ts.parseConfigFileTextToJson(
+          p,
+          readFileSync(p, "utf8"),
+        ).config;
+        c.vars.PROVIDER_CALL_CEILING = ceiling;
+        writeFileSync(p, JSON.stringify(c));
+      }).some((e) => e.includes("deployment boundary")),
+    );
   assert.ok(
     fixture((root) => {
       const p = path.join(root, "wrangler.jsonc"),

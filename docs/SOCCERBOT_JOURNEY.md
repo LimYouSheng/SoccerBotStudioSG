@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Owner-approved128-call preparation — 12 October 2026
+
+YS approved preparing a128-call cumulative continuation with33 already consumed and16 reserved for recovery. Implemented an explicit80-or128 configuration policy with80 as the committed default, preserving the account/campaign ledger and old per-grant limits. Focused restart tests carry33 to34, stop ordinary admission112, admit recovery113 and reject at128 across restart; restoring80 does not erase usage. Native grant tests reject112 authority under80 or an invalid129 policy, and accept the exact128 policy without creating bookings in the negative fixture.
+
+Applied0016's64 schema check requires pending0017 to copy/replace the table without altering any retained field. In-memory verification preserves all historical grant fields and foreign keys, accepts112 and rejects113; the release checker now exercises an actual retained closed grant through this migration. Original applied migration bytes remain unchanged. Source preparation is not remote execution, and no prior proof is reopened. Exact CI/artifact and the final finite packet remain the next boundary.
+
 ## Native prerequisite diagnosis source — 12 October 2026
 
 Inspection found orchestration deliberately converted preflight failures into prerequisites_unavailable while the finite checkout retained no private cause. Added a bounded private diagnostic in the existing grant result, with observation of existing prebooking reads. The customer result, one-use write boundary and all prebooking checks stay intact. Synthetic regression covers malformed eligibility, unsupported required fields and exhausted allowance, verifies structural evidence without provider/contact values, and proves no booking effect or replay. Provider acceptance remains pending; private original execution and closure evidence is retained separately and does not become synthetic success. Campaign accounting is carried forward, never replenished by a stopped proof.

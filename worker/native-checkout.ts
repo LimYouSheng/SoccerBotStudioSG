@@ -140,7 +140,7 @@ export async function executeNativeCheckout(options: {
     initial.used < grant.starting_used ||
     initial.used + 20 > grant.maximum_used ||
     initial.active !== 0 ||
-    grant.maximum_used > 64 ||
+    grant.maximum_used > p.PROVIDER_CALL_CEILING - 16 ||
     grant.maximum_used - grant.starting_used < 20
   )
     throw new ApiError(503, "native_write_scope_unavailable");
@@ -299,7 +299,8 @@ export async function executeNativeCheckout(options: {
       additional: { handle_invoice: true },
       db: env.STATE,
       hasRecoveryCapacity: async () =>
-        grant.maximum_used <= 64 && options.accounting().active === 0,
+        grant.maximum_used <= p.PROVIDER_CALL_CEILING - 16 &&
+        options.accounting().active === 0,
       prebooking: {
         invalidate: () => prebooking.invalidate(),
         revalidate: async (value, index) => {
@@ -458,6 +459,7 @@ async function customerNativeWindow(request: Request, env: Env) {
     p.PROVIDER_ACCESS !== "trusted-reads" ||
     grant.source_revision !== p.SOURCE_REVISION ||
     !/^[a-f0-9]{40}$/.test(grant.source_revision) ||
+    grant.maximum_used > p.PROVIDER_CALL_CEILING - 16 ||
     now < grant.not_before_ms ||
     now + 180000 >= grant.expires_ms ||
     grant.expires_ms > grant.not_before_ms + 1200000 ||

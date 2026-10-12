@@ -974,8 +974,8 @@ async function grantNative(data, overrides = {}) {
       JSON.stringify(contract),
       Date.now() - 1000,
       grant.expires,
-      15,
-      60,
+      grant.startingUsed ?? 15,
+      grant.maximumUsed ?? 60,
     )
     .run();
 }
@@ -1185,6 +1185,62 @@ test("native prerequisite diagnostics retain safe private evidence without write
       assert.equal(replay.reserved, 0);
       assert.equal(calls.length, sent);
       assert.equal(Object.hasOwn(replay.result, "diagnostic"), false);
+    } finally {
+      reply = undefined;
+    }
+  }
+});
+
+test("native extended grant needs the exact approved ceiling and retains the carried counter", async () => {
+  for (const fixtureCeiling of ["80", "128", "129"]) {
+    const data = await prepared(false, true, true);
+    await grantNative(data, { startingUsed: 33, maximumUsed: 112 });
+    const wall = new Date(
+      data.scope.intent.sessions[0].startMs + 8 * 3600000,
+    ).toISOString();
+    const standard = nativeProviderReply(data, wall);
+    reply = (request, body) =>
+      request.url.endsWith("/admin/tariff/current")
+        ? Response.json({
+            limits: [{ key: "sheduler_limit", total: 100, rest: 0 }],
+          })
+        : standard(request, body);
+    try {
+      const result = await call("finite-checkout", {
+        ...data,
+        fixtureCeiling,
+        fixtureUsed: 33,
+      });
+      assert.equal(result.result?.paymentAvailable ?? false, false);
+      if (fixtureCeiling === "128") {
+        assert.equal(result.status, 200);
+        assert.equal(result.result.state, "prerequisites_unavailable");
+        assert.ok(result.reserved > 0);
+        const row = await db
+          .prepare(
+            "SELECT result_json FROM native_checkout_grants WHERE attempt_id=?",
+          )
+          .bind(data.scope.attemptId)
+          .first();
+        assert.equal(
+          JSON.parse(row.result_json).diagnostic.providerUsed,
+          33 + result.reserved,
+        );
+      } else {
+        assert.equal(result.status, 409);
+        assert.equal(result.reserved, 0);
+      }
+      assert.equal(
+        (
+          await db
+            .prepare(
+              "SELECT count(*) n FROM session_effects WHERE attempt_id=?",
+            )
+            .bind(data.scope.attemptId)
+            .first()
+        ).n,
+        0,
+      );
     } finally {
       reply = undefined;
     }

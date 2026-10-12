@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Explicit developer budget continuation — 12 October 2026
+
+Owner approved preparation of cumulative128 calls, carrying33 used rather than starting a new ledger, with16 reserved for recovery. PROVIDER_CALL_CEILING accepts only80 or128 and defaults80; the committed deployment stays disabled/end0/80. Existing campaign identity, account singleton, durable reservations, cooldown/concurrency and unknown effects are unchanged. Under explicitly deployed128, ordinary admission ends112 and recovery128. Each grant still enforces its own smaller allowance and one-use/time/source boundaries. No implicit expansion of old grants or live permission follows from source preparation.
+
+Pending0017 rebuilds only the grant table with the same fields/rows and a112 maximum-used schema check. All applied migration bytes remain immutable. Runtime80 still rejects a grant above64; schema capacity alone grants nothing. Migration verification compares every retained grant field and foreign keys. The finite packet must preserve all history and carry exact used/active accounting before any activation; production, payment and physical acceptance remain separate.
+
 ## Private native prerequisite evidence — 12 October 2026
 
 The existing finite checkout/grant owns native failure diagnostics. Retain only the failed stage, selected session index, server-defined safe API code, operation kind, structural response kind/count and cumulative provider usage. Never retain response values, exception messages, contact details or credentials. This evidence is stored only in the existing grant result and is excluded from customer checkout/status responses. It adds no migration, endpoint, provider dispatch, retry, grant, budget or payment authority. Current-account acceptance remains separate from synthetic checks; historical windows/counters and original failed receipts remain intact.

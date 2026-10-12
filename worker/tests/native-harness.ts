@@ -52,6 +52,8 @@ const harness = {
       operation: NativeRequest;
       cookie: string;
       owner: string;
+      fixtureCeiling?: string;
+      fixtureUsed?: number;
     };
     let reserved = 0,
       finished = 0,
@@ -318,6 +320,12 @@ const harness = {
         case "customer-current":
         case "customer-availability":
         case "finite-checkout": {
+          if (input.fixtureCeiling !== undefined)
+            Reflect.set(
+              admittedEnv,
+              "PROVIDER_CALL_CEILING",
+              input.fixtureCeiling,
+            );
           for (const [key, value] of Object.entries({
             SOURCE_REVISION: "c".repeat(40),
             SIMPLYBOOK_DEV_COMPANY_LOGIN: "synthetic-developer",
@@ -367,7 +375,7 @@ const harness = {
             control,
             recoveryControl: control,
             accounting: () => ({
-              used: 15 + reserved,
+              used: (input.fixtureUsed ?? 15) + reserved,
               active: reserved - finished,
             }),
           });

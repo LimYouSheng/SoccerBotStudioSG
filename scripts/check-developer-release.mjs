@@ -137,7 +137,9 @@ try {
     .run();
   const grants = (await db.prepare("SELECT * FROM developer_operations").all())
     .results;
-  assert.deepEqual(manifest.pendingRemoteMigrations, []);
+  assert.deepEqual(manifest.pendingRemoteMigrations, [
+    "0017_native_grant_ceiling.sql",
+  ]);
   // Old-state compatibility remains tested locally, never re-applied remotely.
   for (const name of names.slice(5, 8)) await migrate(name);
   const appliedEight = {
@@ -166,7 +168,39 @@ try {
         .results,
     );
   // Retain additive-upgrade coverage even though these migrations are now applied.
-  for (const name of names.slice(14)) await migrate(name);
+  for (const name of names.slice(14, 16)) await migrate(name);
+  assert.equal(
+    (await db.prepare("SELECT COUNT(*) n FROM native_checkout_grants").first())
+      .n,
+    0,
+  );
+  // Exercise the pending compatible table rebuild with a real retained grant.
+  await db
+    .prepare(
+      "INSERT INTO native_checkout_grants(capability_hash,source_revision,contract_json,not_before_ms,expires_ms,starting_used,maximum_used,state,result_json) SELECT capability_hash,?, '{}',1,2,15,64,'blocked',? FROM guest_access LIMIT 1",
+    )
+    .bind(
+      "a".repeat(40),
+      JSON.stringify({ state: "prerequisites_unavailable" }),
+    )
+    .run();
+  const retainedNative = (
+    await db
+      .prepare("SELECT * FROM native_checkout_grants ORDER BY capability_hash")
+      .all()
+  ).results;
+  assert.equal(retainedNative.length, 1);
+  for (const name of names.slice(16)) await migrate(name);
+  assert.deepEqual(
+    (
+      await db
+        .prepare(
+          "SELECT * FROM native_checkout_grants ORDER BY capability_hash",
+        )
+        .all()
+    ).results,
+    retainedNative,
+  );
   for (const table of priorTables)
     assert.deepEqual(
       (await db.prepare(`SELECT * FROM "${table}" ORDER BY rowid`).all())
@@ -179,7 +213,7 @@ try {
         .prepare("SELECT COUNT(*) AS n FROM native_checkout_grants")
         .first()
     ).n,
-    0,
+    1,
   );
   assert.equal(
     (await db.prepare("SELECT COUNT(*) AS n FROM remembered_identity").first())
@@ -289,7 +323,7 @@ try {
         checks: [
           "file hashes",
           "root export",
-          "0001–0014 application state and pending0015–0016 preserve all existing columns identities unknown effects and operator grants",
+          "0001–0016 state and pending0017 preserve all existing fields, identities, unknown effects and closed grants",
           "empty identity delivery authority and default-closed HTTP",
           "exact Worker revision",
           "protected checkout unavailable",

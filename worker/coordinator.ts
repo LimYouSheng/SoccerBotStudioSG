@@ -34,7 +34,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     );
   }
   admit(recovery: boolean) {
-    policy(this.env);
+    const p = policy(this.env);
     const now = Date.now();
     if (!["disabled", "trusted-reads"].includes(this.env.PROVIDER_ACCESS))
       throw new Error("Unsupported provider mode");
@@ -56,7 +56,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           this.env.CAMPAIGN_ID,
         )
         .one();
-      if (budget.used >= (recovery ? 80 : 64))
+      if (budget.used >= p.PROVIDER_CALL_CEILING - (recovery ? 0 : 16))
         return { allowed: false, reason: "budget_exhausted" };
       if (budget.cooldown_ms > now)
         return { allowed: false, reason: "cooldown" };
@@ -326,7 +326,9 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         !Number.isSafeInteger(scope.startingUsed) ||
         !Number.isSafeInteger(scope.maximumUsed) ||
         scope.startingUsed < 0 ||
-        scope.maximumUsed > (scope.useRecoveryReserve === true ? 80 : 64) ||
+        scope.maximumUsed >
+          p.PROVIDER_CALL_CEILING -
+            (scope.useRecoveryReserve === true ? 0 : 16) ||
         (scope.useRecoveryReserve === true &&
           scope.maximumUsed - scope.startingUsed > 16) ||
         scope.maximumUsed - scope.startingUsed > 30 ||
@@ -457,7 +459,12 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     const active = this.sql
       .exec<{ n: number }>("SELECT count(*) n FROM admissions WHERE finished=0")
       .one().n;
-    return { used, active, ceiling: 80, recoveryReserve: 16 };
+    return {
+      used,
+      active,
+      ceiling: policy(this.env).PROVIDER_CALL_CEILING,
+      recoveryReserve: 16,
+    };
   }
   finish(id: string, cooldownMs = 0) {
     if (!Number.isInteger(cooldownMs) || cooldownMs < 0 || cooldownMs > 3600000)

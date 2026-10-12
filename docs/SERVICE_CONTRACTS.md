@@ -1,5 +1,11 @@
 # SoccerBotStudio — Service Contracts
 
+## Finite128-call policy contract — 12 October 2026
+
+PROVIDER_CALL_CEILING is an operator binding accepting only80 or128, default80. The coordinator reports that configured ceiling while reading the same campaign's existing used counter. Normal admission stops ceiling-minus16; explicitly granted recovery stops at the ceiling and remains at most16 per recovery allowance. Customer availability, native creation and scheduled readback validate their grant maximum against the active policy; changing policy never rewrites an existing grant. A128 binding without an approved finite grant/window enables no provider operation.
+
+Pending0017 changes the database representation's maximum_used bound from64 to112 by copying the exact existing rows/columns and preserving the final table/index names and foreign keys. It seeds no authority. Compatible rollback code with an80 ceiling denies oversized grants and preserves their records. The prepared continuation must retain used33, cap new provider calls95, preserve recovery16 and stop on any unexpected counter/active reservation. Final packet approval is still required; this policy decision alone authorizes no migration/deployment/booking.
+
 ## Internal native prerequisite diagnosis — 12 October 2026
 
 Native checkout still returns the established state and paymentAvailable fields. When identity, allowance or prebooking fails before dispatch, its existing private result_json additionally records diagnostic stage, optional sessionIndex, safe code, operation kind, structural representation and providerUsed. Unexpected exceptions use internal_error, never exception text. Structural evidence contains only array/object/null/primitive and an optional count; no field names or values. The first captured failure is preserved through recovery. Customer status/replay reads never return this diagnostic. The provider-session observer reports existing reads to the checkout owner without changing dispatch, admission, freshness or response validation. Synthetic rejection tests assert no native write/effect and no replay.

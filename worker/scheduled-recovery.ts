@@ -6,15 +6,14 @@ const windowSchema = z
   .strictObject({
     attemptId: z.string().uuid(),
     notBeforeMs: z.number().int().nonnegative().safe(),
-    startingUsed: z.number().int().min(0).max(74),
-    maximumUsed: z.number().int().min(6).max(80),
+    startingUsed: z.number().int().min(0).max(122),
+    maximumUsed: z.number().int().min(6).max(128),
     useRecoveryReserve: z.boolean().optional(),
   })
   .refine(
     (value) =>
-      value.maximumUsed <= (value.useRecoveryReserve === true ? 80 : 64) &&
-      (value.useRecoveryReserve !== true ||
-        value.maximumUsed - value.startingUsed <= 16),
+      value.useRecoveryReserve !== true ||
+      value.maximumUsed - value.startingUsed <= 16,
   );
 // No browser trigger, callback guess, draining loop, cron config or self-grant.
 // Each installed one-use window permits one known-attempt readback: N + 5
@@ -56,6 +55,9 @@ export async function runScheduledRecovery(
   try {
     const scope = windowSchema.parse(JSON.parse(row.result_json));
     if (
+      scope.maximumUsed >
+        p.PROVIDER_CALL_CEILING -
+          (scope.useRecoveryReserve === true ? 0 : 16) ||
       row.expires_ms > scope.notBeforeMs + 180000 ||
       clock() < scope.notBeforeMs ||
       clock() + 90000 >= row.expires_ms

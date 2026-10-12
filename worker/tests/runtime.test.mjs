@@ -19,7 +19,7 @@ let mf,
   outbound = 0,
   script;
 const origin = "https://soccerbot.test";
-async function start() {
+async function start(ceiling = "80") {
   mf = new Miniflare({
     ...convertV4MiniflareOptions({
       name: "soccerbot-test",
@@ -32,6 +32,7 @@ async function start() {
         ...config.vars,
         APP_ORIGIN: origin,
         CAMPAIGN_END_MS: String(Date.now() + 3600000),
+        PROVIDER_CALL_CEILING: ceiling,
       },
       d1Databases: { STATE: "synthetic-state" },
       d1Persist: path.join(persistence, "d1"),
@@ -606,6 +607,69 @@ test("persistent budget reserves sixteen calls for recovery and caps at eighty",
     "budget_exhausted",
   );
 });
+test("explicit provider ceiling extension preserves used calls and the sixteen-call recovery reserve across restart", async () => {
+  const coordinator = "budget-extension";
+  let storage = await mf.unsafeGetDurableObjectStorage(
+    "soccerbot-test",
+    "SoccerBotAccountCoordinator",
+    { name: coordinator },
+  );
+  await storage.exec(
+    "INSERT INTO budget(campaign,used) VALUES(?,33)",
+    config.vars.CAMPAIGN_ID,
+  );
+  await mf.dispose();
+  await start("128");
+  try {
+    storage = await mf.unsafeGetDurableObjectStorage(
+      "soccerbot-test",
+      "SoccerBotAccountCoordinator",
+      { name: coordinator },
+    );
+    const continued = await result("/test/admit", { coordinator });
+    assert.equal(continued.used, 34);
+    await result("/test/finish", {
+      coordinator,
+      id: continued.id,
+      cooldown: 0,
+    });
+    await storage.exec(
+      "UPDATE budget SET used=111 WHERE campaign=?",
+      config.vars.CAMPAIGN_ID,
+    );
+    const last = await result("/test/admit", { coordinator });
+    assert.equal(last.used, 112);
+    await result("/test/finish", { coordinator, id: last.id, cooldown: 0 });
+    assert.equal(
+      (await result("/test/admit", { coordinator })).reason,
+      "budget_exhausted",
+    );
+    const recovery = await result("/test/admit", {
+      coordinator,
+      recovery: true,
+    });
+    assert.equal(recovery.used, 113);
+    await result("/test/finish", { coordinator, id: recovery.id, cooldown: 0 });
+    await storage.exec(
+      "UPDATE budget SET used=128 WHERE campaign=?",
+      config.vars.CAMPAIGN_ID,
+    );
+    await mf.dispose();
+    await start("128");
+    assert.equal(
+      (await result("/test/admit", { coordinator, recovery: true })).reason,
+      "budget_exhausted",
+    );
+  } finally {
+    await mf.dispose();
+    await start();
+  }
+  assert.equal(
+    (await result("/test/admit", { coordinator, recovery: true })).reason,
+    "budget_exhausted",
+  );
+});
+
 test("shared refresh and token generation claims reject stale completion", async () => {
   const body = { key: "token:public", generation: 1, coordinator: "refresh" };
   const a = await result("/test/refresh", body);
