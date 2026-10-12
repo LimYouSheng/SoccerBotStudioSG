@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Existing-record inspection boundary — 12 October 2026
+
+The owner requests actual current-account format evidence before another trial. Explicit residual mode inspect uses the existing operator endpoint and one-use grant, bound to source/attempt/single retained observed key. It bypasses compensation and scheduled recovery selection; it changes no attempt, association, recovery work or booking effect. Both adapter and coordinator restrict it to one signed booking read after admitted identity verification. Source/expiry/attempt fences are checked before and after the response. Six ordinary calls maximum under the same cumulative ledger; recovery reserve cannot be selected.
+
+Provider normalization owns one shared list of independent booking predicates: regular readback remains fail-fast; private inspection collects every result. Only allowlisted field representation categories, predicate outcomes, recognized status/flag and play/occupied/other end classification are retained. Unknown keys, scalar values and raw bodies are discarded. Invoice-dependent comparisons remain unavailable without invoice evidence; creation envelope is unavailable. This report grants no booking/payment/cancellation authority and cannot establish the exact discarded creation response.
+
 ## Specific native diagnostics and closed192 proof — 12 October 2026
 
 The latest owner-approved192 proof executed and closed. The owner handover and current PR21 record supersede the preparation-only entries below: migration0018 was applied with preservation, so0001–0018 are immutable. Release metadata now declares no pending migration and names the reported closed Worker version as its prior version. Source/metadata changes do not deploy it or reopen any grant.

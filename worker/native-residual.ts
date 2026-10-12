@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ApiError, policy } from "./policy";
 import {
   compensateNativeAttempt,
+  inspectNativeAttempt,
   type NativeScope,
   type NativeExchange,
 } from "./native-adapter";
@@ -10,6 +11,7 @@ import {
 // This is installed operator authority, never a customer request parameter.
 export const residualSchema = z
   .strictObject({
+    mode: z.literal("inspect").optional(),
     sourceRevision: z.string().regex(/^[a-f0-9]{40}$/),
     expectedBookingIds: z
       .array(z.string().regex(/^[1-9][0-9]*$/))
@@ -19,7 +21,8 @@ export const residualSchema = z
   .refine(
     (value) =>
       new Set(value.expectedBookingIds).size ===
-      value.expectedBookingIds.length,
+        value.expectedBookingIds.length &&
+      (value.mode !== "inspect" || value.expectedBookingIds.length === 1),
   );
 export type ResidualAuthority = z.infer<typeof residualSchema>;
 
@@ -88,46 +91,57 @@ export async function recoverNativeResidual(options: {
     Math.max(0, Math.min(15000, options.expiresMs - Date.now())),
   );
   try {
-    const result = await compensateNativeAttempt({
-      ...options,
-      signal: controller.signal,
-      operatorRecovery: {
-        expiresMs: options.expiresMs,
-        expectedBookingIds: options.authority.expectedBookingIds,
-      },
-      exchange: async (request, signal) => {
-        operation = request.kind;
-        representation = undefined;
-        if (
-          !["booking-read", "invoice-read", "booking-cancel"].includes(
-            request.kind,
-          )
+    const exchange: NativeExchange = async (request, signal) => {
+      operation = request.kind;
+      representation = undefined;
+      if (
+        (options.authority.mode === "inspect" &&
+          request.kind !== "booking-read") ||
+        !["booking-read", "invoice-read", "booking-cancel"].includes(
+          request.kind,
         )
-          throw new ApiError(503, "native_residual_operation_unavailable");
-        const response = await options.exchange(request, signal);
-        const body = response.body;
-        representation =
-          body === null
-            ? { kind: "null" }
-            : Array.isArray(body)
-              ? { kind: "array", count: body.length }
-              : typeof body === "object"
-                ? {
-                    kind: "object",
-                    count: Object.keys(body).length,
-                    ...(request.kind === "booking-read"
-                      ? {
-                          invoiceReference:
-                            Reflect.get(body, "invoice_id") == null
-                              ? "missing"
-                              : "present",
-                        }
-                      : {}),
-                  }
-                : { kind: "primitive" };
-        return response;
-      },
-    });
+      )
+        throw new ApiError(503, "native_residual_operation_unavailable");
+      const response = await options.exchange(request, signal);
+      const body = response.body;
+      representation =
+        body === null
+          ? { kind: "null" }
+          : Array.isArray(body)
+            ? { kind: "array", count: body.length }
+            : typeof body === "object"
+              ? {
+                  kind: "object",
+                  count: Object.keys(body).length,
+                  ...(request.kind === "booking-read"
+                    ? {
+                        invoiceReference:
+                          Reflect.get(body, "invoice_id") == null
+                            ? "missing"
+                            : "present",
+                      }
+                    : {}),
+                }
+              : { kind: "primitive" };
+      return response;
+    };
+    const result =
+      options.authority.mode === "inspect"
+        ? await inspectNativeAttempt({
+            ...options,
+            exchange,
+            signal: controller.signal,
+            expectedBookingIds: options.authority.expectedBookingIds,
+          })
+        : await compensateNativeAttempt({
+            ...options,
+            exchange,
+            signal: controller.signal,
+            operatorRecovery: {
+              expiresMs: options.expiresMs,
+              expectedBookingIds: options.authority.expectedBookingIds,
+            },
+          });
     return { ...result, operation, representation };
   } catch (error) {
     return {

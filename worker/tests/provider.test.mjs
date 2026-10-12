@@ -1231,7 +1231,9 @@ async function scheduledAttempt(f, options = {}) {
       createHash("sha256").update(json).digest("hex"),
       now,
       options.deadline ?? now + 600000,
-      JSON.stringify({ bookingIds: ["701"], invoiceId: "901" }),
+      options.unassociated
+        ? null
+        : JSON.stringify({ bookingIds: ["701"], invoiceId: "901" }),
     )
     .run();
   await f.db
@@ -1442,6 +1444,140 @@ test("operator native readback consumes only its named window and cannot be invo
     assert.ok(!JSON.stringify(readback).includes("synthetic-booking-hash"));
   } finally {
     await f.mf.dispose();
+  }
+});
+
+test("operator inspection reads one retained booking under the carried192 ledger without invoice cleanup scheduler or replay", async () => {
+  for (const scenario of [
+    "inspect",
+    "wrong-id",
+    "wrong-source",
+    "revoked",
+    "stale-attempt",
+  ]) {
+    const booking = structuredClone(nativeResponses.bookingBefore);
+    delete booking.invoice_id;
+    booking.end_date_time = "2026-10-10 09:40:00";
+    booking.event_price = "private-price-marker";
+    let target;
+    const methods = [];
+    const f = await fixture({
+      full: true,
+      secrets: {
+        SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret",
+        SOURCE_REVISION: "1".repeat(40),
+        PROVIDER_CALL_CEILING: "192",
+      },
+      respond: async (_request, body) => {
+        if (body?.method === "getBookingDetails") {
+          methods.push(body.method);
+          assert.equal(String(body.params[0]), "701");
+          if (scenario === "revoked")
+            await f.db
+              .prepare(
+                "UPDATE developer_operations SET state='blocked' WHERE capability_hash=?",
+              )
+              .bind(target.key)
+              .run();
+          if (scenario === "stale-attempt")
+            await f.db
+              .prepare("UPDATE attempts SET version=version+1 WHERE id=?")
+              .bind(target.id)
+              .run();
+          return Response.json({
+            jsonrpc: "2.0",
+            id: body.id,
+            result: booking,
+          });
+        }
+      },
+    });
+    try {
+      await f.sql(
+        "INSERT INTO budget(campaign,used) VALUES(?,125)",
+        config.vars.CAMPAIGN_ID,
+      );
+      target = await scheduledAttempt(f, {
+        unassociated: true,
+        deadline: Date.now() - 1,
+        scope: {
+          startingUsed: 125,
+          maximumUsed: 131,
+          residual: {
+            mode: "inspect",
+            sourceRevision: (scenario === "wrong-source" ? "f" : "1").repeat(
+              40,
+            ),
+            expectedBookingIds: [scenario === "wrong-id" ? "702" : "701"],
+          },
+        },
+      });
+      await f.db
+        .prepare("UPDATE attempts SET state='recovery_required' WHERE id=?")
+        .bind(target.id)
+        .run();
+      await f.db
+        .prepare(
+          "INSERT INTO session_effects VALUES(?,'session:0','observed','701')",
+        )
+        .bind(target.id)
+        .run();
+      const before = await f.db
+        .prepare("SELECT * FROM attempts WHERE id=?")
+        .bind(target.id)
+        .first();
+      await tick(f);
+      assert.equal(f.calls.length, 0, "scheduler must not claim inspection");
+      await Promise.all([
+        f.call(target.token, "POST", "native_recovery_window"),
+        f.call(target.token, "POST", "native_recovery_window"),
+      ]);
+      const saved = await f.db
+        .prepare(
+          "SELECT state,result_json FROM developer_operations WHERE capability_hash=?",
+        )
+        .bind(target.key)
+        .first();
+      const result = JSON.parse(saved.result_json);
+      if (scenario === "inspect") {
+        assert.equal(result.state, "inspected", JSON.stringify(saved));
+        assert.equal(result.inspection.endInterval, "play");
+        assert.equal(
+          result.inspection.fields["booking.end_date_time"].result,
+          "mismatch",
+        );
+        assert.equal(
+          result.inspection.fields["booking.event_price"].result,
+          "malformed",
+        );
+        assert.equal(f.calls.length, 5);
+        assert.deepEqual(
+          await f.db
+            .prepare("SELECT * FROM attempts WHERE id=?")
+            .bind(target.id)
+            .first(),
+          before,
+        );
+      } else assert.notEqual(result.state, "inspected");
+      if (["wrong-id", "wrong-source"].includes(scenario))
+        assert.equal(f.calls.length, 0);
+      else assert.deepEqual(methods, ["getBookingDetails"]);
+      assert.ok(f.calls.every((c) => !c.url.includes("invoices")));
+      assert.doesNotMatch(
+        saved.result_json,
+        /private-price-marker|synthetic-booking-hash|synthetic-signing-secret/,
+      );
+      const count = f.calls.length;
+      await f.call(target.token, "POST", "native_recovery_window");
+      assert.equal(f.calls.length, count);
+      const budget = await f.sql(
+        "SELECT used FROM budget WHERE campaign=?",
+        config.vars.CAMPAIGN_ID,
+      );
+      assert.equal(budget[0].used, 125 + count);
+    } finally {
+      await f.mf.dispose();
+    }
   }
 });
 

@@ -7,6 +7,7 @@ import {
   normalizeNativeCreation,
   normalizeNativeSession,
   normalizeNativeReads,
+  inspectNativeBooking,
   providerId,
   bookingWallTime,
   nativeRecord,
@@ -727,6 +728,128 @@ async function readNativeKeySet(options: {
   };
 }
 
+function retainedNativeCandidates(
+  intent: z.infer<typeof intentSchema>,
+  effects: { step: string; outcome: string; reference_id: string | null }[],
+) {
+  const candidates = intent.sessions.flatMap((session, index) => {
+    const key = effects.find(
+      (effect) =>
+        effect.step ===
+        (intent.sessions.length === 1
+          ? "native-booking-key"
+          : `native-booking-key:${index}`),
+    );
+    const effect = effects.find((effect) => effect.step === `session:${index}`);
+    if (!key || key.outcome !== "observed" || !key.reference_id) return [];
+    const value = retainedNativeKeySchema.parse(JSON.parse(key.reference_id));
+    if (
+      effect?.outcome !== "observed" ||
+      effect.reference_id !== value.bookingId
+    )
+      throw new ApiError(409, "native_cleanup_reference_conflict");
+    return [{ ...value, session, index }];
+  });
+  if (
+    !candidates.length ||
+    new Set(candidates.map((key) => key.bookingId)).size !== candidates.length
+  )
+    throw new ApiError(503, "native_cleanup_references_unavailable");
+  return candidates;
+}
+
+// Operator-only inspection: a signed read of the exact retained record. It
+// neither reconciles an attempt nor invokes compensation/finalization.
+export async function inspectNativeAttempt(options: {
+  db: D1Database;
+  scope: NativeScope;
+  exchange: NativeExchange;
+  signingSecret: string;
+  signal: AbortSignal;
+  expiresMs: number;
+  expectedBookingIds: string[];
+  assertGranted: () => Promise<void>;
+}) {
+  const intent = validateScope(options.scope);
+  const row = await options.db
+    .withSession("first-primary")
+    .prepare(
+      "SELECT version,intent_json FROM attempts WHERE id=? AND state='recovery_required' AND association_json IS NULL",
+    )
+    .bind(options.scope.attemptId)
+    .first<{ version: number; intent_json: string }>();
+  if (
+    !row ||
+    (await digest(row.intent_json)) !== (await digest(JSON.stringify(intent)))
+  )
+    throw new ApiError(409, "native_inspection_scope_mismatch");
+  const effects = (
+    await options.db
+      .withSession("first-primary")
+      .prepare(
+        "SELECT step,outcome,reference_id FROM session_effects WHERE attempt_id=? ORDER BY step",
+      )
+      .bind(options.scope.attemptId)
+      .all<{ step: string; outcome: string; reference_id: string | null }>()
+  ).results;
+  const candidates = retainedNativeCandidates(intent, effects);
+  if (
+    candidates.length !== 1 ||
+    options.expectedBookingIds.length !== 1 ||
+    candidates[0].bookingId !== options.expectedBookingIds[0] ||
+    effects.some(
+      (effect) =>
+        effect.step === "native-link" ||
+        effect.step.startsWith("native-cancel:"),
+    )
+  )
+    throw new ApiError(409, "native_inspection_scope_mismatch");
+  const key = candidates[0];
+  const assertCurrent = async () => {
+    options.signal.throwIfAborted();
+    await options.assertGranted();
+    if (
+      !Number.isSafeInteger(options.expiresMs) ||
+      options.expiresMs <= Date.now() ||
+      options.expiresMs > Date.now() + 180000
+    )
+      throw new ApiError(409, "native_inspection_expired");
+    const current = await options.db
+      .withSession("first-primary")
+      .prepare(
+        "SELECT 1 FROM attempts WHERE id=? AND version=? AND state='recovery_required' AND association_json IS NULL AND NOT EXISTS(SELECT 1 FROM session_effects WHERE attempt_id=? AND (step='native-link' OR step LIKE 'native-cancel:%'))",
+      )
+      .bind(options.scope.attemptId, row.version, options.scope.attemptId)
+      .first();
+    if (!current) throw new ApiError(409, "native_inspection_fence_lost");
+  };
+  await assertCurrent();
+  const signature = await nativeBookingSignature(
+    key.bookingId,
+    key.hash,
+    options.signingSecret,
+  );
+  const response = await options.exchange(
+    { kind: "booking-read", bookingId: key.bookingId, signature },
+    options.signal,
+  );
+  await assertCurrent();
+  return {
+    state: "inspected",
+    inspection: inspectNativeBooking(response.body, {
+      expected: key.session,
+      bookingId: key.bookingId,
+      nativeCustomerId:
+        intent.customerMode === "booking-contact"
+          ? providerId(key.nativeCustomerId, "association.nativeCustomerId")
+          : intent.customerId,
+      companyLogin: options.scope.companyLogin,
+      timezone: options.scope.timezone,
+      currency: intent.currency,
+    }),
+  };
+}
+
 // Finite server-owned compensation only. It never repairs a cart, grants access,
 // refunds money, or treats a cancellation response as proof of cancellation.
 export async function compensateNativeAttempt(options: {
@@ -775,29 +898,7 @@ export async function compensateNativeAttempt(options: {
     )
   )
     throw new ApiError(409, "native_cleanup_not_replayable");
-  const candidates = intent.sessions.flatMap((session, index) => {
-    const key = effects.find(
-      (effect) =>
-        effect.step ===
-        (intent.sessions.length === 1
-          ? "native-booking-key"
-          : `native-booking-key:${index}`),
-    );
-    const effect = effects.find((effect) => effect.step === `session:${index}`);
-    if (!key || key.outcome !== "observed" || !key.reference_id) return [];
-    const value = retainedNativeKeySchema.parse(JSON.parse(key.reference_id));
-    if (
-      effect?.outcome !== "observed" ||
-      effect.reference_id !== value.bookingId
-    )
-      throw new ApiError(409, "native_cleanup_reference_conflict");
-    return [{ ...value, session, index }];
-  });
-  if (
-    !candidates.length ||
-    new Set(candidates.map((key) => key.bookingId)).size !== candidates.length
-  )
-    throw new ApiError(503, "native_cleanup_references_unavailable");
+  const candidates = retainedNativeCandidates(intent, effects);
   const operator = options.operatorRecovery;
   if (
     operator &&

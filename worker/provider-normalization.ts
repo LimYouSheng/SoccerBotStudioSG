@@ -630,6 +630,257 @@ function invoiceEvidence(raw: unknown, context: NativeReadContext) {
     lines,
   };
 }
+type BookingFieldContext = {
+  expected: z.infer<typeof intentSchema>["sessions"][number];
+  nativeCustomerId: string;
+  companyLogin: string;
+  timezone: "Asia/Singapore";
+  currency: string;
+};
+// One predicate owner: normal reads fail fast; private inspection evaluates each
+// independent predicate without turning results into booking authority.
+function bookingFieldChecks(
+  booking: Record<string, unknown>,
+  context: BookingFieldContext,
+): { field: NativeValidationField; run: () => void }[] {
+  const expected = context.expected;
+  return [
+    {
+      field: "booking.client_id",
+      run: () => {
+        equal(
+          providerId(booking.client_id, "booking.client_id"),
+          context.nativeCustomerId,
+          "booking.client_id",
+        );
+      },
+    },
+    {
+      field: "booking.company_login",
+      run: () => {
+        equal(
+          booking.company_login,
+          context.companyLogin,
+          "booking.company_login",
+        );
+      },
+    },
+    {
+      field: "booking.event_id",
+      run: () => {
+        equal(
+          providerId(booking.event_id, "booking.event_id"),
+          expected.serviceId,
+          "booking.event_id",
+        );
+      },
+    },
+    {
+      field: "booking.unit_id",
+      run: () => {
+        equal(
+          providerId(booking.unit_id, "booking.unit_id"),
+          expected.instructorId,
+          "booking.unit_id",
+        );
+      },
+    },
+    {
+      field: "booking.event_duration",
+      run: () => {
+        equal(
+          providerId(booking.event_duration, "booking.event_duration"),
+          String(SESSION_MINUTES),
+          "booking.event_duration",
+        );
+      },
+    },
+    {
+      field: "booking.event_buffertime_before",
+      run: () => {
+        equal(
+          decimal(
+            booking.event_buffertime_before,
+            "booking.event_buffertime_before",
+          ),
+          0,
+          "booking.event_buffertime_before",
+        );
+      },
+    },
+    {
+      field: "booking.event_buffertime_after",
+      run: () => {
+        equal(
+          decimal(
+            booking.event_buffertime_after,
+            "booking.event_buffertime_after",
+          ),
+          CHANGEOVER_MINUTES * 100,
+          "booking.event_buffertime_after",
+        );
+      },
+    },
+    {
+      field: "booking.start_date_time",
+      run: () => {
+        equal(
+          bookingWallTime(
+            booking.start_date_time,
+            context.timezone,
+            "booking.start_date_time",
+          ),
+          expected.startMs,
+          "booking.start_date_time",
+        );
+      },
+    },
+    {
+      field: "booking.end_date_time",
+      run: () => {
+        equal(
+          bookingWallTime(
+            booking.end_date_time,
+            context.timezone,
+            "booking.end_date_time",
+          ),
+          expected.startMs + START_INTERVAL_MINUTES * 60000,
+          "booking.end_date_time",
+        );
+      },
+    },
+    {
+      field: "booking.event_price",
+      run: () => {
+        equal(
+          decimal(booking.event_price, "booking.event_price"),
+          expected.totalMinor,
+          "booking.event_price",
+        );
+      },
+    },
+    {
+      field: "booking.event_currency",
+      run: () =>
+        equal(
+          booking.event_currency,
+          context.currency,
+          "booking.event_currency",
+        ),
+    },
+  ];
+}
+
+// Fixed labels only; unknown provider keys and all scalar values stay out of
+// stored evidence. This reports current getBookingDetails, never the lost book
+// envelope or an invoice/payment decision.
+export function inspectNativeBooking(
+  raw: unknown,
+  context: BookingFieldContext & { bookingId: string },
+) {
+  const booking = nativeRecord(raw, "booking");
+  const fields: Record<string, { representation: string; result: string }> = {};
+  const representation = (value: unknown) => {
+    if (value === undefined) return "absent";
+    if (value === null) return "null";
+    if (Array.isArray(value)) return "array";
+    if (typeof value === "string") {
+      if (/^[0-9]+$/.test(value)) return "integer-string";
+      if (/^[0-9]+\.[0-9]+$/.test(value)) return "decimal-string";
+      if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value))
+        return "wall-time-string";
+      return "string";
+    }
+    return typeof value;
+  };
+  const check = (field: NativeValidationField, run: () => void) => {
+    let result = "match";
+    try {
+      run();
+    } catch (error) {
+      const reason = nativeValidationReason(error);
+      if (!reason) throw error;
+      result = reason.problem;
+    }
+    fields[field] = {
+      representation: representation(booking[field.slice("booking.".length)]),
+      result,
+    };
+  };
+  check("booking.id", () =>
+    equal(
+      providerId(booking.id, "booking.id"),
+      context.bookingId,
+      "booking.id",
+    ),
+  );
+  for (const entry of bookingFieldChecks(booking, context))
+    check(entry.field, entry.run);
+  check("booking.is_confirmed", () => {
+    flag(booking.is_confirmed, "booking.is_confirmed");
+  });
+  // These joins need a finalized invoice and cannot be inferred from this read.
+  for (const name of [
+    "invoice_id",
+    "invoice_line_id",
+    "invoice_line_amount",
+    "invoice_amount",
+    "invoice_currency",
+    "invoice_payment_received",
+    "invoice_status",
+    "invoice_payment_processor",
+  ] as const)
+    fields[`booking.${name}`] = {
+      representation: representation(booking[name]),
+      result: "requires-invoice-evidence",
+    };
+  // The current read may expose these fields, but cannot establish what was in
+  // the creation envelope. Do not synthesize that envelope to force a verdict.
+  for (const name of [
+    "require_payment",
+    "require_confirm",
+    "hash",
+    "client_hash",
+    "batch_id",
+    "batch_hash",
+    "client_timezone",
+  ] as const)
+    fields[`booking.${name}`] = {
+      representation: representation(booking[name]),
+      result: "observed-only",
+    };
+  let endInterval = "unrecognized";
+  try {
+    const end = bookingWallTime(
+      booking.end_date_time,
+      context.timezone,
+      "booking.end_date_time",
+    );
+    endInterval =
+      end === context.expected.startMs + SESSION_MINUTES * 60000
+        ? "play"
+        : end === context.expected.startMs + START_INTERVAL_MINUTES * 60000
+          ? "occupied"
+          : "other";
+  } catch (error) {
+    if (!nativeValidationReason(error)) throw error;
+  }
+  return {
+    endpoint: "getBookingDetails",
+    evidenceKind: "current-read-only",
+    fieldCount: Object.keys(booking).length,
+    fields,
+    endInterval,
+    confirmed: providerFlag(booking.is_confirmed),
+    status:
+      booking.status === "confirmed" || booking.status === "cancelled"
+        ? booking.status
+        : "unrecognized",
+    creationEnvelope: "unavailable",
+    invoiceComparison: "not-requested",
+  };
+}
+
 export function normalizeNativeReads(
   bookingValue: unknown,
   invoiceValue: unknown,
@@ -662,67 +913,19 @@ export function normalizeNativeReads(
       line.lineId,
       "booking.invoice_line_id",
     );
-    equal(
-      providerId(booking.client_id, "booking.client_id"),
-      intent.customerMode === "booking-contact"
-        ? providerId(refs.nativeCustomerId, "association.nativeCustomerId")
-        : intent.customerId,
-      "booking.client_id",
-    );
     if (!context.companyLogin || context.companyLogin.includes("["))
       invalid(context.companyLogin, "context.companyLogin");
-    equal(booking.company_login, context.companyLogin, "booking.company_login");
-    equal(
-      providerId(booking.event_id, "booking.event_id"),
-      expected.serviceId,
-      "booking.event_id",
-    );
-    equal(
-      providerId(booking.unit_id, "booking.unit_id"),
-      expected.instructorId,
-      "booking.unit_id",
-    );
-    equal(
-      providerId(booking.event_duration, "booking.event_duration"),
-      String(SESSION_MINUTES),
-      "booking.event_duration",
-    );
-    equal(
-      decimal(
-        booking.event_buffertime_before,
-        "booking.event_buffertime_before",
-      ),
-      0,
-      "booking.event_buffertime_before",
-    );
-    equal(
-      decimal(booking.event_buffertime_after, "booking.event_buffertime_after"),
-      CHANGEOVER_MINUTES * 100,
-      "booking.event_buffertime_after",
-    );
-    equal(
-      bookingWallTime(
-        booking.start_date_time,
-        context.timezone,
-        "booking.start_date_time",
-      ),
-      expected.startMs,
-      "booking.start_date_time",
-    );
-    equal(
-      bookingWallTime(
-        booking.end_date_time,
-        context.timezone,
-        "booking.end_date_time",
-      ),
-      expected.startMs + START_INTERVAL_MINUTES * 60000,
-      "booking.end_date_time",
-    );
-    equal(
-      decimal(booking.event_price, "booking.event_price"),
-      expected.totalMinor,
-      "booking.event_price",
-    );
+    for (const check of bookingFieldChecks(booking, {
+      expected,
+      nativeCustomerId:
+        intent.customerMode === "booking-contact"
+          ? providerId(refs.nativeCustomerId, "association.nativeCustomerId")
+          : intent.customerId,
+      companyLogin: context.companyLogin,
+      timezone: context.timezone,
+      currency: intent.currency,
+    }))
+      check.run();
     equal(
       decimal(booking.invoice_line_amount, "booking.invoice_line_amount"),
       expected.totalMinor,
@@ -733,7 +936,6 @@ export function normalizeNativeReads(
       intent.totalMinor,
       "booking.invoice_amount",
     );
-    equal(booking.event_currency, intent.currency, "booking.event_currency");
     equal(
       booking.invoice_currency,
       intent.currency,

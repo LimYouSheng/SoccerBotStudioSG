@@ -335,6 +335,7 @@ const harness = {
           });
           break;
         }
+        case "inspect-diagnostic":
         case "residual-diagnostic":
           result = await recoverNativeResidual({
             db: env.STATE,
@@ -343,6 +344,9 @@ const harness = {
             signingSecret: "synthetic-signing-secret",
             expiresMs: input.now + 120000,
             authority: {
+              ...(input.action === "inspect-diagnostic"
+                ? { mode: "inspect" as const }
+                : {}),
               sourceRevision: "c".repeat(40),
               expectedBookingIds: ["701"],
             },

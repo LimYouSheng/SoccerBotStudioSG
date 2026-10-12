@@ -2562,3 +2562,66 @@ test("native residual diagnostic names missing invoice evidence without cancelli
     /synthetic-booking-hash|synthetic-signing-secret|guest@example/,
   );
 });
+
+test("native inspection reports every independent predicate despite missing invoice and never changes the attempt", async () => {
+  const data = await prepared(false, true);
+  data.creation.bookings[0].unit_id = "99";
+  await call("orchestrate", data);
+  delete data.booking.invoice_id;
+  delete data.booking.event_id;
+  data.booking.unit_id = "99";
+  data.booking.event_price = "private-contact-marker";
+  data.booking.end_date_time =
+    data.booking.start_date_time.slice(0, 14) + "40:00";
+  data.booking["private-property-marker"] = "private-value-marker";
+  data.now = Date.now();
+  const before = await db
+    .prepare("SELECT * FROM attempts WHERE id=?")
+    .bind(data.scope.attemptId)
+    .first();
+  const effects = await db
+    .prepare("SELECT * FROM session_effects WHERE attempt_id=? ORDER BY step")
+    .bind(data.scope.attemptId)
+    .all();
+  const response = await call("inspect-diagnostic", data);
+  assert.equal(response.result.state, "inspected", JSON.stringify(response));
+  const report = response.result.inspection;
+  assert.equal(report.fields["booking.event_id"].result, "missing");
+  assert.equal(report.fields["booking.unit_id"].result, "mismatch");
+  assert.equal(report.fields["booking.event_price"].result, "malformed");
+  assert.equal(report.fields["booking.end_date_time"].result, "mismatch");
+  assert.equal(report.fields["booking.client_id"].result, "match");
+  assert.deepEqual(report.fields["booking.invoice_id"], {
+    representation: "absent",
+    result: "requires-invoice-evidence",
+  });
+  assert.equal(report.endInterval, "play");
+  assert.equal(report.creationEnvelope, "unavailable");
+  assert.equal(report.invoiceComparison, "not-requested");
+  assert.deepEqual(
+    response.sent.map((r) => r.kind),
+    ["booking-read"],
+  );
+  assert.doesNotMatch(
+    JSON.stringify(response.result),
+    /private-|synthetic-booking-hash|synthetic-signing-secret|guest@example/,
+  );
+  assert.deepEqual(
+    await db
+      .prepare("SELECT * FROM attempts WHERE id=?")
+      .bind(data.scope.attemptId)
+      .first(),
+    before,
+  );
+  assert.deepEqual(
+    (
+      await db
+        .prepare(
+          "SELECT * FROM session_effects WHERE attempt_id=? ORDER BY step",
+        )
+        .bind(data.scope.attemptId)
+        .all()
+    ).results,
+    effects.results,
+  );
+});

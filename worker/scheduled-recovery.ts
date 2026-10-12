@@ -7,15 +7,18 @@ const windowSchema = z
   .strictObject({
     attemptId: z.string().uuid(),
     notBeforeMs: z.number().int().nonnegative().safe(),
-    startingUsed: z.number().int().min(0).max(122),
-    maximumUsed: z.number().int().min(6).max(128),
+    startingUsed: z.number().int().min(0).max(186),
+    maximumUsed: z.number().int().min(6).max(192),
     useRecoveryReserve: z.boolean().optional(),
     residual: residualSchema.optional(),
   })
   .refine(
     (value) =>
-      value.useRecoveryReserve !== true ||
-      value.maximumUsed - value.startingUsed <= 16,
+      (value.useRecoveryReserve !== true ||
+        value.maximumUsed - value.startingUsed <= 16) &&
+      (value.residual?.mode !== "inspect" ||
+        (value.useRecoveryReserve !== true &&
+          value.maximumUsed - value.startingUsed === 6)),
   );
 // No browser trigger, callback guess, draining loop, cron config or self-grant.
 // Each installed one-use window permits one known-attempt readback: N + 5

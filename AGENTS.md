@@ -1,5 +1,9 @@
 # SoccerBotStudioSG engineering
 
+## Read the retained booking format — 12 October
+
+YS asks for an actual current read and validation of all applicable fields. Source adds an explicit inspect mode to the existing one-use operator residual scope. It reads only one exact retained booking, uses shared normalizer predicates to collect independent field results, and cannot fetch invoices, compensate, finalize or write provider data. Scheduler/replay exclusions, source/attempt/key fencing and physical accounting remain. Six ordinary physical calls maximum (cold identity plus one signed read); no recovery reserve. Current read is not the discarded creation response. Prepare the final CI artifact and sealed finite packet; section5 still governs deployment approval. No live read/deployment has occurred.
+
 ## Current native diagnostic continuation — 12 October
 
 Owner requests precise private field/rule failures and evidence-based diagnosis before another booking trial. The latest192 packet executed and closed, superseding its preparation notes:0018 applied with preservation; all0001–0018 immutable. One new cart remains unresolved after our book-response validation; no second booking, batch finalization, link or cancellation was verified. Earlier cart untouched. Original raw creation response was discarded, so the exact live predicate remains unknown. Do not infer it from synthetic tests, a missing unfinished-cart invoice or a screenshot.

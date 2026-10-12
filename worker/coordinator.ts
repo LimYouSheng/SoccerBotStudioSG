@@ -341,12 +341,17 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         scope.maximumUsed - scope.startingUsed < 6 ||
         initial.used < scope.startingUsed ||
         initial.used + 6 > scope.maximumUsed ||
+        (scope.residual?.mode === "inspect" &&
+          (scope.useRecoveryReserve === true ||
+            scope.maximumUsed - scope.startingUsed !== 6)) ||
         initial.active !== 0
       )
         throw new ApiError(503, "recovery_window_unavailable");
       const row = await this.env.STATE.withSession("first-primary")
         .prepare(
-          "SELECT a.intent_json,a.association_json FROM attempts a JOIN recovery_work r ON r.attempt_id=a.id WHERE a.id=? AND a.state IN ('dispatching','observed','recovery_required') AND r.state IN ('due','claimed') AND r.ready_ms<=? AND r.tries<5",
+          scope.residual?.mode === "inspect"
+            ? "SELECT intent_json,association_json FROM attempts WHERE id=? AND state='recovery_required' AND association_json IS NULL AND ?>0"
+            : "SELECT a.intent_json,a.association_json FROM attempts a JOIN recovery_work r ON r.attempt_id=a.id WHERE a.id=? AND a.state IN ('dispatching','observed','recovery_required') AND r.state IN ('due','claimed') AND r.ready_ms<=? AND r.tries<5",
         )
         .bind(scope.attemptId, now)
         .first<{ intent_json: string; association_json: string | null }>();
@@ -418,6 +423,14 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           exchange: async (operation, signal) => {
             await assertGranted();
             signal?.throwIfAborted();
+            if (
+              authority.mode === "inspect" &&
+              operation.kind !== "booking-read"
+            )
+              throw new ApiError(
+                503,
+                "native_inspection_operation_unavailable",
+              );
             if (operation.kind === "booking-cancel")
               return this.provider.nativeWrite(
                 this.env,

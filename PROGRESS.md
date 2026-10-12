@@ -1,6 +1,13 @@
 # SoccerBotStudioSG current progress
 
-## Current task — precise native diagnostics, 12 October 2026
+## Current task — inspect the retained booking format, 12 October 2026
+
+Owner requested an actual existing-record read instead of guessed provider semantics. Read-only source is prepared: explicit one-use inspect mode, one exact retained key, shared independent predicates, no invoice/cancel/finalize/write, no scheduler/replay and no attempt/effect mutation. Local full Worker237/237 and source/policy/types/lint/format passed; all18 migrations unchanged. Six ordinary physical calls maximum; final CI artifact and a newly sealed finite deployment/read/closure packet remain required under AGENTS section5. The preceding a9ecf38 diagnostic checkpoint passed all three CI38207930497 jobs. Current read cannot reconstruct the lost creation envelope.
+
+Carried unchanged: provider125/192, active0,67 remaining including16 recovery reserve; management624 measured plus unknown, deployments at least50 plus unknown; email8/siteverify8, native notifications unmeasured. No remote operation in this continuation. Campaign ends12October08:18:56UTC/16:18:56Singapore; no reset or extension. All0001–0018 are immutable, none pending. Earlier carts/grants remain closed or untouched as reported. Native-provider acceptance remains pending; no merge/browser/production/payment authority.
+
+
+## Historical checkpoint — precise native diagnostics, 12 October 2026
 
 Owner requested specific private validation errors and evidence-based diagnosis before another booking trial. Continued draft PR21 from5dacab5 on feat/native-checkout-completion-20261011; main25aac892 is unchanged. Source now identifies missing/malformed/mismatched creation, client/batch, invoice, finalization and readback/cleanup fields; records write shape; preserves first independent errors, generic customer/RPC output, permanent-failure classification and every existing authority/payment/capacity guard. No migration or live operation is added.
 
