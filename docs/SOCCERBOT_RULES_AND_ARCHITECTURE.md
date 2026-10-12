@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Identity freshness between forward reads — 12 October 2026
+
+Trusted forward composition explicitly establishes current provider identity before each catalogue, prebooking, availability and checkout read. A sequence may exceed the five-second identity cache lifetime; a still-valid cached identity is reused, while an expired identity is verified again through the same durable control and physical budget. This is not a retry of a failed native operation and does not extend identity or catalogue freshness. Account mismatch and exhausted/closed grants still stop dispatch.
+
+The generic nativeRead primitive retains fail-closed expiry checks and never authenticates automatically, preserving recovery's separately bounded contract. No new provider authority, migration, counter reset, business policy or browser authority is introduced. The idle experiment passed protected readiness but native provider acceptance remains pending after an independently recorded prebooking identity-expiry failure and verified closure.
+
 ## Binding lifecycle evidence — 12 October 2026
 
 Worker health and coordinator readiness are independently authoritative for their own observed configuration. Latest protected observations found the active Worker and prior closed coordinator simultaneously; no provider call was admitted. Deployment sequencing must accommodate their independent lifecycle without weakening configuration checks or accepting elapsed time as evidence.

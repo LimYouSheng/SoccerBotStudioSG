@@ -1,5 +1,13 @@
 # SoccerBotStudio — Journey
 
+## Idle readiness passed; identity expiry reproduced and repaired — 12 October 2026
+
+The exact approved idle-lifecycle experiment passed baseline, activation and closure readiness. Availability and immutable preparation succeeded; native checkout stopped before effects at provider_identity_expired while reading catalogue instructors for the second session. Worker and coordinator disabled/end0, closed new grants, revoked guest, unchanged schedules and preserved history were independently verified. No booking, payment link or unpaid residual was created. Exact private receipts/accounting remain in idle-continuation/execution/outcome.md. The observed readiness result does not establish Cloudflare's internal lifecycle cause.
+
+YS requested the identity correction and immediate testing. Inspection found a five-second identity cache checked only at sequence entry, followed by multiple reads that each require unexpired identity. Added a synthetic six-second clock advance between reads: the original source reproduced prerequisites_unavailable with only five physical requests; the corrected source passes. Explicit forward-read refresh uses the original finite control; wrong-account refresh blocks booking, every physical request remains counted, replay adds zero calls, and generic expired reads still reject without using recovery calls. No TTL, timeout, assertion or reserve was relaxed. Full exact-source verification, CI and the new live proof remain separately recorded; browser execution stays with YS/CI.
+
+Full local Worker verification passed224/224 with zero skips, plus source/policy checks, strict Worker types and affected lint. Exact-source CI remains required.
+
 ## Configuration mismatch isolated; owner requests a controlled fix — 12 October 2026
 
 The latest finite proof confirmed Worker activation while protected coordinator readiness retained the previous disabled configuration. All bounded observations agreed; execution stopped before native authority, provider calls or bookings, then verified closure. No unpaid records remain from that attempt. Private operator evidence owns exact deployment/accounting details.

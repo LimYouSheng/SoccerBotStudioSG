@@ -1,5 +1,11 @@
 # SoccerBotStudioSG engineering
 
+## Identity freshness correction after the idle experiment — 12 October
+
+The exact approved idle-lifecycle experiment passed baseline, active and closed coordinator readiness. Checkout then stopped before booking with private provider_identity_expired during the second session's catalogue reads. No booking, link or unpaid residual exists; closure and preserved history are verified. Detailed accounting remains private in idle-continuation/execution/outcome.md. This successful readiness observation does not prove the internal lifecycle mechanism.
+
+YS requested the fix and immediate testing. Forward catalogue, prebooking, availability and checkout read composition now explicitly refresh identity through existing finite admission before each read. The five-second identity TTL, generic nativeRead rejection, recovery reserve, physical budgets and no-replay rules remain unchanged. Regression reproduced the old failure, then passed with the correction, including wrong-account denial and generic recovery-read rejection without refresh. Complete exact-source checks/CI and prepare a new finite live packet carrying the existing accounting; section5 still governs its exact approval. No closed packet is reusable. Native provider and combined physical acceptance remain pending.
+
 ## Idle-lifecycle deployment experiment — 12 October
 
 Protected readiness established a Worker/coordinator configuration mismatch: the Worker was active while the same-source coordinator retained the preceding disabled/end0 configuration through all bounded observations. The finite proof stopped before native authority or provider dispatch and independently closed. Detailed versions, counters and receipts remain private in the coordinator-continuation operator outcome.

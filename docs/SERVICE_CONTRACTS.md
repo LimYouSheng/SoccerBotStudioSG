@@ -1,5 +1,11 @@
 # SoccerBotStudio — Service Contracts
 
+## Forward-read identity contract — 12 October 2026
+
+ProviderSession catalogue/prebooking composition and the native checkout/availability owners call identity before each forward nativeRead. Cached identity remains valid for five seconds only. When stale, its named identity/tariff requests use the same provided durable reservation owner, finite grant and cumulative ceiling as the following read. An aborted read is rejected before refresh where a signal exists; refresh failure prevents its dependent native read and booking write. No failed native request is replayed.
+
+Generic nativeRead is unchanged: stale identity raises provider_identity_expired without authentication or native dispatch. Recovery entry points retain explicit authentication and their own shared reserve; callers cannot gain new authority by asking for a forward read. Private diagnostics and customer output remain separated. Tests deliberately cross identity expiry between service and instructor reads, assert physical accounting, wrong-account/no-write denial, no replay, and unchanged generic-read rejection. Current-account acceptance still requires the corrected exact-source finite proof.
+
 ## Idle-lifecycle configuration experiment — 12 October 2026
 
 Protected operator readiness observed an active Worker with a coordinator still reporting its prior closed configuration. The proof stopped before provider admission and verified closure. A successor experiment keeps the installed source/artifact and all existing checks, but provides a fixed no-RPC interval before configuration observation. It must also observe the coordinator after disable before closing its blocked read-only audit grant; native authority and guest access close first. No audit grant can dispatch a provider operation.

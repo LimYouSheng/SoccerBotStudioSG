@@ -1,5 +1,13 @@
 # SoccerBotStudioSG current progress
 
+## Current task — identity refresh across native reads, 12 October 2026
+
+The approved idle procedure passed exact baseline/activation/closure readiness. Native checkout reached a distinct retained failure: provider_identity_expired on sessionIndex1, catalogue-instructors, before booking. No booking or checkout link was created. Closed source/version, historical preservation and exact consumed accounting are recorded privately in work/native-completion/idle-continuation/execution/outcome.md; this supersedes older snapshots below without resetting them.
+
+YS requested repair and immediate testing. Explicit identity checks now precede each trusted forward read; each refresh consumes the existing durable admission and budget. Generic nativeRead remains strict and never automatically spends the recovery reserve. The five-second identity lifetime and provider receipt freshness are unchanged. A synthetic clock-crossing regression first reproduced prerequisites_unavailable in the old source, then passed against the correction; wrong-account refresh still blocks all booking effects, and generic expired reads dispatch no refresh. Next: complete exact-source checks/CI and prepare the corrected finite backend proof for exact approval. Physical/payment/production/merge remain outside this checkpoint.
+
+Full local Worker verification passed224/224 with zero skips, plus source/policy checks, strict Worker types and affected lint. Exact-source CI remains required.
+
 ## Current task — test coordinator idle-lifecycle activation, 12 October 2026
 
 The protected-readiness proof isolated an actual mismatch: active Worker, same-source coordinator still on the preceding closed configuration. Four observations exhausted the packet's readiness bound before creating native authority or making any provider request. Closure is verified; no booking, payment or unpaid residual record was created. Exact latest deployment/accounting and historical preservation receipts are private under work/native-completion/coordinator-continuation/execution/outcome.md; older snapshots below are historical.

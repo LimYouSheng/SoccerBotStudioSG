@@ -54,11 +54,16 @@ const harness = {
       owner: string;
       fixtureCeiling?: string;
       fixtureUsed?: number;
+      fixtureExpireAfter?: number;
     };
     let reserved = 0,
       finished = 0,
       requests = 0;
     const sent: NativeRequest[] = [];
+    const realNow = Date.now;
+    let clockOffset = 0;
+    if (input.fixtureExpireAfter !== undefined)
+      Date.now = () => realNow() + clockOffset;
     const control: ProviderControl = {
       reserve: async () => {
         reserved++;
@@ -66,6 +71,7 @@ const harness = {
       },
       finish: () => {
         finished++;
+        if (finished === input.fixtureExpireAfter) clockOffset += 6000;
       },
       claim: () => ({ claim: "synthetic-claim", generation: 1 }),
       complete: () => true,
@@ -319,6 +325,7 @@ const harness = {
         case "customer-prepare":
         case "customer-current":
         case "customer-availability":
+        case "session-expired":
         case "finite-checkout": {
           if (input.fixtureCeiling !== undefined)
             Reflect.set(
@@ -338,6 +345,15 @@ const harness = {
           const customerRequest = new Request("https://soccerbot.test/", {
             headers: { cookie: input.cookie },
           });
+          if (input.action === "session-expired") {
+            const provider = new ProviderSession();
+            await provider.identity(admittedEnv, control);
+            clockOffset += 6000;
+            result = await provider.nativeRead(admittedEnv, control, {
+              kind: "catalogue-services",
+            });
+            break;
+          }
           if (input.action === "customer-prepare") {
             result = await prepareCustomerNative(
               customerRequest,
@@ -472,6 +488,8 @@ const harness = {
         },
         { status: 409 },
       );
+    } finally {
+      if (input.fixtureExpireAfter !== undefined) Date.now = realNow;
     }
   },
 };

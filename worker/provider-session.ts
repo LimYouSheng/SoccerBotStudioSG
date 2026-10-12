@@ -57,7 +57,11 @@ export class ProviderSession {
         environmentId: p.ENVIRONMENT,
         companyLogin: secrets.company,
       },
-      (request, signal) => this.nativeRead(env, control, request, signal),
+      async (request, signal) => {
+        signal?.throwIfAborted();
+        await this.identity(env, control);
+        return this.nativeRead(env, control, request, signal);
+      },
       fresh,
     );
   }
@@ -78,6 +82,10 @@ export class ProviderSession {
       this.catalogueReads,
       async (request, signal) => {
         observe?.(request.kind);
+        signal?.throwIfAborted();
+        // A multi-read review can outlast identity freshness. Refresh explicitly
+        // through the same finite admission owner, never inside nativeRead.
+        await this.identity(env, control);
         const response = await this.nativeRead(env, control, request, signal);
         observe?.(request.kind, response.body);
         return response;

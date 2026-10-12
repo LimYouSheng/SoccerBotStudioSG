@@ -282,6 +282,8 @@ export async function executeNativeCheckout(options: {
       ].includes(operation.kind)
     )
       return provider.nativeWrite(env, control, operation, assertGranted);
+    signal?.throwIfAborted();
+    await provider.identity(env, control);
     const response = await provider.nativeRead(env, control, operation, signal);
     observeRead(operation.kind, response.body);
     return response;
@@ -673,6 +675,7 @@ export async function customerNativeAvailability(options: {
     const offers: z.infer<typeof nativeOfferSchema>[] = [];
     let observedAtMs = catalogue.observedAtMs;
     for (const instructor of instructors) {
+      await provider.identity(env, control);
       const response = await provider.nativeRead(env, control, {
         kind: "availability",
         serviceId,

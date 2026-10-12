@@ -1082,6 +1082,75 @@ test("native finite checkout composes fresh checks one booking protected payment
   }
 });
 
+test("native forward reads refresh expired identity within accounting and fail closed on a wrong account", async () => {
+  for (const wrongAccount of [false, true]) {
+    const data = await prepared(false, true, true);
+    await grantNative(data);
+    const wall = new Date(
+      data.scope.intent.sessions[0].startMs + 8 * 3600000,
+    ).toISOString();
+    data.invoice.due_datetime = new Date(Date.now() + 600000)
+      .toISOString()
+      .replace(/\.\d{3}Z$/, "Z");
+    const standard = nativeProviderReply(data, wall);
+    let identities = 0;
+    const before = calls.length;
+    reply = async (request, body) => {
+      if (request.url.endsWith("/admin/company/info")) {
+        identities++;
+        if (wrongAccount && identities === 2)
+          return Response.json({ login: "synthetic-foreign-account" });
+      }
+      return standard(request, body);
+    };
+    try {
+      // Four identity/auth requests, then the service read crosses the five-second identity TTL.
+      const response = await call("finite-checkout", {
+        ...data,
+        fixtureExpireAfter: 5,
+      });
+      assert.equal(response.status, 200);
+      assert.equal(
+        response.result.state,
+        wrongAccount ? "prerequisites_unavailable" : "associated",
+        JSON.stringify(response),
+      );
+      assert.equal(response.result.paymentAvailable, !wrongAccount);
+      assert.equal(identities, 2);
+      assert.equal(response.reserved, response.finished);
+      assert.equal(response.reserved, calls.length - before);
+      assert.equal(
+        calls.slice(before).filter((v) => v.body?.method === "book").length,
+        wrongAccount ? 0 : 1,
+      );
+      const replay = await call("finite-checkout", data);
+      assert.equal(replay.reserved, 0);
+      assert.equal(calls.length - before, response.reserved);
+    } finally {
+      reply = undefined;
+    }
+  }
+});
+
+test("native generic reads reject expired identity without spending recovery calls on refresh", async () => {
+  const data = input(false);
+  const before = calls.length;
+  reply = nativeProviderReply(data, "");
+  try {
+    const response = await call("session-expired", {
+      ...data,
+      fixtureExpireAfter: 0,
+    });
+    assert.equal(response.status, 409);
+    assert.equal(response.error, "provider_identity_expired");
+    assert.equal(response.reserved, 4);
+    assert.equal(response.finished, 4);
+    assert.equal(calls.length - before, 4);
+  } finally {
+    reply = undefined;
+  }
+});
+
 test("native prerequisite diagnostics retain safe private evidence without writes or customer disclosure", async () => {
   for (const scenario of ["eligibility", "required-fields", "allowance"]) {
     const data = await prepared(false, true, true);
