@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Second-response collection boundary observed — 12 October2026
+
+The approved256 trial passed the prior missing batch-echo failure for its first book, including the mandatory first batch hash. It then stopped on the second receipt before retaining a booking key: creation.bookings was an array whose length was not one. Exact count/content were not retained. A cumulative receipt collection is a hypothesis, not established fact; never select the first/last entry or assume a second native ID. Second hash continuity, signed closure, final booking membership/invoice and checkout remain unproved. Preserve unknown writes without replay.
+
+Source6bc54f7 is independently closed at version91c01cd0-9695-4bda-b291-b89f0215ad9d. Applied0001–0020 are immutable, none pending; all historical rows and closed grants remain preserved. Exact packet c0916326b895 is consumed. Service Contracts owns the observed boundary and Journey owns execution evidence; no further live authority follows from this result. Owner-amended17:30Singapore deadline and other campaign bounds persist.
+
 ## Owner-approved live-test limits — 12 October2026
 
 YS explicitly approved preparation of one new trial with cumulative256 provider calls,196 carried and16 recovery calls preserved, ending12October17:30Singapore. The deadline supersedes the earlier16:18:56Singapore deadline and its72-hour elapsed cap; the9October08:18:56UTC start,24 aggregate active hours,60 loops and six repairs per cause remain. Unmeasured effort stays unknown. Keep the same account/campaign/DO ledger, default80/disabled/end0, immutable0001–0019 and independent closure. Service Contracts owns the exact operation limits; source preparation is not deployment approval. No old packet is reusable.

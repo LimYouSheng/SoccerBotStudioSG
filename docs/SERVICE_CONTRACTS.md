@@ -1,5 +1,13 @@
 # SoccerBotStudio — Service Contracts
 
+## 256 trial: second book receipt collection rejected — 12 October2026
+
+The exact approved packet c0916326b895 ran on6bc54f7. First book passed nativeSingle, retained booking29/signing key, validated session/customer/time/key/client signing data, accepted the optional batch echo and validated the first mandatory batch hash for retained batch5. Second book was dispatched once after its revalidation, then nativeSingle rejected creation.bookings/mismatch before reference retention. Source maps that reason here only to an array length other than one. The array count and entries were not retained; neither an empty array nor a cumulative/multiple-receipt response is established. The second native booking reference and outcome remain unknown. No second receipt fields, hash continuity, closeBatch, finalized membership, invoice or native link were proved.
+
+No retry, cancellation, payment, old-record mutation or post-failure provider read occurred. Batch5/booking29 remain retained and the second effect remains unknown. Pending-cart availability does not establish prior provider state. Do not choose an arbitrary receipt, infer a booking ID or relax cardinality without a documented membership/selection contract and negative cases. The next evidence task is the current multiple-book response collection format; this checkpoint authorizes no new live reads or writes.
+
+Migration0020 applied with row/foreign-key preservation;0001–0020 are immutable, none pending. Source6bc54f7/version91c01cd0 is independently closed, provider/identity disabled/end0,238/256/active0, new grants expired/new guest revoked and schedules empty. Two ordinary calls plus16 untouched recovery calls remain, insufficient for a normal proof. The17:30Singapore amended deadline persists and the exact packet is consumed. PROGRESS owns cumulative counters.
+
 ## Approved limits and next live-test packet — 12 October2026
 
 Owner explicitly approved cumulative256, carrying196 used, ordinary maximum240 (44 new ordinary calls),16 untouched recovery calls and a new12October17:30Singapore campaign deadline. The corrected retained-batch-ID source3e3628d passed all three CI38220464328 gates. Pending0020 widens only the native-grant schema bound to240, preserving every existing row/field and all applied0001–0019 bytes. Explicit256 policy leaves default80/disabled/end0 and recovery/scheduler authority unchanged. Preparation performs no live operation and resets no counters.

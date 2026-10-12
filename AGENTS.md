@@ -1,5 +1,11 @@
 # SoccerBotStudioSG engineering
 
+## Approved256 trial executed and closed — 12 October2026
+
+YS approved exact packet c0916326b895; it is consumed. Source6bc54f7 applied0020 with preservation and reached the second book response. First booking29/batch5 passed the prior batch-echo boundary and first hash validation. Second response failed creation.bookings/mismatch: an array with length other than one; exact count/content were not retained. Second booking reference/outcome remains unknown; no closeBatch/link/payment/cancellation or post-failure provider read. Do not replay or select an arbitrary receipt. Current collection-shape evidence is required before changing the singleton contract.
+
+Independent closure at16:29:14Singapore: source6bc54f7/version91c01cd0-9695-4bda-b291-b89f0215ad9d, provider/identity disabled,end0,238/256/active0, new grants expired/guest revoked, schedules empty,18 historical tables preserved and20 migrations. All0001–0020 immutable, none pending. PROGRESS owns carried accounting; amended17:30Singapore deadline persists. Record outcome/release metadata and exact-source PR21 CI; no further live authority or browser/merge/production action.
+
 ## Approved limits for the next live-test preparation — 12 October2026
 
 YS requested live testing and explicitly approved the amended limits: cumulative256 provider calls, carrying196 used with16 reserved, and deadline12October17:30Singapore. This deadline supersedes the prior16:18:56 and72-hour elapsed cap; original start,24 active hours,60 loops and six repairs per cause remain, with unmeasured effort unknown. Prepare pending0020 and exact-source CI/artifact/packet; section5 still requires exact finite deployment approval. Old packet remains consumed; current deployed4671f37/version63a25341 stays closed. Service Contracts owns the new scope. Applied0001–0019 remain immutable.
