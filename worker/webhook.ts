@@ -7,6 +7,7 @@ const windowSchema = z.strictObject({
   id: z.string().uuid(),
   source_revision: z.string().regex(/^[a-f0-9]{40}$/),
   account_id: z.string(),
+  company_login: z.string().min(1).max(128),
   environment: z.literal("developer"),
   origin: z.url(),
   opened_ms: z.number().int().nonnegative().safe(),
@@ -97,9 +98,13 @@ export async function captureWebhook(
   );
   if (!parsedWindow.success) throw unavailable();
   const window = parsedWindow.data;
+  const company: unknown = Reflect.get(env, "SIMPLYBOOK_DEV_COMPANY_LOGIN");
   if (
     window.source_revision !== env.SOURCE_REVISION ||
     window.account_id !== env.DEPLOYMENT_ACCOUNT_ID ||
+    typeof company !== "string" ||
+    company.toLowerCase() === "soccerbotstudio" ||
+    window.company_login !== company ||
     window.environment !== env.ENVIRONMENT ||
     window.origin !== env.APP_ORIGIN ||
     window.expires_ms - window.opened_ms > 1200000
@@ -151,7 +156,7 @@ export async function captureWebhook(
   // Atomic finite admission and exact-delivery dedup. Recheck closure at commit.
   const result = await db
     .prepare(
-      "INSERT INTO webhook_receipts(window_id,body_digest,received_ms,sent_seconds,body_bytes,shape_json,state) SELECT id,?,?,?,?,?,'captured' FROM webhook_capture_windows WHERE id=? AND state='open' AND source_revision=? AND account_id=? AND environment=? AND origin=? AND opened_ms<=? AND expires_ms>? AND (SELECT count(*) FROM webhook_receipts WHERE window_id=?)<maximum_receipts ON CONFLICT(window_id,body_digest) DO NOTHING RETURNING body_digest",
+      "INSERT INTO webhook_receipts(window_id,body_digest,received_ms,sent_seconds,body_bytes,shape_json,state) SELECT id,?,?,?,?,?,'captured' FROM webhook_capture_windows WHERE id=? AND state='open' AND source_revision=? AND account_id=? AND company_login=? AND environment=? AND origin=? AND opened_ms<=? AND expires_ms>? AND (SELECT count(*) FROM webhook_receipts WHERE window_id=?)<maximum_receipts ON CONFLICT(window_id,body_digest) DO NOTHING RETURNING body_digest",
     )
     .bind(
       digest,
@@ -162,6 +167,7 @@ export async function captureWebhook(
       window.id,
       env.SOURCE_REVISION,
       env.DEPLOYMENT_ACCOUNT_ID,
+      company,
       env.ENVIRONMENT,
       env.APP_ORIGIN,
       now,

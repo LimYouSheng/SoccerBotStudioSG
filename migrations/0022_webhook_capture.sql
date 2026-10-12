@@ -4,6 +4,7 @@ CREATE TABLE webhook_capture_windows (
   id TEXT PRIMARY KEY,
   source_revision TEXT NOT NULL,
   account_id TEXT NOT NULL,
+  company_login TEXT NOT NULL,
   environment TEXT NOT NULL CHECK(environment='developer'),
   origin TEXT NOT NULL,
   opened_ms INTEGER NOT NULL,

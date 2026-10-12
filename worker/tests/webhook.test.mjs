@@ -41,6 +41,7 @@ beforeEach(async () => {
         APP_ORIGIN: origin,
         SOURCE_REVISION: source,
         SIMPLYBOOK_DEV_SIGNING_SECRET: secret,
+        SIMPLYBOOK_DEV_COMPANY_LOGIN: "synthetic-developer",
       },
       d1Databases: { STATE: "synthetic-state" },
       durableObjects: {
@@ -77,12 +78,13 @@ async function open(maximum = 16) {
   const now = Date.now();
   await db
     .prepare(
-      "INSERT INTO webhook_capture_windows VALUES(?,?,?,?,?,?,?,?, 'open')",
+      "INSERT INTO webhook_capture_windows VALUES(?,?,?,?,?,?,?,?,?, 'open')",
     )
     .bind(
       windowId,
       source,
       config.vars.DEPLOYMENT_ACCOUNT_ID,
+      "synthetic-developer",
       "developer",
       origin,
       now - 1000,
@@ -122,6 +124,7 @@ test("webhook capture defaults closed and requires exact source account environm
     ["source_revision", "b".repeat(40), source],
     ["account_id", "foreign", config.vars.DEPLOYMENT_ACCOUNT_ID],
     ["origin", "https://foreign.test", origin],
+    ["company_login", "foreign-company", "synthetic-developer"],
   ]) {
     await db
       .prepare(`UPDATE webhook_capture_windows SET ${column}=?`)
