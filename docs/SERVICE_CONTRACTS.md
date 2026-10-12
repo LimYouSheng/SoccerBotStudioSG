@@ -1,5 +1,18 @@
 # SoccerBotStudio — Service Contracts
 
+## Native acceptance evidence after flight2 — 12 October2026
+
+| Gate                                               | Evidence/status                                                                                                                                                                          |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Intermediate collection and batch closure contract | Live6ac6165 accepted both allocations, signed closure and complete final invoice. Closure authority is exact retained keys plus validated invoice; no map-key semantics inferred.        |
+| Same-date native integration                       | **Accepted**:15October12:20/13:10Singapore; batch7/bookings33/34/invoice26, S$176/tax0, two signed confirmed booking reads, authoritative unpaid invoice, native link retained unopened. |
+| Single-session native integration                  | Pending; next newly sealed flight selects one16October offer at/after09:00.                                                                                                              |
+| Different-date native integration                  | Pending; distinct new two-date flight remains required.                                                                                                                                  |
+| Failure boundaries                                 | 246 Worker cases passed with no failures/skips; current live failures remain durable and never replayed.                                                                                 |
+| Delivery and closure                               | 6ac6165 all-three CI38229148061/artifact11737163517; independent17:32:35Singapore closure,18 preserved historical tables and21 unchanged migrations.                                     |
+
+Current closed version622d6505-d65e-46db-b6c3-a43052925343, source6ac6165,330/512/active0, provider/identity disabled/end0, new authority expired/revoked, empty schedules.166 ordinary calls plus16 untouched reserve; two remaining flights/four remaining conservative book allowances, original per-flight bounds and20:30Singapore deadline. The same explicit campaign delegation remains sufficient for new sealed exact-source packets. No migration allowance remains. Preserve every previous attempt/booking, including33/34; do not reopen a successful or unknown attempt. Combined owner-operated paid/browser/webhook acceptance remains later.
+
 ## Observed closeBatch envelope and invoice validation contract — 12 October2026
 
 Flight1 on a206106 reached signed closeBatch after both allocation receipts validated. Actual diagnostic: creation.require_confirm/missing (absence or null), root object count2, bookings object count2. Invoice passed the object-shape guard before that failure; its fields were not yet validated. Entry contents and map-key semantics were not retained, and no successful invoice/readback/link is claimed. Both keys/IDs31/32 in batch6 remain retained; do not close/read/retry that consumed attempt again as part of a new checkout.

@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Same-date closure/readback authority verified — 12 October2026
+
+Flight2 on6ac6165 verified the distinct invoice-based batch-closure contract through complete native checkout. Exact retained bookings33/34 matched invoice26; invoice validation and subsequent signed booking/invoice reads all passed before one link was retained. This confirms the authority chain for the current developer account and same-date shape. It does not establish unknown redundant closure-map semantics, clear historical unknown effects or imply payment/browser/production acceptance. Preserve every guard for the remaining single/different-date gates, and preserve0001–0021 unchanged. Current source/version and carried330/512 closure are owned by PROGRESS/Service Contracts.
+
 ## Separate allocation and batch closure evidence — 12 October2026
 
 Observed closeBatch is a distinct endpoint envelope; do not route it through book allocation normalization or default a missing confirmation flag to false. Retained validated session keys fix the only admissible booking set. The authenticated closure invoice must independently satisfy every existing invoice line, nested booking/customer/service/provider/time/duration, money/tax, unique membership, confirmed and unpaid predicate. Its root bookings container is redundant endpoint output and is not an identity/confirmation authority; its observed object shape does not justify inferred map keys, aliases or fabricated allocation fields. A supplied non-null require_confirm still must be a recognized false flag. Single-book normalization remains strict. Signed authoritative booking and invoice reads remain mandatory before creating a checkout link, including their cross-invoice/line/paid-state checks. Unknown finalization stays durable and is never replayed.

@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## 12 October — same-date native checkout accepted
+
+Flight2 used exact-source6ac6165 from all-green CI38229148061/artifact11737163517 under sealed packet5eb211c4ac62. New15October12:20/13:10Singapore selections completed batch7/bookings33/34 and invoice26. The full closure invoice, both signed booking reads and authoritative unpaid invoice all validated S$176/tax0 and the exact customer/session set. The one native checkout link was retained but never opened. This is the first complete same-date developer integration proof; no payment is claimed.
+
+Closure17:32:35Singapore independently verified6ac6165/version622d6505-d65e-46db-b6c3-a43052925343,330/512/active0, disabled access/end0, expired grants/revoked guest, schedules empty and all18 historical table snapshots/21 migrations preserved. Next are single-session and different-date gates within the two remaining approved flights. Historical unknown effects remain untouched; full native acceptance and the later paid/browser/webhook flight are not yet complete.
+
 ## 12 October — first autonomous flight reaches batch closure
 
 The exact-source a206106 artifact passed all three CI38226503628 gates. Sealed packet dea4fe21baae ran once under YS's bounded campaign approval, applied0021 preserving history, and selected15October10:40/11:30Singapore. Both intermediate receipts passed full set/session/customer/hash validation; batch6/bookings31/32 and signing keys were retained. This verifies the collection fix live.

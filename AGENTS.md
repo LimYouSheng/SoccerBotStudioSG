@@ -1,5 +1,11 @@
 # SoccerBotStudioSG engineering
 
+## Campaign flight2 accepted same-date and closed — 12 October2026
+
+Consumed packet5eb211c4ac62 ran6ac6165 (all three CI38229148061 gates/artifact11737163517). New attempta679cdf9-fa52-467d-b932-2f9f6a10fcd2 completed: batch7/bookings33/34/invoice26, authoritative confirmed/unpaid readback, native link retained unopened. No replay/payment/cancellation. Closure17:32:35Singapore verified6ac6165/version622d6505-d65e-46db-b6c3-a43052925343, disabled provider/identity/end0,330/512/active0, expired grants/revoked guest, empty schedules,18 preserved historical tables and21 unchanged migrations.0001–0021 immutable, none pending.
+
+Same-date gate accepted; single-session and different-date remain. Existing autonomous approval covers two remaining new flights within carried limits/deadline20:30. Source code unchanged for next shape; update release prior version, docs and exact-source CI/artifact before sealing flight3. Exclude all prior attempts/bookings including33/34. No full-suite rerun solely for metadata; relevant checks and all required final-source CI remain.
+
 ## Campaign flight1 closed — 12 October2026
 
 Packet dea4fe21baae is consumed. Sourcea206106 passed all three CI38226503628 gates and artifact11736683975 validation, applied0021 preserving history and reached signed closeBatch for batch6/bookings31/32. First closure validation failed creation.require_confirm/missing; root object count2 and bookings object count2. Entry/key semantics were not retained. No readback/link/payment/cancellation/retry followed. Both booking keys remain retained; finalization is unknown locally.

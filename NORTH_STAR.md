@@ -1,5 +1,9 @@
 # North Star: dependable customer booking and quick rebooking
 
+## Same-date native acceptance passed — 12 October2026
+
+Flight2 completed same-date native integration: bookings33/34 in batch7, exact invoice26/S$176/tax0, both signed confirmed booking reads, authoritative unpaid invoice and one native checkout link retained unopened. Current contract correction is accepted for this shape; single-session and different-date gates remain pending. Independently closed17:32:35Singapore at330/512/active0. Two flights remain, deadline20:30. Next: exact-source metadata checkpoint/CI and the new single-session flight, then different-date acceptance if within bounds. Historical unknowns remain preserved; no payment/browser/webhook/production acceptance is inferred.
+
 ## Native campaign flight1 — closure contract correction, 12 October2026
 
 Flight1 passed both intermediate receipts and retained exact bookings31/32 in batch6, then stopped on the closeBatch envelope at creation.require_confirm/missing. Its bookings field was an object with two entries; no entry values or map-key semantics were retained. Native acceptance remains pending. Carry281/512/active0, three remaining flights/six booking dispatches maximum and20:30Singapore deadline. Applied0001–0021 are now immutable. Continue the fixed acceptance checklist through a separate invoice-based closure validator, exact-source CI and the next sealed packet; never repeat batch6 closure or touch its records. Service Contracts and Journey own the contract/evidence.
