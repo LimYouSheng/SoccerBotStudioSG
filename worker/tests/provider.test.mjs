@@ -2629,3 +2629,142 @@ test("finite webhook subscription cap stops before create and preserves recovery
     await f.mf.dispose();
   }
 });
+
+async function structureGrant(f, change = {}, expiry = Date.now() + 120000) {
+  const token = await f.grant(expiry, "native_field_discovery");
+  await f.db
+    .prepare(
+      "UPDATE developer_operations SET result_json=? WHERE capability_hash=?",
+    )
+    .bind(
+      JSON.stringify({
+        kind: "native-webhook-structure",
+        sourceRevision: "e".repeat(40),
+        accountId: config.vars.DEPLOYMENT_ACCOUNT_ID,
+        startingUsed: 0,
+        maxCalls: 6,
+        ...change,
+      }),
+      createHash("sha256").update(token).digest("hex"),
+    )
+    .run();
+  return token;
+}
+test("webhook structure inspection reads one account list and exposes types without assuming the active flag representation", async () => {
+  const f = await fixture({
+    secrets: { SOURCE_REVISION: "e".repeat(40), PROVIDER_CALL_CEILING: "640" },
+    respond(request) {
+      if (new URL(request.url).pathname === "/admin/webhooks") {
+        assert.equal(request.method, "GET");
+        return Response.json([
+          {
+            id: 99,
+            url: "https://private-destination.invalid/secret",
+            event: "new_booking",
+            is_active: true,
+            changed: "private-timestamp",
+            privateContact: "private-value",
+          },
+        ]);
+      }
+    },
+  });
+  try {
+    await f.sql(
+      "INSERT INTO budget(campaign,used) VALUES('developer-20261008',455)",
+    );
+    const token = await structureGrant(f, { startingUsed: 455 }),
+      result = await f.call(token, "POST", "native_field_discovery");
+    assert.equal(result.body.state, "complete");
+    assert.equal(result.body.result.evidence, "subscription_structure_only");
+    assert.equal(result.body.result.normalized, false);
+    assert.equal(f.calls.length, 5);
+    assert.equal(result.body.result.accounting.used, 460);
+    const row = result.body.result.representation.entries[0];
+    assert.deepEqual(row.fields.find((x) => x.key === "is_active").value, {
+      type: "boolean",
+    });
+    assert.doesNotMatch(
+      JSON.stringify(result),
+      /private-|new_booking|synthetic-admin-token/,
+    );
+    await f.call(token, "POST", "native_field_discovery");
+    assert.equal(f.calls.length, 5);
+    assert.equal(
+      f.calls.filter((x) => x.url.endsWith("/admin/webhooks")).length,
+      1,
+    );
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("webhook structure inspection refuses changed source budget scope and expired one-use authority before transport", async () => {
+  for (const change of [
+    { sourceRevision: "f".repeat(40) },
+    { accountId: "foreign" },
+    { startingUsed: 1 },
+    { maxCalls: 7 },
+    { url: "https://unapproved.invalid" },
+  ]) {
+    const f = await fixture({
+      secrets: {
+        SOURCE_REVISION: "e".repeat(40),
+        PROVIDER_CALL_CEILING: "640",
+      },
+    });
+    try {
+      const token = await structureGrant(f, change);
+      assert.equal(
+        (await f.call(token, "POST", "native_field_discovery")).body.state,
+        "blocked",
+      );
+      assert.equal(f.calls.length, 0);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+  const f = await fixture({ secrets: { SOURCE_REVISION: "e".repeat(40) } });
+  try {
+    const token = await structureGrant(f, {}, Date.now() - 1);
+    assert.equal(
+      (await f.call(token, "POST", "native_field_discovery")).status,
+      401,
+    );
+    assert.equal(f.calls.length, 0);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("webhook structure inspection bounds nested diagnostics and never interprets an unknown envelope as subscription acceptance", async () => {
+  const f = await fixture({
+    secrets: { SOURCE_REVISION: "e".repeat(40) },
+    respond(request) {
+      if (new URL(request.url).pathname === "/admin/webhooks")
+        return Response.json({
+          data: Array.from({ length: 40 }, () => ({
+            id: 987,
+            url: "private-url",
+            event: "private-event",
+            is_active: "private-flag",
+            privateContact: "private-contact",
+          })),
+          unknown: "private-root",
+        });
+    },
+  });
+  try {
+    const result = await f.call(
+      await structureGrant(f),
+      "POST",
+      "native_field_discovery",
+    );
+    assert.equal(result.body.state, "complete");
+    assert.equal(result.body.result.normalized, false);
+    const raw = JSON.stringify(result.body.result.representation);
+    assert.ok(raw.length < 6000);
+    assert.doesNotMatch(raw, /private-|987/);
+    assert.equal(f.calls.length, 5);
+  } finally {
+    await f.mf.dispose();
+  }
+});

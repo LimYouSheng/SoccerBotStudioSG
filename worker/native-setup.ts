@@ -123,3 +123,48 @@ export async function subscriptionSnapshot(raw: unknown) {
   }
   return subscriptions;
 }
+
+// Account response diagnostics only. Retain field names/types, never IDs, URLs,
+// event values, secrets or contacts. This is not normalized subscription proof.
+export function webhookSubscriptionStructure(raw: unknown): unknown {
+  const known = new Set([
+    "id",
+    "url",
+    "event",
+    "is_active",
+    "changed",
+    "items",
+    "data",
+    "results",
+    "total",
+    "count",
+    "page",
+  ]);
+  let remaining = 64;
+  const inspect = (value: unknown, depth: number): unknown => {
+    remaining--;
+    if (value === null) return { type: "null" };
+    if (Array.isArray(value)) {
+      const entries: unknown[] = [];
+      if (depth < 2)
+        for (const entry of value.slice(0, 8)) {
+          if (remaining <= 0) break;
+          entries.push(inspect(entry, depth + 1));
+        }
+      return { type: "array", count: value.length, entries };
+    }
+    if (typeof value !== "object") return { type: typeof value };
+    const entries = Object.entries(value),
+      fields: { key: string; value: unknown }[] = [];
+    if (depth < 3)
+      for (const [key, child] of entries.slice(0, 16)) {
+        if (remaining <= 0) break;
+        fields.push({
+          key: known.has(key) ? key : "redacted",
+          value: inspect(child, depth + 1),
+        });
+      }
+    return { type: "object", count: entries.length, fields };
+  };
+  return inspect(raw, 0);
+}
