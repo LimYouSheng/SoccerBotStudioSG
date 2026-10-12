@@ -871,6 +871,101 @@ test("native batch reserves once finalizes all sessions and cannot repeat across
   assert.equal((await call("orchestrate", data)).requests, 0);
   assert.equal((await call("stored-signature", data)).status, 200);
 });
+test("native missing batch echoes retain the created ID signature and exact final booking set", async () => {
+  for (const echo of ["missing", null]) {
+    for (const finalState of [
+      "valid",
+      "foreign-ids",
+      "missing-invoice",
+      "wrong-total",
+      "requires-confirmation",
+    ]) {
+      const data = await prepared(true, true);
+      const batchReceipts = data.creation.bookings.map((booking) => {
+        const receipt = {
+          require_confirm: true,
+          invoice: null,
+          batch_hash: "synthetic-batch-hash",
+          bookings: [structuredClone(booking)],
+        };
+        if (echo === null) receipt.batch_id = null;
+        return receipt;
+      });
+      if (finalState === "foreign-ids") {
+        for (const booking of data.creation.bookings)
+          booking.id = String(Number(booking.id) + 100);
+        for (const line of data.creation.invoice.lines) {
+          line.booking_ids = line.booking_ids.map((id) => Number(id) + 100);
+          for (const booking of line.bookings)
+            booking.id = Number(booking.id) + 100;
+        }
+      }
+      if (finalState === "missing-invoice") data.creation.invoice = null;
+      if (finalState === "wrong-total") data.creation.invoice.amount = 88;
+      if (finalState === "requires-confirmation")
+        data.creation.require_confirm = true;
+      const result = await call("orchestrate", { ...data, batchReceipts });
+      assert.deepEqual(
+        result.sent.map((r) => r.kind),
+        ["batch-create", "book", "book", "batch-close"],
+        JSON.stringify(result),
+      );
+      for (const request of result.sent.filter(
+        (r) => r.kind === "book" || r.kind === "batch-close",
+      ))
+        assert.equal(request.batchId, "601");
+      assert.equal(
+        result.sent.at(-1).signature,
+        createHash("md5")
+          .update("601synthetic-batch-hashsynthetic-signing-secret")
+          .digest("hex"),
+      );
+      assert.equal(
+        result.result.state,
+        finalState === "valid" ? "associated" : "recovery_required",
+      );
+      assert.equal(result.result.paymentAvailable, false);
+      const row = await db
+        .prepare("SELECT association_json FROM attempts WHERE id=?")
+        .bind(data.scope.attemptId)
+        .first();
+      assert.equal(row.association_json !== null, finalState === "valid");
+      assert.equal(
+        (await call("orchestrate", { ...data, batchReceipts })).requests,
+        0,
+      );
+    }
+  }
+});
+
+test("native missing batch echo still requires a valid unchanged batch hash before closure", async () => {
+  for (const failure of ["missing", "malformed", "changed"]) {
+    const data = await prepared(true, true);
+    const batchReceipts = data.creation.bookings.map((booking) => ({
+      require_confirm: true,
+      invoice: null,
+      batch_hash: "synthetic-batch-hash",
+      bookings: [structuredClone(booking)],
+    }));
+    if (failure === "missing") delete batchReceipts[0].batch_hash;
+    if (failure === "malformed") batchReceipts[0].batch_hash = {};
+    if (failure === "changed")
+      batchReceipts[1].batch_hash = "synthetic-foreign-hash";
+    const result = await call("orchestrate", { ...data, batchReceipts });
+    assert.equal(result.result.state, "recovery_required");
+    assert.equal(result.result.paymentAvailable, false);
+    assert.deepEqual(result.validation, {
+      field: "creation.batch_hash",
+      problem: failure === "changed" ? "mismatch" : failure,
+    });
+    assert.equal(result.sent.filter((r) => r.kind === "batch-close").length, 0);
+    assert.equal(
+      (await call("orchestrate", { ...data, batchReceipts })).requests,
+      0,
+    );
+  }
+});
+
 test("native lost batch closure keeps all original references and withholds payment without replay", async () => {
   const data = await prepared(true);
   const first = await call("orchestrate", {
@@ -2464,7 +2559,6 @@ test("native batch and client metadata diagnostics retain known effects without 
   for (const [field, value, problem] of [
     ["client_hash", null, "missing"],
     ["client_hash", { secret: "sensitive-marker" }, "malformed"],
-    ["batch_id", null, "missing"],
     ["batch_id", "sensitive-marker", "malformed"],
     ["batch_id", 602, "mismatch"],
     ["batch_hash", null, "missing"],

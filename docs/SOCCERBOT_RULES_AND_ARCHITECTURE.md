@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Batch association from retained creation identity — 12 October2026
+
+The local experiment replaces the mandatory intermediate batch_id echo with the documented retained-createBatch identity. The server creates and journals that ID, supplies it to every book request and signs closure using that same ID and the validated, unchanged batch hash. A supplied non-null echo must parse and match; no recurring alias, response-derived replacement ID or fabricated hash is accepted. Only successful final normalization and equality with the complete retained booking-ID set can establish an association. Identity, selected sessions, invoice/money/payment and no-replay boundaries remain.
+
+This change is supported by the actual missing/null echo and the documented multiple-booking sequence, plus synthetic positive/negative experiments. It does not prove current batch_hash representation, successful native finalization or payment. No live operation occurs here. Deployed4671f37/version63a25341 remains independently closed at196/224/active0;0001–0019 immutable, no pending migration, original12October16:18:56Singapore deadline unchanged.
+
 ## Follow-up evidence and accepted boundary — 12 October2026
 
 The approved224-ceiling experiment executed on4671f37. Its first intermediate receipt passed session/customer/time/booking-key and first client-signature validation, then failed creation.batch_id/missing. Missing denotes absent or null. This narrows the unresolved contract to batch association; it does not authorize accepting a booking into a batch without a supported membership check. Batch hash, complete-set finalization, invoice/payment and checkout acceptance remain unproved. No validator relaxation follows from this checkpoint.

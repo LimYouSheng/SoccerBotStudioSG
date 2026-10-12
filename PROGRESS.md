@@ -1,5 +1,11 @@
 # SoccerBotStudioSG current progress
 
+## Current task — synthetic batch-membership experiment, 12 October2026
+
+YS asked to start an experiment. Rechecked clean6759773/remote PR21 and the closed196/224 ledger evidence. Public createBatch/book docs and provider staff sequence specify carrying the ID from createBatch into book and signed closeBatch. Current adapter already retains that ID and verifies the finalized booking set; a mandatory intermediate echo adds an unsupported presence requirement demonstrated by the latest live failure. No new account or Cloudflare request occurred.
+
+The new regression failed on old source at creation.batch_id/missing. Correction makes only nullish intermediate batch_id echoes optional, while malformed/conflicting supplied echoes still reject. Tests verify both books and signed closure retain the created ID, missing/malformed/changed hashes stop before closure, and foreign final IDs or invalid invoice/confirmation/total never create an association or payment authority. Replay remains blocked. Full Worker verification passed241/241 with zero failures/skips; strict types, source/policy, affected lint/format and diff checks passed. Exact final-source CI remains required. Batch hash representation and full native acceptance remain unproved live; no migration, deployment, new booking or budget extension. Deployed4671f37/version63a25341 remains closed at196/224/active0 with12 ordinary/16 reserved and original16:18:56Singapore deadline.
+
 ## Current task — follow-up experiment identified missing batch echo, 12 October2026
 
 Approved packet a14dfea95559 executed exact4671f37 from all-green CI38217379501/artifact11732905946. Migration0019 applied and independently preserved all historical rows/foreign keys;0001–0019 immutable, none pending. Availability162→171; protected checkout171→196. First book passed native session normalization and first client_hash parsing, then stopped at creation.batch_id/missing (absent or null). Batch4/booking28/key retained; recovery_required, paymentAvailable false, grant blocked. No second book, closeBatch, link, cancellation or post-failure provider read. Earlier bookings25/26/27 and attempts untouched. Batch hash/finalization/payment acceptance remain unproved.

@@ -90,6 +90,8 @@
   "native multi-session invoice joins every booking irrespective of provider response order",
   "native multi-session rejects missing duplicate foreign and financially inconsistent invoice lines",
   "native batch reserves once finalizes all sessions and cannot repeat across adapter instances",
+  "native missing batch echoes retain the created ID signature and exact final booking set",
+  "native missing batch echo still requires a valid unchanged batch hash before closure",
   "native lost batch closure keeps all original references and withholds payment without replay",
   "native guest batch binds only the new client receipt and signs later sessions without a directory lookup",
   "native guest creation rejects mixed client receipts and retains a known booking when its client hash is missing",

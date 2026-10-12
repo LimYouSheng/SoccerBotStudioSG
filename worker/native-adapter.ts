@@ -206,12 +206,18 @@ export function nativeBookingOperations(options: {
       bookingIds.push(key.bookingId);
       if (batchId) {
         const batch = nativeRecord(response.body, "creation");
-        const returnedId = providerId(batch.batch_id, "creation.batch_id");
+        // Multiple booking uses the ID retained from createBatch. An optional
+        // receipt echo must agree; signed closure and its exact booking set
+        // establish the association before payment becomes available.
+        const returnedId =
+          batch.batch_id == null
+            ? undefined
+            : providerId(batch.batch_id, "creation.batch_id");
         const returnedHash = nativeHash(
           batch.batch_hash,
           "creation.batch_hash",
         );
-        if (returnedId !== batchId)
+        if (returnedId !== undefined && returnedId !== batchId)
           rejectNative(
             "creation.batch_id",
             "mismatch",

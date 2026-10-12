@@ -1,5 +1,9 @@
 # SoccerBotStudioSG engineering
 
+## Batch-association local experiment — 12 October
+
+YS requested the next experiment. Existing live packet is consumed and196/224 leaves12 ordinary calls; no new live trial or budget increase is made. Service Contracts now records the evidence-backed association rule: use the trusted createBatch ID in each request and signed closure, validate a supplied batch_id echo if present, retain strict batch_hash continuity and require final exact booking membership/invoice checks. No alias or invented hash. Local regression reproduces the observed missing-echo failure before correction. Complete changed checks, docs and final-source PR21 CI; deployed4671f37/version63a25341 stays closed and0001–0019 immutable. Original16:18:56Singapore deadline persists.
+
 ## Latest experiment executed and closed — 12 October
 
 YS approved exact packet a14dfea95559 with “approved, go”. Source4671f37 deployed,0019 applied with preservation; all0001–0019 now immutable, none pending. First new book passed intermediate session/client/key checks, then failed creation.batch_id/missing (absent or null). Batch4/booking28 retained; no second book, closeBatch, link, cancellation or payment. Do not remove the batch-membership guard or infer a replacement field without evidence; batch_hash and later stages remain unproved. Packet consumed.
