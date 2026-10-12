@@ -137,7 +137,9 @@ try {
     .run();
   const grants = (await db.prepare("SELECT * FROM developer_operations").all())
     .results;
-  assert.deepEqual(manifest.pendingRemoteMigrations, []);
+  assert.deepEqual(manifest.pendingRemoteMigrations, [
+    "0022_webhook_capture.sql",
+  ]);
   // Old-state compatibility remains tested locally, never re-applied remotely.
   for (const name of names.slice(5, 8)) await migrate(name);
   const appliedEight = {
@@ -256,6 +258,43 @@ try {
         .all()
     ).results,
     retainedNative,
+  );
+  // The pending capture migration must preserve every applied table and start closed.
+  const appliedTables = (
+    await db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> '_cf_METADATA' ORDER BY name",
+      )
+      .all()
+  ).results.map((row) => row.name);
+  const appliedSnapshots = new Map();
+  for (const table of appliedTables)
+    appliedSnapshots.set(
+      table,
+      (await db.prepare(`SELECT * FROM "${table}" ORDER BY rowid`).all())
+        .results,
+    );
+  await migrate("0022_webhook_capture.sql");
+  for (const table of appliedTables)
+    assert.deepEqual(
+      (await db.prepare(`SELECT * FROM "${table}" ORDER BY rowid`).all())
+        .results,
+      appliedSnapshots.get(table),
+    );
+  for (const table of ["webhook_capture_windows", "webhook_receipts"])
+    assert.equal(
+      (await db.prepare(`SELECT count(*) n FROM "${table}"`).first()).n,
+      0,
+    );
+  assert.equal(
+    (
+      await mf.dispatchFetch(`${origin}/api/provider/webhook`, {
+        method: "POST",
+        body: "{}",
+        headers: { "content-type": "application/json" },
+      })
+    ).status,
+    503,
   );
   assert.deepEqual(
     (await db.prepare("PRAGMA foreign_key_check").all()).results,
