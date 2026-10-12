@@ -98,7 +98,10 @@ const manifest = {
   identityDelivery: "disabled",
   providerAccess: "disabled",
   campaignEndMs: 0,
-  pendingRemoteMigrations: ["0022_webhook_capture.sql"],
+  pendingRemoteMigrations: [
+    "0022_webhook_capture.sql",
+    "0023_webhook_subscription_grants.sql",
+  ],
   priorWorkerVersion: "d9fa3712-f536-43e8-b7ad-ad882fdd031f",
   acceptance:
     profile.name === "live-email"

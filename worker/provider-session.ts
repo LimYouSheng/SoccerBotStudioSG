@@ -191,7 +191,9 @@ export class ProviderSession {
       request.kind === "payment-link" ||
       request.kind === "batch-create" ||
       request.kind === "batch-close" ||
-      request.kind === "booking-cancel"
+      request.kind === "booking-cancel" ||
+      request.kind === "webhook-create" ||
+      request.kind === "webhook-delete"
     )
       throw new ApiError(503, "native_write_grant_unavailable");
     signal?.throwIfAborted();
@@ -242,13 +244,21 @@ export class ProviderSession {
         "batch-close",
         "payment-link",
         "booking-cancel",
+        "webhook-create",
+        "webhook-delete",
       ].includes(request.kind)
     )
       throw new ApiError(503, "provider_operation_unavailable");
     await assertGranted();
     await this.identity(env, control);
     const secrets = this.bindScope(env);
-    const family = request.kind === "payment-link" ? "admin" : "public";
+    const family = [
+      "payment-link",
+      "webhook-create",
+      "webhook-delete",
+    ].includes(request.kind)
+      ? "admin"
+      : "public";
     const token = this.tokens.get(family);
     if (!token || token.until <= Date.now())
       throw new ApiError(503, "provider_auth_expired");

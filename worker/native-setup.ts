@@ -79,34 +79,7 @@ export async function inspectNativeSetup(
     stage = "webhook-subscriptions";
     raw = undefined;
     raw = (await exchange({ kind: "webhook-subscriptions" })).body;
-    const entries = z
-      .array(
-        z.object({
-          id: z.union([z.string(), z.number()]),
-          event: events,
-          is_active: z.union([z.literal(0), z.literal(1)]),
-          url: z
-            .url()
-            .refine((url) =>
-              ["https:", "http:"].includes(new URL(url).protocol),
-            ),
-        }),
-      )
-      .max(64)
-      .parse(raw);
-    const subscriptions = [];
-    const ids = new Set<string>();
-    for (const entry of entries) {
-      const id = providerId(entry.id);
-      if (ids.has(id)) throw new ApiError(503, "setup_subscription_duplicate");
-      ids.add(id);
-      subscriptions.push({
-        id,
-        event: entry.event,
-        active: entry.is_active === 1,
-        destinationSha256: await digest(entry.url),
-      });
-    }
+    const subscriptions = await subscriptionSnapshot(raw);
     return { verified: true as const, hours, subscriptions };
   } catch (error) {
     return {
@@ -119,4 +92,34 @@ export async function inspectNativeSetup(
       representation: shape(raw),
     };
   }
+}
+
+export async function subscriptionSnapshot(raw: unknown) {
+  const entries = z
+    .array(
+      z.object({
+        id: z.union([z.string(), z.number()]),
+        event: events,
+        is_active: z.union([z.literal(0), z.literal(1)]),
+        url: z
+          .url()
+          .refine((url) => ["https:", "http:"].includes(new URL(url).protocol)),
+      }),
+    )
+    .max(64)
+    .parse(raw);
+  const subscriptions = [];
+  const ids = new Set<string>();
+  for (const entry of entries) {
+    const id = providerId(entry.id);
+    if (ids.has(id)) throw new ApiError(503, "setup_subscription_duplicate");
+    ids.add(id);
+    subscriptions.push({
+      id,
+      event: entry.event,
+      active: entry.is_active === 1,
+      destinationSha256: await digest(entry.url),
+    });
+  }
+  return subscriptions;
 }

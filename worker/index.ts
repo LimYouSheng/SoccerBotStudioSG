@@ -24,7 +24,7 @@ import {
   clearAccessCookie,
 } from "./access";
 import { confirmation, checkoutContext } from "./confirmation";
-import { ApiError, policy, unwrapRpcOutcome } from "./policy";
+import { ApiError, digest, policy, unwrapRpcOutcome } from "./policy";
 import { verifyBindings } from "./bindings";
 import { traced, instrumentStorage, traceStatus } from "./diagnostics";
 import { developerOperation } from "./developer-operation";
@@ -225,6 +225,26 @@ export default {
                   attemptId,
                   cookie: request.headers.get("cookie") || "",
                 },
+                correlationId,
+              ),
+            ),
+          );
+        }
+        const subscriptionOperation =
+          /^\/api\/developer\/webhook-(create|cleanup)$/.exec(url.pathname);
+        if (subscriptionOperation) {
+          if (request.method !== "POST")
+            throw new ApiError(405, "operation_unavailable");
+          const bearer = request.headers.get("authorization") || "";
+          if (!/^Bearer [a-f0-9]{64}$/.test(bearer))
+            throw new ApiError(401, "operator_access_denied");
+          return json(
+            unwrapRpcOutcome(
+              await env.COORDINATOR.getByName(
+                coordinatorName,
+              ).webhookSubscription(
+                await digest(bearer.slice(7)),
+                subscriptionOperation[1] === "create" ? "create" : "cleanup",
                 correlationId,
               ),
             ),

@@ -1,5 +1,13 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Approved technical payment/webhook campaign — 13 October 2026
+
+YS approved proposal `f26137bba0a4c4066024af27546d511b43050e3324b29e488dec84bb57a4ccd2` and separately extended only its time bounds: latest start **09:05**, final closure **09:30 Singapore on 13 October**. This supersedes earlier statements that no successor authority exists. Each flight still requires tested source, all three exact-source CI gates, verified artifact, a sealed execution/closure packet and independent closure. Campaign approval replaces separate packet confirmations only within this envelope.
+
+Carry provider443, management208, Worker94, deployments21, attempts4, conservative book dispatches7, unopened links4 and migrations1. At most two flights,160 new provider calls (maximum603, configured ceiling640,16 recovery calls untouched),104 management,48 direct Worker,8 deployments,2 attempts,3 book dispatches,2 unopened links,2 new guests and2 additive migrations. Per flight:80 provider,52 management (12 closure reserve),24 Worker (8 closure reserve),4 deployments,20 minutes and at least5 minutes closure headroom. At most2 temporary new_booking subscriptions, deleting only those created here;32 distinct captured receipts in total,16 per window. One optional cron for at most3 minutes with one-use known-attempt readback. Provider deliveries/retries and native booking notifications are separately provider-controlled; no email/siteverify test.
+
+Use Nabil3/service2 on15October at/after15:40 Singapore, fresh whole-session availability and ordinary48-hour lead. No date substitution or schedule edits. Stop a flight at its first failure or unknown outcome; only bounded closure may follow. No successor after unresolved effects. No owner payment/browser/device acceptance, checkout-link opening, charge/refund/cancellation, old-record mutation, replay, secret changes, merge or production work.
+
 ## Payment and callback boundaries — 13 October 2026
 
 Owner direction now prioritizes server-side payment/webhook acceptance and stops before owner-controlled acceptance. PR21 is merged; accepted native creation and unopened handoff remain the baseline. A checking deadline ends polling authority, not the shared domain's ability to recognize fresh, complete, valid paid evidence. The protected HTTP reader must use that domain decision even after the deadline, retaining authentication and reporting zero remaining checks. It must not refresh providers or confirm invalid/cancelled bookings.

@@ -1,5 +1,21 @@
 # SoccerBotStudio — Service Contracts
 
+## Approved technical payment/webhook campaign — 13 October 2026
+
+YS approved proposal `f26137bba0a4c4066024af27546d511b43050e3324b29e488dec84bb57a4ccd2` and separately extended only its time bounds: latest start **09:05**, final closure **09:30 Singapore on 13 October**. This supersedes earlier statements that no successor authority exists. Each flight still requires tested source, all three exact-source CI gates, verified artifact, a sealed execution/closure packet and independent closure. Campaign approval replaces separate packet confirmations only within this envelope.
+
+Carry provider443, management208, Worker94, deployments21, attempts4, conservative book dispatches7, unopened links4 and migrations1. At most two flights,160 new provider calls (maximum603, configured ceiling640,16 recovery calls untouched),104 management,48 direct Worker,8 deployments,2 attempts,3 book dispatches,2 unopened links,2 new guests and2 additive migrations. Per flight:80 provider,52 management (12 closure reserve),24 Worker (8 closure reserve),4 deployments,20 minutes and at least5 minutes closure headroom. At most2 temporary new_booking subscriptions, deleting only those created here;32 distinct captured receipts in total,16 per window. One optional cron for at most3 minutes with one-use known-attempt readback. Provider deliveries/retries and native booking notifications are separately provider-controlled; no email/siteverify test.
+
+Use Nabil3/service2 on15October at/after15:40 Singapore, fresh whole-session availability and ordinary48-hour lead. No date substitution or schedule edits. Stop a flight at its first failure or unknown outcome; only bounded closure may follow. No successor after unresolved effects. No owner payment/browser/device acceptance, checkout-link opening, charge/refund/cancellation, old-record mutation, replay, secret changes, merge or production work.
+
+## Finite webhook subscription lifecycle
+
+`POST /api/developer/webhook-create` and `POST /api/developer/webhook-cleanup` accept no body and separate private operator capabilities. Additive0023 preserves all old native grants, permits the explicit640 ceiling and starts with an empty subscription-grant table. Exact source/account/company/origin/window and carried budget are checked before admission and every physical request. Existing account DO, ProviderSession and transport own all traffic. A grant permits at most20 physical calls within its flight's80-call bound; no recovery reserve is used.
+
+Create durably claims once, reads the active subscription snapshot, refuses an existing campaign destination or five new_booking entries, then reserves an uncertain create before POST. Acceptance requires exactly one fresh matching ID and an unchanged prior snapshot. Cleanup independently reads and matches that ID (or the unique new destination against the retained baseline after an uncertain create), reserves DELETE once, then proves the original snapshot restored. An uncertain DELETE is never repeated. An unresolved create with no uniquely identified new subscription cannot be declared closed. Only IDs/event/active/destination digest are retained; response bodies, tokens and contact values are not operator results. A204 delete response is accepted as transport completion, with fresh readback still required.
+
+This supports capture only. Actual payload mapping, callback-driven durable recovery and the no-return live proof remain pending; owner-controlled paid settlement and customer browser acceptance remain separate.
+
 ## Payment correction and authenticated webhook capture — 13 October 2026
 
 **Scope:** YS requests technical payment/webhook acceptance before owner-controlled acceptance. This increment fixes one payment decision defect and prepares payload discovery; it does not mark the reconciliation task below complete. Exact source CI and actual provider evidence remain separate gates. PR21 merged as383cc2e with independent main CI38276366243 passed; no successor merge is authorized.

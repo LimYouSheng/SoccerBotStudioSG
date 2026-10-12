@@ -135,6 +135,8 @@ export type NativeExchange = (
 ) => Promise<{ body: unknown; receivedAtMs: number }>;
 export type NativeRequest =
   | { kind: "webhook-subscriptions" }
+  | { kind: "webhook-create"; origin: string }
+  | { kind: "webhook-delete"; subscriptionId: string }
   | {
       kind: "working-hours";
       from: string;
@@ -264,6 +266,25 @@ export async function providerRequest(
       break;
     case "native": {
       if (!native) throw new ApiError(503, "provider_operation_unavailable");
+      if (native.kind === "webhook-create") {
+        const origin = z
+          .literal("https://soccerbot-dev.limyousheng-94.workers.dev")
+          .parse(native.origin);
+        url = "https://user-api-v2.simplybook.me/admin/webhooks";
+        method = "POST";
+        body = JSON.stringify({
+          url: origin + "/api/provider/webhook",
+          event: "new_booking",
+        });
+        break;
+      }
+      if (native.kind === "webhook-delete") {
+        url =
+          "https://user-api-v2.simplybook.me/admin/webhooks/" +
+          providerId(native.subscriptionId);
+        method = "DELETE";
+        break;
+      }
       if (native.kind === "webhook-subscriptions") {
         url = "https://user-api-v2.simplybook.me/admin/webhooks";
         method = "GET";
@@ -457,6 +478,10 @@ export async function providerRequest(
             ? "provider_auth_failed"
             : "provider_http_failed",
         );
+      }
+      if (native?.kind === "webhook-delete" && response.status === 204) {
+        complete = true;
+        return null;
       }
       if (
         !response.headers

@@ -2366,3 +2366,266 @@ test("native availability and preparation cross the real HTTP coordinator bounda
     await f.mf.dispose();
   }
 });
+
+const webhookOrigin = "https://soccerbot-dev.limyousheng-94.workers.dev";
+async function subscriptionFixture({
+  entries = [],
+  createFailure = false,
+  deleteFailure = false,
+  maximum = 80,
+  changeAfterCreate = false,
+} = {}) {
+  let records = structuredClone(entries),
+    creates = 0,
+    deletes = [];
+  const f = await fixture({
+    full: true,
+    secrets: {
+      APP_ORIGIN: webhookOrigin,
+      SOURCE_REVISION: "d".repeat(40),
+      PROVIDER_CALL_CEILING: "640",
+    },
+    respond(request, body) {
+      const path = new URL(request.url).pathname;
+      if (path === "/admin/webhooks" && request.method === "GET")
+        return Response.json(records);
+      if (path === "/admin/webhooks" && request.method === "POST") {
+        creates++;
+        assert.deepEqual(body, {
+          url: webhookOrigin + "/api/provider/webhook",
+          event: "new_booking",
+        });
+        records.push({
+          id: 99,
+          event: body.event,
+          url: body.url,
+          is_active: 1,
+        });
+        if (changeAfterCreate) records[0] = { ...records[0], is_active: 0 };
+        return createFailure
+          ? new Response("unknown", { status: 502 })
+          : Response.json({ arbitrary: "not-used-as-identity" });
+      }
+      if (path === "/admin/webhooks/99" && request.method === "DELETE") {
+        deletes.push("99");
+        if (deleteFailure) return new Response("unknown", { status: 502 });
+        records = records.filter((entry) => String(entry.id) !== "99");
+        return new Response(null, { status: 204 });
+      }
+    },
+  });
+  const window = crypto.randomUUID(),
+    create = "c".repeat(64),
+    cleanup = "e".repeat(64),
+    now = Date.now();
+  const hash = (value) => createHash("sha256").update(value).digest("hex");
+  await f.db
+    .prepare(
+      "INSERT INTO webhook_capture_windows VALUES(?,?,?,?,?,?,?,?,?,'open')",
+    )
+    .bind(
+      window,
+      "d".repeat(40),
+      config.vars.DEPLOYMENT_ACCOUNT_ID,
+      "synthetic-developer",
+      "developer",
+      webhookOrigin,
+      now - 1000,
+      now + 120000,
+      16,
+    )
+    .run();
+  await f.db
+    .prepare(
+      "INSERT INTO webhook_subscription_grants(window_id,create_hash,cleanup_hash,starting_used,maximum_used) VALUES(?,?,?,0,?)",
+    )
+    .bind(window, hash(create), hash(cleanup), maximum)
+    .run();
+  return {
+    ...f,
+    window,
+    records: () => records,
+    creates: () => creates,
+    deletes,
+    async manage(action, token = action === "create" ? create : cleanup) {
+      const response = await f.mf.dispatchFetch(
+        webhookOrigin + "/api/developer/webhook-" + action,
+        {
+          method: "POST",
+          headers: { origin: webhookOrigin, authorization: "Bearer " + token },
+        },
+      );
+      return { status: response.status, body: await response.json() };
+    },
+    row: () =>
+      f.db
+        .prepare("SELECT * FROM webhook_subscription_grants WHERE window_id=?")
+        .bind(window)
+        .first(),
+  };
+}
+test("finite webhook subscription preserves prior destinations and deletes only its freshly proven ID", async () => {
+  const prior = [
+    {
+      id: 7,
+      event: "new_booking",
+      url: "https://prior.invalid/hook",
+      is_active: 1,
+    },
+  ];
+  const f = await subscriptionFixture({ entries: prior });
+  try {
+    const created = await f.manage("create");
+    assert.equal(created.status, 200);
+    assert.equal(created.body.verified, true);
+    assert.equal(created.body.state, "active");
+    const row = await f.row();
+    assert.equal(row.subscription_id, "99");
+    assert.equal(row.calls_used, 7);
+    const closed = await f.manage("cleanup");
+    assert.equal(closed.body.verified, true);
+    assert.equal(closed.body.state, "closed");
+    assert.deepEqual(f.records(), prior);
+    assert.deepEqual(f.deletes, ["99"]);
+    assert.equal(f.creates(), 1);
+    const count = f.calls.length;
+    assert.equal((await f.manage("create")).status, 503);
+    assert.equal((await f.manage("cleanup")).status, 503);
+    assert.equal(f.calls.length, count);
+    assert.doesNotMatch(
+      JSON.stringify([created, closed, await f.row()]),
+      /prior\.invalid|X-Token|synthetic-admin-token/,
+    );
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("finite webhook subscription refuses sixth event and preexisting campaign destination", async () => {
+  for (const entries of [
+    Array.from({ length: 5 }, (_, i) => ({
+      id: i + 1,
+      event: "new_booking",
+      url: `https://prior.invalid/${i}`,
+      is_active: 1,
+    })),
+    [
+      {
+        id: 7,
+        event: "change_booking",
+        url: webhookOrigin + "/api/provider/webhook",
+        is_active: 1,
+      },
+    ],
+  ]) {
+    const f = await subscriptionFixture({ entries });
+    try {
+      assert.equal((await f.manage("create")).body.verified, false);
+      assert.equal(f.creates(), 0);
+      assert.deepEqual(f.records(), entries);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+test("finite webhook subscription closes admission for foreign source, company, expired and unknown capabilities", async () => {
+  for (const field of [
+    "source_revision",
+    "company_login",
+    "expires_ms",
+    "unknown",
+  ]) {
+    const f = await subscriptionFixture();
+    try {
+      if (field !== "unknown")
+        await f.db
+          .prepare(`UPDATE webhook_capture_windows SET ${field}=? WHERE id=?`)
+          .bind(
+            field === "expires_ms"
+              ? Date.now() - 1
+              : field === "source_revision"
+                ? "f".repeat(40)
+                : "foreign-company",
+            f.window,
+          )
+          .run();
+      const response = await f.manage(
+        "create",
+        field === "unknown" ? "f".repeat(64) : undefined,
+      );
+      assert.equal(response.status, 503);
+      assert.equal(f.calls.length, 0);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+test("finite webhook subscription unknown create cannot replay and cleanup requires fresh exact baseline", async () => {
+  const f = await subscriptionFixture({ createFailure: true });
+  try {
+    assert.equal((await f.manage("create")).body.state, "create_unknown");
+    assert.equal(f.creates(), 1);
+    const count = f.calls.length;
+    assert.equal((await f.manage("create")).status, 503);
+    assert.equal(f.calls.length, count);
+    // A provider HTTP failure invokes the existing account cooldown. Preserve it;
+    // source proof here validates the durable effect and no-replay boundary.
+    assert.equal((await f.row()).subscription_id, null);
+    assert.equal((await f.row()).state, "create_unknown");
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("finite webhook subscription simultaneous create consumes exactly one durable write claim", async () => {
+  const f = await subscriptionFixture();
+  try {
+    const values = await Promise.all([f.manage("create"), f.manage("create")]);
+    assert.equal(values.filter((v) => v.body.verified).length, 1);
+    assert.equal(f.creates(), 1);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("finite webhook subscription changed prior entry blocks acceptance and never deletes old IDs", async () => {
+  const f = await subscriptionFixture({
+    entries: [
+      {
+        id: 7,
+        event: "new_booking",
+        url: "https://prior.invalid/hook",
+        is_active: 1,
+      },
+    ],
+    changeAfterCreate: true,
+  });
+  try {
+    assert.equal((await f.manage("create")).body.state, "create_unknown");
+    assert.equal((await f.manage("cleanup")).body.verified, false);
+    assert.deepEqual(f.deletes, []);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("finite webhook subscription failed deletion is retained and cannot dispatch a second DELETE", async () => {
+  const f = await subscriptionFixture({ deleteFailure: true });
+  try {
+    assert.equal((await f.manage("create")).body.verified, true);
+    assert.equal((await f.manage("cleanup")).body.state, "delete_unknown");
+    const count = f.calls.length;
+    assert.equal((await f.manage("cleanup")).status, 503);
+    assert.equal(f.calls.length, count);
+    assert.deepEqual(f.deletes, ["99"]);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("finite webhook subscription cap stops before create and preserves recovery reserve", async () => {
+  const f = await subscriptionFixture({ maximum: 5 });
+  try {
+    assert.equal((await f.manage("create")).body.verified, false);
+    assert.equal(f.calls.length, 5);
+    assert.equal(f.creates(), 0);
+    assert.equal((await f.row()).calls_used, 5);
+  } finally {
+    await f.mf.dispose();
+  }
+});

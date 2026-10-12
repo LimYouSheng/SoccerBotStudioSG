@@ -139,6 +139,7 @@ try {
     .results;
   assert.deepEqual(manifest.pendingRemoteMigrations, [
     "0022_webhook_capture.sql",
+    "0023_webhook_subscription_grants.sql",
   ]);
   // Old-state compatibility remains tested locally, never re-applied remotely.
   for (const name of names.slice(5, 8)) await migrate(name);
@@ -275,13 +276,18 @@ try {
         .results,
     );
   await migrate("0022_webhook_capture.sql");
+  await migrate("0023_webhook_subscription_grants.sql");
   for (const table of appliedTables)
     assert.deepEqual(
       (await db.prepare(`SELECT * FROM "${table}" ORDER BY rowid`).all())
         .results,
       appliedSnapshots.get(table),
     );
-  for (const table of ["webhook_capture_windows", "webhook_receipts"])
+  for (const table of [
+    "webhook_capture_windows",
+    "webhook_receipts",
+    "webhook_subscription_grants",
+  ])
     assert.equal(
       (await db.prepare(`SELECT count(*) n FROM "${table}"`).first()).n,
       0,

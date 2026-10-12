@@ -1,3 +1,4 @@
+import { manageWebhookSubscription } from "./webhook-subscriptions";
 import {
   executeNativeCheckout,
   customerNativeAvailability,
@@ -211,6 +212,24 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
   }
   // A one-use operator grant owns this read-only calendar range. Customer
   // grants still admit only their two exact dates after operator selection.
+  async webhookSubscription(
+    capabilityHash: string,
+    action: "create" | "cleanup",
+    correlationId: string,
+  ) {
+    return traced(correlationId, "coordinator", () =>
+      rpcOutcome(() =>
+        manageWebhookSubscription(
+          this.env,
+          this.provider,
+          this.providerControl(),
+          () => this.providerAccounting(),
+          capabilityHash,
+          action,
+        ),
+      ),
+    );
+  }
   async nativeDiscoveryProbe(
     rawScope: unknown,
     expiresMs: number,
