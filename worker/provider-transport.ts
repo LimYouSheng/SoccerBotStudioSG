@@ -134,6 +134,13 @@ export type NativeExchange = (
   signal?: AbortSignal,
 ) => Promise<{ body: unknown; receivedAtMs: number }>;
 export type NativeRequest =
+  | {
+      kind: "availability-range";
+      serviceId: string;
+      instructorId: string;
+      from: string;
+      to: string;
+    }
   | { kind: "batch-create" }
   | { kind: "batch-close"; batchId: string; signature: string }
   | { kind: "catalogue-services" }
@@ -273,6 +280,26 @@ export async function providerRequest(
           Number(providerId(native.batchId)),
           "batch_multiple_booking",
           native.signature,
+        ];
+      } else if (native.kind === "availability-range") {
+        const from = Date.parse(native.from + "T00:00:00+08:00");
+        const to = Date.parse(native.to + "T00:00:00+08:00");
+        if (
+          !/^\d{4}-\d{2}-\d{2}$/.test(native.from) ||
+          !/^\d{4}-\d{2}-\d{2}$/.test(native.to) ||
+          !Number.isFinite(from) ||
+          !Number.isFinite(to) ||
+          to < from ||
+          to - from > 14 * 86400000
+        )
+          throw new ApiError(503, "provider_date_invalid");
+        rpcMethod = "getStartTimeMatrix";
+        params = [
+          native.from,
+          native.to,
+          Number(providerId(native.serviceId)),
+          Number(providerId(native.instructorId)),
+          1,
         ];
       } else if (
         native.kind === "catalogue-services" ||

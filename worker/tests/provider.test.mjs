@@ -833,6 +833,140 @@ test("operator readiness reports coordinator bindings with carried accounting an
     }
   }
 });
+
+async function calendarFixture({
+  matrix,
+  scopeChanges = {},
+  used = 373,
+  ...options
+} = {}) {
+  const from = new Date(Date.now() + 4 * 86400000).toISOString().slice(0, 10);
+  const to = new Date(Date.parse(from) + 14 * 86400000)
+    .toISOString()
+    .slice(0, 10);
+  const scope = {
+    kind: "native-calendar",
+    sourceRevision: "c".repeat(40),
+    accountId: config.vars.DEPLOYMENT_ACCOUNT_ID,
+    serviceId: "2",
+    instructorId: "3",
+    from,
+    to,
+    startingUsed: used,
+    maxCalls: 6,
+    ...scopeChanges,
+  };
+  const f = await fixture({
+    ...options,
+    secrets: { SOURCE_REVISION: "c".repeat(40), PROVIDER_CALL_CEILING: "512" },
+    respond: async (request, body) => {
+      if (new URL(request.url).pathname === "/") {
+        assert.equal(body.method, "getStartTimeMatrix");
+        assert.deepEqual(body.params, [from, to, 2, 3, 1]);
+        return Response.json({
+          id: body.id,
+          result: matrix
+            ? matrix(from, to)
+            : { [from]: ["10:40:00", "09:00:00"], [to]: [] },
+          error: null,
+        });
+      }
+    },
+  });
+  await f.sql(
+    "INSERT OR REPLACE INTO budget(campaign,used,cooldown_ms) VALUES('developer-20261008',?,0)",
+    used,
+  );
+  const token = await f.grant(Date.now() + 120000, discoveryOperation);
+  await f.db
+    .prepare(
+      "UPDATE developer_operations SET result_json=? WHERE capability_hash=?",
+    )
+    .bind(
+      JSON.stringify(scope),
+      createHash("sha256").update(token).digest("hex"),
+    )
+    .run();
+  return { ...f, token, scope };
+}
+test("calendar probe binds source account range and carried budget and never replays", async () => {
+  const f = await calendarFixture();
+  try {
+    const r = await f.call(f.token, "POST", discoveryOperation);
+    assert.equal(r.body.state, "complete");
+    assert.deepEqual(r.body.result.dates, [
+      { date: f.scope.from, starts: ["09:00:00", "10:40:00"] },
+    ]);
+    assert.deepEqual(r.body.result.accounting, {
+      used: 378,
+      active: 0,
+      ceiling: 512,
+      recoveryReserve: 16,
+    });
+    assert.equal(f.calls.length, 5);
+    assert.deepEqual(
+      (await f.call(f.token, "POST", discoveryOperation)).body.result,
+      r.body.result,
+    );
+    assert.equal(f.calls.length, 5);
+    assert.doesNotMatch(
+      JSON.stringify(r),
+      /synthetic-public-secret|synthetic-admin-secret|must-not-escape/,
+    );
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("calendar probe rejects foreign stale overbroad and recovery-reserve scopes before dispatch", async () => {
+  for (const options of [
+    { scopeChanges: { sourceRevision: "d".repeat(40) } },
+    { scopeChanges: { accountId: "foreign" } },
+    { scopeChanges: { startingUsed: 372 } },
+    { scopeChanges: { from: "2026-02-30" } },
+    { scopeChanges: { from: "2020-01-01" } },
+    { scopeChanges: { to: "2099-01-01" } },
+    { scopeChanges: { serviceId: "3" } },
+    { scopeChanges: { maxCalls: 7 } },
+    { scopeChanges: { extra: true } },
+    { used: 491 },
+  ]) {
+    const f = await calendarFixture(options);
+    try {
+      assert.equal(
+        (await f.call(f.token, "POST", discoveryOperation)).body.state,
+        "blocked",
+      );
+      assert.equal(f.calls.length, 0);
+      await f.call(f.token, "POST", discoveryOperation);
+      assert.equal(f.calls.length, 0);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+test("calendar probe rejects malformed out-of-range duplicate and invalid times without replay", async () => {
+  for (const matrix of [
+    () => [],
+    () => ({ "2099-01-01": ["09:00:00"] }),
+    (from) => ({ [from]: { starts: ["09:00:00"] } }),
+    (from) => ({ [from]: ["09:00:00", "09:00:00"] }),
+    (from) => ({ [from]: ["24:00:00"] }),
+    (from) => ({ [from]: ["09:00:01"] }),
+  ]) {
+    const f = await calendarFixture({ matrix });
+    try {
+      const r = await f.call(f.token, "POST", discoveryOperation);
+      assert.equal(r.body.state, "blocked");
+      assert.equal(r.body.result.accounting.used, 378);
+      assert.equal(Object.hasOwn(r.body.result, "dates"), false);
+      await f.call(f.token, "POST", discoveryOperation);
+      assert.equal(f.calls.length, 5);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+
 const syntheticField = {
   name: "synthetic_players",
   title: "Number of players",

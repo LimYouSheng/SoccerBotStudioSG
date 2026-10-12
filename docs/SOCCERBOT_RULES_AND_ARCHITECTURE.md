@@ -1,5 +1,13 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Actual calendar discovery before the final native gate — 12 October2026
+
+Read-only calendar discovery uses the existing one-use operator capability and coordinator/transport owners. A source/account-bound trusted scope fixes service2/instructor3, a maximum15-day date range,180-second expiry and at most6 physical calls from an exact carried counter while preserving16 recovery calls. Only validated date/time offers are returned. A calendar result never grants booking authority: a separate short-lived native grant must bind exactly two selected dates, and normal fresh availability, capacity, contact, price and write-boundary checks remain mandatory. No new schema, schedule changes, historical provider reads or booking replay.
+
+## Native single proof accepted and closed — 12 October2026
+
+Accepted shapes: same-date, single. Pending: different-date. The existing exact allocation/invoice/signed-readback authority chain passed the new shape without application-code changes. Keep scope, financial/membership, no-replay and protected-link guards unchanged. Historical unknowns are preserved, not resolved by a later successful attempt. Prepare the remaining different-date flight under existing approval, after release metadata, exact-source CI/artifact and packet validation. One approved flight remains; no extra authority is inferred.
+
 ## Availability-only stop and actual-attempt accounting — 12 October2026
 
 Count the resource named in owner authority: a new booking attempt requires a prepare dispatch; an availability-only stop creates no attempt. Unknown prepare outcomes still count conservatively. Keep every provider/request/deployment counter charged, preserve the original and reconciled ledgers, and independently close even zero-booking flights. The exact owner approval says “up to4 new attempts and8 booking dispatches”. Earlier local wording conflated attempts with flights. This availability-only stop created no attempt, so two of four actual attempts remain. Correct that bookkeeping interpretation without extending resource authority: original512/496/16 provider bounds,208 management/96 Worker/16 aggregate deployments, per-flight64/52/24/4/20minutes, one migration already consumed and20:30Singapore deadline are unchanged. Cap execution at five flights total including this one availability-only stop, and at four actual prepare dispatches (unknown prepare outcomes count). Original approval/hash and pre-reconciliation ledger are retained; private campaign-authority-v2 links them. Only the proved zero-effect flight releases its reserved book/link allowances; provider/request/deployment counters never decrease.

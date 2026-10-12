@@ -1,5 +1,13 @@
 # North Star: dependable customer booking and quick rebooking
 
+## Actual calendar discovery before the final native gate — 12 October2026
+
+Single and same-date native integration have passed full invoice association, signed confirmed/unpaid readback and unopened native link. Different-date acceptance is the final native gate. Use one bounded read-only15–29October calendar probe to discover real offered dates; select and bind exactly two dates before preparation. Stop closed if the provider has fewer than two eligible dates. The later owner-operated payment/browser/webhook flight remains separate.
+
+## Native single proof accepted and closed — 12 October2026
+
+Accepted shapes: same-date, single. Pending: different-date. Prepare the remaining different-date flight under existing approval, after release metadata, exact-source CI/artifact and packet validation. One approved flight remains; no extra authority is inferred. Historical unknown effects remain preserved; no paid/browser/webhook/client-production acceptance is inferred.
+
 ## Availability-only stop and actual-attempt accounting — 12 October2026
 
 Flight3 consumed packet8e6824f42e2b on ee2853a (all-three CI38230887077/artifact11739086074).16October returned zero offers. The grant cache and request ledger prove no prepare/native POST, no attempt and no booking dispatch. No application-code failure or retry is inferred. Access was independently closed17:49:25Singapore: sourceee2853a/versionecf0c3fe-8f06-4776-8d32-9c2238f64fbb,339/512/active0, disabled provider/identity/end0, expired grants/revoked guest, denied401, empty schedules,18 preserved historical tables and21 unchanged migrations.

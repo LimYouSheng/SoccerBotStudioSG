@@ -1,5 +1,19 @@
 # SoccerBotStudioSG current progress
 
+## Actual calendar discovery before the final native gate — 12 October2026
+
+Current actual campaign totals:373 provider,128 management,57 direct Worker,12 deployments;4 flights/3 actual attempts,5 conservative book allowances,1 consumed migration. One actual attempt remains, with original512 total/16 recovery and20:30Singapore deadline. Calendar probe source/test/CI preparation is underway; no live window is open. Flight4 closure used immutable version binding proof after two charged settings-read timeouts. Different-date acceptance remains pending.
+
+## Native single proof accepted and closed — 12 October2026
+
+Flight4 consumed packet50e2a1263ac7 on24153c3, all-three CI38232933900/artifact11740055253. single proof at15 October 14:00Singapore: bookings35, invoice27, 1 signed confirmed booking reads, authoritative unpaid invoice, SGD88/tax0 and one native link retained unopened. Attempt375bbc00-297f-43fd-9671-2b0961aa5979 is observed. No payment, cancellation or replay.
+
+Independent closure18:14:22Singapore verified source24153c3/version6978f217-4486-4c78-aded-202f3a6bb022, provider/identity disabled/end0,373/512/active0, expired new grants/revoked guest, denied401, empty schedules,18 preserved historical tables and21 unchanged migrations.0001–0021 immutable; none pending.
+
+Actual34 provider/34 management/16 direct Worker/3 deployments. Campaign4/5 flights,3/4 actual attempts,5/8 book allowance conservatively charged,128/208 management,57/96 Worker,12/16 deployments,1/1 migration. Ordinary calls remaining123,16 recovery untouched. Cumulative879 measured management plus unknown Dashboard, at least74 deployments plus unknown; email8/siteverify8 unchanged, native notifications unmeasured. Deadline20:30 and all other carried bounds persist.
+
+Accepted shapes: same-date, single. Pending: different-date. Prepare the remaining different-date flight under existing approval, after release metadata, exact-source CI/artifact and packet validation. One approved flight remains; no extra authority is inferred. Private work/native-acceptance/flight04/execution owns acceptance and closure receipts.
+
 ## Availability-only stop and actual-attempt accounting — 12 October2026
 
 Flight3 consumed packet8e6824f42e2b on ee2853a (all-three CI38230887077/artifact11739086074).16October returned zero offers. The grant cache and request ledger prove no prepare/native POST, no attempt and no booking dispatch. No application-code failure or retry is inferred. Access was independently closed17:49:25Singapore: sourceee2853a/versionecf0c3fe-8f06-4776-8d32-9c2238f64fbb,339/512/active0, disabled provider/identity/end0, expired grants/revoked guest, denied401, empty schedules,18 preserved historical tables and21 unchanged migrations.

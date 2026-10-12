@@ -1,5 +1,25 @@
 # SoccerBotStudio — Service Contracts
 
+## Actual calendar discovery before the final native gate — 12 October2026
+
+The protected native-field-discovery operation admits a non-null strict native-calendar scope only through a server-installed one-use grant: exact source/account, service2/instructor3, from/to within14 days apart and48-hour lead, startingUsed and maxCalls6. It calls documented getStartTimeMatrix(from,to,eventId,unitId,count1) after bounded identity verification, validates every returned date and unique HH:mm:00 time, and returns only offered dates/times plus accounting. Malformed/foreign/expired/over-budget scopes block; repeat POST returns retained result without dispatch. Existing null-scope field discovery is unchanged. Final campaign flight scans15–29October2026 once, chooses the earliest two distinct offered dates (15October only at/after14:50; later dates at/after09:00), installs exact-date native authority, and rechecks each date through normal customer availability. Fewer than two eligible dates stops before preparation. Maximum64 provider calls includes this probe; all original request/deployment/attempt/deadline bounds persist.
+
+## Native single proof accepted and closed — 12 October2026
+
+Flight4 consumed packet50e2a1263ac7 on24153c3, all-three CI38232933900/artifact11740055253. single proof at15 October 14:00Singapore: bookings35, invoice27, 1 signed confirmed booking reads, authoritative unpaid invoice, SGD88/tax0 and one native link retained unopened. Attempt375bbc00-297f-43fd-9671-2b0961aa5979 is observed. No payment, cancellation or replay.
+
+| Native integration gate | Status                                                                                                     |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------- |
+| single                  | Accepted with full invoice/signed readback/unopened link                                                   |
+| same-date               | Accepted with full invoice/signed readback/unopened link                                                   |
+| different-date          | Pending                                                                                                    |
+| Failure boundaries      | 246 passing Worker cases; observed failures durable/no replay; historical unknown effects remain preserved |
+| Delivery and closure    | Each executed source passed all three CI gates; every flight independently closed with history preserved   |
+
+Independent closure18:14:22Singapore verified source24153c3/version6978f217-4486-4c78-aded-202f3a6bb022, provider/identity disabled/end0,373/512/active0, expired new grants/revoked guest, denied401, empty schedules,18 preserved historical tables and21 unchanged migrations.0001–0021 immutable; none pending.
+
+Accepted shapes: same-date, single. Pending: different-date. Prepare the remaining different-date flight under existing approval, after release metadata, exact-source CI/artifact and packet validation. One approved flight remains; no extra authority is inferred. Combined owner-operated payment/browser/webhook acceptance remains separate.
+
 ## Availability-only stop and actual-attempt accounting — 12 October2026
 
 Flight3 consumed packet8e6824f42e2b on ee2853a (all-three CI38230887077/artifact11739086074).16October returned zero offers. The grant cache and request ledger prove no prepare/native POST, no attempt and no booking dispatch. No application-code failure or retry is inferred. Access was independently closed17:49:25Singapore: sourceee2853a/versionecf0c3fe-8f06-4776-8d32-9c2238f64fbb,339/512/active0, disabled provider/identity/end0, expired grants/revoked guest, denied401, empty schedules,18 preserved historical tables and21 unchanged migrations.

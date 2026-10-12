@@ -10,6 +10,8 @@ import {
   recoverNativeAssociation,
 } from "./native-adapter";
 import { providerSecrets } from "./provider-transport";
+import { bookingWallTime } from "./provider-normalization";
+import { offeredStarts } from "./prebooking";
 import {
   residualGrant,
   recoverNativeResidual,
@@ -201,6 +203,121 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
             error instanceof ApiError
               ? error.code
               : "provider_proof_incomplete",
+          accounting: this.providerAccounting(),
+        };
+      }
+    });
+  }
+  // A one-use operator grant owns this read-only calendar range. Customer
+  // grants still admit only their two exact dates after operator selection.
+  async nativeCalendarProbe(
+    rawScope: unknown,
+    expiresMs: number,
+    correlationId: string,
+  ) {
+    return traced(correlationId, "coordinator", async () => {
+      const p = policy(this.env),
+        now = Date.now();
+      const parsed = z
+        .strictObject({
+          kind: z.literal("native-calendar"),
+          sourceRevision: z.string().regex(/^[a-f0-9]{40}$/),
+          accountId: z.string().min(1).max(128),
+          serviceId: z.literal("2"),
+          instructorId: z.literal("3"),
+          from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+          startingUsed: z.number().int().nonnegative().safe(),
+          maxCalls: z.literal(6),
+        })
+        .safeParse(rawScope);
+      if (!parsed.success)
+        throw new ApiError(503, "calendar_scope_unavailable");
+      const scope = parsed.data;
+      const from = bookingWallTime(scope.from + " 00:00:00", "Asia/Singapore");
+      const to = bookingWallTime(scope.to + " 00:00:00", "Asia/Singapore");
+      const initial = this.providerAccounting();
+      if (
+        p.ENVIRONMENT !== "developer" ||
+        p.PROVIDER_ACCESS !== "trusted-reads" ||
+        p.CAMPAIGN_END_MS <= now ||
+        scope.sourceRevision !== String(this.env.SOURCE_REVISION) ||
+        scope.accountId !== p.DEPLOYMENT_ACCOUNT_ID ||
+        !Number.isSafeInteger(expiresMs) ||
+        expiresMs <= now ||
+        expiresMs > now + 180000 ||
+        expiresMs > p.CAMPAIGN_END_MS ||
+        from - now < 48 * 3600000 ||
+        to < from ||
+        to - from > 14 * 86400000 ||
+        initial.used !== scope.startingUsed ||
+        initial.active !== 0 ||
+        scope.startingUsed + scope.maxCalls > p.PROVIDER_CALL_CEILING - 16
+      )
+        throw new ApiError(503, "calendar_scope_unavailable");
+      const control = this.providerControl();
+      let count = 0,
+        last = 0;
+      const bounded = {
+        ...control,
+        reserve: async () => {
+          const delay = Math.max(0, last + 300 - Date.now());
+          if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+          if (
+            Date.now() + 15000 >= Math.min(expiresMs, p.CAMPAIGN_END_MS) ||
+            count >= scope.maxCalls ||
+            this.providerAccounting().used >=
+              scope.startingUsed + scope.maxCalls
+          )
+            throw new ApiError(503, "calendar_scope_exhausted");
+          count++;
+          last = Date.now();
+          return control.reserve();
+        },
+      };
+      try {
+        await this.provider.identity(this.env, bounded);
+        const response = await this.provider.nativeRead(this.env, bounded, {
+          kind: "availability-range",
+          serviceId: scope.serviceId,
+          instructorId: scope.instructorId,
+          from: scope.from,
+          to: scope.to,
+        });
+        if (Date.now() >= expiresMs)
+          throw new ApiError(503, "calendar_scope_expired");
+        const matrix = z.record(z.string(), z.unknown()).parse(response.body);
+        if (Object.keys(matrix).length > 15)
+          throw new ApiError(503, "calendar_representation_unavailable");
+        const dates = Object.keys(matrix)
+          .sort()
+          .map((date) => {
+            const start = bookingWallTime(date + " 00:00:00", "Asia/Singapore");
+            if (start < from || start > to)
+              throw new ApiError(503, "calendar_representation_unavailable");
+            return {
+              date,
+              starts: offeredStarts({ [date]: matrix[date] }, date).sort(),
+            };
+          })
+          .filter((entry) => entry.starts.length > 0);
+        return {
+          verified: true,
+          kind: scope.kind,
+          from: scope.from,
+          to: scope.to,
+          serviceId: scope.serviceId,
+          instructorId: scope.instructorId,
+          dates,
+          accounting: this.providerAccounting(),
+        };
+      } catch (error) {
+        return {
+          verified: false,
+          reason:
+            error instanceof ApiError
+              ? error.code
+              : "calendar_proof_incomplete",
           accounting: this.providerAccounting(),
         };
       }

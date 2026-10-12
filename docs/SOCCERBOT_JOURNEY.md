@@ -1,5 +1,17 @@
 # SoccerBotStudio — Journey
 
+## Actual calendar discovery before the final native gate — 12 October2026
+
+Flight4 accepted single booking35/invoice27; its independent22October availability probe returned zero offers. Two Cloudflare settings GET timeouts during closure were both charged as unknown management reads. Closure was proved through current100% deployment plus immutable version resources/bindings, matched Worker/coordinator readiness,401 denials, empty schedules and full prior-row/migration preservation. No effect or closure write was replayed. Instead of guessing another date, add one bounded calendar range read using the documented getStartTimeMatrix contract (https://help.simplybook.me/wiki/Company_public_service_methods and https://help.simplybook.me/wiki/User_API_guide). Validate actual returned dates/times before binding two dates for the final attempt. This does not imply provider availability exists on another date.
+
+## Native single proof accepted and closed — 12 October2026
+
+Flight4 consumed packet50e2a1263ac7 on24153c3, all-three CI38232933900/artifact11740055253. single proof at15 October 14:00Singapore: bookings35, invoice27, 1 signed confirmed booking reads, authoritative unpaid invoice, SGD88/tax0 and one native link retained unopened. Attempt375bbc00-297f-43fd-9671-2b0961aa5979 is observed. No payment, cancellation or replay.
+
+Independent closure18:14:22Singapore verified source24153c3/version6978f217-4486-4c78-aded-202f3a6bb022, provider/identity disabled/end0,373/512/active0, expired new grants/revoked guest, denied401, empty schedules,18 preserved historical tables and21 unchanged migrations.0001–0021 immutable; none pending.
+
+Accepted shapes: same-date, single. Pending: different-date. Prepare the remaining different-date flight under existing approval, after release metadata, exact-source CI/artifact and packet validation. One approved flight remains; no extra authority is inferred.
+
 ## Availability-only stop and actual-attempt accounting — 12 October2026
 
 Flight3 consumed packet8e6824f42e2b on ee2853a (all-three CI38230887077/artifact11739086074).16October returned zero offers. The grant cache and request ledger prove no prepare/native POST, no attempt and no booking dispatch. No application-code failure or retry is inferred. Access was independently closed17:49:25Singapore: sourceee2853a/versionecf0c3fe-8f06-4776-8d32-9c2238f64fbb,339/512/active0, disabled provider/identity/end0, expired grants/revoked guest, denied401, empty schedules,18 preserved historical tables and21 unchanged migrations.
