@@ -137,7 +137,9 @@ try {
     .run();
   const grants = (await db.prepare("SELECT * FROM developer_operations").all())
     .results;
-  assert.deepEqual(manifest.pendingRemoteMigrations, []);
+  assert.deepEqual(manifest.pendingRemoteMigrations, [
+    "0021_native_grant_ceiling_512.sql",
+  ]);
   // Old-state compatibility remains tested locally, never re-applied remotely.
   for (const name of names.slice(5, 8)) await migrate(name);
   const appliedEight = {
@@ -229,6 +231,19 @@ try {
   await db.prepare("UPDATE native_checkout_grants SET maximum_used=240").run();
   await assert.rejects(
     db.prepare("UPDATE native_checkout_grants SET maximum_used=241").run(),
+  );
+  await migrate("0021_native_grant_ceiling_512.sql");
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT maximum_used FROM native_checkout_grants")
+        .first()
+    ).maximum_used,
+    240,
+  );
+  await db.prepare("UPDATE native_checkout_grants SET maximum_used=496").run();
+  await assert.rejects(
+    db.prepare("UPDATE native_checkout_grants SET maximum_used=497").run(),
   );
   await db
     .prepare("UPDATE native_checkout_grants SET maximum_used=?")

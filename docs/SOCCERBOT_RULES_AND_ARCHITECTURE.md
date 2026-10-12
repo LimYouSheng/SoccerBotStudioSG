@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Acceptance-driven native continuation — 12 October2026
+
+YS requests continued execution against a drafted North Star until native booking is accepted. Keep the original quoted journey and M2/M4/M5 IDs. Completion requires the entire named native acceptance checklist, not successive passing field predicates. Every repair needs endpoint-specific evidence, a reproduced failure and meaningful rejection cases. Improve safe structural diagnostics so a failure records the relevant collection shape/count without retaining raw bodies, contact details or signing material. Never accept first/last/any matching receipt without exact attempt/session membership and uniqueness.
+
+YS approved Service Contracts' finite512/four-flight/eight-booking/20:30Singapore campaign, including automatic execution of each newly sealed packet after exact-source three-gate CI and independent closure. This supersedes AGENTS section5's per-packet confirmation only within those limits; carry238, original start and other campaign bounds without reset. Preserve user-owned browser execution, separate developer-native/paid/webhook/physical/client-production acceptance and all existing identity/capacity/money/no-replay rules. No blanket authorization for payment, cancellation, old-record mutation, merge or production follows from the instruction to execute until accepted. The existing closed ledger persists; the approved20:30Singapore deadline supersedes17:30. Native integration is the current scope; the combined owner-operated paid acceptance flight remains later.
+
 ## Second-response collection boundary observed — 12 October2026
 
 The approved256 trial passed the prior missing batch-echo failure for its first book, including the mandatory first batch hash. It then stopped on the second receipt before retaining a booking key: creation.bookings was an array whose length was not one. Exact count/content were not retained. A cumulative receipt collection is a hypothesis, not established fact; never select the first/last entry or assume a second native ID. Second hash continuity, signed closure, final booking membership/invoice and checkout remain unproved. Preserve unknown writes without replay.

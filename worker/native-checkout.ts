@@ -212,8 +212,20 @@ export async function executeNativeCheckout(options: {
     intent,
   };
   let lastOperation: Parameters<NativeExchange>[0]["kind"] | undefined;
+  const structure = (value: unknown) =>
+    value === undefined
+      ? { kind: "missing" as const }
+      : Array.isArray(value)
+        ? { kind: "array" as const, count: value.length }
+        : value === null
+          ? { kind: "null" as const }
+          : typeof value === "object"
+            ? { kind: "object" as const, count: Object.keys(value).length }
+            : { kind: "primitive" as const };
   let representation:
-    | { kind: "array" | "object" | "primitive" | "null"; count?: number }
+    | (ReturnType<typeof structure> & {
+        bookings?: ReturnType<typeof structure>;
+      })
     | undefined;
   const observeResponse = (
     kind: NonNullable<typeof lastOperation>,
@@ -223,13 +235,20 @@ export async function executeNativeCheckout(options: {
     representation =
       body === undefined
         ? undefined
-        : Array.isArray(body)
-          ? { kind: "array", count: body.length }
-          : body === null
-            ? { kind: "null" }
-            : typeof body === "object"
-              ? { kind: "object", count: Object.keys(body).length }
-              : { kind: "primitive" };
+        : {
+            ...structure(body),
+            ...(kind === "book" || kind === "batch-close"
+              ? {
+                  bookings: structure(
+                    body !== null &&
+                      typeof body === "object" &&
+                      !Array.isArray(body)
+                      ? (body as Record<string, unknown>).bookings
+                      : undefined,
+                  ),
+                }
+              : {}),
+          };
   };
   let diagnostic:
     | {

@@ -871,6 +871,120 @@ test("native batch reserves once finalizes all sessions and cannot repeat across
   assert.equal((await call("orchestrate", data)).requests, 0);
   assert.equal((await call("stored-signature", data)).status, 200);
 });
+test("native batch receipts select the unique new booking from the complete unordered retained set", async () => {
+  for (const reverse of [false, true]) {
+    const data = await prepared(true, true);
+    const batchReceipts = data.creation.bookings.map((booking, index) => ({
+      require_confirm: true,
+      invoice: null,
+      batch_hash: "synthetic-batch-hash",
+      bookings: structuredClone(data.creation.bookings.slice(0, index + 1)),
+    }));
+    if (reverse) batchReceipts[1].bookings.reverse();
+    const result = await call("orchestrate", { ...data, batchReceipts });
+    assert.equal(result.result.state, "associated", JSON.stringify(result));
+    assert.deepEqual(
+      result.sent.map((request) => request.kind),
+      ["batch-create", "book", "book", "batch-close"],
+    );
+    const row = await db
+      .prepare("SELECT association_json FROM attempts WHERE id=?")
+      .bind(data.scope.attemptId)
+      .first();
+    assert.deepEqual(JSON.parse(row.association_json).bookingIds, [
+      "701",
+      "702",
+    ]);
+    for (const [index, id] of [
+      [0, "701"],
+      [1, "702"],
+    ]) {
+      const effect = await db
+        .prepare(
+          "SELECT reference_id FROM session_effects WHERE attempt_id=? AND step=?",
+        )
+        .bind(data.scope.attemptId, `native-booking-key:${index}`)
+        .first();
+      assert.equal(JSON.parse(effect.reference_id).bookingId, id);
+    }
+    assert.equal(
+      (await call("orchestrate", { ...data, batchReceipts })).requests,
+      0,
+    );
+  }
+});
+
+test("native batch receipt sets reject absent duplicate foreign changed and premature members without replay", async () => {
+  for (const failure of [
+    "empty",
+    "only-prior",
+    "duplicate-prior",
+    "duplicate-new",
+    "foreign-prior",
+    "extra",
+    "prior-hash",
+    "prior-customer",
+    "prior-time",
+    "current-time",
+    "premature",
+  ]) {
+    const data = await prepared(true, true);
+    const batchReceipts = data.creation.bookings.map((booking, index) => ({
+      require_confirm: true,
+      invoice: null,
+      batch_hash: "synthetic-batch-hash",
+      bookings: structuredClone(data.creation.bookings.slice(0, index + 1)),
+    }));
+    const receipts = batchReceipts[1].bookings;
+    if (failure === "empty") batchReceipts[1].bookings = [];
+    if (failure === "only-prior") batchReceipts[1].bookings = [receipts[0]];
+    if (failure === "duplicate-prior")
+      receipts[1] = structuredClone(receipts[0]);
+    if (failure === "duplicate-new") receipts[0] = structuredClone(receipts[1]);
+    if (failure === "foreign-prior") receipts[0].id = "799";
+    if (failure === "extra") receipts.push({ ...receipts[1], id: "799" });
+    if (failure === "prior-hash") receipts[0].hash = "synthetic-changed-hash";
+    if (failure === "prior-customer") receipts[0].client_id = "52";
+    if (failure === "prior-time")
+      receipts[0].start_date_time = receipts[1].start_date_time;
+    if (failure === "current-time")
+      receipts[1].start_date_time = receipts[0].start_date_time;
+    if (failure === "premature")
+      batchReceipts[0].bookings = structuredClone(receipts);
+    const result = await call("orchestrate", { ...data, batchReceipts });
+    assert.equal(result.result.state, "recovery_required", failure);
+    assert.equal(result.result.paymentAvailable, false, failure);
+    assert.equal(
+      result.sent.filter((request) => request.kind === "batch-close").length,
+      0,
+      failure,
+    );
+    const row = await db
+      .prepare("SELECT association_json FROM attempts WHERE id=?")
+      .bind(data.scope.attemptId)
+      .first();
+    assert.equal(row.association_json, null, failure);
+    if (
+      ["prior-hash", "prior-customer", "prior-time", "current-time"].includes(
+        failure,
+      )
+    ) {
+      const retained = await db
+        .prepare(
+          "SELECT reference_id FROM session_effects WHERE attempt_id=? AND step='native-booking-key:1'",
+        )
+        .bind(data.scope.attemptId)
+        .first();
+      assert.equal(JSON.parse(retained.reference_id).bookingId, "702", failure);
+    }
+    assert.equal(
+      (await call("orchestrate", { ...data, batchReceipts })).requests,
+      0,
+      failure,
+    );
+  }
+});
+
 test("native missing batch echoes retain the created ID signature and exact final booking set", async () => {
   for (const echo of ["missing", null]) {
     for (const finalState of [
@@ -1370,6 +1484,9 @@ test("native extended grant needs the exact approved ceiling and retains the car
     ["224", 196, 240, false],
     ["256", 196, 240, true],
     ["257", 196, 240, false],
+    ["256", 238, 302, false],
+    ["512", 238, 302, true],
+    ["513", 238, 302, false],
   ]) {
     const data = await prepared(false, true, true);
     await grantNative(data, { startingUsed, maximumUsed });
@@ -1858,6 +1975,72 @@ test("native compensation verifies every cancellation and accepts only an explic
   }
 });
 
+test("native checkout diagnostics retain receipt collection kinds and counts without values", async () => {
+  for (const kind of [
+    "missing",
+    "null",
+    "object",
+    "primitive",
+    "empty",
+    "multiple",
+  ]) {
+    const data = await prepared(false, true, true);
+    await grantNative(data);
+    const receipt = structuredClone(data.creation.bookings[0]);
+    receipt.private_marker = "private-value-must-not-leak";
+    if (kind === "missing") delete data.creation.bookings;
+    if (kind === "null") data.creation.bookings = null;
+    if (kind === "object")
+      data.creation.bookings = {
+        private_marker: "private-value-must-not-leak",
+      };
+    if (kind === "primitive")
+      data.creation.bookings = "private-value-must-not-leak";
+    if (kind === "empty") data.creation.bookings = [];
+    if (kind === "multiple")
+      data.creation.bookings = [receipt, { ...receipt, id: "702" }];
+    const wall = new Date(
+      data.scope.intent.sessions[0].startMs + 8 * 3600000,
+    ).toISOString();
+    reply = nativeProviderReply(data, wall);
+    try {
+      const result = await call("finite-checkout", data);
+      assert.deepEqual(result.result, {
+        attemptId: data.scope.attemptId,
+        state: "recovery_required",
+        paymentAvailable: false,
+      });
+      const row = await db
+        .prepare(
+          "SELECT result_json FROM native_checkout_grants WHERE attempt_id=?",
+        )
+        .bind(data.scope.attemptId)
+        .first();
+      const saved = JSON.parse(row.result_json);
+      assert.deepEqual(
+        saved.diagnostic.representation.bookings,
+        kind === "empty"
+          ? { kind: "array", count: 0 }
+          : kind === "multiple"
+            ? { kind: "array", count: 2 }
+            : kind === "object"
+              ? { kind: "object", count: 1 }
+              : { kind },
+      );
+      assert.equal(saved.diagnostic.validation.field, "creation.bookings");
+      assert.doesNotMatch(
+        row.result_json,
+        /private_marker|private-value|synthetic-booking-hash|guest@example/,
+      );
+      const count = calls.length;
+      assert.equal((await call("finite-checkout", data)).reserved, 0);
+      assert.equal(calls.length, count);
+    } finally {
+      reply = undefined;
+    }
+  }
+});
+
 test("native checkout retains independent execution and cleanup failures privately without replay", async () => {
   const data = await prepared(false, true, true);
   await grantNative(data);
@@ -1901,6 +2084,7 @@ test("native checkout retains independent execution and cleanup failures private
     assert.deepEqual(saved.diagnostic.representation, {
       kind: "object",
       count: Object.keys(data.creation).length,
+      bookings: { kind: "array", count: 1 },
     });
     assert.deepEqual(saved.cleanupDiagnostic.validation, {
       field: "booking.invoice_id",

@@ -1,5 +1,9 @@
 # SoccerBotStudioSG engineering
 
+## Native acceptance North Star requested — 12 October2026
+
+YS requests a drafted North Star and execution until native booking is fully accepted. Source/research/test/PR work proceeds on the existing branch. NORTH_STAR points to the fixed acceptance checklist in Service Contracts; do not equate another field passing with completion. Begin with current second-response collection evidence and precise structural diagnostics. Existing closed238/256/active0, immutable0001–0020 and consumed packet remain unchanged. YS explicitly approved the finite512/four-flight/eight-booking/20:30Singapore campaign in Service Contracts and automatic execution of newly sealed exact-source packets after all three CI gates, replacing section5's separate per-packet confirmation only within this campaign. Native integration comes first; the combined owner-operated payment/acceptance flight remains later. Pending0021 preserves0001–0020; source/default-disabled and carry238 rules persist. No payment/cancellation/old-record/merge/production authority. Stop on acceptance or any limit.
+
 ## Approved256 trial executed and closed — 12 October2026
 
 YS approved exact packet c0916326b895; it is consumed. Source6bc54f7 applied0020 with preservation and reached the second book response. First booking29/batch5 passed the prior batch-echo boundary and first hash validation. Second response failed creation.bookings/mismatch: an array with length other than one; exact count/content were not retained. Second booking reference/outcome remains unknown; no closeBatch/link/payment/cancellation or post-failure provider read. Do not replay or select an arbitrary receipt. Current collection-shape evidence is required before changing the singleton contract.

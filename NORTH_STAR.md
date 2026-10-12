@@ -1,5 +1,17 @@
 # North Star: dependable customer booking and quick rebooking
 
+## Current North Star — complete native-booking acceptance, 12 October2026
+
+YS requested a fixed North Star and continued execution until native booking is accepted. Complete the supported developer-account booking integration, then report each acceptance gate against actual evidence. A succession of narrower validation fixes is progress, not completion. Preserve the overarching quoted customer journey and stable M2/M4/M5 milestones below; YS confirmed native-booking integration first, retaining the later combined payment/webhook/owner-device acceptance flight.
+
+1. Establish the complete current intermediate and finalized provider contracts, starting with the second book response collection. Never infer an unobserved field or choose an arbitrary receipt.
+2. Complete single-session, same-date multi-session and different-date multi-session native creation; retain exact identities and signing material, close each batch once, and validate the complete intended booking set and invoice.
+3. Prove authoritative booking/invoice readback and one protected native checkout link. Preserve customer, service/instructor,40+10 occupancy, fixed price/tax, players1–4 and optional non-blocking comments policy.
+4. Prove unavailable/changed-price/foreign/partial/duplicate/unknown-response protections through meaningful regressions and current-account evidence where safe. Unknown writes must remain durable and must never be replayed to obtain a passing result.
+5. Require exact final-source frontend/backend/live-email CI, preserved history and independently verified closed access after every live flight. Mark native integration accepted only when every applicable gate in Service Contracts has evidence; otherwise name the remaining gap and stop condition.
+
+Execute source, public research, tests, documentation and PR21 work now. YS approved the finite autonomous campaign in Service Contracts:512 cumulative carrying238, four flights/eight booking dispatches maximum, deadline20:30Singapore, exact-source CI/sealed packets and independent closure. This explicitly replaces separate per-packet confirmation within those limits; the existing closed ledger is carried without reset. Do not promise unbounded completion or silently expand cost/time/record authority. Rules and Architecture owns invariants, Service Contracts owns acceptance/operations and Journey owns dated findings. Earlier sections below are historical checkpoints and retained scope context.
+
 ## 11 October — native recovery and compensation source
 
 Returned native IDs/keys survive malformed creation fields and remain candidates until strict readback proves the original scope. Checkout handoff failures enter durable recovery. Separately granted confirmed-unpaid compensation uses signed cancelBooking, fresh complete invoice/subset validation, one-use effects and verified cancellation readback. It blocks possible checkout handoffs, preserves paid/foreign records and missing/unknown replies, never refunds, and consumes at most16 recovery requests under the existing80 cumulative cap. Empty0016 defaults cleanup_allowed=0; applied0001–0014 remain unchanged. No live authority or provider acceptance is claimed.

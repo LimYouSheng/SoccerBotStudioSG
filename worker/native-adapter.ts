@@ -74,6 +74,7 @@ export function nativeBookingOperations(options: {
   let created: ReturnType<typeof normalizeNativeCreation> | undefined;
   const dispatched = new Set<number>();
   const bookingIds: string[] = [];
+  const bookingKeys: ReturnType<typeof normalizeNativeSession>[] = [];
   let batchId: string | undefined;
   let batchHash: string | undefined;
   let nativeCustomerId: string | undefined;
@@ -158,10 +159,36 @@ export function nativeBookingOperations(options: {
       // Retain the returned reference before validating its business fields.
       // This is a recovery candidate, never an accepted association. A missing
       // key still leaves the known ID in the journal without authorizing reads.
-      const receipt = nativeSingle(
-        nativeRecord(response.body, "creation").bookings,
-        "creation.bookings",
-      );
+      const envelope = nativeRecord(response.body, "creation");
+      let receipt: Record<string, unknown>;
+      const priorReceipts: { value: Record<string, unknown>; index: number }[] =
+        [];
+      if (Array.isArray(envelope.bookings) && envelope.bookings.length > 1) {
+        // Batch replies may contain the accumulated set. Accept only all
+        // previously validated IDs plus exactly one new ID, regardless of order.
+        if (!batchId || envelope.bookings.length !== bookingIds.length + 1)
+          rejectNative("creation.bookings", "mismatch");
+        const records = envelope.bookings.map((value) =>
+          nativeRecord(value, "creation.bookings"),
+        );
+        const ids = records.map((value) =>
+          providerId(value.id, "creation.booking.id"),
+        );
+        const newIndexes = ids.flatMap((id, index) =>
+          bookingIds.includes(id) ? [] : [index],
+        );
+        if (
+          new Set(ids).size !== ids.length ||
+          newIndexes.length !== 1 ||
+          bookingIds.some((id) => !ids.includes(id))
+        )
+          rejectNative("creation.bookings", "mismatch");
+        receipt = records[newIndexes[0]];
+        for (const [index, id] of bookingIds.entries())
+          priorReceipts.push({ value: records[ids.indexOf(id)], index });
+      } else {
+        receipt = nativeSingle(envelope.bookings, "creation.bookings");
+      }
       const receiptHash = z
         .string()
         .regex(/^[A-Za-z0-9_-]{8,256}$/)
@@ -185,11 +212,21 @@ export function nativeBookingOperations(options: {
         receiptCustomerId,
       );
       const key = normalizeNativeSession(
-        response.body,
+        { ...envelope, bookings: [receipt] },
         { ...options.scope, nativeCustomerId },
         context.sessionIndex,
         batchId ? "batch-item" : "finalized",
       );
+      for (const prior of priorReceipts) {
+        const checked = normalizeNativeSession(
+          { ...envelope, bookings: [prior.value] },
+          { ...options.scope, nativeCustomerId },
+          prior.index,
+          "batch-item",
+        );
+        if (checked.hash !== bookingKeys[prior.index].hash)
+          rejectNative("creation.booking.hash", "mismatch");
+      }
       nativeCustomerId = key.nativeCustomerId;
       if (
         intent.customerMode === "booking-contact" &&
@@ -204,6 +241,7 @@ export function nativeBookingOperations(options: {
       if (bookingIds.includes(key.bookingId))
         throw new ApiError(409, "native_duplicate_booking");
       bookingIds.push(key.bookingId);
+      bookingKeys.push(key);
       if (batchId) {
         const batch = nativeRecord(response.body, "creation");
         // Multiple booking uses the ID retained from createBatch. An optional
