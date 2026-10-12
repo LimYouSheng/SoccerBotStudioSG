@@ -1,5 +1,13 @@
 # SoccerBotStudioSG current progress
 
+## Current task — native HTTP/RPC diagnosis after verified closure, 12 October 2026
+
+Approved signing amendment is executed and explicitly closed. Encrypted signing binding installed;0015/0016 applied and immutable. Deployed source remains510a1d7, closed version85bcd347-aaf8-48a5-b119-ed85db6400e9. Identity/provider disabled/end0, schedules empty, guest revoked, both new grants expired, every historical row preserved. Zero provider calls/bookings/links/payments/notifications. Availability returned503 before its claim; live cause remains unresolved.
+
+Private receipts: work/native-completion/signing-amendment/execution, including first-failure, upload-resume-failure, closed-verification, closure-final and preservation-verified. Aggregate42 management includes the original2; carried management406 plus unknown Dashboard, deployments>=29 plus unknown, provider15/80/active0 plus historical closed80, email8/bot8. Campaign deadline remains12October16:18:56SGT. Do not reopen grants or replay migrations. Last stage consumption is final, not a fresh allowance.
+
+Source repair now preserves safe native ApiError status/code across RPC and adds a real HTTP/coordinator regression. The valid local journey passes; the foreign-company case first failed with a generic error and now passes with the expected safe code. Unknown internal errors stay generic and denied requests perform no provider work. Updated future release metadata to no pending migrations and the current closed rollback version. Full local Worker gate passed217/217 with zero skips; source, policy, types, lint and formatting passed. Next: exact-head CI/artifact, then prepare a new bounded account proof that diagnoses configuration before booking. No new physical test, merge or live deployment is authorized by this source repair. Detailed internal packets stay private; redacted evidence may be published.
+
 ## Current task — missing deployed signing binding, 12 October 2026
 
 Approved native backend proof stopped after two read-only management requests: required signing binding absent from the developer Worker. No migration, deployment, activation, provider request, booking, checkout link, cancellation, payment or notification occurred. First failure and original ledger are preserved privately under work/native-completion/acceptance. Measured management total366 plus unknown Dashboard; provider last measured15/80 (not freshly queried), deployment lower bound26 plus unknown, email8/bot8 and historical closed80 unchanged.

@@ -1,5 +1,13 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Native amendment executed and closed — 12 October 2026
+
+The owner approved installing the missing encrypted signing binding during the planned closed deployment. Both additive migrations are now applied and historical-row preservation was verified. The sealed native source is deployed; identity/provider access is disabled and campaign end is0. Its exact closed version and private execution ledger are retained in the operator evidence. The new guest is revoked, both new grants are explicitly expired, and schedules remain empty. No provider call, booking, checkout link, cancellation, payment or notification occurred. Native acceptance remains pending after availability failed before its durable read claim.
+
+Measured management total is406 plus unknown Dashboard activity, deployments at least29 plus unknown, and current provider accounting remains15/80 with active0. Historical closed80, email8 and bot8 are unchanged. The amendment's aggregate42 management requests include the two earlier preflight reads;40 new management requests,7 direct Worker requests and3 deployments occurred in the amendment. Migrations0015/0016 join the immutable applied history; future releases declare no pending remote migrations.
+
+A locally reproduced RPC defect discarded safe ApiError identity across the coordinator boundary. The existing policy/coordinator/HTTP owners now carry only the approved status/code in a typed result and reconstruct ApiError at the HTTP boundary; unknown failures remain generic. This improves exact diagnosis without relaxing any source/account/time/price/capacity/admission check. It does not establish the live configuration failure's cause or current-account booking acceptance. The next account proof needs its own final source/artifact and exact finite approval; physical acceptance remains deferred.
+
 ## Native proof preflight status — 12 October 2026
 
 The owner-approved backend proof stopped before mutation because the deployed developer Worker lacks the native signing secret required for signed booking readback and cancellation. The test window never opened. No migration, deployment, provider call, booking, checkout link, notification or payment occurred. The source and sealed release remain510a1d7; all three exact-source CI gates passed. Native provider acceptance and the later combined physical flight remain pending.

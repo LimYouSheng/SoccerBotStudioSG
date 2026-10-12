@@ -37,6 +37,25 @@ export class ApiError extends Error {
     super(code);
   }
 }
+// RPC serializes exceptions without preserving our ApiError prototype. Carry
+// only the same safe status/code already allowed at the HTTP boundary.
+export type RpcOutcome<T> =
+  | { ok: true; value: T }
+  | { ok: false; error: { status: number; code: string } };
+export async function rpcOutcome<T>(
+  operation: () => Promise<T>,
+): Promise<RpcOutcome<T>> {
+  try {
+    return { ok: true, value: await operation() };
+  } catch (error) {
+    if (!(error instanceof ApiError)) throw error;
+    return { ok: false, error: { status: error.status, code: error.code } };
+  }
+}
+export function unwrapRpcOutcome<T>(outcome: RpcOutcome<T>): T {
+  if (!outcome.ok) throw new ApiError(outcome.error.status, outcome.error.code);
+  return outcome.value;
+}
 export async function digest(value: string) {
   return Array.from(
     new Uint8Array(

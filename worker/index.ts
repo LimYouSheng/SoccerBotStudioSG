@@ -23,7 +23,7 @@ import {
   clearAccessCookie,
 } from "./access";
 import { confirmation, checkoutContext } from "./confirmation";
-import { ApiError, policy } from "./policy";
+import { ApiError, policy, unwrapRpcOutcome } from "./policy";
 import { verifyBindings } from "./bindings";
 import { traced, instrumentStorage, traceStatus } from "./diagnostics";
 import { developerOperation } from "./developer-operation";
@@ -191,13 +191,17 @@ export default {
             throw new ApiError(405, "operation_unavailable");
           await authenticate(request, env, Date.now());
           return json(
-            await env.COORDINATOR.getByName(coordinatorName).nativeAvailability(
-              {
-                serviceId: availabilityMatch[1],
-                date: availabilityMatch[2],
-                cookie: request.headers.get("cookie") || "",
-              },
-              correlationId,
+            unwrapRpcOutcome(
+              await env.COORDINATOR.getByName(
+                coordinatorName,
+              ).nativeAvailability(
+                {
+                  serviceId: availabilityMatch[1],
+                  date: availabilityMatch[2],
+                  cookie: request.headers.get("cookie") || "",
+                },
+                correlationId,
+              ),
             ),
           );
         }
@@ -211,12 +215,14 @@ export default {
             throw new ApiError(405, "operation_unavailable");
           await authenticate(request, env, Date.now());
           return json(
-            await env.COORDINATOR.getByName(coordinatorName).nativeCheckout(
-              {
-                attemptId,
-                cookie: request.headers.get("cookie") || "",
-              },
-              correlationId,
+            unwrapRpcOutcome(
+              await env.COORDINATOR.getByName(coordinatorName).nativeCheckout(
+                {
+                  attemptId,
+                  cookie: request.headers.get("cookie") || "",
+                },
+                correlationId,
+              ),
             ),
           );
         }

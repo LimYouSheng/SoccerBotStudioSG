@@ -1471,3 +1471,181 @@ test("scheduled native recovery preserves conflicting paid evidence for manual r
     await f.mf.dispose();
   }
 });
+
+test("native availability and preparation cross the real HTTP coordinator boundary under a finite grant", async () => {
+  const start = Date.now();
+  const end = start + 1200000;
+  const date = new Date(start + 3 * 86400000).toISOString().slice(0, 10);
+  const revision = "c".repeat(40);
+  const f = await fixture({
+    full: true,
+    end,
+    secrets: { SOURCE_REVISION: revision },
+    respond: (_request, body) => {
+      const results = {
+        getEventList: {
+          2: {
+            id: 2,
+            name: "Synthetic Session",
+            duration: "40",
+            is_active: "1",
+            is_public: "1",
+            is_recurring: "0",
+            price: "88",
+            currency: "SGD",
+            unit_map: [2],
+          },
+        },
+        getUnitList: {
+          2: { id: 2, name: "Synthetic Trainer", is_active: "1" },
+        },
+        getStartTimeMatrix: { [date]: ["10:00:00", "10:50:00"] },
+      };
+      if (body && Object.hasOwn(results, body.method))
+        return Response.json({
+          jsonrpc: "2.0",
+          id: body.id,
+          result: results[body.method],
+        });
+    },
+  });
+  try {
+    await f.sql(
+      "INSERT INTO budget(campaign,used) VALUES(?,15)",
+      config.vars.CAMPAIGN_ID,
+    );
+    const guest = await f.mf.dispatchFetch(origin + "/api/access", {
+      method: "POST",
+      headers: { origin },
+    });
+    assert.equal(guest.status, 201);
+    const cookie = guest.headers.get("set-cookie").split(";")[0];
+    const hash = createHash("sha256")
+      .update(cookie.split("=")[1])
+      .digest("hex");
+    const contract = {
+      accountId: config.vars.DEPLOYMENT_ACCOUNT_ID,
+      environmentId: "developer",
+      companyLogin: "synthetic-developer",
+      serviceId: "2",
+      priceMinor: 8800,
+      currency: "SGD",
+      taxMinor: 0,
+      durationMinutes: 40,
+      bufferAfterMinutes: 10,
+      clientLoginRequired: false,
+      providerSchedules: "non-overlapping",
+      confirmedAtMs: start,
+      expiresAtMs: end,
+    };
+    await f.db
+      .prepare(
+        "INSERT INTO native_checkout_grants(capability_hash,source_revision,contract_json,not_before_ms,expires_ms,starting_used,maximum_used,cleanup_allowed,state,available_dates_json) VALUES(?,?,?,?,?,15,64,1,'granted',?)",
+      )
+      .bind(
+        hash,
+        revision,
+        JSON.stringify(contract),
+        start,
+        end,
+        JSON.stringify([date]),
+      )
+      .run();
+    await f.db
+      .prepare(
+        "UPDATE native_checkout_grants SET contract_json=? WHERE capability_hash=?",
+      )
+      .bind(
+        JSON.stringify({ ...contract, companyLogin: "synthetic-foreign" }),
+        hash,
+      )
+      .run();
+    const rejected = await f.mf.dispatchFetch(
+      origin + "/api/booking/availability/2/" + date,
+      { headers: { origin, cookie } },
+    );
+    const rejectedBody = await rejected.json();
+    assert.equal(rejected.status, 503);
+    assert.deepEqual(rejectedBody, {
+      error: "native_account_contract_unavailable",
+    });
+    assert.equal(f.calls.length, 0);
+    assert.equal(
+      (
+        await f.db
+          .prepare(
+            "SELECT read_state FROM native_checkout_grants WHERE capability_hash=?",
+          )
+          .bind(hash)
+          .first()
+      ).read_state,
+      "available",
+    );
+    await f.db
+      .prepare(
+        "UPDATE native_checkout_grants SET contract_json=? WHERE capability_hash=?",
+      )
+      .bind(JSON.stringify(contract), hash)
+      .run();
+    const response = await f.mf.dispatchFetch(
+      origin + "/api/booking/availability/2/" + date,
+      { headers: { origin, cookie } },
+    );
+    const availability = await response.json();
+    assert.equal(
+      response.status,
+      200,
+      JSON.stringify({ availability, logs: f.logs }),
+    );
+    assert.equal(availability.offers.length, 2);
+    const before = f.calls.length;
+    const selection = {
+      key: crypto.randomUUID(),
+      accepted: true,
+      contact: {
+        name: "Synthetic Guest",
+        email: "guest@example.com",
+        phone: "00000000",
+        contactMethod: "email",
+        academy: "Synthetic school",
+      },
+      sessions: availability.offers.map((offer, index) => ({
+        serviceId: offer.serviceId,
+        instructorId: offer.instructorId,
+        startMs: offer.startMs,
+        players: index ? 4 : 1,
+        totalMinor: 8800,
+      })),
+    };
+    const prepared = await f.mf.dispatchFetch(origin + "/api/booking/prepare", {
+      method: "POST",
+      headers: { origin, cookie, "content-type": "application/json" },
+      body: JSON.stringify(selection),
+    });
+    const result = await prepared.json();
+    assert.equal(prepared.status, 201, JSON.stringify(result));
+    assert.equal(result.state, "prepared");
+    assert.equal(f.calls.length, before);
+    const checkout = await f.mf.dispatchFetch(
+      origin + "/api/booking/native/" + result.attemptId,
+      { method: "POST", headers: { origin, cookie } },
+    );
+    assert.equal(checkout.status, 503);
+    assert.deepEqual(await checkout.json(), {
+      error: "native_signing_unavailable",
+    });
+    assert.equal(f.calls.length, before);
+    await f.db.exec("DROP TABLE native_checkout_grants");
+    const unknown = await f.mf.dispatchFetch(
+      origin + "/api/booking/availability/2/" + date,
+      { headers: { origin, cookie } },
+    );
+    assert.equal(unknown.status, 503);
+    assert.deepEqual(await unknown.json(), {
+      error: "temporarily_unavailable",
+    });
+    assert.equal(f.calls.length, before);
+  } finally {
+    await f.mf.dispose();
+  }
+});

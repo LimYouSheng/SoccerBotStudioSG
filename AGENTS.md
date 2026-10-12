@@ -1,5 +1,11 @@
 # SoccerBotStudioSG engineering
 
+## 12 October — signing installed; backend proof stopped before provider dispatch
+
+The approved amendment applied0015/0016 and deployed the sealed native source with the missing encrypted signing binding. Availability then failed before any provider call; no booking or link exists from this proof. The Worker is independently verified disabled/end0, guest revoked, grants explicitly expired, schedules unchanged and all historical rows preserved. The applied migrations are now immutable and must never be replayed.
+
+The next source increment preserves safe ApiError status/code across native HTTP/coordinator RPC while keeping unknown failures generic. A real-route regression covers availability, preparation, denied account scope and missing signing binding without side effects. This repairs an observed diagnostic defect, not the unproven live availability cause. Final CI/release and a newly scoped account proof remain pending; do not reopen the closed packet or label native acceptance complete. Current evidence and consumed counters belong to the three canonical owners/PROGRESS. Detailed execution metadata remains private.
+
 ## 11 October — native recovery and compensation source
 
 Returned native IDs/keys survive malformed creation fields and remain candidates until strict readback proves the original scope. Checkout handoff failures enter durable recovery. Separately granted confirmed-unpaid compensation uses signed cancelBooking, fresh complete invoice/subset validation, one-use effects and verified cancellation readback. It blocks possible checkout handoffs, preserves paid/foreign records and missing/unknown replies, never refunds, and consumes at most16 recovery requests under the existing80 cumulative cap. Empty0016 defaults cleanup_allowed=0; applied0001–0014 remain unchanged. No live authority or provider acceptance is claimed.

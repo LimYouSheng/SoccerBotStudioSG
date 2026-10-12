@@ -12,7 +12,7 @@ import {
 import { providerSecrets } from "./provider-transport";
 import { DurableObject } from "cloudflare:workers";
 import { traced, measure, instrumentStorage } from "./diagnostics";
-import { ApiError, policy } from "./policy";
+import { ApiError, policy, rpcOutcome } from "./policy";
 import { ProviderSession, type ProviderControl } from "./provider-session";
 // One instance per actual provider account. No booking or customer data here.
 export class SoccerBotAccountCoordinator extends DurableObject<Env> {
@@ -276,24 +276,26 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       () => undefined,
       () => undefined,
     );
-    return pending;
+    return rpcOutcome(() => pending);
   }
   async nativeCheckout(
     scope: { attemptId: string; cookie: string },
     correlationId: string,
   ) {
-    return traced(correlationId, "coordinator", () =>
-      executeNativeCheckout({
-        request: new Request(this.env.APP_ORIGIN, {
-          headers: { cookie: scope.cookie },
+    return rpcOutcome(() =>
+      traced(correlationId, "coordinator", () =>
+        executeNativeCheckout({
+          request: new Request(this.env.APP_ORIGIN, {
+            headers: { cookie: scope.cookie },
+          }),
+          env: this.env,
+          attemptId: scope.attemptId,
+          provider: this.provider,
+          control: this.providerControl(),
+          recoveryControl: this.providerControl(true),
+          accounting: () => this.providerAccounting(),
         }),
-        env: this.env,
-        attemptId: scope.attemptId,
-        provider: this.provider,
-        control: this.providerControl(),
-        recoveryControl: this.providerControl(true),
-        accounting: () => this.providerAccounting(),
-      }),
+      ),
     );
   }
   async nativeRecovery(

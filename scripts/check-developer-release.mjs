@@ -137,10 +137,7 @@ try {
     .run();
   const grants = (await db.prepare("SELECT * FROM developer_operations").all())
     .results;
-  assert.deepEqual(manifest.pendingRemoteMigrations, [
-    "0015_contact_profiles.sql",
-    "0016_native_checkout_grants.sql",
-  ]);
+  assert.deepEqual(manifest.pendingRemoteMigrations, []);
   // Old-state compatibility remains tested locally, never re-applied remotely.
   for (const name of names.slice(5, 8)) await migrate(name);
   const appliedEight = {
@@ -168,7 +165,8 @@ try {
       (await db.prepare(`SELECT * FROM "${table}" ORDER BY rowid`).all())
         .results,
     );
-  for (const name of manifest.pendingRemoteMigrations) await migrate(name);
+  // Retain additive-upgrade coverage even though these migrations are now applied.
+  for (const name of names.slice(14)) await migrate(name);
   for (const table of priorTables)
     assert.deepEqual(
       (await db.prepare(`SELECT * FROM "${table}" ORDER BY rowid`).all())

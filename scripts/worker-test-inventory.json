@@ -149,6 +149,7 @@
   "operator native readback consumes only its named window and cannot be invoked by guest access",
   "scheduled recovery rejects closed expired future unknown and unsigned windows without provider calls",
   "scheduled native recovery preserves conflicting paid evidence for manual review",
+  "native availability and preparation cross the real HTTP coordinator boundary under a finite grant",
   "recovery scheduling is atomic with dispatch and duplicate logical intent stays unique",
   "concurrent recovery workers acquire one claim and advance the original attempt fence",
   "expired recovery claims reject late completion before and after fenced reclaim",

@@ -1,5 +1,13 @@
 # SoccerBotStudio — Service Contracts
 
+## Native proof observations and safe RPC errors — 12 October 2026
+
+The signing prerequisite is installed and migrations0015/0016 are applied. The finite availability request returned503 before any provider dispatch or durable availability claim. Its original response code was not retained by the operator, and RPC exceptions did not preserve ApiError identity. No native attempt was prepared. Do not infer a particular account/configuration cause from that generic result.
+
+Native availability and checkout RPC now return a typed success value or the same safe ApiError status/code already allowed at the HTTP boundary. The Worker reconstructs only that known error; other exceptions remain generic503 and disclose no storage/provider payload. Real HTTP/coordinator regression proves foreign declared company rejection before provider calls, valid offers/preparation, and missing-signing rejection before native dispatch. Successful preparation returns HTTP201; execution tooling must match the actual route contract.
+
+Cloudflare asset upload returns202 for accepted intermediate buckets and201 with the completion JWT for the final bucket. The first operator's200-only expectation was incorrect. Preserve its receipt and already uploaded content; a bounded content-addressed session recovery continued under the same ledger/deadline without migration replay or new provider authority. D1 parameterized closure statements must be issued separately: the multi-statement bound request returned400, while equivalent individually bound statements succeeded. Explicit grant closure, guest revocation, disabled deployment, empty schedules and historical preservation are verified. These operator repairs do not waive response validation or allow replay of unknown native writes.
+
 ## Deployed signing prerequisite — 12 October 2026
 
 Native proof preflight must verify the required signing binding in the actual developer Worker before migration, provider activation or booking. A ready managed-runtime credential alone is insufficient. The approved preserve-only secret scope cannot install a missing binding. The first backend proof stopped at that prerequisite before any write.
