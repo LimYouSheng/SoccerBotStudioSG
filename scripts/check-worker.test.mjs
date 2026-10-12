@@ -67,6 +67,10 @@ test("rejects provider redirects alternate hosts and unreserved dispatch", () =>
       "https://other.invalid/siteverify",
     ],
     ["user-api-v2.simplybook.me/admin/auth", "other.invalid/admin/auth"],
+    [
+      "user-api-v2.simplybook.me/admin/webhooks",
+      "other.invalid/admin/webhooks",
+    ],
     ['https://user-api.simplybook.me/"', 'https://other.invalid/"'],
     [
       'https://user-api-v2.simplybook.me/admin/invoices/"',

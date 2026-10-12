@@ -967,6 +967,175 @@ test("calendar probe rejects malformed out-of-range duplicate and invalid times 
   }
 });
 
+async function setupFixture({
+  mutateHours,
+  mutateHooks,
+  scopeChanges = {},
+} = {}) {
+  const from = new Date(Date.now() + 4 * 86400000).toISOString().slice(0, 10);
+  const to = new Date(Date.parse(from) + 86400000).toISOString().slice(0, 10);
+  let layer = 0;
+  const f = await fixture({
+    secrets: { SOURCE_REVISION: "c".repeat(40), PROVIDER_CALL_CEILING: "512" },
+    respond: async (request, body) => {
+      const url = new URL(request.url);
+      if (url.pathname === "/") {
+        assert.equal(body.method, "getWorkDaysInfo");
+        assert.equal(request.headers.get("X-Token"), "synthetic-public-token");
+        const [instructor, service] = [
+          [null, null],
+          [null, 2],
+          [3, null],
+          [3, 2],
+        ][layer++];
+        assert.deepEqual(body.params, [from, to, instructor, service, 1]);
+        const hours = {
+          [from]: [
+            {
+              from: "09:00:00",
+              to: "24:00:00",
+              privateValue: "must-not-escape",
+            },
+          ],
+          [to]: [],
+        };
+        return Response.json({
+          id: body.id,
+          result: mutateHours ? mutateHours(hours) : hours,
+          error: null,
+        });
+      }
+      if (url.pathname === "/admin/webhooks") {
+        assert.equal(request.method, "GET");
+        assert.equal(url.search, "");
+        assert.equal(request.headers.get("X-Token"), "synthetic-admin-token");
+        const hooks = [
+          {
+            id: 5,
+            event: "new_invoice",
+            is_active: 1,
+            url: "https://example.test/must-not-escape",
+            privateValue: "must-not-escape",
+          },
+        ];
+        return Response.json(mutateHooks ? mutateHooks(hooks) : hooks);
+      }
+    },
+  });
+  await f.sql(
+    "INSERT OR REPLACE INTO budget(campaign,used,cooldown_ms) VALUES('developer-20261008',378,0)",
+  );
+  const token = await f.grant(Date.now() + 120000, discoveryOperation);
+  const scope = {
+    kind: "native-setup",
+    sourceRevision: "c".repeat(40),
+    accountId: config.vars.DEPLOYMENT_ACCOUNT_ID,
+    serviceId: "2",
+    instructorId: "3",
+    from,
+    to,
+    startingUsed: 378,
+    maxCalls: 16,
+    ...scopeChanges,
+  };
+  await f.db
+    .prepare(
+      "UPDATE developer_operations SET result_json=? WHERE capability_hash=?",
+    )
+    .bind(
+      JSON.stringify(scope),
+      createHash("sha256").update(token).digest("hex"),
+    )
+    .run();
+  return { ...f, token, scope };
+}
+test("native setup reads exact working-hour layers and subscription metadata once without leaking destinations", async () => {
+  const f = await setupFixture();
+  try {
+    const r = await f.call(f.token, "POST", discoveryOperation);
+    assert.equal(r.body.state, "complete", JSON.stringify(r.body));
+    assert.deepEqual(Object.keys(r.body.result.hours), [
+      "company",
+      "service",
+      "instructor",
+      "combined",
+    ]);
+    assert.equal(r.body.result.hours.combined[f.scope.from][0].to, "24:00:00");
+    assert.deepEqual(r.body.result.subscriptions, [
+      {
+        id: "5",
+        event: "new_invoice",
+        active: true,
+        destinationSha256: createHash("sha256")
+          .update("https://example.test/must-not-escape")
+          .digest("hex"),
+      },
+    ]);
+    assert.equal(r.body.result.accounting.used, 387);
+    assert.equal(f.calls.length, 9);
+    assert.doesNotMatch(
+      JSON.stringify(r),
+      /must-not-escape|synthetic-admin-secret|synthetic-public-secret/,
+    );
+    await f.call(f.token, "POST", discoveryOperation);
+    assert.equal(f.calls.length, 9);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("native setup rejects changed authority and ranges before any provider request", async () => {
+  for (const scopeChanges of [
+    { maxCalls: 6 },
+    { startingUsed: 377 },
+    { sourceRevision: "d".repeat(40) },
+    { to: "2099-01-01" },
+    { instructorId: "4" },
+  ]) {
+    const f = await setupFixture({ scopeChanges });
+    try {
+      assert.equal(
+        (await f.call(f.token, "POST", discoveryOperation)).body.state,
+        "blocked",
+      );
+      assert.equal(f.calls.length, 0);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+test("native setup rejects unknown subscription envelopes and malformed hours with bounded private diagnostics", async () => {
+  for (const options of [
+    { mutateHours: () => ({ "2099-01-01": [] }) },
+    {
+      mutateHours: (hours) => ({
+        [Object.keys(hours)[0]]: [{ from: "24:00:00", to: "24:00:00" }],
+      }),
+    },
+    { mutateHooks: (hooks) => ({ data: hooks }) },
+    { mutateHooks: (hooks) => [...hooks, ...hooks] },
+    { mutateHooks: (hooks) => [{ ...hooks[0], event: "payment_settled" }] },
+  ]) {
+    const f = await setupFixture(options);
+    try {
+      const r = await f.call(f.token, "POST", discoveryOperation);
+      assert.equal(r.body.state, "blocked");
+      assert.equal(r.body.result.verified, false);
+      assert.ok(r.body.result.stage);
+      assert.equal(Object.hasOwn(r.body.result, "hours"), false);
+      assert.equal(Object.hasOwn(r.body.result, "subscriptions"), false);
+      assert.doesNotMatch(
+        JSON.stringify(r),
+        /must-not-escape|payment_settled|2099/,
+      );
+      const calls = f.calls.length;
+      await f.call(f.token, "POST", discoveryOperation);
+      assert.equal(f.calls.length, calls);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+
 const syntheticField = {
   name: "synthetic_players",
   title: "Number of players",
@@ -1510,6 +1679,102 @@ test("scheduled native readback uses the recovery reserve only under explicit fi
       assert.equal(grant.state, allowed ? "complete" : "blocked");
       await tick(f);
       assert.equal(f.calls.length, allowed ? 6 : 0);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+
+test("scheduled recovery admits carried counters through the configured ceiling without resetting or replay", async () => {
+  for (const ceiling of [224, 256, 512]) {
+    const used = ceiling === 512 ? 378 : 196;
+    const f = await fixture({
+      full: true,
+      respond: nativeReadResponse,
+      secrets: {
+        SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret",
+        PROVIDER_CALL_CEILING: String(ceiling),
+      },
+    });
+    try {
+      await f.sql(
+        "INSERT INTO budget(campaign,used) VALUES('developer-20261008',?)",
+        used,
+      );
+      const a = await scheduledAttempt(f, {
+        scope: { startingUsed: used, maximumUsed: used + 6 },
+      });
+      await Promise.all([tick(f), tick(f)]);
+      const grant = await f.db
+        .prepare(
+          "SELECT state FROM developer_operations WHERE capability_hash=?",
+        )
+        .bind(a.key)
+        .first();
+      assert.equal(grant.state, "complete");
+      assert.equal(f.calls.length, 6);
+      assert.equal((await f.sql("SELECT used FROM budget"))[0].used, used + 6);
+      const observation = await f.db
+        .prepare("SELECT observation_json FROM attempts WHERE id=?")
+        .bind(a.id)
+        .first();
+      assert.equal(
+        JSON.parse(observation.observation_json).invoice.status,
+        "paid",
+      );
+      await tick(f);
+      assert.equal(f.calls.length, 6);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+test("scheduled recovery at carried512 keeps ordinary reserve scope and global ceiling fences", async () => {
+  for (const entry of [
+    { used: 490, max: 496, allowed: true },
+    { used: 491, max: 497, allowed: false },
+    { used: 506, max: 512, reserve: true, allowed: true },
+    { used: 506, max: 513, reserve: true, allowed: false },
+    { used: 378, max: 409, allowed: false },
+    { used: 495, max: 512, reserve: true, allowed: false },
+    { used: 378, start: 379, max: 385, allowed: false },
+    { used: 378, max: 383, allowed: false },
+  ]) {
+    const f = await fixture({
+      full: true,
+      respond: nativeReadResponse,
+      secrets: {
+        SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret",
+        PROVIDER_CALL_CEILING: "512",
+      },
+    });
+    try {
+      await f.sql(
+        "INSERT INTO budget(campaign,used) VALUES('developer-20261008',?)",
+        entry.used,
+      );
+      const a = await scheduledAttempt(f, {
+        scope: {
+          startingUsed: entry.start ?? entry.used,
+          maximumUsed: entry.max,
+          ...(entry.reserve ? { useRecoveryReserve: true } : {}),
+        },
+      });
+      await tick(f);
+      const grant = await f.db
+        .prepare(
+          "SELECT state FROM developer_operations WHERE capability_hash=?",
+        )
+        .bind(a.key)
+        .first();
+      assert.equal(grant.state, entry.allowed ? "complete" : "blocked");
+      assert.equal(f.calls.length, entry.allowed ? 6 : 0);
+      assert.equal(
+        (await f.sql("SELECT used FROM budget"))[0].used,
+        entry.used + (entry.allowed ? 6 : 0),
+      );
+      await tick(f);
+      assert.equal(f.calls.length, entry.allowed ? 6 : 0);
     } finally {
       await f.mf.dispose();
     }

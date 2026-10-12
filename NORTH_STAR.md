@@ -1,5 +1,11 @@
 # North Star: dependable customer booking and quick rebooking
 
+## Full native acceptance execution resumed — 12 October2026
+
+YS instructed “execute it now” against the consolidated full native acceptance draft. Continue technical implementation, evidence-backed discovery preparation, tests and PR21 publication. The prior20:30Singapore live deadline has passed; its ledger is closed at378/512,153 management,68 Worker requests and15/16 deployments. The new instruction does not specify replacement numeric/time limits. Prepare a concrete new finite packet before seeking the required extension; do not reopen old grants, reset counters or perform payment/browser/production work.
+
+Full native acceptance retains two sign-offs: complete single/same-date/different-date booking and protected exact-invoice handoff first; then technical callback/no-return reconciliation and one combined owner payment/browser/device flight. Single/same-date remain live accepted. Different-date needs a second actual offered date. Recovery admission and read-only setup inspection are the next source increment; no new live acceptance is claimed.
+
 ## Native campaign stopped on actual date availability — 12 October2026
 
 Native integration is partially accepted: single booking35/invoice27 and same-date bookings33/34/invoice26 passed full association, signed confirmed/unpaid readback and unopened checkout links. Different-date remains blocked. Stop this campaign closed. Resume requires a second eligible date on the developer provider account, then a newly bounded exact-source different-date proof; schedule changes and additional deployment authority are not included in this consumed packet. Do not guess new dates, reopen grants, retry historical effects, merge or deploy production. The later owner-operated payment/browser/webhook flight remains separate.

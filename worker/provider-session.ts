@@ -202,7 +202,11 @@ export class ProviderSession {
     // automatic reauthentication may consume the two-read recovery reserve.
     if (!this.cachedIdentity || this.cachedIdentity.until <= Date.now())
       throw new ApiError(503, "provider_identity_expired");
-    const family = request.kind === "invoice-read" ? "admin" : "public";
+    const family =
+      request.kind === "invoice-read" ||
+      request.kind === "webhook-subscriptions"
+        ? "admin"
+        : "public";
     const token = this.tokens.get(family);
     if (!token || token.until <= Date.now())
       throw new ApiError(503, "provider_auth_expired");

@@ -12,6 +12,7 @@ import {
 import { providerSecrets } from "./provider-transport";
 import { bookingWallTime } from "./provider-normalization";
 import { offeredStarts } from "./prebooking";
+import { inspectNativeSetup } from "./native-setup";
 import {
   residualGrant,
   recoverNativeResidual,
@@ -210,7 +211,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
   }
   // A one-use operator grant owns this read-only calendar range. Customer
   // grants still admit only their two exact dates after operator selection.
-  async nativeCalendarProbe(
+  async nativeDiscoveryProbe(
     rawScope: unknown,
     expiresMs: number,
     correlationId: string,
@@ -220,7 +221,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         now = Date.now();
       const parsed = z
         .strictObject({
-          kind: z.literal("native-calendar"),
+          kind: z.enum(["native-calendar", "native-setup"]),
           sourceRevision: z.string().regex(/^[a-f0-9]{40}$/),
           accountId: z.string().min(1).max(128),
           serviceId: z.literal("2"),
@@ -228,8 +229,12 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
           to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
           startingUsed: z.number().int().nonnegative().safe(),
-          maxCalls: z.literal(6),
+          maxCalls: z.union([z.literal(6), z.literal(16)]),
         })
+        .refine(
+          (value) =>
+            value.maxCalls === (value.kind === "native-calendar" ? 6 : 16),
+        )
         .safeParse(rawScope);
       if (!parsed.success)
         throw new ApiError(503, "calendar_scope_unavailable");
@@ -250,6 +255,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         from - now < 48 * 3600000 ||
         to < from ||
         to - from > 14 * 86400000 ||
+        (scope.kind === "native-setup" && to - from > 86400000) ||
         initial.used !== scope.startingUsed ||
         initial.active !== 0 ||
         scope.startingUsed + scope.maxCalls > p.PROVIDER_CALL_CEILING - 16
@@ -276,6 +282,27 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         },
       };
       try {
+        if (scope.kind === "native-setup") {
+          const result = await inspectNativeSetup(
+            async (request) => {
+              await this.provider.identity(this.env, bounded);
+              return this.provider.nativeRead(this.env, bounded, request);
+            },
+            scope.from,
+            scope.to,
+          );
+          if (Date.now() >= expiresMs)
+            throw new ApiError(503, "calendar_scope_expired");
+          return {
+            ...result,
+            kind: scope.kind,
+            from: scope.from,
+            to: scope.to,
+            serviceId: scope.serviceId,
+            instructorId: scope.instructorId,
+            accounting: this.providerAccounting(),
+          };
+        }
         await this.provider.identity(this.env, bounded);
         const response = await this.provider.nativeRead(this.env, bounded, {
           kind: "availability-range",

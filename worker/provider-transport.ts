@@ -134,6 +134,14 @@ export type NativeExchange = (
   signal?: AbortSignal,
 ) => Promise<{ body: unknown; receivedAtMs: number }>;
 export type NativeRequest =
+  | { kind: "webhook-subscriptions" }
+  | {
+      kind: "working-hours";
+      from: string;
+      to: string;
+      serviceId: string | null;
+      instructorId: string | null;
+    }
   | {
       kind: "availability-range";
       serviceId: string;
@@ -256,6 +264,11 @@ export async function providerRequest(
       break;
     case "native": {
       if (!native) throw new ApiError(503, "provider_operation_unavailable");
+      if (native.kind === "webhook-subscriptions") {
+        url = "https://user-api-v2.simplybook.me/admin/webhooks";
+        method = "GET";
+        break;
+      }
       if (native.kind === "invoice-read" || native.kind === "payment-link") {
         const invoiceId = providerId(native.invoiceId);
         url =
@@ -281,7 +294,10 @@ export async function providerRequest(
           "batch_multiple_booking",
           native.signature,
         ];
-      } else if (native.kind === "availability-range") {
+      } else if (
+        native.kind === "availability-range" ||
+        native.kind === "working-hours"
+      ) {
         const from = Date.parse(native.from + "T00:00:00+08:00");
         const to = Date.parse(native.to + "T00:00:00+08:00");
         if (
@@ -293,14 +309,22 @@ export async function providerRequest(
           to - from > 14 * 86400000
         )
           throw new ApiError(503, "provider_date_invalid");
-        rpcMethod = "getStartTimeMatrix";
-        params = [
-          native.from,
-          native.to,
-          Number(providerId(native.serviceId)),
-          Number(providerId(native.instructorId)),
-          1,
-        ];
+        rpcMethod =
+          native.kind === "working-hours"
+            ? "getWorkDaysInfo"
+            : "getStartTimeMatrix";
+        const service =
+          native.serviceId === null
+            ? null
+            : Number(providerId(native.serviceId));
+        const instructor =
+          native.instructorId === null
+            ? null
+            : Number(providerId(native.instructorId));
+        params =
+          native.kind === "working-hours"
+            ? [native.from, native.to, instructor, service, 1]
+            : [native.from, native.to, service, instructor, 1];
       } else if (
         native.kind === "catalogue-services" ||
         native.kind === "catalogue-instructors"

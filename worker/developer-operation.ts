@@ -49,7 +49,7 @@ export async function developerOperation(
   try {
     result = await measure("coordinator_rpc", () =>
       operation === "native_field_discovery" && row.result_json !== null
-        ? env.COORDINATOR.getByName(coordinatorName).nativeCalendarProbe(
+        ? env.COORDINATOR.getByName(coordinatorName).nativeDiscoveryProbe(
             JSON.parse(row.result_json) as unknown,
             row.expires_ms,
             traceId(),

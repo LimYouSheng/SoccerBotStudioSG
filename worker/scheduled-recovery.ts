@@ -7,8 +7,8 @@ const windowSchema = z
   .strictObject({
     attemptId: z.string().uuid(),
     notBeforeMs: z.number().int().nonnegative().safe(),
-    startingUsed: z.number().int().min(0).max(186),
-    maximumUsed: z.number().int().min(6).max(192),
+    startingUsed: z.number().int().nonnegative().safe(),
+    maximumUsed: z.number().int().min(6).safe(),
     useRecoveryReserve: z.boolean().optional(),
     residual: residualSchema.optional(),
   })

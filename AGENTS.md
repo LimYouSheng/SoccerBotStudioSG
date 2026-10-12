@@ -1,5 +1,13 @@
 # SoccerBotStudioSG engineering
 
+## Full native acceptance execution resumed — 12 October2026
+
+YS instructed “execute it now” against the consolidated full native acceptance draft. Continue technical implementation, evidence-backed discovery preparation, tests and PR21 publication. The prior20:30Singapore live deadline has passed; its ledger is closed at378/512,153 management,68 Worker requests and15/16 deployments. The new instruction does not specify replacement numeric/time limits. Prepare a concrete new finite packet before seeking the required extension; do not reopen old grants, reset counters or perform payment/browser/production work.
+
+The scheduled recovery parser still capped startingUsed at186 and maximumUsed at192 although policy and the coordinator support the carried512 campaign. New regressions reproduce blocked admission at valid higher counters. Parse safe nonnegative integers and let existing configured policy/coordinator enforce the actual ceiling,16-call reserve,6–30-call window, explicit reserve permission, expiry, account, known attempt, current accounting, durable claims and no replay. Tests cover224/256/512 ceilings,378 carry, ordinary496 edge, explicitly scoped512 edge and rejected over-budget/reset/inverted/oversized windows. This source fix changes neither live budgets nor grant authority.
+
+Extend the existing one-use native-field-discovery owner with a strict native-setup scope: exact source/account, service2/instructor3, at most two adjacent dates,48-hour lead,180-second expiry, exact carried starting counter and at most16 physical calls including identity refresh. Read documented getWorkDaysInfo for company, service, instructor and combined layers, then GET /admin/webhooks using admin authentication. Validate date/interval representations including24:00 only as a right edge; validate supported subscription IDs/events/active flags. Retain only scoped hours and subscription IDs/events/active state/destination hashes. Unknown envelopes stop with bounded stage/kind/count diagnostics. No callback URL, raw response, contact or secret is retained. No booking, payment, schedule/subscription write, history scan or automatic retry. Existing native-calendar6-call contract remains unchanged.
+
 ## Native campaign stopped on actual date availability — 12 October2026
 
 Independent closure18:42:07Singapore verified sourcee122ba5/version0c5102c2-01d6-4ae3-8855-891d6a504042, provider/identity disabled/end0,378/512/active0, all three new capability denial checks401, empty schedules,18 unchanged historical table snapshots and21 unchanged migrations.0001–0021 immutable; none pending. Current100% deployment and immutable version bindings matched Worker/coordinator readiness.
