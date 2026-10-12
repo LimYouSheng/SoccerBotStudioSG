@@ -98,7 +98,7 @@ const manifest = {
   identityDelivery: "disabled",
   providerAccess: "disabled",
   campaignEndMs: 0,
-  pendingRemoteMigrations: [],
+  pendingRemoteMigrations: ["0019_native_grant_ceiling_224.sql"],
   priorWorkerVersion: "67f84456-5f76-495b-b21e-50afac542d7b",
   acceptance:
     profile.name === "live-email"

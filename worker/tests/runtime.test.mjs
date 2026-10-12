@@ -611,6 +611,7 @@ test("explicit provider ceiling extension preserves used calls and the sixteen-c
   for (const [ceiling, carried] of [
     [128, 33],
     [192, 90],
+    [224, 162],
   ]) {
     const coordinator = `budget-extension-${ceiling}`;
     let storage = await mf.unsafeGetDurableObjectStorage(

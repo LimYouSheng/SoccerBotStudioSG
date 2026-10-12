@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Next finite experiment prepared — 12 October2026
+
+YS requested a new experiment after the intermediate payment-flag correction passed final-source CI. Prepare explicit224 policy support and pending0019 grant-bound migration while retaining the same campaign/account/counter, default80/disabled/end0 and immutable0001–0018. Service Contracts owns the proposed one-attempt scope, cumulative budget and closure limits. This source preparation activates no provider access or grant. Current deployed47b37db/version67f84456 remains closed at162/192/active0; native checkout acceptance remains pending. Original12October16:18:56Singapore deadline and separate exact packet approval still apply.
+
 ## Latest creation evidence and correction boundary — 12 October2026
 
 Approved exact diagnostic packet5a170ff0 ran on47b37db and stopped at creation.booking.require_payment/missing on the first book response. This diagnostic represents absent or null. It establishes that this intermediate receipt lacked a usable payment flag, not that the booking is paid or unpaid. Only trusted batch-item normalization may accept nullish require_payment; supplied values must remain recognized flags, and finalized/single responses still require the flag. Session/customer/key, confirmation, batch metadata, invoice/payment and no-replay checks remain strict. Later unchecked fields and current native-checkout acceptance remain pending. The older lost creation response is not reconstructed by this result.

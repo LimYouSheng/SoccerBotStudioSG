@@ -1,5 +1,9 @@
 # SoccerBotStudioSG engineering
 
+## Next finite experiment prepared — 12 October2026
+
+YS requests another experiment. Service Contracts owns the proposed224 cumulative ceiling, one-attempt limits and pending0019 migration. Carry162 used and16 reserved; no live authority or counter reset during preparation. Applied0001–0018 remain immutable. Complete affected checks, final-source PR21 CI and artifact/packet validation, then request exact approval under section5. Original12October16:18:56Singapore deadline persists; previous packet is consumed.
+
 ## Latest diagnostic executed and closed; narrow correction — 12 October
 
 Owner approved sealed packet5a170ff0 (“approve go”). Source47b37db stopped after the first new booking with private validation creation.booking.require_payment/missing: absent or null, not a distinction the diagnostic preserves. New batch3/booking27 retained; no second book, closeBatch, link, cancellation or payment. Later creation predicates remain unproved; the older discarded response's cause remains unknown. The authorized correction permits only nullish require_payment in trusted batch-item phase; supplied malformed flags and finalized missing flags still reject. All identity/session/key/invoice/no-replay guards remain. New source is PR-only until separately authorized; do not execute the consumed packet again.

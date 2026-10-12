@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## Next finite experiment prepared — 12 October2026
+
+Preparing the owner-requested next experiment using the corrected intermediate validator. Final prior source d21e2b8 passed all three CI38216192722 gates. Only14 ordinary calls remain under192, so Service Contracts proposes224 cumulative/208 ordinary with162 carried and16 reserved. Policy support and pending0019 are prepared, with239/239 Worker checks passed, including restart/counter/reserve and grant-admission cases. Local migration verification preserved17 application tables and15 fields across all four grant states, kept0001–0018 unchanged and rejected209. Source/policy/types/affected lint/format and release-profile regression passed; exact artifact preservation remains a CI gate. No live change. Expected closed source47b37db/version67f84456 and original16:18:56Singapore deadline remain. Next: final-source CI/artifact, sealed packet and exact approval.
+
 ## Current task — live field identified and correction prepared, 12 October2026
 
 Approved packet5a170ff0 executed on tested47b37db (all three CI38213290654 gates; artifact11729658054). First book returned a five-field object and failed creation.booking.require_payment/missing, meaning absent or null. Batch3 and booking27/key retained; no second booking, finalization, link, cancellation or payment. This establishes the latest failure only. Later fields and native acceptance remain unproved. The older discarded envelope's precise cause remains unknown.
