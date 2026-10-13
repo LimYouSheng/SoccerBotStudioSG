@@ -1,5 +1,9 @@
 # SoccerBotStudioSG engineering
 
+## Webhook delivery diagnosis — 13 October 2026
+
+Read-only telemetry found no recorded request to the webhook endpoint through 10:35:58 Singapore, while all 14 expected operator requests matched their correlation IDs and statuses. The receipt table remains empty; capture and subscription are closed. This supports non-arrival at the Worker, with the upstream cause still unknown. Service Contracts and Journey own the evidence and limitations. Carried totals are now 516 provider calls, 355 management requests, 150 Worker requests and 35 deployments. Next obtain provider dispatch/delivery or pre-Worker edge evidence for booking 38; no booking replay or owner acceptance.
+
 ## Live DELETE fix passed; signed delivery not observed — 13 October 2026
 
 Packet7ec56094976f created confirmed booking38 and exact unpaid invoice29, SGD88, with Nabil on15October15:40 Singapore. The checkout link remains unopened. The authenticated webhook receipt check returned zero rows, so forward work stopped. Cleanup then passed: HTTP200 with a non-JSON content type/body present, followed by exact active-baseline restoration. Independent closure at10:26:51 Singapore verified source44c53fc/version9c555cf2-24ab-4aca-9483-aed345b0e87c, disabled/end0/active0,516/640 calls and all23 historical tables preserved. Carried management349, Worker150, deployments35. No cancellation or payment occurred. Service Contracts and Journey own exact evidence. Next diagnose delivery versus rejection without replaying booking38; this packet is consumed and owner acceptance remains deferred.

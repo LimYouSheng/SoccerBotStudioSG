@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Diagnose delivery at the observed boundary — 13 October 2026
+
+The completed stored-log investigation supports no recorded webhook arrival at the Worker during the examined interval, with matched operator requests as controls. This narrows the earlier zero-receipt result without proving that the provider never dispatched or excluding a pre-Worker failure. Preserve these boundaries: absent endpoint logs are not a signature/payload rejection and do not justify weakening validation. Obtain provider dispatch/delivery or edge evidence before choosing a repair or another live experiment. Service Contracts owns exact evidence and limitations; Journey owns the investigation record. Owner-controlled acceptance remains deferred.
+
 ## Separate accepted checkout/cleanup from failed signed-delivery observation — 13 October 2026
 
 The new live test accepted one confirmed/unpaid native booking and the repaired DELETE lifecycle, but observed no authenticated webhook receipt at its bounded check. Preserve that failed observation and do not infer whether the provider failed to deliver or ingress rejected a delivery. Do not replay the booking to produce evidence. Signed delivery, event mapping and payment recovery remain separate acceptance gates.

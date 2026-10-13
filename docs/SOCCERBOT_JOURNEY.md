@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Read-only delivery diagnosis completed — 13 October 2026
+
+After YS said “ok determine”, compared stored developer HTTP telemetry with the sealed test's request IDs. All 14 expected operator requests matched correlation ID and status; all returned events were untruncated. Exact webhook endpoint queries found zero events from 10:20:00 through 10:35:58 Singapore, including the later interval after 10:34. A SELECT-only receipt read independently returned zero receipts and closed capture/subscription state. The read-only inspection is completed; the live flight and campaign remain closed.
+
+The supported finding is no recorded arrival at the Worker, not an observed validator rejection. Provider dispatch/delay, network/TLS or pre-Worker edge failure remain unresolved; no code repair is justified by these logs alone. Preserve the earlier failed acceptance result. Next obtain provider delivery or edge evidence for booking 38 without replay. Six management reads bring cumulative management to 355; provider 516, Worker 150 and deployments 35 are unchanged. No booking, payment, cancellation, deployment or access opening occurred. Service Contracts owns the exact interval, controls and limitations.
+
 ## Live acknowledgement fix accepted; no signed receipt at observation — 13 October 2026
 
 YS approved packet7ec56094976f and amended limits. Exact-source CI and the282-test artifact were verified before execution. New subscription registration and fresh Nabil availability passed; one attempt300cdcc8-9061-47ee-8746-e263d1b2bf46 created booking38/invoice29 for15October15:40 Singapore, SGD88, confirmed/unpaid with checkout unopened. At the single post-checkout observation, the authenticated receipt table returned zero rows. Forward work stopped immediately; no retry or booking replay occurred.
