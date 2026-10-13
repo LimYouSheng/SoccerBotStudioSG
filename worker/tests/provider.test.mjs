@@ -1103,6 +1103,40 @@ test("native setup rejects changed authority and ranges before any provider requ
     }
   }
 });
+function assertPrivateSetupDiagnostics(response) {
+  // Check the provider fixture values, including the complete invalid date.
+  // A random correlation UUID can legitimately contain the digits 2099.
+  assert.doesNotMatch(
+    JSON.stringify(response),
+    /must-not-escape|payment_settled|2099-01-01/,
+  );
+}
+test("native setup diagnostic privacy rejects fixture values without matching UUID digits", () => {
+  const response = {
+    status: 200,
+    body: { state: "blocked", result: { verified: false } },
+    correlationId: "15adaa49-33fa-465e-8cf7-92099fdd65e2",
+  };
+  assert.doesNotThrow(() => assertPrivateSetupDiagnostics(response));
+  for (const value of [
+    "https://example.test/must-not-escape",
+    "payment_settled",
+    "2099-01-01",
+  ]) {
+    assert.throws(
+      () => assertPrivateSetupDiagnostics({ ...response, leaked: value }),
+      assert.AssertionError,
+    );
+    assert.throws(
+      () =>
+        assertPrivateSetupDiagnostics({
+          ...response,
+          body: { [value]: [] },
+        }),
+      assert.AssertionError,
+    );
+  }
+});
 test("native setup rejects unknown subscription envelopes and malformed hours with bounded private diagnostics", async () => {
   for (const options of [
     { mutateHours: () => ({ "2099-01-01": [] }) },
@@ -1123,10 +1157,7 @@ test("native setup rejects unknown subscription envelopes and malformed hours wi
       assert.ok(r.body.result.stage);
       assert.equal(Object.hasOwn(r.body.result, "hours"), false);
       assert.equal(Object.hasOwn(r.body.result, "subscriptions"), false);
-      assert.doesNotMatch(
-        JSON.stringify(r),
-        /must-not-escape|payment_settled|2099/,
-      );
+      assertPrivateSetupDiagnostics(r);
       const calls = f.calls.length;
       await f.call(f.token, "POST", discoveryOperation);
       assert.equal(f.calls.length, calls);

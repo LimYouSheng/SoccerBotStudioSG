@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## Post-merge diagnostic assertion collision — 14 October 2026
+
+PR22 merged as4536186. Main run38476420076 passed frontend, live-email and Pages deployment, but backend passed294/295 Worker cases: the privacy assertion's unanchored2099 marker matched the generated correlation UUID, not leaked provider data. The response correctly blocked the unsupported subscription event and exposed neither hours nor subscriptions. Preserve the failed log. The assertion now checks the complete2099-01-01 fixture date across the entire response, retaining the other private sentinels and all rejection/no-replay checks. A deterministic regression includes the observed UUID and proves every forbidden value/key still fails. Application code, migrations, browser actions and timeouts are unchanged; reviewed Worker inventory becomes296.
+
 ## Protected reload readiness — 14 October 2026
 
 CI run38444619826 passed backend and live-email, including the repaired native guest journey on all three browser projects and295 Worker cases. Frontend passed165 unit/component cases and68 browser cases; one phone-WebKit synthetic reload assertion expired while its protected checkout read was still pending. The retained trace records the pending request and the failure snapshot contains the restored summary. The test now arms and validates that exact protected response around reload and duplicate-tab navigation before its unchanged five-second UI assertion, matching the existing preparation readiness contract. No product evidence is fabricated, no action/assertion removed, no retry or timeout increase. All three gates must pass again on the final source before deployment.
