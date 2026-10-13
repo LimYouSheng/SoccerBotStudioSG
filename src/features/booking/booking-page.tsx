@@ -60,9 +60,7 @@ export function BookingPage({ step }: { step: BookingStep }) {
               <Icon name="back" />
               {current ? "Back" : "Back to home"}
             </Link>
-            <span className="eyebrow text-muted">
-              {bookingService.mode === "live" ? "Developer booking" : "Booking"}
-            </span>
+            <span className="eyebrow text-muted">Booking</span>
           </div>
           <ol className="progress" aria-label="Booking progress">
             {progress.map(([id, label], index) => (

@@ -1,3 +1,8 @@
+import {
+  webhookEvent,
+  webhookPath,
+  type WebhookEvent,
+} from "./webhook-contract";
 import { z } from "zod";
 import { providerId } from "./provider-normalization";
 import { measure } from "./diagnostics";
@@ -135,6 +140,8 @@ export type NativeExchange = (
 ) => Promise<{ body: unknown; receivedAtMs: number }>;
 export type NativeRequest =
   | { kind: "webhook-subscriptions" }
+  | { kind: "webhook-create"; origin: string; event: WebhookEvent }
+  | { kind: "webhook-delete"; subscriptionId: string }
   | {
       kind: "working-hours";
       from: string;
@@ -264,6 +271,25 @@ export async function providerRequest(
       break;
     case "native": {
       if (!native) throw new ApiError(503, "provider_operation_unavailable");
+      if (native.kind === "webhook-create") {
+        const origin = z
+          .literal("https://soccerbot-dev.limyousheng-94.workers.dev")
+          .parse(native.origin);
+        url = "https://user-api-v2.simplybook.me/admin/webhooks";
+        method = "POST";
+        body = JSON.stringify({
+          url: origin + webhookPath(webhookEvent.parse(native.event)),
+          event: native.event,
+        });
+        break;
+      }
+      if (native.kind === "webhook-delete") {
+        url =
+          "https://user-api-v2.simplybook.me/admin/webhooks/" +
+          providerId(native.subscriptionId);
+        method = "DELETE";
+        break;
+      }
       if (native.kind === "webhook-subscriptions") {
         url = "https://user-api-v2.simplybook.me/admin/webhooks";
         method = "GET";
@@ -457,6 +483,25 @@ export async function providerRequest(
             ? "provider_auth_failed"
             : "provider_http_failed",
         );
+      }
+      if (native?.kind === "webhook-delete") {
+        // DELETE's body has no documented representation. HTTP acknowledgement
+        // only permits the lifecycle owner to verify a fresh exact baseline;
+        // it is never proof of removal. Do not buffer or interpret this body.
+        const contentType = response.headers.get("content-type");
+        const acknowledgement = {
+          httpStatus: response.status,
+          contentType:
+            contentType === null
+              ? "absent"
+              : contentType.toLowerCase().includes("application/json")
+                ? "json"
+                : "other",
+          bodyPresent: response.body !== null,
+        };
+        await response.body?.cancel();
+        complete = true;
+        return acknowledgement;
       }
       if (
         !response.headers

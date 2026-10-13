@@ -1,3 +1,4 @@
+import { NativeCalendarReads, calendarDates } from "./native-calendar";
 import { nativeValidationReason } from "./provider-normalization";
 import { safeNativeFailure } from "./native-residual";
 import { z } from "zod";
@@ -545,7 +546,7 @@ async function customerNativeWindow(request: Request, env: Env) {
     throw new ApiError(503, "native_account_contract_unavailable");
   const dates = z
     .array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/))
-    .max(2)
+    .max(124)
     .parse(JSON.parse(grant.available_dates_json));
   if (
     contract.trialLeadTimeException &&
@@ -668,6 +669,8 @@ export async function customerNativeAvailability(options: {
   env: Env;
   date: string;
   serviceId: string;
+  fresh?: boolean;
+  invalidate?: () => void;
   provider: ProviderSession;
   control: ProviderControl;
   accounting: () => { used: number; active: number };
@@ -686,11 +689,13 @@ export async function customerNativeAvailability(options: {
     .parse(JSON.parse(grant.availability_json || "{}"));
   const retained = cache[date];
   if (
+    !options.fresh &&
     retained &&
     retained.observedAtMs <= Date.now() &&
     Date.now() - retained.observedAtMs < 60000
   )
     return retained;
+  options.invalidate?.();
   const claimed = await env.STATE.prepare(
     "UPDATE native_checkout_grants SET read_state='reading' WHERE capability_hash=? AND state='granted' AND read_state='available' AND attempt_id IS NULL AND expires_ms>?",
   )
@@ -849,4 +854,109 @@ export async function currentCustomerNative(request: Request, env: Env) {
         ? "prepared"
         : "checking",
   });
+}
+
+export async function customerNativeCalendar(options: {
+  request: Request;
+  env: Env;
+  month: string;
+  serviceId: string;
+  provider: ProviderSession;
+  control: ProviderControl;
+  accounting: () => { used: number; active: number };
+  cache: NativeCalendarReads;
+}) {
+  const { request, env, month, serviceId, provider } = options;
+  const { p, grant, access, contract, dates, binding } =
+    await customerNativeWindow(request, env);
+  const today = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
+  const monthStart = new Date(today.slice(0, 7) + "-01T00:00:00Z");
+  monthStart.setUTCMonth(monthStart.getUTCMonth() + 3);
+  if (
+    month < today.slice(0, 7) ||
+    month > monthStart.toISOString().slice(0, 7) ||
+    serviceId !== contract.serviceId ||
+    grant.attempt_id
+  )
+    throw new ApiError(503, "native_calendar_unavailable");
+  const approved = calendarDates(month, dates).filter((date) => date >= today);
+  if (!approved.length) return { month, observedAtMs: Date.now(), dates: [] };
+  const claimed = await env.STATE.prepare(
+    "UPDATE native_checkout_grants SET read_state='reading' WHERE capability_hash=? AND state='granted' AND read_state='available' AND attempt_id IS NULL AND expires_ms>?",
+  )
+    .bind(access.capability_hash, Date.now() + 180000)
+    .run();
+  if (claimed.meta.changes !== 1)
+    throw new ApiError(503, "native_availability_busy");
+  let last = 0;
+  const control = {
+    ...options.control,
+    reserve: async () => {
+      const wait = Math.max(0, last + 300 - Date.now());
+      if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
+      const current = await customerNativeWindow(request, env);
+      const usage = options.accounting();
+      if (
+        current.grant.read_state !== "reading" ||
+        current.grant.attempt_id ||
+        usage.used < grant.starting_used ||
+        usage.used >= grant.maximum_used - 32
+      )
+        throw new ApiError(503, "native_availability_budget_exhausted");
+      last = Date.now();
+      return options.control.reserve();
+    },
+  };
+  try {
+    const raw = await options.cache.read({
+      scope: JSON.stringify([binding, p.SOURCE_REVISION]),
+      month,
+      serviceId,
+      dates: approved,
+      catalogue: async () => {
+        await provider.identity(env, control);
+        return provider.catalogue(env, control);
+      },
+      exchange: async (native) => {
+        await provider.identity(env, control);
+        return provider.nativeRead(env, control, native);
+      },
+    });
+    const now = Date.now();
+    const result = {
+      ...raw,
+      dates: raw.dates.map((day) => ({
+        ...day,
+        offers: day.offers.filter(
+          (offer) =>
+            offer.startMs - now >=
+            nativeTrialLeadMs(contract, binding, offer, now),
+        ),
+      })),
+    };
+    const retained = z
+      .record(z.string(), nativeAvailabilitySchema)
+      .parse(JSON.parse(grant.availability_json || "{}"));
+    for (const day of result.dates) retained[day.date] = day;
+    const saved = await env.STATE.prepare(
+      "UPDATE native_checkout_grants SET read_state='available',availability_json=? WHERE capability_hash=? AND state='granted' AND read_state='reading' AND attempt_id IS NULL AND expires_ms>?",
+    )
+      .bind(
+        JSON.stringify(retained),
+        access.capability_hash,
+        Date.now() + 180000,
+      )
+      .run();
+    if (saved.meta.changes !== 1)
+      throw new ApiError(503, "native_availability_expired");
+    await authenticate(request, env, Date.now());
+    return result;
+  } catch (error) {
+    await env.STATE.prepare(
+      "UPDATE native_checkout_grants SET read_state='blocked' WHERE capability_hash=? AND read_state='reading'",
+    )
+      .bind(access.capability_hash)
+      .run();
+    throw error;
+  }
 }

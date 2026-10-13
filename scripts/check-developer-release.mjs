@@ -257,6 +257,125 @@ try {
     ).results,
     retainedNative,
   );
+  // The pending capture migration must preserve every applied table and start closed.
+  const appliedTables = (
+    await db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> '_cf_METADATA' ORDER BY name",
+      )
+      .all()
+  ).results.map((row) => row.name);
+  const appliedSnapshots = new Map();
+  for (const table of appliedTables)
+    appliedSnapshots.set(
+      table,
+      (await db.prepare(`SELECT * FROM "${table}" ORDER BY rowid`).all())
+        .results,
+    );
+  await migrate("0022_webhook_capture.sql");
+  await migrate("0023_webhook_subscription_grants.sql");
+  for (const table of appliedTables)
+    assert.deepEqual(
+      (await db.prepare(`SELECT * FROM "${table}" ORDER BY rowid`).all())
+        .results,
+      appliedSnapshots.get(table),
+    );
+  for (const table of [
+    "webhook_capture_windows",
+    "webhook_receipts",
+    "webhook_subscription_grants",
+    "webhook_recovery_scopes",
+    "webhook_pending_hints",
+  ])
+    assert.equal(
+      (await db.prepare(`SELECT count(*) n FROM "${table}"`).first()).n,
+      0,
+    );
+  // The new scope table must preserve the already applied capture history.
+  const legacyWindow = crypto.randomUUID();
+  await db
+    .prepare(
+      "INSERT INTO webhook_capture_windows VALUES(?,?,?,?,?,?,?,?,?,'closed')",
+    )
+    .bind(
+      legacyWindow,
+      manifest.sourceRevision,
+      config.account_id,
+      "synthetic-developer",
+      "developer",
+      origin,
+      1,
+      2,
+      16,
+    )
+    .run();
+  await db
+    .prepare(
+      "INSERT INTO webhook_subscription_grants(window_id,create_hash,cleanup_hash,starting_used,maximum_used,state) VALUES(?,?,?,0,80,'delete_unknown')",
+    )
+    .bind(legacyWindow, "a".repeat(64), "b".repeat(64))
+    .run();
+  const captureHistory = (
+    await db.prepare("SELECT * FROM webhook_capture_windows").all()
+  ).results;
+  const subscriptionHistory = (
+    await db.prepare("SELECT * FROM webhook_subscription_grants").all()
+  ).results;
+  await migrate("0024_webhook_event_scopes.sql");
+  assert.deepEqual(
+    (await db.prepare("SELECT * FROM webhook_capture_windows").all()).results,
+    captureHistory,
+  );
+  assert.deepEqual(
+    (await db.prepare("SELECT * FROM webhook_subscription_grants").all())
+      .results,
+    subscriptionHistory,
+  );
+  assert.equal(
+    (await db.prepare("SELECT count(*) n FROM webhook_event_scopes").first()).n,
+    0,
+  );
+  // Raising the native schema ceiling must preserve every historical row,
+  // including unknown webhook effects, and leave the recovery reserve excluded.
+  const beforeCeiling = new Map();
+  const ceilingTables = (
+    await db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> '_cf_METADATA' ORDER BY name",
+      )
+      .all()
+  ).results.map((row) => row.name);
+  for (const table of ceilingTables)
+    beforeCeiling.set(
+      table,
+      (await db.prepare(`SELECT * FROM "${table}" ORDER BY rowid`).all())
+        .results,
+    );
+  await migrate("0025_native_grant_ceiling_704.sql");
+  for (const table of ceilingTables)
+    assert.deepEqual(
+      (await db.prepare(`SELECT * FROM "${table}" ORDER BY rowid`).all())
+        .results,
+      beforeCeiling.get(table),
+    );
+  await db.prepare("UPDATE native_checkout_grants SET maximum_used=688").run();
+  await assert.rejects(
+    db.prepare("UPDATE native_checkout_grants SET maximum_used=689").run(),
+  );
+  await db
+    .prepare("UPDATE native_checkout_grants SET maximum_used=?")
+    .bind(retainedNative[0].maximum_used)
+    .run();
+  assert.equal(
+    (
+      await mf.dispatchFetch(`${origin}/api/provider/webhook`, {
+        method: "POST",
+        body: "{}",
+        headers: { "content-type": "application/json" },
+      })
+    ).status,
+    503,
+  );
   assert.deepEqual(
     (await db.prepare("PRAGMA foreign_key_check").all()).results,
     [],

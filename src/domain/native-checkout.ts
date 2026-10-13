@@ -9,6 +9,7 @@ export function isNativeCheckoutUrl(value: string): boolean {
 // Provider-ID DTOs for the protected customer flow. Browser labels and reviewed
 // totals are display/consent snapshots; the Worker revalidates provider truth.
 import { z } from "zod";
+import { isDate } from "./dates";
 import { providerIdentifier } from "./catalog";
 import { contactSchema } from "./contact";
 import { MAX_PLAYERS } from "./booking-policy";
@@ -25,6 +26,31 @@ export const nativeAvailabilitySchema = z.strictObject({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   observedAtMs: z.number().int().nonnegative().safe(),
   offers: z.array(nativeOfferSchema).max(100),
+});
+export const publicCalendarSchema = z
+  .strictObject({
+    month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+    serviceId: providerIdentifier,
+    observedAtMs: z.number().int().nonnegative().safe(),
+    dates: z
+      .array(
+        z.strictObject({
+          date: z.string().refine(isDate),
+          available: z.boolean(),
+        }),
+      )
+      .max(31),
+  })
+  .refine(
+    (value) =>
+      new Set(value.dates.map((day) => day.date)).size === value.dates.length &&
+      value.dates.every((day) => day.date.startsWith(value.month + "-")),
+  );
+
+export const nativeCalendarSchema = z.strictObject({
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
+  observedAtMs: z.number().int().nonnegative().safe(),
+  dates: z.array(nativeAvailabilitySchema).max(31),
 });
 export const nativePrepareSchema = z.strictObject({
   key: z.string().regex(/^[A-Za-z0-9_-]{16,128}$/),
@@ -60,3 +86,27 @@ export const nativeCurrentSchema = z.union([
       .max(12),
   }),
 ]);
+
+export const receiptSchema = z
+  .strictObject({
+    attemptId: z.string().uuid(),
+    verifiedAtMs: z.number().int().nonnegative().safe(),
+    createdAtMs: z.number().int().nonnegative().safe(),
+    totalMinor: z.number().int().nonnegative().safe(),
+    taxMinor: z.number().int().nonnegative().safe(),
+    contact: contactSchema.strict(),
+    sessions: z
+      .array(
+        nativeOfferSchema.extend({
+          players: z.number().int().min(1).max(MAX_PLAYERS),
+        }),
+      )
+      .min(1)
+      .max(12),
+  })
+  .refine(
+    (value) =>
+      value.taxMinor <= value.totalMinor &&
+      value.sessions.reduce((sum, session) => sum + session.priceMinor, 0) ===
+        value.totalMinor,
+  );

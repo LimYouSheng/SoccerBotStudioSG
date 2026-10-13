@@ -1,14 +1,79 @@
 "use client";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import type { CustomerCatalogue } from "@/domain/catalog";
 import { Icon } from "@/components/icon";
 import { MAX_PLAYERS } from "@/domain/booking-policy";
 import { SERVICE_NAME } from "@/domain/demo-catalog";
 import { LiveCatalogue } from "./live-catalogue";
 import { useBooking } from "./provider";
 export function SessionStep() {
-  const { draft, update, bookingService } = useBooking();
-  const router = useRouter();
+  const { bookingService } = useBooking();
+  return bookingService.mode === "live" ? (
+    <LiveCatalogue render={(data) => <LiveSession data={data} />} />
+  ) : (
+    <SessionPresentation />
+  );
+}
+function LiveSession({ data }: { data: CustomerCatalogue }) {
+  const { draft, update } = useBooking();
+  const eligible = data.services.filter(
+    (service) =>
+      service.active &&
+      service.durationMinutes === 40 &&
+      service.currency === "SGD" &&
+      !service.recurring &&
+      data.instructors.some(
+        (i) =>
+          i.active &&
+          (service.instructorIds === null ||
+            service.instructorIds.includes(i.id)),
+      ),
+  );
+  const selected =
+    eligible.find((service) => service.id === draft.nativeServiceId) ??
+    (eligible.length === 1 ? eligible[0] : undefined);
+  useEffect(() => {
+    if (selected && draft.nativeServiceId !== selected.id)
+      update({ nativeServiceId: selected.id, slots: [] });
+  }, [selected, draft.nativeServiceId, update]);
+  if (!selected)
+    return (
+      <>
+        <h1 className="page-title">Your session</h1>
+        <section className="surface">
+          <p>
+            {eligible.length
+              ? "Choose your session."
+              : "No sessions are currently available."}
+          </p>
+          {eligible.map((service) => (
+            <button
+              key={service.id}
+              className="button"
+              onClick={() => update({ nativeServiceId: service.id, slots: [] })}
+            >
+              {service.name}
+            </button>
+          ))}
+        </section>
+      </>
+    );
+  return (
+    <SessionPresentation
+      serviceName={selected.name}
+      pending={draft.nativeServiceId !== selected.id}
+    />
+  );
+}
+function SessionPresentation({
+  serviceName = SERVICE_NAME,
+  pending = false,
+}: {
+  serviceName?: string;
+  pending?: boolean;
+}) {
+  const { draft, update } = useBooking();
   const playerSelection = (
     <section
       className="surface player-selection"
@@ -38,19 +103,6 @@ export function SessionStep() {
       </div>
     </section>
   );
-  if (bookingService.mode === "live")
-    return (
-      <>
-        <h1 className="page-title">Your session</h1>
-        {playerSelection}
-        <LiveCatalogue
-          onSelect={(serviceId) => {
-            update({ nativeServiceId: serviceId, slots: [] });
-            router.push("/book/time/");
-          }}
-        />
-      </>
-    );
   return (
     <>
       <h1 className="page-title">Your session</h1>
@@ -60,7 +112,7 @@ export function SessionStep() {
           <Icon name="ball" />
         </span>
         <div>
-          <h2>{SERVICE_NAME}</h2>
+          <h2>{serviceName}</h2>
           <p>
             Interactive football in a 360° arena, for individual players and
             groups.
@@ -102,9 +154,15 @@ export function SessionStep() {
         </ul>
       </section>
       <div className="actions">
-        <Link href="/book/time/" className="button">
-          See available times <Icon name="arrow" />
-        </Link>
+        {pending ? (
+          <button className="button" disabled>
+            Loading available times…
+          </button>
+        ) : (
+          <Link href="/book/time/" className="button">
+            See available times <Icon name="arrow" />
+          </Link>
+        )}
       </div>
     </>
   );

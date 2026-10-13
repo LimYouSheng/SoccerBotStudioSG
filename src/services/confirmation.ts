@@ -1,3 +1,6 @@
+import { receiptSchema } from "@/domain/native-checkout";
+import type { Booking } from "@/domain/booking";
+import { LOCATION } from "@/domain/catalog";
 import { MAX_PLAYERS } from "@/domain/booking-policy";
 import { isNativeCheckoutUrl } from "@/domain/native-checkout";
 import { z } from "zod";
@@ -96,6 +99,52 @@ export async function readConfirmation(attemptId: string, signal: AbortSignal) {
     signal,
   );
   return { ...decisionSchema.parse(await response.json()), checking };
+}
+export async function readBookingReceipt(
+  attemptId: string,
+  signal: AbortSignal,
+) {
+  const { response } = await protectedRead(attemptId, "receipt", signal);
+  const receipt = receiptSchema.parse(await response.json());
+  if (
+    signal.aborted ||
+    receipt.attemptId !== attemptId ||
+    receipt.verifiedAtMs > Date.now() ||
+    Date.now() - receipt.verifiedAtMs > 60000
+  )
+    throw new ConfirmationError("unavailable");
+  const slots = receipt.sessions.map((offer) => {
+    const wall = new Date(offer.startMs + 28800000).toISOString();
+    return {
+      date: wall.slice(0, 10),
+      start: wall.slice(11, 16),
+      instructor: offer.instructorId,
+      studio: LOCATION.building,
+      native: {
+        serviceId: offer.serviceId,
+        serviceName: offer.serviceName,
+        instructorName: offer.instructorName,
+        priceMinor: offer.priceMinor,
+        currency: offer.currency,
+      },
+    };
+  });
+  const booking: Booking = {
+    reference: receipt.attemptId,
+    createdAt: new Date(receipt.createdAtMs).toISOString(),
+    totalCents: receipt.totalMinor,
+    slots,
+    draft: {
+      mode: "guest",
+      accountEmail: "",
+      nativeServiceId: receipt.sessions[0].serviceId,
+      players: receipt.sessions[0].players,
+      slots,
+      contact: receipt.contact,
+      accepted: true,
+    },
+  };
+  return { ...receipt, booking };
 }
 export const protectedCheckoutService: ProtectedCheckoutService = {
   async context({ attemptId, mode, signal }) {

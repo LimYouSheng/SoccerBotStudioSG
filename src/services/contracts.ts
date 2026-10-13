@@ -14,6 +14,12 @@ export type AvailabilityInput = BookingRequest & {
   date: string;
   players: number;
   serviceId?: string;
+  fresh?: boolean;
+};
+export type CalendarAvailability = {
+  month: string;
+  observedAtMs: number;
+  dates: { date: string; available: boolean }[];
 };
 export type CheckoutInput = BookingRequest & {
   draft: BookingDraft;
@@ -23,6 +29,12 @@ export type PayInput = BookingRequest & { attempt: Attempt; outcome: Outcome };
 export type AttemptInput = BookingRequest & { attempt: Attempt };
 export type ResolveInput = AttemptInput & { now?: number };
 export interface BookingService {
+  publicCalendar?(
+    input: BookingRequest & { month: string },
+  ): Promise<CalendarAvailability & { serviceId: string }>;
+  calendar?(
+    input: BookingRequest & { month: string; serviceId: string },
+  ): Promise<CalendarAvailability>;
   restore?(signal: AbortSignal): Promise<Attempt | null>;
   readonly mode: BookingMode;
   readonly operations: Readonly<

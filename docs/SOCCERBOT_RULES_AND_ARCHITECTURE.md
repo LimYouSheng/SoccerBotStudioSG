@@ -1,5 +1,149 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Homepage reads and protected receipt parity — 14 October 2026
+
+M4.1 now starts four-month prefetch on site entry without creating guest access. Anonymous calendar DTOs contain only month, service ID, observation time and date availability booleans. A management-owned, finite, exact-source window bounds dates, service, time and cumulative provider usage; absence means closed. Public/protected reads share the account coordinator cache. Public reads preserve 32 checkout and 16 recovery calls and use ordinary 48-hour lead time. Fresh selection checks still invalidate shared affected dates. M6 uses the same confirmation layout and export owners for preview/live with truthful labels and per-export protected admission. No browser or live-provider acceptance follows from passing synthetic tests.
+
+## Demo parity and cached calendar implementation — 14 October 2026
+
+Owner prioritizes the approved demo interface before complete live-flight acceptance and withdraws trainer priority. Keep existing milestone IDs: M4.1/M4.2 own range availability and fresh continuation, M5.2 owns experimental background homepage initialization, M3.2/M6 own interface parity. Account/session/time/details/review remain shared presentation; live session product/pax/inclusions now use the demo owner, real catalogue fields and the same action. Payment preparation uses the demo two-column layout but never pretends demo Card/PayNow controls are provider-supported. Turnstile, protected identity, guest access and existing exact write checks remain.
+
+A single hidden fixed-origin frame starts during a live booking session; no visible provider-homepage visit, checkout-capability prefetch, cookie copying, top navigation, retries or frame-load authorization signal. This is the first implementation candidate, not a proven solution to intermittent403. Real browser cookie/embedding behavior remains pending.
+
+Calendar overview uses bounded provider date-range reads, a 60-second cache owned by the existing account coordinator (eight month entries), scope isolation and invalidation fencing. Browser prefetches current month then three months sequentially after authorized booking/service selection. No anonymous site-entry read capability was introduced; a broader entry-point preload remains a later authority/performance gate. Installed grant dates still bound every actual range and gaps are never crossed. Existing grants are unchanged; source permits up to124 explicitly granted dates for a four-month test, without raising booking-dispatch counts or budgets. No migration is needed.
+
+Only verified available dates are selectable; unknown/out-of-scope and explicit empty remain distinct. Fresh Continue checks bypass the retained day cache and compare instructor/time/price under the current draft/session. A failed check preserves selections, invalidates shared affected-date data and refreshes calendar. A successful or uncertain checkout invalidates display cache before and after execution. Server prebooking/dispatch remains the final capacity/identity/price authority. No priority tie-break, production activation or complete visual/payment/webhook acceptance is claimed.
+
+## Customer-path constraint and readiness — 14 October 2026
+
+Owner requires no visible SimplyBook homepage detour. Prior homepage-first success remains diagnostic, not an accepted product flow. Background initialization has not been implemented or validated in current local b2862e0, so that experimental variant is not ready. Preserve direct native checkout and paid-state safeguards while preparing any isolated candidate. Service Contracts owns the superseding protocol.
+
+## Current checkout experiment direction — 14 October 2026
+
+Invoice34 body is available and associates confirmed booking43/SGD88; contradictory paid/received-false/PayLater fields do not establish settlement. Full customer journey with owner sandbox payment and active webhook observation is the next proposed experiment. Distinguish SoccerBot homepage from provider-origin session initialization: hidden iframe or server fetch is not an accepted replacement for top-level SimplyBook homepage navigation. Current payment guard requires received HitPay payment; no speculative warmup implemented. Service Contracts owns experiment and evidence limits; Journey owns decision history. This is preparation, not live authorization or acceptance.
+
+## Separate invoice due time, checkout rendering and link authorization — 14 October2026
+
+Owner observed checkout34 render after its displayed due time using homepage-first navigation once. A due-time field is not evidence that provider capability access is revoked; conversely a rendered payment page does not prove fresh invoice authorization, currentbookingeligibility or payment acceptance. Retain local SoccerBot deadlines as local admission rules without claiming provider-linkrevocation. Service Contracts owns this observation and required fresh-response evidence. Homepage-first remains a candidate supported by one reported trial, not a reliablefix.
+
+## Current checkout reliability boundary — 13 October 2026
+
+Native checkout reachability was observed for owner-created order34 with a30-minute payment window, while the owner reports intermittent e403 from the same original link. Payment, sandboxmerchant verification and signedwebhook acceptance remain outstanding. Latest retained Worker closure remains tested b2862e0,25 migrations,provider/identitydisabled; this offline investigation did not query or change it. Carried coordinator655/management567/Worker231/deployments47/attempts8/migrations5; separate owner controls bring conservative bookingdispatches13/issuedlinks10 with physically unmetered nativebrowsertraffic. Timeout restoration30→10 remains owner-unconfirmed.
+
+Source comparison and provider documentation establish no demonstrated SoccerBot URL or cookie defect. Keep native invoice authorization distinct from the mere presence of a browser session cookie. Two session values in a captured table support investigating grant continuity but do not establish a cookie race. Preserve provider boundaries: no automatic checkout retries, invented URL/code, cookie proxy, paid-state shortcut or unsupported session warmup. Require evidence that distinguishes mechanisms before another experiment; Service Contracts owns the current analysis and exclusions.
+
+## Native diagnostic grant support remains bounded — 13 October 2026
+
+Source-only0025 aligns the native-grant schema upper bound with configured704 minus16 recovery calls:688. Historical rows and applied0001–0024 remain unchanged; no default ceiling, counter, permission, runtime admission or webhook-cap relaxation. This prerequisite permits preparing the owner's requested checkout-only diagnostic after exact CI and finite live approval; it neither fixes the404 nor starts another payment experiment. The actual closed environment remainsadd9cc2 with24 migrations until separately authorized execution.
+
+## Interpret the native error before repairing — 13 October 2026
+
+Offline diagnosis verified the handed-off provider URL and invoice31, with the owner's failure before all local deadlines/access closure. Keep visible page text separate from observed HTTP status: a historical provider report shows a displayed404 can mask invoice-access403 in another flow. Neither that report nor PRO-feature documentation proves this account's cause. No URL rewriting, Client Login change, plan upgrade or alternative payment integration is justified. Preserve closed state and require original browser error evidence/current native settings before a targeted new reproduction.
+
+## Checkout reachability is an outstanding acceptance gate — 13 October 2026
+
+The approved owner payment flight created and associated booking40/invoice31, but the owner saw404 on initial native checkout navigation. A provider-issued, allowlisted link is not proof of reachable checkout, merchant identity, sandbox mode or paid state. No payment was submitted and no post-payment callback comparison occurred. Preserve the successful native association separately from this failed browser boundary. Do not guess a new destination or repeat booking/payment to conceal it.
+
+The packet is consumed and independently closed at14:36:24 Singapore onadd9cc2/version63bea9f0-1593-48d3-8b04-5ac7ba702ad0. Both subscription baselines and all24 historical tables/migrations are preserved; access disabled/end0/active0. Current cumulative618 provider/494 management/199 Worker/41 deployments, configured704 and recovery16 untouched. Service Contracts owns link diagnosis and any future bounded test; no new live authority follows from remaining budgets.
+
+## Payment preparation retains a separate submission gate — 13 October 2026
+
+YS chose checkout-time merchant verification. The owner must confirm Sandbox, expected merchant app404, exact invoice and SGD88 before one submission; a mismatch stops. The policy now permits an explicit704 ceiling for the proposed packet, without selecting it in default configuration or resetting stored usage. Provider reserve, finite grant and no-replay ownership are unchanged. Release metadata records no pending migration and the last independently closed version. This source-only preparation still needs exact-source CI/artifact and a new finite approval.
+
+## Owner payment is the next diagnostic boundary — 13 October 2026
+
+YS requests testing payment before returning to webhook acceptance, reports no developer support, and agrees to prepare an owner-operated test. The next step no longer depends on a support response. Earlier owner-payment deferrals remain historical; the new scope is preparation of one native sandbox submission, subject to current mode/merchant evidence and a new finite execution packet. A real charge is not authorized.
+
+Retain SimplyBook → SBPay → HitPay. Independently read the exact associated invoice and signed booking through the existing one-use native-readback owner. A checkout return, owner success report, callback route or event arrival cannot mark the invoice paid. Keep both authenticated capture channels active before checkout and through payment observation. A receipt after payment is temporal evidence, not proof that payment is a universal event prerequisite; shape-only capture also does not prove which booking generated it. Payment acceptance, authenticated delivery, semantic association, automatic reconciliation and general owner/device acceptance remain distinct.
+
+No application-source change or new deployment has been made for this preparation. Preserve all prior attempts, bookings, subscriptions and24 migrations. Service Contracts owns the staged test, limits and closure; Journey records the changed direction and outstanding inputs.
+
+## Read-only ingress evidence — 13 October 2026
+
+Stored telemetry for the latest paired control contains all 19 expected HTTP requests with matching correlation IDs/statuses and no truncated events. No callback arrivals were recorded on either fixed route between 12:04:00 and 12:31:07 Singapore. This narrows the next investigation to event generation/dispatch or network/pre-Worker edge behavior; it does not prove provider fault or justify a signature/parser change. Signed delivery and payment acceptance remain pending.
+
+The investigation made four management reads, including one SELECT-only subscription/capture read with zero rows written. No provider call, direct Worker request, deployment, live mutation or support communication occurred. Cumulative management is 443/446; provider remains 567, Worker 175 and deployments 38. Access and the campaign remain closed. Service Contracts contains the support-trace boundary and limitations; Journey retains the evidence.
+
+## Current developer acceptance state — 13 October 2026, 12:14 Singapore
+
+The paired booking/invoice delivery control completed on application source `116fd342a8b82c20ff961fff0210ed86feac1648`, backed by287 Worker tests and all three exact-source CI gates. Its single fresh booking and exact confirmed/unpaid invoice association passed. Both temporary subscription lifecycles, reverse cleanup and independent closure passed. Neither capture channel recorded an authenticated receipt during the declared180-second observation; signed-delivery, semantic event mapping and paid reconciliation acceptance remain pending. Owner-controlled payment/browser/device acceptance was not attempted.
+
+The deployed closed version is `ed264d67-6cde-4319-9c58-5e307be35d8a`. Provider and identity access are disabled, campaign end0, active0, schedules empty,567/640 provider calls with16 recovery calls untouched. All24 historical tables and24 applied migrations are preserved. Migration0024 was applied in the preceding stopped packet and verified, not reapplied, in this control. All0001–0024 migrations are now immutable.
+
+Cumulative accounting is567 provider,439 management,175 direct Worker and38 deployments;6 attempts,9 conservative booking dispatches,6 unopened links and4 migration operations. The approved ceilings are596 provider maximum used within configured640,446 management,185 Worker,39 deployments,6 attempts,9 dispatches,6 links and4 migrations. These remaining numbers do not authorize another packet; the single-execution packet is consumed and the attempt/dispatch/link ceilings are reached. Service Contracts owns the next diagnostic boundary. Private execution artifacts retain exact payload-free evidence and costs.
+
+## Paired diagnostic channels retain independent authority — 13 October 2026
+
+YS authorized proceeding with the proposed control preparation. Extend existing transport, subscription and capture owners; no alternate provider dispatch or payment authority is introduced. A fixed route selects an operator-declared event scope. The route is not covered by the provider body HMAC and must never establish payload event identity, booking association or paid state. Both channels still authenticate the exact body and retain structure only.
+
+Additive0024 creates immutable event scopes referencing existing capture windows. Historical rows and applied migrations0001–0023 remain unchanged; absence of a scope retains the legacy booking route. Two distinct windows isolate admission caps and deduplication. Sequential registration takes nested exact baselines, so cleanup must reverse registration order. Never delete the first subscription while the second remains unresolved. Close both ingress windows and access independently even when restoration is unproved. A concrete exact-source sealed packet and amended budgets are required before live execution; the user's stop before owner-controlled acceptance remains in force.
+
+## Verify event prerequisites before delivery acceptance — 13 October 2026
+
+Stored logs support no recorded webhook arrival during the examined interval. Current Cloudflare reads show no Access application barrier and an enabled public Worker address. Older provider staff answers identify payment-gated callbacks for priced API bookings, but current REST semantics for unpaid booking creation remain unproven. Treat this as an acceptance-prerequisite gap, not a proven application validator defect or a confirmed provider outage.
+
+Before another live experiment, establish the event's generation condition and a justified finite observation window. Preserve the failed flight; do not replay booking38, mark paid, disable payment configuration or weaken authentication to pass. A proposed new_invoice/new_booking comparison can distinguish delivery from event-specific timing only under a new bounded packet. Invoice creation is not settlement. Service Contracts owns evidence, source applicability and exact next questions; Journey owns the investigation record. Owner acceptance remains deferred.
+
+## Separate accepted checkout/cleanup from failed signed-delivery observation — 13 October 2026
+
+The new live test accepted one confirmed/unpaid native booking and the repaired DELETE lifecycle, but observed no authenticated webhook receipt at its bounded check. Preserve that failed observation and do not infer whether the provider failed to deliver or ingress rejected a delivery. Do not replay the booking to produce evidence. Signed delivery, event mapping and payment recovery remain separate acceptance gates.
+
+Bounded cleanup restored the active subscription baseline and independent closure preserved all23 historical tables on source44c53fc at516/640 calls. No payment, cancellation or owner acceptance occurred. Service Contracts owns exact record IDs, counters, source/artifact and closure; Journey records the failed observation and successful cleanup. This packet is consumed.
+
+## DELETE acknowledgement is separate from restoration proof — 13 October 2026
+
+The webhook subscription lifecycle owns cleanup acceptance. A successful HTTP DELETE acknowledgement permits its existing fresh list read; it never proves removal by itself. The transport discards the undocumented DELETE body without buffering or interpreting it, while preserving redirects, HTTP failures, grant admission, durable call accounting and no-replay rules. Cleanup closes only when the fresh normalized active list exactly equals its preserved baseline. Other provider operations retain strict bounded JSON parsing.
+
+This source repair follows owner authorization to resolve response handling and run a new acceptance test. It changes no existing subscription or historical unknown-response record. Live execution still requires the tested artifact and concrete amended limits, because the previous deployment ceiling is exhausted. Owner payment/browser acceptance remains separate.
+
+## Active webhook baseline reconciled — 13 October 2026
+
+One approved read-only reconciliation returned an empty active-subscription array, matching the original empty baseline. This resolves the active-subscription restoration condition without replaying DELETE or rewriting the historical delete_unknown record. Preserve the distinction between active baseline restoration, permanent provider record deletion and actual signed delivery acceptance. No new booking or owner acceptance occurred.
+
+Access and preservation were independently verified closed on source1e6bfbe at471/640 calls with all23 historical tables unchanged. Service Contracts owns exact packet/counters/version and remaining transport/delivery work; Journey owns the execution record. The read-only packet is consumed and no successor live flight is authorized.
+
+## Cleanup response boundary reached; access closed — 13 October 2026
+
+Approved packet10c62a001eea deployed source1e6bfbe and the repaired string-flag parser passed actual subscription identity/baseline validation. The single DELETE dispatch then returned an unrecognized representation. Retain `delete_unknown`; no duplicate DELETE or new booking test is allowed while removal is unproven. A read-only reconciliation must establish current provider state before further action.
+
+Independent closure at09:36:09Singapore verified Worker/coordinator version43fc696a-7d40-4ded-8f58-9871003462dc, disabled/end0/active0,466/640 calls, expired new authority, empty schedules and23 preserved historical tables. This proves access closure, not subscription restoration. Service Contracts owns exact outcomes/limits; Journey records the execution. Owner-controlled acceptance has not started and no successor flight is authorized.
+
+## Subscription flag repair prepared — 13 October 2026
+
+The owning subscription normalizer now permits exact string"0"/"1" alongside numeric0/1 and uses the shared flag decision. Unknown forms remain rejected; inactive flags cannot authorize lifecycle actions. Field-level failures use fixed codes without provider values. Unknown-create/no-replay, exact subscription identity and prior-baseline preservation remain mandatory. Service Contracts owns the repaired input/error contract; Journey records the reproduced failure and verification.
+
+This is source work only. The developer Worker remains independently closed on source27f03fc at460/640; the original subscription is unresolved. No cleanup, booking, payment or owner acceptance is authorized by the source repair.
+
+## Current webhook diagnostic result — 13 October 2026
+
+Approved packet46b93ebc17fa7 completed one read and independently closed at07:39:36Singapore. Actual active-subscription metadata exposes `is_active` as a string; the current numeric0/1-only validator rejects that representation. No values or subscription identity were retained, so this finding is not cleanup or webhook acceptance. Preserve strict flags, association, historical rows and immutable migrations0001–0023 when repairing the owning normalizer.
+
+Deployed source27f03fc/version35894e44-9bfd-4142-9ff3-91686b87fd78 is closed: provider/identity disabled, end0,460/640 calls, active0. All23 historical tables are preserved. The original subscription remains unresolved; no successor live flight is authorized. Service Contracts owns the exact observed fields, authority, counters and closure; Journey owns this execution evidence. Payment, signed delivery, no-return recovery and owner acceptance remain pending.
+
+## Webhook flight stopped; access closed, subscription unresolved — 13 October 2026
+
+Packet `b918a81d06e991549f9d67e449098bf87e8109bc9ea6affc98d69d7773d06a99` executed once under the approved campaign on source `f2e0a3e91824f569a161f29447471d5081259719`. All three gates passed in CI38313369930; artifact11776470322/SHA256 `ed0207005a4ce1a38bc3f8c9302e05895be968d9afbeddf40a05d5725c3d1e14` matched150 sealed files and273 strict Worker tests. Migrations0022/0023 applied;0001–0023 are now immutable.
+
+Subscription creation consumed7 provider calls through a returned fresh-list read, then failed post-create verification without establishing the subscription ID. The grant retained `create_unknown`; no booking proceeded. Pre-authorized cleanup consumed5 further calls, also failed after its list read before DELETE and retained `blocked`. The current error receipt does not identify the exact cause or field; do not guess a boolean/string/number alias or claim removal.
+
+Independent access/preservation checks completed at **13 October06:15:13 Singapore**: sourcef2e0a3e/version `26f76ef1-e045-4e6f-98b1-b97ae0fe0165`, Worker/coordinator disabled, end0,455/640 provider calls, active0, recovery16 untouched, capture closed, schedules empty, new audit expired and both capabilities denied. All18 historical table snapshots and the applied schema (apart from the approved grant-ceiling change) are preserved; all23 migration records are verified. No new attempt, booking, checkout link, payment, cancellation, cron, email or siteverify call. Full closure is **not accepted** because the subscription's identity/removal remains unproven. The durable campaign state is `access-closed-effect-unresolved`; no successor flight may proceed under the unresolved-effects stop condition.
+
+Actual flight cost12 provider/32 management/11 Worker/3 deployments; carried totals455 provider,240 management,105 Worker,24 deployments,4 attempts,7 conservative book dispatches,4 unopened links and3 cumulative migrations. Remaining numbers are not permission to bypass the stop condition. Next ready source task is a bounded read-only subscription structure diagnostic through the existing one-use operator and account admission owners, followed by an evidence-based parser/cleanup repair. Actual signed delivery, mapper and no-return reconciliation remain pending; owner-controlled acceptance has not started.
+
+## Approved technical payment/webhook campaign — 13 October 2026
+
+YS approved proposal `f26137bba0a4c4066024af27546d511b43050e3324b29e488dec84bb57a4ccd2` and separately extended only its time bounds: latest start **09:05**, final closure **09:30 Singapore on 13 October**. This supersedes earlier statements that no successor authority exists. Each flight still requires tested source, all three exact-source CI gates, verified artifact, a sealed execution/closure packet and independent closure. Campaign approval replaces separate packet confirmations only within this envelope.
+
+Carry provider443, management208, Worker94, deployments21, attempts4, conservative book dispatches7, unopened links4 and migrations1. At most two flights,160 new provider calls (maximum603, configured ceiling640,16 recovery calls untouched),104 management,48 direct Worker,8 deployments,2 attempts,3 book dispatches,2 unopened links,2 new guests and2 additive migrations. Per flight:80 provider,52 management (12 closure reserve),24 Worker (8 closure reserve),4 deployments,20 minutes and at least5 minutes closure headroom. At most2 temporary new_booking subscriptions, deleting only those created here;32 distinct captured receipts in total,16 per window. One optional cron for at most3 minutes with one-use known-attempt readback. Provider deliveries/retries and native booking notifications are separately provider-controlled; no email/siteverify test.
+
+Use Nabil3/service2 on15October at/after15:40 Singapore, fresh whole-session availability and ordinary48-hour lead. No date substitution or schedule edits. Stop a flight at its first failure or unknown outcome; only bounded closure may follow. No successor after unresolved effects. No owner payment/browser/device acceptance, checkout-link opening, charge/refund/cancellation, old-record mutation, replay, secret changes, merge or production work.
+
+## Payment and callback boundaries — 13 October 2026
+
+Owner direction now prioritizes server-side payment/webhook acceptance and stops before owner-controlled acceptance. PR21 is merged; accepted native creation and unopened handoff remain the baseline. A checking deadline ends polling authority, not the shared domain's ability to recognize fresh, complete, valid paid evidence. The protected HTTP reader must use that domain decision even after the deadline, retaining authentication and reporting zero remaining checks. It must not refresh providers or confirm invalid/cancelled bookings.
+
+`worker/webhook.ts` is a discovery boundary, not a second payment authority. Default-empty exact-source capture windows permit at most16 distinct signed deliveries for at most20minutes. Exact bytes are authenticated before parsing; a minimal structural receipt commits before202 acknowledgement. No callback value can create attempts, associate records, enqueue recovery or dispatch provider requests in this increment. This deliberately incomplete mapping remains closed until a current-account delivery contract is established. Additive0022 changes no applied0001–0021 migration bytes.
+
 ## Developer native booking accepted and independently closed — 13 October 2026
 
 Packet `217dfd4e4df2` executed once after YS approved the exact packet and amended resource limits. Source `8bd66c1` passed all three CI gates in run `38273011816`; artifact `11758121123` matched 148 sealed files, 257 Worker tests and all 21 immutable migrations. Fresh availability selected Nabil (instructor 3), service 2, **14 October 09:00 and 15 October 14:50 Singapore**. One new attempt `a8e47c99-9016-4db4-8d18-96b52675536c` completed batch 8, bookings 36/37 and exact invoice 28, SGD176 with zero tax. Both signed booking reads were confirmed; authoritative invoice readback was unpaid; the native checkout link remains unopened.

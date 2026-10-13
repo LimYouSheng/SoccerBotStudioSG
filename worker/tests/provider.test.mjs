@@ -1686,8 +1686,8 @@ test("scheduled native readback uses the recovery reserve only under explicit fi
 });
 
 test("scheduled recovery admits carried counters through the configured ceiling without resetting or replay", async () => {
-  for (const ceiling of [224, 256, 512]) {
-    const used = ceiling === 512 ? 378 : 196;
+  for (const ceiling of [224, 256, 512, 704]) {
+    const used = ceiling === 704 ? 567 : ceiling === 512 ? 378 : 196;
     const f = await fixture({
       full: true,
       respond: nativeReadResponse,
@@ -2362,6 +2362,788 @@ test("native availability and preparation cross the real HTTP coordinator bounda
       error: "temporarily_unavailable",
     });
     assert.equal(f.calls.length, before);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+
+const webhookOrigin = "https://soccerbot-dev.limyousheng-94.workers.dev";
+async function subscriptionFixture({
+  entries = [],
+  createFailure = false,
+  deleteFailure = false,
+  deleteResponse,
+  deleteEffect = "remove",
+  afterDeleteResponse,
+  maximum = 80,
+  changeAfterCreate = false,
+  createdFlag = 1,
+  events = ["new_booking"],
+} = {}) {
+  let records = structuredClone(entries),
+    creates = 0,
+    deletes = [];
+  const f = await fixture({
+    full: true,
+    secrets: {
+      APP_ORIGIN: webhookOrigin,
+      SOURCE_REVISION: "d".repeat(40),
+      PROVIDER_CALL_CEILING: "640",
+    },
+    respond(request, body) {
+      const path = new URL(request.url).pathname;
+      if (path === "/admin/webhooks" && request.method === "GET")
+        return deletes.length && afterDeleteResponse
+          ? afterDeleteResponse()
+          : Response.json(records);
+      if (path === "/admin/webhooks" && request.method === "POST") {
+        creates++;
+        const event = events[Math.min(creates - 1, events.length - 1)];
+        assert.deepEqual(body, {
+          url:
+            webhookOrigin +
+            "/api/provider/webhook" +
+            (event === "new_invoice" ? "/new_invoice" : ""),
+          event,
+        });
+        records.push({
+          id: 98 + creates,
+          event: body.event,
+          url: body.url,
+          is_active: createdFlag,
+        });
+        if (changeAfterCreate) records[0] = { ...records[0], is_active: 0 };
+        return createFailure
+          ? new Response("unknown", { status: 502 })
+          : Response.json({ arbitrary: "not-used-as-identity" });
+      }
+      if (
+        /^\/admin\/webhooks\/(99|100)$/.test(path) &&
+        request.method === "DELETE"
+      ) {
+        const id = path.split("/").at(-1);
+        deletes.push(id);
+        if (deleteFailure) return new Response("unknown", { status: 502 });
+        if (deleteEffect !== "retain")
+          records = records.filter((entry) => String(entry.id) !== id);
+        if (deleteEffect === "change-prior") records[0].is_active = 0;
+        return deleteResponse
+          ? deleteResponse()
+          : new Response(null, { status: 204 });
+      }
+    },
+  });
+  const window = crypto.randomUUID(),
+    create = "c".repeat(64),
+    cleanup = "e".repeat(64),
+    now = Date.now();
+  const hash = (value) => createHash("sha256").update(value).digest("hex");
+  await f.db
+    .prepare(
+      "INSERT INTO webhook_capture_windows VALUES(?,?,?,?,?,?,?,?,?,'open')",
+    )
+    .bind(
+      window,
+      "d".repeat(40),
+      config.vars.DEPLOYMENT_ACCOUNT_ID,
+      "synthetic-developer",
+      "developer",
+      webhookOrigin,
+      now - 1000,
+      now + 120000,
+      16,
+    )
+    .run();
+  await f.db
+    .prepare(
+      "INSERT INTO webhook_subscription_grants(window_id,create_hash,cleanup_hash,starting_used,maximum_used) VALUES(?,?,?,0,?)",
+    )
+    .bind(window, hash(create), hash(cleanup), maximum)
+    .run();
+  return {
+    ...f,
+    window,
+    records: () => records,
+    creates: () => creates,
+    deletes,
+    async manage(action, token = action === "create" ? create : cleanup) {
+      const response = await f.mf.dispatchFetch(
+        webhookOrigin + "/api/developer/webhook-" + action,
+        {
+          method: "POST",
+          headers: { origin: webhookOrigin, authorization: "Bearer " + token },
+        },
+      );
+      return { status: response.status, body: await response.json() };
+    },
+    row: () =>
+      f.db
+        .prepare("SELECT * FROM webhook_subscription_grants WHERE window_id=?")
+        .bind(window)
+        .first(),
+  };
+}
+test("finite webhook subscription preserves prior destinations and deletes only its freshly proven ID", async () => {
+  const prior = [
+    {
+      id: 7,
+      event: "new_booking",
+      url: "https://prior.invalid/hook",
+      is_active: 1,
+    },
+  ];
+  const f = await subscriptionFixture({ entries: prior });
+  try {
+    const created = await f.manage("create");
+    assert.equal(created.status, 200);
+    assert.equal(created.body.verified, true);
+    assert.equal(created.body.state, "active");
+    const row = await f.row();
+    assert.equal(row.subscription_id, "99");
+    assert.equal(row.calls_used, 7);
+    const closed = await f.manage("cleanup");
+    assert.equal(closed.body.verified, true);
+    assert.equal(closed.body.state, "closed");
+    assert.deepEqual(f.records(), prior);
+    assert.deepEqual(f.deletes, ["99"]);
+    assert.equal(f.creates(), 1);
+    const count = f.calls.length;
+    assert.equal((await f.manage("create")).status, 503);
+    assert.equal((await f.manage("cleanup")).status, 503);
+    assert.equal(f.calls.length, count);
+    assert.doesNotMatch(
+      JSON.stringify([created, closed, await f.row()]),
+      /prior\.invalid|X-Token|synthetic-admin-token/,
+    );
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("finite webhook subscription accepts exact string flags and restores mixed representation baselines", async () => {
+  const prior = [
+    {
+      id: "7",
+      event: "new_booking",
+      url: "https://prior.invalid/string",
+      is_active: "1",
+    },
+    {
+      id: 8,
+      event: "new_invoice",
+      url: "https://prior.invalid/number",
+      is_active: 1,
+    },
+  ];
+  const f = await subscriptionFixture({ entries: prior, createdFlag: "1" });
+  try {
+    const created = await f.manage("create");
+    assert.equal(created.body.verified, true, JSON.stringify(created.body));
+    assert.equal((await f.row()).subscription_id, "99");
+    const closed = await f.manage("cleanup");
+    assert.equal(closed.body.verified, true, JSON.stringify(closed.body));
+    assert.equal(closed.body.state, "closed");
+    assert.deepEqual(f.records(), prior);
+    assert.deepEqual(f.deletes, ["99"]);
+    assert.equal(f.creates(), 1);
+    const count = f.calls.length;
+    assert.equal((await f.manage("create")).status, 503);
+    assert.equal((await f.manage("cleanup")).status, 503);
+    assert.equal(f.calls.length, count);
+    assert.doesNotMatch(
+      JSON.stringify([created, closed, await f.row()]),
+      /prior\.invalid|synthetic-admin-token/,
+    );
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("finite webhook subscription string zero remains inactive and malformed flags cannot authorize writes", async () => {
+  for (const flag of [
+    "0",
+    true,
+    false,
+    "true",
+    "false",
+    "",
+    "01",
+    " 1",
+    "1 ",
+    2,
+    null,
+    undefined,
+  ]) {
+    const f = await subscriptionFixture({
+      entries: [
+        {
+          id: "7",
+          event: "new_booking",
+          url: "https://prior.invalid/must-not-escape",
+          is_active: flag,
+        },
+      ],
+    });
+    try {
+      const result = await f.manage("create");
+      assert.equal(result.body.verified, false);
+      assert.equal(result.body.state, "blocked");
+      assert.equal(
+        result.body.reason,
+        flag === "0"
+          ? "webhook_subscription_unavailable"
+          : "setup_subscription_is_active_invalid",
+      );
+      assert.equal(f.creates(), 0);
+      assert.deepEqual(f.deletes, []);
+      assert.equal((await f.row()).subscription_id, null);
+      assert.doesNotMatch(
+        JSON.stringify(result),
+        /prior\.invalid|must-not-escape/,
+      );
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+test("finite webhook subscription retains a private field error after create without replay or unsafe cleanup", async () => {
+  const f = await subscriptionFixture({
+    createdFlag: "private-unsupported-flag",
+  });
+  try {
+    const result = await f.manage("create");
+    assert.equal(result.body.state, "create_unknown");
+    assert.equal(result.body.reason, "setup_subscription_is_active_invalid");
+    assert.equal(f.creates(), 1);
+    assert.equal((await f.row()).subscription_id, null);
+    const count = f.calls.length;
+    assert.equal((await f.manage("create")).status, 503);
+    assert.equal(f.calls.length, count);
+    const cleanup = await f.manage("cleanup");
+    assert.equal(cleanup.body.state, "blocked");
+    assert.equal(cleanup.body.reason, "setup_subscription_is_active_invalid");
+    assert.deepEqual(f.deletes, []);
+    assert.doesNotMatch(
+      JSON.stringify([result, cleanup, await f.row()]),
+      /private-unsupported-flag|synthetic-admin-token/,
+    );
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("finite webhook subscription refuses sixth event and preexisting campaign destination", async () => {
+  for (const entries of [
+    Array.from({ length: 5 }, (_, i) => ({
+      id: i + 1,
+      event: "new_booking",
+      url: `https://prior.invalid/${i}`,
+      is_active: 1,
+    })),
+    [
+      {
+        id: 7,
+        event: "change_booking",
+        url: webhookOrigin + "/api/provider/webhook",
+        is_active: 1,
+      },
+    ],
+  ]) {
+    const f = await subscriptionFixture({ entries });
+    try {
+      assert.equal((await f.manage("create")).body.verified, false);
+      assert.equal(f.creates(), 0);
+      assert.deepEqual(f.records(), entries);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+test("finite webhook subscription closes admission for foreign source, company, expired and unknown capabilities", async () => {
+  for (const field of [
+    "source_revision",
+    "company_login",
+    "expires_ms",
+    "unknown",
+  ]) {
+    const f = await subscriptionFixture();
+    try {
+      if (field !== "unknown")
+        await f.db
+          .prepare(`UPDATE webhook_capture_windows SET ${field}=? WHERE id=?`)
+          .bind(
+            field === "expires_ms"
+              ? Date.now() - 1
+              : field === "source_revision"
+                ? "f".repeat(40)
+                : "foreign-company",
+            f.window,
+          )
+          .run();
+      const response = await f.manage(
+        "create",
+        field === "unknown" ? "f".repeat(64) : undefined,
+      );
+      assert.equal(response.status, 503);
+      assert.equal(f.calls.length, 0);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+test("finite webhook subscription unknown create cannot replay and cleanup requires fresh exact baseline", async () => {
+  const f = await subscriptionFixture({ createFailure: true });
+  try {
+    assert.equal((await f.manage("create")).body.state, "create_unknown");
+    assert.equal(f.creates(), 1);
+    const count = f.calls.length;
+    assert.equal((await f.manage("create")).status, 503);
+    assert.equal(f.calls.length, count);
+    // A provider HTTP failure invokes the existing account cooldown. Preserve it;
+    // source proof here validates the durable effect and no-replay boundary.
+    assert.equal((await f.row()).subscription_id, null);
+    assert.equal((await f.row()).state, "create_unknown");
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("finite webhook subscription simultaneous create consumes exactly one durable write claim", async () => {
+  const f = await subscriptionFixture();
+  try {
+    const values = await Promise.all([f.manage("create"), f.manage("create")]);
+    assert.equal(values.filter((v) => v.body.verified).length, 1);
+    assert.equal(f.creates(), 1);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("finite webhook subscription changed prior entry blocks acceptance and never deletes old IDs", async () => {
+  const f = await subscriptionFixture({
+    entries: [
+      {
+        id: 7,
+        event: "new_booking",
+        url: "https://prior.invalid/hook",
+        is_active: 1,
+      },
+    ],
+    changeAfterCreate: true,
+  });
+  try {
+    assert.equal((await f.manage("create")).body.state, "create_unknown");
+    assert.equal((await f.manage("cleanup")).body.verified, false);
+    assert.deepEqual(f.deletes, []);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("finite webhook subscription failed deletion is retained and cannot dispatch a second DELETE", async () => {
+  const f = await subscriptionFixture({ deleteFailure: true });
+  try {
+    assert.equal((await f.manage("create")).body.verified, true);
+    assert.equal((await f.manage("cleanup")).body.state, "delete_unknown");
+    const count = f.calls.length;
+    assert.equal((await f.manage("cleanup")).status, 503);
+    assert.equal(f.calls.length, count);
+    assert.deepEqual(f.deletes, ["99"]);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("finite webhook cleanup verifies the fresh baseline after body-independent HTTP acknowledgement", async () => {
+  for (const [status, body, contentType] of [
+    [200, null, null],
+    [200, "removed", "text/plain"],
+    [200, "not-json", "application/json"],
+    [202, "accepted", "text/plain"],
+    [204, null, null],
+  ]) {
+    const prior = [
+      {
+        id: 7,
+        event: "new_invoice",
+        url: "https://prior.invalid/hook",
+        is_active: "1",
+      },
+    ];
+    const f = await subscriptionFixture({
+      entries: prior,
+      deleteResponse: () =>
+        new Response(body, {
+          status,
+          headers: contentType ? { "content-type": contentType } : {},
+        }),
+    });
+    try {
+      assert.equal((await f.manage("create")).body.verified, true);
+      const before = f.calls.length;
+      const closed = await f.manage("cleanup");
+      assert.equal(
+        closed.body.verified,
+        true,
+        JSON.stringify({ status, closed }),
+      );
+      assert.equal(closed.body.state, "closed");
+      assert.equal(closed.body.deleteAcknowledgement.httpStatus, status);
+      assert.equal(
+        closed.body.deleteAcknowledgement.contentType,
+        contentType === "application/json"
+          ? "json"
+          : contentType
+            ? "other"
+            : "absent",
+      );
+      assert.deepEqual(f.records(), prior);
+      assert.deepEqual(f.deletes, ["99"]);
+      const cleanupCalls = f.calls.slice(before);
+      assert.equal(cleanupCalls.at(-1).method, "GET");
+      assert.equal(
+        new URL(cleanupCalls.at(-1).url).pathname,
+        "/admin/webhooks",
+      );
+      const count = f.calls.length;
+      assert.equal((await f.manage("cleanup")).status, 503);
+      assert.equal(f.calls.length, count);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+test("finite webhook cleanup never treats acknowledgement as proof when the fresh baseline fails", async () => {
+  for (const mode of ["retain", "change-prior", "bad-read"]) {
+    const f = await subscriptionFixture({
+      entries: [
+        {
+          id: 7,
+          event: "new_invoice",
+          url: "https://prior.invalid/hook",
+          is_active: 1,
+        },
+      ],
+      deleteResponse: () => new Response(null, { status: 200 }),
+      deleteEffect: mode,
+      afterDeleteResponse:
+        mode === "bad-read"
+          ? () =>
+              new Response("not-json", {
+                headers: { "content-type": "application/json" },
+              })
+          : undefined,
+    });
+    try {
+      assert.equal((await f.manage("create")).body.verified, true);
+      const closed = await f.manage("cleanup");
+      assert.equal(closed.body.verified, false);
+      assert.equal(closed.body.state, "delete_unknown");
+      assert.equal(closed.body.deleteAcknowledgement.httpStatus, 200);
+      assert.equal((await f.row()).state, "delete_unknown");
+      const count = f.calls.length;
+      assert.equal((await f.manage("cleanup")).status, 503);
+      assert.equal(f.calls.length, count);
+      assert.deepEqual(f.deletes, ["99"]);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+test("finite webhook cleanup rejects redirects and HTTP errors without following or replaying DELETE", async () => {
+  for (const status of [302, 401, 404, 502]) {
+    const f = await subscriptionFixture({
+      deleteEffect: "retain",
+      deleteResponse: () =>
+        new Response("private-error", {
+          status,
+          headers: { location: "https://foreign.invalid/hook" },
+        }),
+    });
+    try {
+      assert.equal((await f.manage("create")).body.verified, true);
+      const closed = await f.manage("cleanup");
+      assert.equal(closed.body.verified, false);
+      assert.equal(closed.body.state, "delete_unknown");
+      assert.equal(closed.body.deleteAcknowledgement, undefined);
+      assert.equal(f.calls.at(-1).method, "DELETE");
+      assert.doesNotMatch(
+        JSON.stringify(closed),
+        /private-error|foreign.invalid/,
+      );
+      const count = f.calls.length;
+      assert.equal((await f.manage("cleanup")).status, 503);
+      assert.equal(f.calls.length, count);
+      assert.deepEqual(f.deletes, ["99"]);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+test("finite webhook subscription cap stops before create and preserves recovery reserve", async () => {
+  const f = await subscriptionFixture({ maximum: 5 });
+  try {
+    assert.equal((await f.manage("create")).body.verified, false);
+    assert.equal(f.calls.length, 5);
+    assert.equal(f.creates(), 0);
+    assert.equal((await f.row()).calls_used, 5);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+
+async function structureGrant(f, change = {}, expiry = Date.now() + 120000) {
+  const token = await f.grant(expiry, "native_field_discovery");
+  await f.db
+    .prepare(
+      "UPDATE developer_operations SET result_json=? WHERE capability_hash=?",
+    )
+    .bind(
+      JSON.stringify({
+        kind: "native-webhook-structure",
+        sourceRevision: "e".repeat(40),
+        accountId: config.vars.DEPLOYMENT_ACCOUNT_ID,
+        startingUsed: 0,
+        maxCalls: 6,
+        ...change,
+      }),
+      createHash("sha256").update(token).digest("hex"),
+    )
+    .run();
+  return token;
+}
+test("webhook structure inspection reads one account list and exposes types without assuming the active flag representation", async () => {
+  const f = await fixture({
+    secrets: { SOURCE_REVISION: "e".repeat(40), PROVIDER_CALL_CEILING: "640" },
+    respond(request) {
+      if (new URL(request.url).pathname === "/admin/webhooks") {
+        assert.equal(request.method, "GET");
+        return Response.json([
+          {
+            id: 99,
+            url: "https://private-destination.invalid/secret",
+            event: "new_booking",
+            is_active: true,
+            changed: "private-timestamp",
+            privateContact: "private-value",
+          },
+        ]);
+      }
+    },
+  });
+  try {
+    await f.sql(
+      "INSERT INTO budget(campaign,used) VALUES('developer-20261008',455)",
+    );
+    const token = await structureGrant(f, { startingUsed: 455 }),
+      result = await f.call(token, "POST", "native_field_discovery");
+    assert.equal(result.body.state, "complete");
+    assert.equal(result.body.result.evidence, "subscription_structure_only");
+    assert.equal(result.body.result.normalized, false);
+    assert.equal(f.calls.length, 5);
+    assert.equal(result.body.result.accounting.used, 460);
+    const row = result.body.result.representation.entries[0];
+    assert.deepEqual(row.fields.find((x) => x.key === "is_active").value, {
+      type: "boolean",
+    });
+    assert.doesNotMatch(
+      JSON.stringify(result),
+      /private-|new_booking|synthetic-admin-token/,
+    );
+    await f.call(token, "POST", "native_field_discovery");
+    assert.equal(f.calls.length, 5);
+    assert.equal(
+      f.calls.filter((x) => x.url.endsWith("/admin/webhooks")).length,
+      1,
+    );
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("webhook structure inspection refuses changed source budget scope and expired one-use authority before transport", async () => {
+  for (const change of [
+    { sourceRevision: "f".repeat(40) },
+    { accountId: "foreign" },
+    { startingUsed: 1 },
+    { maxCalls: 7 },
+    { url: "https://unapproved.invalid" },
+  ]) {
+    const f = await fixture({
+      secrets: {
+        SOURCE_REVISION: "e".repeat(40),
+        PROVIDER_CALL_CEILING: "640",
+      },
+    });
+    try {
+      const token = await structureGrant(f, change);
+      assert.equal(
+        (await f.call(token, "POST", "native_field_discovery")).body.state,
+        "blocked",
+      );
+      assert.equal(f.calls.length, 0);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+  const f = await fixture({ secrets: { SOURCE_REVISION: "e".repeat(40) } });
+  try {
+    const token = await structureGrant(f, {}, Date.now() - 1);
+    assert.equal(
+      (await f.call(token, "POST", "native_field_discovery")).status,
+      401,
+    );
+    assert.equal(f.calls.length, 0);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("webhook structure inspection bounds nested diagnostics and never interprets an unknown envelope as subscription acceptance", async () => {
+  const f = await fixture({
+    secrets: { SOURCE_REVISION: "e".repeat(40) },
+    respond(request) {
+      if (new URL(request.url).pathname === "/admin/webhooks")
+        return Response.json({
+          data: Array.from({ length: 40 }, () => ({
+            id: 987,
+            url: "private-url",
+            event: "private-event",
+            is_active: "private-flag",
+            privateContact: "private-contact",
+          })),
+          unknown: "private-root",
+        });
+    },
+  });
+  try {
+    const result = await f.call(
+      await structureGrant(f),
+      "POST",
+      "native_field_discovery",
+    );
+    assert.equal(result.body.state, "complete");
+    assert.equal(result.body.result.normalized, false);
+    const raw = JSON.stringify(result.body.result.representation);
+    assert.ok(raw.length < 6000);
+    assert.doesNotMatch(raw, /private-|987/);
+    assert.equal(f.calls.length, 5);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+
+async function installInvoiceControl(f, startingUsed) {
+  const window = crypto.randomUUID();
+  const create = "1".repeat(64),
+    cleanup = "2".repeat(64);
+  const hash = (value) => createHash("sha256").update(value).digest("hex");
+  await f.db
+    .prepare(
+      "INSERT INTO webhook_capture_windows SELECT ?,source_revision,account_id,company_login,environment,origin,opened_ms,expires_ms,maximum_receipts,state FROM webhook_capture_windows WHERE id=?",
+    )
+    .bind(window, f.window)
+    .run();
+  await f.db
+    .prepare("INSERT INTO webhook_event_scopes VALUES(?,'new_invoice')")
+    .bind(window)
+    .run();
+  await f.db
+    .prepare(
+      "INSERT INTO webhook_subscription_grants(window_id,create_hash,cleanup_hash,starting_used,maximum_used) VALUES(?,?,?,?,80)",
+    )
+    .bind(window, hash(create), hash(cleanup), startingUsed)
+    .run();
+  return { window, create, cleanup };
+}
+test("paired webhook channels preserve exact baselines through reverse cleanup without replay", async () => {
+  const prior = [
+    {
+      id: 7,
+      event: "new_booking",
+      url: "https://prior.invalid/hook",
+      is_active: 1,
+    },
+  ];
+  const f = await subscriptionFixture({
+    entries: prior,
+    events: ["new_booking", "new_invoice"],
+  });
+  try {
+    const booking = await f.manage("create");
+    assert.equal(booking.body.verified, true);
+    const invoice = await installInvoiceControl(
+      f,
+      booking.body.accounting.used,
+    );
+    const created = await f.manage("create", invoice.create);
+    assert.equal(created.body.verified, true);
+    assert.deepEqual(
+      f.records().map((x) => x.event),
+      ["new_booking", "new_booking", "new_invoice"],
+    );
+    assert.equal(
+      (await f.manage("cleanup", invoice.cleanup)).body.verified,
+      true,
+    );
+    assert.deepEqual(
+      f.records().map((x) => String(x.id)),
+      ["7", "99"],
+    );
+    assert.equal((await f.manage("cleanup")).body.verified, true);
+    assert.deepEqual(f.records(), prior);
+    assert.deepEqual(f.deletes, ["100", "99"]);
+    const count = f.calls.length;
+    assert.equal((await f.manage("create", invoice.create)).status, 503);
+    assert.equal((await f.manage("cleanup", invoice.cleanup)).status, 503);
+    assert.equal(f.calls.length, count);
+    const rows = (
+      await f.db
+        .prepare("SELECT calls_used,state FROM webhook_subscription_grants")
+        .all()
+    ).results;
+    assert.equal(rows.length, 2);
+    for (const row of rows) {
+      assert.equal(row.state, "closed");
+      assert.ok(row.calls_used > 0 && row.calls_used <= 20);
+    }
+    assert.equal(
+      rows.reduce((sum, row) => sum + row.calls_used, 0),
+      f.calls.length,
+    );
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("paired webhook cleanup refuses out of order deletion and preserves both subscriptions", async () => {
+  const f = await subscriptionFixture({
+    events: ["new_booking", "new_invoice"],
+  });
+  try {
+    const first = await f.manage("create");
+    const invoice = await installInvoiceControl(f, first.body.accounting.used);
+    assert.equal(
+      (await f.manage("create", invoice.create)).body.verified,
+      true,
+    );
+    const cleanup = await f.manage("cleanup");
+    assert.equal(cleanup.body.verified, false);
+    assert.equal(cleanup.body.state, "blocked");
+    assert.deepEqual(f.deletes, []);
+    assert.equal(f.records().length, 2);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("invoice webhook scope enforces its own event cap before any subscription write", async () => {
+  const entries = Array.from({ length: 5 }, (_, i) => ({
+    id: i + 1,
+    event: "new_invoice",
+    url: `https://prior.invalid/${i}`,
+    is_active: 1,
+  }));
+  const f = await subscriptionFixture({ entries, events: ["new_invoice"] });
+  try {
+    await f.db
+      .prepare("INSERT INTO webhook_event_scopes VALUES(?,'new_invoice')")
+      .bind(f.window)
+      .run();
+    const result = await f.manage("create");
+    assert.equal(result.body.verified, false);
+    assert.equal(f.creates(), 0);
+    assert.deepEqual(f.records(), entries);
+    assert.deepEqual(f.deletes, []);
   } finally {
     await f.mf.dispose();
   }

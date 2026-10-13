@@ -19,7 +19,16 @@ import {
 import type { AvailableSlot } from "@/services/contracts";
 import { useBooking } from "./provider";
 export function TimeStep() {
-  const { draft, update, now, availability, showDate } = useBooking();
+  const {
+    draft,
+    update,
+    now,
+    availability,
+    showDate,
+    calendar,
+    showMonth,
+    bookingService,
+  } = useBooking();
   const today = todaySG(new Date(now));
   const [date, setDate] = useState(() => draft.slots[0]?.date || today),
     [selectedMonth, setMonth] = useState(() =>
@@ -39,13 +48,35 @@ export function TimeStep() {
   const days = new Date(`${monthAt(today, offset + 1)}T12:00:00Z`);
   days.setUTCDate(0);
   useEffect(() => {
+    showMonth(month.slice(0, 7));
     showDate(date);
     return () => showDate(null);
-  }, [date, showDate]);
+  }, [date, showDate, month, showMonth]);
+  const live = bookingService.mode === "live";
+  const monthResult = calendar.entry(month.slice(0, 7), now);
+  const dayAvailability = new Map(
+    monthResult?.dates.map((day) => [day.date, day.available]),
+  );
+  const nextAvailable = monthResult?.dates.find(
+    (day) => day.date > date && day.available,
+  )?.date;
   const { retry } = availability;
   const result = availability.result?.dates.includes(date)
     ? availability.result
     : null;
+  const { reconcile } = calendar;
+  useEffect(() => {
+    if (!live || !result) return;
+    reconcile(
+      date,
+      result.status === "success"
+        ? result.slots.some(
+            (slot) =>
+              slot.date === date && slot.available && !isElapsed(slot, now),
+          )
+        : undefined,
+    );
+  }, [live, result, date, now, reconcile]);
   const slots =
     result?.status === "success"
       ? result.slots.filter((slot) => slot.date === date)
@@ -145,7 +176,18 @@ export function TimeStep() {
                 className={`date${value === date ? " selected" : ""}${value === today ? " today" : ""}${hasSlots ? " in-series" : ""}`}
                 aria-label={dateLabel(value)}
                 aria-pressed={date === value}
-                disabled={value < today}
+                disabled={
+                  value < today || (live && dayAvailability.get(value) !== true)
+                }
+                title={
+                  live
+                    ? dayAvailability.get(value) === true
+                      ? "Available sessions"
+                      : dayAvailability.get(value) === false
+                        ? "No available sessions"
+                        : "Availability not verified"
+                    : undefined
+                }
                 onClick={() => {
                   setDate(value);
                 }}
@@ -156,6 +198,18 @@ export function TimeStep() {
             );
           })}
         </div>
+        {live && (
+          <p role="status" className="hint">
+            {monthResult
+              ? "Only dates with available sessions can be selected."
+              : calendar.failed.includes(month.slice(0, 7))
+                ? "Availability could not be checked. Your selections are saved."
+                : "Checking available dates…"}{" "}
+            <button className="text-link" onClick={calendar.retry}>
+              Refresh availability
+            </button>
+          </p>
+        )}
         <div className="calendar-legend">
           <span>
             <i className="legend-mark" />
@@ -239,22 +293,25 @@ export function TimeStep() {
           <p>Choose another date. Your selections are saved.</p>
           <button
             className="button secondary"
+            disabled={live && !nextAvailable}
             onClick={() => {
-              const next = addDays(date, 1);
+              const next = live ? nextAvailable : addDays(date, 1);
+              if (!next) return;
               setDate(next);
               setMonth(monthAt(next, 0));
             }}
           >
-            See next available day <Icon name="arrow" />
+            {live ? "See next available day" : "See next day"}{" "}
+            <Icon name="arrow" />
           </button>
         </div>
       )}
       <p className="note">
         <Icon name="clock" />
         <span>
-          Open 9am–9pm. Each session includes one instructor. In this preview,
-          instructors rotate every three hours; the instructor assigned at the
-          start stays for your full session.
+          {live
+            ? "Each session includes one instructor. Availability is checked again before you continue and before booking."
+            : "Open 9am–9pm. Each session includes one instructor. In this preview, instructors rotate every three hours; the instructor assigned at the start stays for your full session."}
         </span>
       </p>
     </>

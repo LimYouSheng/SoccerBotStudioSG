@@ -1,5 +1,11 @@
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  cleanup,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { ProtectedConfirmation } from "./protected-confirmation";
 const first = "00000000-0000-4000-8000-000000000001",
   second = "00000000-0000-4000-8000-000000000002";
@@ -161,4 +167,60 @@ it("access denial hides a previously loaded checkout context", async () => {
   expect(
     screen.queryByRole("link", { name: /Open checkout/ }),
   ).not.toBeInTheDocument();
+});
+
+it("verified live receipt uses demo sections and refuses exports after access is revoked", async () => {
+  const now = Date.now();
+  const receipt = {
+    attemptId: first,
+    verifiedAtMs: now,
+    createdAtMs: now,
+    totalMinor: 8800,
+    taxMinor: 0,
+    contact: {
+      name: "Synthetic Customer",
+      email: "synthetic@example.com",
+      phone: "+6591234567",
+      contactMethod: "email",
+      academy: "",
+    },
+    sessions: [
+      {
+        serviceId: "12",
+        serviceName: "Native Session",
+        instructorId: "14",
+        instructorName: "Native Trainer",
+        startMs: now + 86400000,
+        priceMinor: 8800,
+        currency: "SGD",
+        players: 2,
+      },
+    ],
+  };
+  let reads = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) =>
+      Promise.resolve(
+        url.endsWith("/receipt")
+          ? ++reads === 1
+            ? Response.json(receipt)
+            : new Response(null, { status: 401 })
+          : Response.json({ status: "confirmed", reason: "verified" }),
+      ),
+    ),
+  );
+  render(<ProtectedConfirmation attemptId={first} />);
+  expect(
+    await screen.findByRole("heading", { name: "Client Details" }),
+  ).toBeInTheDocument();
+  for (const name of ["Session Details", "Location", "Amount", "Disclaimers"])
+    expect(screen.getByRole("heading", { name })).toBeInTheDocument();
+  expect(screen.getByText("Native Trainer")).toBeInTheDocument();
+  expect(screen.queryByText("Paid · Preview")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Add to calendar" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "download could not be created",
+  );
+  expect(reads).toBe(2);
 });

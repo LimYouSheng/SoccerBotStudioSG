@@ -33,6 +33,25 @@ async function prepare(page: Page) {
   expect(context.mode).toBe("synthetic");
   expect(context.checkout.state).toBe("available");
 }
+async function restoreContext(
+  page: Page,
+  attemptId: string,
+  navigate: () => Promise<unknown>,
+) {
+  // A document load does not complete the protected context read. Bind the
+  // readiness event before navigation, then retain the normal UI assertion.
+  const [response] = await Promise.all([
+    page.waitForResponse(
+      (r) =>
+        new URL(r.url()).pathname === `/api/attempts/${attemptId}/checkout`,
+    ),
+    navigate(),
+  ]);
+  expect(response.status()).toBe(200);
+  const context = await response.json();
+  expect(context.attemptId).toBe(attemptId);
+  expect(context.mode).toBe("synthetic");
+}
 async function outcome(page: Page, label: string) {
   const popupPromise = page.waitForEvent("popup");
   await page.getByRole("link", { name: /Open checkout/ }).click();
@@ -162,12 +181,12 @@ test("reload and duplicate tabs retain one checking window with a shared server 
     (id) => JSON.parse(localStorage.getItem(`soccerbot-checking:${id}`)!),
     id,
   );
-  await page.reload();
+  await restoreContext(page, id, () => page.reload());
   await expect(
     page.getByRole("region", { name: "Current booking summary" }),
   ).toBeVisible();
   const duplicate = await context.newPage();
-  await duplicate.goto(page.url());
+  await restoreContext(duplicate, id, () => duplicate.goto(page.url()));
   await expect(
     duplicate.getByRole("region", { name: "Current booking summary" }),
   ).toBeVisible();

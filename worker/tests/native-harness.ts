@@ -1,8 +1,10 @@
+import { NativeCalendarReads } from "../native-calendar";
 import {
   executeNativeCheckout,
   prepareCustomerNative,
   currentCustomerNative,
   customerNativeAvailability,
+  customerNativeCalendar,
 } from "../native-checkout";
 // Isolated test entry. Never deployed; caller-supplied fixtures have no live authority.
 import {
@@ -385,6 +387,7 @@ const harness = {
         }
         case "customer-prepare":
         case "customer-current":
+        case "customer-calendar":
         case "customer-availability":
         case "session-expired":
         case "finite-checkout": {
@@ -425,6 +428,22 @@ const harness = {
           }
           if (input.action === "customer-current") {
             result = await currentCustomerNative(customerRequest, admittedEnv);
+            break;
+          }
+          if (input.action === "customer-calendar") {
+            const value = input.value as { month: string; serviceId: string };
+            result = await customerNativeCalendar({
+              request: customerRequest,
+              env: admittedEnv,
+              ...value,
+              provider: new ProviderSession(),
+              control,
+              cache: new NativeCalendarReads(),
+              accounting: () => ({
+                used: 15 + reserved,
+                active: reserved - finished,
+              }),
+            });
             break;
           }
           if (input.action === "customer-availability") {

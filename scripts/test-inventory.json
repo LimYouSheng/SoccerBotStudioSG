@@ -280,6 +280,30 @@
     "title": "unsupported live mode exposes unavailable state and cannot restore a paid demo receipt"
   },
   {
+    "file": "src/features/booking/booking-parity.test.tsx",
+    "title": "calendar prefetch publishes the first month before sequential background months and discards an old scope reply"
+  },
+  {
+    "file": "src/features/booking/booking-parity.test.tsx",
+    "title": "fresh calendar receipts render before the minute clock ticks and expire at their own deadline"
+  },
+  {
+    "file": "src/features/booking/booking-parity.test.tsx",
+    "title": "homepage prefetch starts without a booking identity and never creates guest access"
+  },
+  {
+    "file": "src/features/booking/booking-parity.test.tsx",
+    "title": "live calendar disables empty and unknown dates and a failed fresh continuation preserves the basket and refreshes calendar"
+  },
+  {
+    "file": "src/features/booking/booking-parity.test.tsx",
+    "title": "live session preserves demo product player and inclusion presentation using provider labels"
+  },
+  {
+    "file": "src/features/booking/booking-parity.test.tsx",
+    "title": "native initialization stays hidden and stable and never preloads a payment capability"
+  },
+  {
     "file": "src/features/booking/confirmation-checking.test.tsx",
     "title": "aborts stale session reads and cannot reuse their confirmed result"
   },
@@ -362,6 +386,10 @@
   {
     "file": "src/features/booking/protected-confirmation.test.tsx",
     "title": "temporary checking failure preserves the protected summary and repeat checkout uses the same link"
+  },
+  {
+    "file": "src/features/booking/protected-confirmation.test.tsx",
+    "title": "verified live receipt uses demo sections and refuses exports after access is revoked"
   },
   {
     "file": "src/features/booking/time-step.test.tsx",

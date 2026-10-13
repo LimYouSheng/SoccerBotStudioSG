@@ -1,6 +1,10 @@
+import { publicCalendar } from "./public-calendar";
+import { NativeCalendarReads } from "./native-calendar";
+import { manageWebhookSubscription } from "./webhook-subscriptions";
 import {
   executeNativeCheckout,
   customerNativeAvailability,
+  customerNativeCalendar,
 } from "./native-checkout";
 import { z } from "zod";
 import { intentSchema, associationSchema } from "./journal";
@@ -12,7 +16,10 @@ import {
 import { providerSecrets } from "./provider-transport";
 import { bookingWallTime } from "./provider-normalization";
 import { offeredStarts } from "./prebooking";
-import { inspectNativeSetup } from "./native-setup";
+import {
+  inspectNativeSetup,
+  webhookSubscriptionStructure,
+} from "./native-setup";
 import {
   residualGrant,
   recoverNativeResidual,
@@ -25,6 +32,7 @@ import { ProviderSession, type ProviderControl } from "./provider-session";
 // One instance per actual provider account. No booking or customer data here.
 export class SoccerBotAccountCoordinator extends DurableObject<Env> {
   private provider = new ProviderSession();
+  private calendarReads = new NativeCalendarReads();
   private nativeAvailabilityQueue: Promise<unknown> = Promise.resolve();
   private get sql() {
     return instrumentStorage(this.ctx.storage.sql);
@@ -211,6 +219,24 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
   }
   // A one-use operator grant owns this read-only calendar range. Customer
   // grants still admit only their two exact dates after operator selection.
+  async webhookSubscription(
+    capabilityHash: string,
+    action: "create" | "cleanup",
+    correlationId: string,
+  ) {
+    return traced(correlationId, "coordinator", () =>
+      rpcOutcome(() =>
+        manageWebhookSubscription(
+          this.env,
+          this.provider,
+          this.providerControl(),
+          () => this.providerAccounting(),
+          capabilityHash,
+          action,
+        ),
+      ),
+    );
+  }
   async nativeDiscoveryProbe(
     rawScope: unknown,
     expiresMs: number,
@@ -219,6 +245,67 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     return traced(correlationId, "coordinator", async () => {
       const p = policy(this.env),
         now = Date.now();
+      const webhookScope = z
+        .strictObject({
+          kind: z.literal("native-webhook-structure"),
+          sourceRevision: z.string().regex(/^[a-f0-9]{40}$/),
+          accountId: z.string().min(1).max(128),
+          startingUsed: z.number().int().nonnegative().safe(),
+          maxCalls: z.literal(6),
+        })
+        .safeParse(rawScope);
+      if (webhookScope.success) {
+        const scope = webhookScope.data,
+          initial = this.providerAccounting();
+        if (
+          p.PROVIDER_ACCESS !== "trusted-reads" ||
+          p.CAMPAIGN_END_MS <= now ||
+          scope.sourceRevision !== p.SOURCE_REVISION ||
+          scope.accountId !== p.DEPLOYMENT_ACCOUNT_ID ||
+          !Number.isSafeInteger(expiresMs) ||
+          expiresMs <= now ||
+          expiresMs > now + 180000 ||
+          expiresMs > p.CAMPAIGN_END_MS ||
+          initial.used !== scope.startingUsed ||
+          initial.active !== 0 ||
+          scope.startingUsed + 6 > p.PROVIDER_CALL_CEILING - 16
+        ) {
+          throw new ApiError(503, "webhook_inspection_scope_unavailable");
+        }
+        const control = this.providerControl();
+        let count = 0,
+          last = Date.now();
+        const bounded: ProviderControl = {
+          ...control,
+          reserve: async () => {
+            const delay = Math.max(0, last + 300 - Date.now());
+            if (delay)
+              await new Promise((resolve) => setTimeout(resolve, delay));
+            if (
+              Date.now() + 15000 >= Math.min(expiresMs, p.CAMPAIGN_END_MS) ||
+              count >= 6 ||
+              this.providerAccounting().used >= scope.startingUsed + 6
+            )
+              throw new ApiError(503, "webhook_inspection_exhausted");
+            count++;
+            last = Date.now();
+            return control.reserve();
+          },
+        };
+        await this.provider.identity(this.env, bounded);
+        const response = await this.provider.nativeRead(this.env, bounded, {
+          kind: "webhook-subscriptions",
+        });
+        if (Date.now() >= expiresMs)
+          throw new ApiError(503, "webhook_inspection_expired");
+        return {
+          verified: true,
+          evidence: "subscription_structure_only",
+          normalized: false,
+          representation: webhookSubscriptionStructure(response.body),
+          accounting: this.providerAccounting(),
+        };
+      }
       const parsed = z
         .strictObject({
           kind: z.enum(["native-calendar", "native-setup"]),
@@ -403,7 +490,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     });
   }
   async nativeAvailability(
-    scope: { date: string; serviceId: string; cookie: string },
+    scope: { date: string; serviceId: string; cookie: string; fresh?: boolean },
     correlationId: string,
   ) {
     const pending = this.nativeAvailabilityQueue.then(() =>
@@ -414,6 +501,8 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           }),
           env: this.env,
           date: scope.date,
+          fresh: scope.fresh,
+          invalidate: () => this.calendarReads.invalidateDate(scope.date),
           serviceId: scope.serviceId,
           provider: this.provider,
           control: this.providerControl(),
@@ -427,10 +516,56 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     );
     return rpcOutcome(() => pending);
   }
+  async publicCalendar(month: string, correlationId: string) {
+    const pending = this.nativeAvailabilityQueue.then(() =>
+      traced(correlationId, "coordinator", () =>
+        publicCalendar({
+          env: this.env,
+          month,
+          cache: this.calendarReads,
+          provider: this.provider,
+          control: this.providerControl(),
+          accounting: () => this.providerAccounting(),
+        }),
+      ),
+    );
+    this.nativeAvailabilityQueue = pending.then(
+      () => undefined,
+      () => undefined,
+    );
+    return rpcOutcome(() => pending);
+  }
+  async nativeCalendar(
+    scope: { month: string; serviceId: string; cookie: string },
+    correlationId: string,
+  ) {
+    const pending = this.nativeAvailabilityQueue.then(() =>
+      traced(correlationId, "coordinator", () =>
+        customerNativeCalendar({
+          request: new Request(this.env.APP_ORIGIN, {
+            headers: { cookie: scope.cookie },
+          }),
+          env: this.env,
+          month: scope.month,
+          serviceId: scope.serviceId,
+          provider: this.provider,
+          control: this.providerControl(),
+          accounting: () => this.providerAccounting(),
+          cache: this.calendarReads,
+        }),
+      ),
+    );
+    this.nativeAvailabilityQueue = pending.then(
+      () => undefined,
+      () => undefined,
+    );
+    return rpcOutcome(() => pending);
+  }
   async nativeCheckout(
     scope: { attemptId: string; cookie: string },
     correlationId: string,
   ) {
+    this.calendarReads.invalidate();
     return rpcOutcome(() =>
       traced(correlationId, "coordinator", () =>
         executeNativeCheckout({
@@ -443,7 +578,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           control: this.providerControl(),
           recoveryControl: this.providerControl(true),
           accounting: () => this.providerAccounting(),
-        }),
+        }).finally(() => this.calendarReads.invalidate()),
       ),
     );
   }

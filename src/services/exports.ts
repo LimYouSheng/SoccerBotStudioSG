@@ -23,7 +23,7 @@ function utcTime(date: string, time: string) {
     .replace(/[-:]/g, "")
     .replace(/\.\d{3}Z/, "Z");
 }
-export function calendarText(booking: Booking): string {
+export function calendarText(booking: Booking, preview = true): string {
   const stamp = new Date(booking.createdAt)
     .toISOString()
     .replace(/[-:]/g, "")
@@ -31,7 +31,7 @@ export function calendarText(booking: Booking): string {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//SoccerBotStudio//Booking Preview//EN",
+    `PRODID:-//SoccerBotStudio//Booking${preview ? " Preview" : ""}//EN`,
     "CALSCALE:GREGORIAN",
     ...booking.slots.flatMap((slot, i) => [
       "BEGIN:VEVENT",
@@ -39,9 +39,9 @@ export function calendarText(booking: Booking): string {
       `DTSTAMP:${stamp}`,
       `DTSTART:${utcTime(slot.date, slot.start)}`,
       `DTEND:${utcTime(slot.date, endTime(slot.start))}`,
-      `SUMMARY:${escapeICS(SERVICE_NAME)}`,
+      `SUMMARY:${escapeICS(slot.native?.serviceName ?? SERVICE_NAME)}`,
       `LOCATION:${escapeICS(`${slot.studio}, ${ADDRESS}`)}`,
-      `DESCRIPTION:${escapeICS(`Preview booking ${booking.reference}. Instructor: ${sessionInstructorName(slot)}. Arrive 10 minutes early.`)}`,
+      `DESCRIPTION:${escapeICS(`${preview ? "Preview booking" : "Booking"} ${booking.reference}. Instructor: ${sessionInstructorName(slot)}. Arrive 10 minutes early.`)}`,
       "END:VEVENT",
     ]),
     "END:VCALENDAR",
@@ -64,14 +64,22 @@ export function calendarText(booking: Booking): string {
       .join("\r\n") + "\r\n"
   );
 }
-export function downloadCalendar(booking: Booking) {
+export function downloadCalendar(booking: Booking, preview = true) {
   download(
-    new Blob([calendarText(booking)], { type: "text/calendar;charset=utf-8" }),
+    new Blob([calendarText(booking, preview)], {
+      type: "text/calendar;charset=utf-8",
+    }),
     `${booking.reference}.ics`,
   );
 }
-export async function downloadBooking(booking: Booking) {
+export async function downloadBooking(
+  booking: Booking,
+  preview = true,
+  taxMinor = 0,
+  signal?: AbortSignal,
+) {
   const { jsPDF } = await import("jspdf");
+  signal?.throwIfAborted();
   const pdf = new jsPDF();
   let y = 20;
   const line = (text: string, size = 11) => {
@@ -87,10 +95,10 @@ export async function downloadBooking(booking: Booking) {
     }
   };
   line("SOCCERBOTSTUDIO Singapore", 19);
-  line("Booking preview - no money charged", 10);
+  line(preview ? "Booking preview - no money charged" : "Verified booking", 10);
   y += 6;
   line(booking.reference, 15);
-  line(SERVICE_NAME);
+  line(booking.slots[0]?.native?.serviceName ?? SERVICE_NAME);
   line(`${booking.draft.players} players per session`);
   line(ADDRESS);
   y += 5;
@@ -100,7 +108,10 @@ export async function downloadBooking(booking: Booking) {
     ),
   );
   y += 5;
-  line(`Total: ${money(booking.totalCents)} (SGD, inclusive of GST)`, 13);
+  line(
+    `Total: ${money(booking.totalCents)} (SGD${preview ? ", inclusive of GST" : `, tax ${money(taxMinor)}`})`,
+    13,
+  );
   line(
     `Contact: ${booking.draft.contact.name} | ${booking.draft.contact.email} | ${booking.draft.contact.phone}`,
   );
@@ -108,5 +119,6 @@ export async function downloadBooking(booking: Booking) {
   line(
     "Arrive 10 minutes early. Have your SoccerBot Player App profile and QR card ready.",
   );
+  signal?.throwIfAborted();
   pdf.save(`${booking.reference}.pdf`);
 }

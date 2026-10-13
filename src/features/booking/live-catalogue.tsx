@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { CustomerCatalogue } from "@/domain/catalog";
 import {
   customerCatalogueService,
@@ -10,9 +10,11 @@ import { money } from "@/domain/dates";
 export function LiveCatalogue({
   service = customerCatalogueService,
   onSelect,
+  render,
 }: {
   service?: CustomerCatalogueService;
   onSelect?: (serviceId: string) => void;
+  render?: (data: CustomerCatalogue) => ReactNode;
 }) {
   const [revision, retry] = useState(0);
   const [result, setResult] = useState<{
@@ -49,6 +51,7 @@ export function LiveCatalogue({
         </button>
       </section>
     );
+  if (render && current.data) return render(current.data);
   const sessions = current.data?.services.filter((item) => item.active) ?? [];
   return (
     <section className="surface" aria-label="Current sessions">
