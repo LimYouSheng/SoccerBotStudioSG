@@ -1,3 +1,4 @@
+import { webhookEvent, webhookPath } from "./webhook-contract";
 import { z } from "zod";
 import { ApiError, digest, policy } from "./policy";
 import { providerSecrets } from "./provider-transport";
@@ -7,6 +8,7 @@ import type { ProviderSession, ProviderControl } from "./provider-session";
 const denied = () => new ApiError(503, "webhook_subscription_unavailable");
 const schema = z.object({
   window_id: z.string().uuid(),
+  subscription_event: webhookEvent,
   source_revision: z.string().regex(/^[a-f0-9]{40}$/),
   account_id: z.string(),
   company_login: z.string(),
@@ -42,7 +44,7 @@ export async function manageWebhookSubscription(
     const row = schema.safeParse(
       await db
         .prepare(
-          `SELECT g.*,w.source_revision,w.account_id,w.company_login,w.environment,w.origin,w.opened_ms,w.expires_ms,w.state AS window_state FROM webhook_subscription_grants g JOIN webhook_capture_windows w ON w.id=g.window_id WHERE ${action === "create" ? "create_hash" : "cleanup_hash"}=?`,
+          `SELECT g.*,w.source_revision,w.account_id,w.company_login,w.environment,w.origin,w.opened_ms,w.expires_ms,w.state AS window_state,COALESCE(s.event,'new_booking') AS subscription_event FROM webhook_subscription_grants g JOIN webhook_capture_windows w ON w.id=g.window_id LEFT JOIN webhook_event_scopes s ON s.window_id=w.id WHERE ${action === "create" ? "create_hash" : "cleanup_hash"}=?`,
         )
         .bind(capabilityHash)
         .first(),
@@ -99,6 +101,7 @@ export async function manageWebhookSubscription(
     const current = await read();
     if (
       current.state !== phase ||
+      current.subscription_event !== initial.subscription_event ||
       Date.now() + 15000 >= current.expires_ms ||
       accounting().used < current.starting_used ||
       accounting().used >= current.maximum_used
@@ -156,20 +159,27 @@ export async function manageWebhookSubscription(
     );
   };
   try {
-    const destination = await digest(initial.origin + "/api/provider/webhook");
+    const destination = await digest(
+      initial.origin + webhookPath(initial.subscription_event),
+    );
     const before = await list();
     if (before.some((entry) => !entry.active)) throw denied();
     if (action === "create") {
       if (
         before.some((entry) => entry.destinationSha256 === destination) ||
-        before.filter((entry) => entry.event === "new_booking").length >= 5
+        before.filter((entry) => entry.event === initial.subscription_event)
+          .length >= 5
       )
         throw denied();
       await move("creating", ",baseline_json=?", [canonical(before)]);
       await provider.nativeWrite(
         env,
         bounded,
-        { kind: "webhook-create", origin: initial.origin },
+        {
+          kind: "webhook-create",
+          origin: initial.origin,
+          event: initial.subscription_event,
+        },
         assertGranted,
       );
       const after = await list();
@@ -178,7 +188,7 @@ export async function manageWebhookSubscription(
       );
       if (
         added.length !== 1 ||
-        added[0].event !== "new_booking" ||
+        added[0].event !== initial.subscription_event ||
         !added[0].active ||
         added[0].destinationSha256 !== destination ||
         canonical(after.filter((entry) => entry.id !== added[0].id)) !==
@@ -206,7 +216,7 @@ export async function manageWebhookSubscription(
       );
       if (
         candidates.length !== 1 ||
-        candidates[0].event !== "new_booking" ||
+        candidates[0].event !== initial.subscription_event ||
         !candidates[0].active ||
         candidates[0].destinationSha256 !== destination ||
         (initial.subscription_id !== null &&

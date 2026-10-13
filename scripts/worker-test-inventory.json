@@ -206,6 +206,9 @@
   "webhook structure inspection reads one account list and exposes types without assuming the active flag representation",
   "webhook structure inspection refuses changed source budget scope and expired one-use authority before transport",
   "webhook structure inspection bounds nested diagnostics and never interprets an unknown envelope as subscription acceptance",
+  "paired webhook channels preserve exact baselines through reverse cleanup without replay",
+  "paired webhook cleanup refuses out of order deletion and preserves both subscriptions",
+  "invoice webhook scope enforces its own event cap before any subscription write",
   "recovery scheduling is atomic with dispatch and duplicate logical intent stays unique",
   "concurrent recovery workers acquire one claim and advance the original attempt fence",
   "expired recovery claims reject late completion before and after fenced reclaim",
@@ -280,5 +283,7 @@
   "webhook concurrent duplicates are durable and later distinct hints remain separate within the cap",
   "webhook finite closure rejects replay and database failure is never acknowledged",
   "webhook body limits and HTTP boundaries reject before capture",
-  "webhook slow streamed bodies time out and never acknowledge a receipt"
+  "webhook slow streamed bodies time out and never acknowledge a receipt",
+  "webhook comparison channels isolate capture deduplication caps and closure",
+  "invoice capture retains authentication boundaries and immutable event authority"
 ]

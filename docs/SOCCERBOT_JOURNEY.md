@@ -1,5 +1,13 @@
 # SoccerBotStudio — Journey
 
+## Paired webhook control preparation — 13 October 2026
+
+After the owner said “ok do it”, implemented separate fixed capture routes for booking and invoice notifications. Structural-only capture cannot safely infer event identity, so immutable per-window scope metadata isolates the diagnostic channels without storing payload values. The existing subscription lifecycle supports the selected enum event and exact destination; sequential registration and reverse cleanup preserve nested baselines. Additive0024 preserves all prior tables and migrations.
+
+Added five behavioral regressions for paired restoration/no replay, wrong-order refusal, invoice event cap, isolated capture/deduplication/closure, and unchanged authentication plus immutable event authority. The first focused run could not start local runtimes in the restricted sandbox; the network-enabled local run exercised them. Its new fixed call-count assertion was wrong because authentication reuse changes the number of requests. Corrected that fixture assertion to reconcile every actual request against the two bounded grant counters; targeted cases then passed. No production timeout, retry or existing assertion was weakened. Full Worker verification and exact-source CI remain required before live packet sealing.
+
+No provider call, deployment, migration or payment occurred. Current limits cannot cover another deployment and closure; complete the reviewable packet before requesting only the necessary amendment. Owner-controlled acceptance remains deferred.
+
 ## Deeper diagnosis identified an unproven event prerequisite — 13 October 2026
 
 YS requested looking deeper. Rechecked the exact subscription destination/event proof and fixed-origin routing, extended stored-log search through10:44:54 Singapore, read Cloudflare Access/subdomain configuration and retained subscription2's closed local reference. There were no endpoint events; Access reported not enabled and workers.dev enabled. Four management reads bring cumulative totals to516 provider/359 management/150 Worker/35 deployments. No provider call, live mutation or support message occurred.

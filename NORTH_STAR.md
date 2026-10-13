@@ -1,5 +1,9 @@
 # North Star: dependable customer booking and quick rebooking
 
+## Next bounded proof: invoice versus booking delivery — 13 October 2026
+
+Prepare separate finite capture channels for new_booking and new_invoice around one new priced checkout. This comparison addresses the unproven pre-payment event expectation; route labels remain diagnostic, never payment or booking association authority. Obtain exact-source CI and the tested artifact, then seal the packet and its reverse cleanup. Current limits cannot fund deployment and closure; amend them concretely before execution. Retain owner-controlled payment/browser acceptance. Service Contracts and Journey own exact scope and evidence.
+
 ## Webhook investigation: verify the event prerequisite — 13 October 2026
 
 No callback was recorded through 10:44:54 Singapore. The exact destination and active `new_booking` registration were verified before booking 38; current Cloudflare reads report Access not enabled and the public Worker address enabled. Older SimplyBook staff answers say priced API booking callbacks wait for payment, while invoice 29 remains unpaid. Current REST documentation does not establish whether that rule applies here. Service Contracts owns the sources, remaining uncertainty and next diagnostic; Journey records the investigation. Keep access closed at 516 provider calls; cumulative management 359, Worker 150, deployments 35. No replay, payment or owner acceptance.

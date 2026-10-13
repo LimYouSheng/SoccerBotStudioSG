@@ -2378,6 +2378,7 @@ async function subscriptionFixture({
   maximum = 80,
   changeAfterCreate = false,
   createdFlag = 1,
+  events = ["new_booking"],
 } = {}) {
   let records = structuredClone(entries),
     creates = 0,
@@ -2397,12 +2398,16 @@ async function subscriptionFixture({
           : Response.json(records);
       if (path === "/admin/webhooks" && request.method === "POST") {
         creates++;
+        const event = events[Math.min(creates - 1, events.length - 1)];
         assert.deepEqual(body, {
-          url: webhookOrigin + "/api/provider/webhook",
-          event: "new_booking",
+          url:
+            webhookOrigin +
+            "/api/provider/webhook" +
+            (event === "new_invoice" ? "/new_invoice" : ""),
+          event,
         });
         records.push({
-          id: 99,
+          id: 98 + creates,
           event: body.event,
           url: body.url,
           is_active: createdFlag,
@@ -2412,11 +2417,15 @@ async function subscriptionFixture({
           ? new Response("unknown", { status: 502 })
           : Response.json({ arbitrary: "not-used-as-identity" });
       }
-      if (path === "/admin/webhooks/99" && request.method === "DELETE") {
-        deletes.push("99");
+      if (
+        /^\/admin\/webhooks\/(99|100)$/.test(path) &&
+        request.method === "DELETE"
+      ) {
+        const id = path.split("/").at(-1);
+        deletes.push(id);
         if (deleteFailure) return new Response("unknown", { status: 502 });
         if (deleteEffect !== "retain")
-          records = records.filter((entry) => String(entry.id) !== "99");
+          records = records.filter((entry) => String(entry.id) !== id);
         if (deleteEffect === "change-prior") records[0].is_active = 0;
         return deleteResponse
           ? deleteResponse()
@@ -3010,6 +3019,131 @@ test("webhook structure inspection bounds nested diagnostics and never interpret
     assert.ok(raw.length < 6000);
     assert.doesNotMatch(raw, /private-|987/);
     assert.equal(f.calls.length, 5);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+
+async function installInvoiceControl(f, startingUsed) {
+  const window = crypto.randomUUID();
+  const create = "1".repeat(64),
+    cleanup = "2".repeat(64);
+  const hash = (value) => createHash("sha256").update(value).digest("hex");
+  await f.db
+    .prepare(
+      "INSERT INTO webhook_capture_windows SELECT ?,source_revision,account_id,company_login,environment,origin,opened_ms,expires_ms,maximum_receipts,state FROM webhook_capture_windows WHERE id=?",
+    )
+    .bind(window, f.window)
+    .run();
+  await f.db
+    .prepare("INSERT INTO webhook_event_scopes VALUES(?,'new_invoice')")
+    .bind(window)
+    .run();
+  await f.db
+    .prepare(
+      "INSERT INTO webhook_subscription_grants(window_id,create_hash,cleanup_hash,starting_used,maximum_used) VALUES(?,?,?,?,80)",
+    )
+    .bind(window, hash(create), hash(cleanup), startingUsed)
+    .run();
+  return { window, create, cleanup };
+}
+test("paired webhook channels preserve exact baselines through reverse cleanup without replay", async () => {
+  const prior = [
+    {
+      id: 7,
+      event: "new_booking",
+      url: "https://prior.invalid/hook",
+      is_active: 1,
+    },
+  ];
+  const f = await subscriptionFixture({
+    entries: prior,
+    events: ["new_booking", "new_invoice"],
+  });
+  try {
+    const booking = await f.manage("create");
+    assert.equal(booking.body.verified, true);
+    const invoice = await installInvoiceControl(
+      f,
+      booking.body.accounting.used,
+    );
+    const created = await f.manage("create", invoice.create);
+    assert.equal(created.body.verified, true);
+    assert.deepEqual(
+      f.records().map((x) => x.event),
+      ["new_booking", "new_booking", "new_invoice"],
+    );
+    assert.equal(
+      (await f.manage("cleanup", invoice.cleanup)).body.verified,
+      true,
+    );
+    assert.deepEqual(
+      f.records().map((x) => String(x.id)),
+      ["7", "99"],
+    );
+    assert.equal((await f.manage("cleanup")).body.verified, true);
+    assert.deepEqual(f.records(), prior);
+    assert.deepEqual(f.deletes, ["100", "99"]);
+    const count = f.calls.length;
+    assert.equal((await f.manage("create", invoice.create)).status, 503);
+    assert.equal((await f.manage("cleanup", invoice.cleanup)).status, 503);
+    assert.equal(f.calls.length, count);
+    const rows = (
+      await f.db
+        .prepare("SELECT calls_used,state FROM webhook_subscription_grants")
+        .all()
+    ).results;
+    assert.equal(rows.length, 2);
+    for (const row of rows) {
+      assert.equal(row.state, "closed");
+      assert.ok(row.calls_used > 0 && row.calls_used <= 20);
+    }
+    assert.equal(
+      rows.reduce((sum, row) => sum + row.calls_used, 0),
+      f.calls.length,
+    );
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("paired webhook cleanup refuses out of order deletion and preserves both subscriptions", async () => {
+  const f = await subscriptionFixture({
+    events: ["new_booking", "new_invoice"],
+  });
+  try {
+    const first = await f.manage("create");
+    const invoice = await installInvoiceControl(f, first.body.accounting.used);
+    assert.equal(
+      (await f.manage("create", invoice.create)).body.verified,
+      true,
+    );
+    const cleanup = await f.manage("cleanup");
+    assert.equal(cleanup.body.verified, false);
+    assert.equal(cleanup.body.state, "blocked");
+    assert.deepEqual(f.deletes, []);
+    assert.equal(f.records().length, 2);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+test("invoice webhook scope enforces its own event cap before any subscription write", async () => {
+  const entries = Array.from({ length: 5 }, (_, i) => ({
+    id: i + 1,
+    event: "new_invoice",
+    url: `https://prior.invalid/${i}`,
+    is_active: 1,
+  }));
+  const f = await subscriptionFixture({ entries, events: ["new_invoice"] });
+  try {
+    await f.db
+      .prepare("INSERT INTO webhook_event_scopes VALUES(?,'new_invoice')")
+      .bind(f.window)
+      .run();
+    const result = await f.manage("create");
+    assert.equal(result.body.verified, false);
+    assert.equal(f.creates(), 0);
+    assert.deepEqual(f.records(), entries);
+    assert.deepEqual(f.deletes, []);
   } finally {
     await f.mf.dispose();
   }

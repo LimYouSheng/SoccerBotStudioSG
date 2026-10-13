@@ -1,5 +1,9 @@
 # SoccerBotStudioSG engineering
 
+## Preparing paired webhook control — 13 October 2026
+
+YS said “ok do it” after the deeper diagnosis. Prepare one future priced checkout observed by separate new_booking/new_invoice subscriptions, retaining the stop before owner-controlled acceptance. The source adds a fixed invoice route and immutable event scopes; it opens nothing. Service Contracts owns channel semantics, reverse cleanup and the exact-source packet requirement. Live remains closed on44c53fc at516 provider/359 management/150 Worker/35 deployments. Existing cumulative limits leave3 management requests and1 deployment, so execution requires a concrete amended packet after CI/artifact validation. No support message, payment or replay.
+
 ## Webhook investigation: verify the event prerequisite — 13 October 2026
 
 No callback was recorded through 10:44:54 Singapore. The exact destination and active `new_booking` registration were verified before booking 38; current Cloudflare reads report Access not enabled and the public Worker address enabled. Older SimplyBook staff answers say priced API booking callbacks wait for payment, while invoice 29 remains unpaid. Current REST documentation does not establish whether that rule applies here. Service Contracts owns the sources, remaining uncertainty and next diagnostic; Journey records the investigation. Keep access closed at 516 provider calls; cumulative management 359, Worker 150, deployments 35. No replay, payment or owner acceptance.

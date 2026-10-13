@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Paired diagnostic channels retain independent authority — 13 October 2026
+
+YS authorized proceeding with the proposed control preparation. Extend existing transport, subscription and capture owners; no alternate provider dispatch or payment authority is introduced. A fixed route selects an operator-declared event scope. The route is not covered by the provider body HMAC and must never establish payload event identity, booking association or paid state. Both channels still authenticate the exact body and retain structure only.
+
+Additive0024 creates immutable event scopes referencing existing capture windows. Historical rows and applied migrations0001–0023 remain unchanged; absence of a scope retains the legacy booking route. Two distinct windows isolate admission caps and deduplication. Sequential registration takes nested exact baselines, so cleanup must reverse registration order. Never delete the first subscription while the second remains unresolved. Close both ingress windows and access independently even when restoration is unproved. A concrete exact-source sealed packet and amended budgets are required before live execution; the user's stop before owner-controlled acceptance remains in force.
+
 ## Verify event prerequisites before delivery acceptance — 13 October 2026
 
 Stored logs support no recorded webhook arrival during the examined interval. Current Cloudflare reads show no Access application barrier and an enabled public Worker address. Older provider staff answers identify payment-gated callbacks for priced API bookings, but current REST semantics for unpaid booking creation remain unproven. Treat this as an acceptance-prerequisite gap, not a proven application validator defect or a confirmed provider outage.

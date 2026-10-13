@@ -1,3 +1,4 @@
+import { webhookEvent, webhookRoute } from "./webhook-contract";
 import { z } from "zod";
 import { verifyBindings } from "./bindings";
 import { ApiError } from "./policy";
@@ -5,6 +6,7 @@ import { ApiError } from "./policy";
 const unavailable = () => new ApiError(503, "webhook_unavailable");
 const windowSchema = z.strictObject({
   id: z.string().uuid(),
+  subscription_event: webhookEvent,
   source_revision: z.string().regex(/^[a-f0-9]{40}$/),
   account_id: z.string(),
   company_login: z.string().min(1).max(128),
@@ -86,20 +88,23 @@ export async function captureWebhook(
 ) {
   if (request.method !== "POST")
     throw new ApiError(405, "operation_unavailable");
+  const event = webhookRoute(new URL(request.url).pathname);
+  if (!event) throw unavailable();
   await verifyBindings(env);
   const db = env.STATE.withSession("first-primary");
   const parsedWindow = windowSchema.safeParse(
     await db
       .prepare(
-        "SELECT * FROM webhook_capture_windows WHERE state='open' AND opened_ms<=? AND expires_ms>? ORDER BY opened_ms DESC LIMIT 1",
+        "SELECT w.*,COALESCE(s.event,'new_booking') AS subscription_event FROM webhook_capture_windows w LEFT JOIN webhook_event_scopes s ON s.window_id=w.id WHERE w.state='open' AND w.opened_ms<=? AND w.expires_ms>? AND COALESCE(s.event,'new_booking')=? ORDER BY w.opened_ms DESC LIMIT 1",
       )
-      .bind(clock(), clock())
+      .bind(clock(), clock(), event)
       .first(),
   );
   if (!parsedWindow.success) throw unavailable();
   const window = parsedWindow.data;
   const company: unknown = Reflect.get(env, "SIMPLYBOOK_DEV_COMPANY_LOGIN");
   if (
+    window.subscription_event !== event ||
     window.source_revision !== env.SOURCE_REVISION ||
     window.account_id !== env.DEPLOYMENT_ACCOUNT_ID ||
     typeof company !== "string" ||
@@ -156,7 +161,7 @@ export async function captureWebhook(
   // Atomic finite admission and exact-delivery dedup. Recheck closure at commit.
   const result = await db
     .prepare(
-      "INSERT INTO webhook_receipts(window_id,body_digest,received_ms,sent_seconds,body_bytes,shape_json,state) SELECT id,?,?,?,?,?,'captured' FROM webhook_capture_windows WHERE id=? AND state='open' AND source_revision=? AND account_id=? AND company_login=? AND environment=? AND origin=? AND opened_ms<=? AND expires_ms>? AND (SELECT count(*) FROM webhook_receipts WHERE window_id=?)<maximum_receipts ON CONFLICT(window_id,body_digest) DO NOTHING RETURNING body_digest",
+      "INSERT INTO webhook_receipts(window_id,body_digest,received_ms,sent_seconds,body_bytes,shape_json,state) SELECT id,?,?,?,?,?,'captured' FROM webhook_capture_windows WHERE id=? AND state='open' AND source_revision=? AND account_id=? AND company_login=? AND environment=? AND origin=? AND opened_ms<=? AND expires_ms>? AND COALESCE((SELECT event FROM webhook_event_scopes WHERE window_id=webhook_capture_windows.id),'new_booking')=? AND (SELECT count(*) FROM webhook_receipts WHERE window_id=?)<maximum_receipts ON CONFLICT(window_id,body_digest) DO NOTHING RETURNING body_digest",
     )
     .bind(
       digest,
@@ -172,13 +177,14 @@ export async function captureWebhook(
       env.APP_ORIGIN,
       now,
       now,
+      event,
       window.id,
     )
     .first();
   if (!result) {
     const duplicate = await db
       .prepare(
-        "SELECT r.body_digest FROM webhook_receipts r JOIN webhook_capture_windows w ON w.id=r.window_id WHERE r.window_id=? AND r.body_digest=? AND w.state='open' AND w.source_revision=? AND w.account_id=? AND w.company_login=? AND w.environment=? AND w.origin=? AND w.opened_ms<=? AND w.expires_ms>?",
+        "SELECT r.body_digest FROM webhook_receipts r JOIN webhook_capture_windows w ON w.id=r.window_id WHERE r.window_id=? AND r.body_digest=? AND w.state='open' AND w.source_revision=? AND w.account_id=? AND w.company_login=? AND w.environment=? AND w.origin=? AND w.opened_ms<=? AND w.expires_ms>? AND COALESCE((SELECT event FROM webhook_event_scopes WHERE window_id=w.id),'new_booking')=?",
       )
       .bind(
         window.id,
@@ -190,6 +196,7 @@ export async function captureWebhook(
         env.APP_ORIGIN,
         clock(),
         clock(),
+        event,
       )
       .first();
     if (!duplicate) throw unavailable();

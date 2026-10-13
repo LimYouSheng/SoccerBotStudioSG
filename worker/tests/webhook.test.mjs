@@ -74,14 +74,14 @@ afterEach(async () => {
   await mf?.dispose();
   assert.equal(outbound, 0, "callbacks never dispatch provider traffic");
 });
-async function open(maximum = 16) {
+async function open(maximum = 16, event = "new_booking", id = windowId) {
   const now = Date.now();
   await db
     .prepare(
       "INSERT INTO webhook_capture_windows VALUES(?,?,?,?,?,?,?,?,?, 'open')",
     )
     .bind(
-      windowId,
+      id,
       source,
       config.vars.DEPLOYMENT_ACCOUNT_ID,
       "synthetic-developer",
@@ -92,6 +92,11 @@ async function open(maximum = 16) {
       maximum,
     )
     .run();
+  if (event !== "new_booking")
+    await db
+      .prepare("INSERT INTO webhook_event_scopes VALUES(?,?)")
+      .bind(id, event)
+      .run();
 }
 function body(extra = {}) {
   return JSON.stringify({
@@ -102,7 +107,7 @@ function body(extra = {}) {
 }
 function send(raw = body(), options = {}) {
   return mf.dispatchFetch(
-    origin + "/api/provider/webhook" + (options.query || ""),
+    origin + (options.path || "/api/provider/webhook") + (options.query || ""),
     {
       method: options.method || "POST",
       body: raw,
@@ -277,4 +282,60 @@ test("webhook slow streamed bodies time out and never acknowledge a receipt", as
   });
   assert.equal(response.status, 408);
   assert.deepEqual(await receipts(), []);
+});
+
+test("webhook comparison channels isolate capture deduplication caps and closure", async () => {
+  await open(1);
+  const invoice = crypto.randomUUID(),
+    path = "/api/provider/webhook/new_invoice";
+  assert.equal((await send(body(), { path })).status, 503);
+  await open(1, "new_invoice", invoice);
+  const raw = body({ synthetic_marker: "same-authenticated-bytes" });
+  assert.equal((await send(raw)).status, 202);
+  assert.equal((await send(raw, { path })).status, 202);
+  assert.equal((await send(raw, { path })).status, 202);
+  assert.deepEqual(
+    (await receipts()).map((r) => r.window_id).sort(),
+    [windowId, invoice].sort(),
+  );
+  assert.equal(
+    (await send(body({ synthetic_marker: "next" }), { path })).status,
+    503,
+  );
+  await db
+    .prepare("UPDATE webhook_capture_windows SET state='closed' WHERE id=?")
+    .bind(invoice)
+    .run();
+  assert.equal((await send(raw, { path })).status, 503);
+  assert.equal((await send(raw)).status, 202);
+  assert.equal((await receipts()).length, 2);
+});
+test("invoice capture retains authentication boundaries and immutable event authority", async () => {
+  await open(2, "new_invoice");
+  const path = "/api/provider/webhook/new_invoice";
+  assert.equal((await send()).status, 503);
+  assert.equal(
+    (await send(body(), { path, headers: { "x-signature": "0".repeat(64) } }))
+      .status,
+    401,
+  );
+  assert.equal(
+    (await send(body(), { path, query: "?event=new_booking" })).status,
+    400,
+  );
+  assert.notEqual(
+    (await send(body(), { path: path + "/unknown" })).status,
+    202,
+  );
+  assert.deepEqual(await receipts(), []);
+  await assert.rejects(
+    db.prepare("UPDATE webhook_event_scopes SET event='new_booking'").run(),
+    /immutable/,
+  );
+  await assert.rejects(
+    db.prepare("DELETE FROM webhook_event_scopes").run(),
+    /immutable/,
+  );
+  assert.equal((await send(body(), { path })).status, 202);
+  assert.equal((await receipts())[0].window_id, windowId);
 });

@@ -1,3 +1,4 @@
+import { webhookRoute } from "./webhook-contract";
 import { captureWebhook } from "./webhook";
 import {
   nativeCheckoutStatus,
@@ -108,7 +109,7 @@ export default {
         )
           throw new ApiError(403, "origin_denied");
         if (url.search) throw new ApiError(400, "unexpected_parameters");
-        if (url.pathname === "/api/provider/webhook") {
+        if (webhookRoute(url.pathname)) {
           return json(await captureWebhook(request, env), 202);
         }
         if (

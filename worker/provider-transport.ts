@@ -1,3 +1,8 @@
+import {
+  webhookEvent,
+  webhookPath,
+  type WebhookEvent,
+} from "./webhook-contract";
 import { z } from "zod";
 import { providerId } from "./provider-normalization";
 import { measure } from "./diagnostics";
@@ -135,7 +140,7 @@ export type NativeExchange = (
 ) => Promise<{ body: unknown; receivedAtMs: number }>;
 export type NativeRequest =
   | { kind: "webhook-subscriptions" }
-  | { kind: "webhook-create"; origin: string }
+  | { kind: "webhook-create"; origin: string; event: WebhookEvent }
   | { kind: "webhook-delete"; subscriptionId: string }
   | {
       kind: "working-hours";
@@ -273,8 +278,8 @@ export async function providerRequest(
         url = "https://user-api-v2.simplybook.me/admin/webhooks";
         method = "POST";
         body = JSON.stringify({
-          url: origin + "/api/provider/webhook",
-          event: "new_booking",
+          url: origin + webhookPath(webhookEvent.parse(native.event)),
+          event: native.event,
         });
         break;
       }

@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## Paired control source prepared — 13 October 2026
+
+The next experiment uses fixed booking/invoice callback routes with independent finite windows, caps and deduplication. Each subscription keeps its one-use grant and exact baseline checks; remove invoice first, then booking, preserving prior subscriptions. Additive0024 creates only immutable event scope metadata. Application/source checks and CI/artifact validation must finish before sealing a live packet. Access remains closed at516/359/150/35; the existing management/deployment remainder is insufficient. Owner acceptance remains deferred.
+
 ## Webhook investigation: verify the event prerequisite — 13 October 2026
 
 No callback was recorded through 10:44:54 Singapore. The exact destination and active `new_booking` registration were verified before booking 38; current Cloudflare reads report Access not enabled and the public Worker address enabled. Older SimplyBook staff answers say priced API booking callbacks wait for payment, while invoice 29 remains unpaid. Current REST documentation does not establish whether that rule applies here. Service Contracts owns the sources, remaining uncertainty and next diagnostic; Journey records the investigation. Keep access closed at 516 provider calls; cumulative management 359, Worker 150, deployments 35. No replay, payment or owner acceptance.

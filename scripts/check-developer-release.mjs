@@ -137,7 +137,9 @@ try {
     .run();
   const grants = (await db.prepare("SELECT * FROM developer_operations").all())
     .results;
-  assert.deepEqual(manifest.pendingRemoteMigrations, []);
+  assert.deepEqual(manifest.pendingRemoteMigrations, [
+    "0024_webhook_event_scopes.sql",
+  ]);
   // Old-state compatibility remains tested locally, never re-applied remotely.
   for (const name of names.slice(5, 8)) await migrate(name);
   const appliedEight = {
@@ -291,6 +293,50 @@ try {
       (await db.prepare(`SELECT count(*) n FROM "${table}"`).first()).n,
       0,
     );
+  // The new scope table must preserve the already applied capture history.
+  const legacyWindow = crypto.randomUUID();
+  await db
+    .prepare(
+      "INSERT INTO webhook_capture_windows VALUES(?,?,?,?,?,?,?,?,?,'closed')",
+    )
+    .bind(
+      legacyWindow,
+      manifest.sourceRevision,
+      config.account_id,
+      "synthetic-developer",
+      "developer",
+      origin,
+      1,
+      2,
+      16,
+    )
+    .run();
+  await db
+    .prepare(
+      "INSERT INTO webhook_subscription_grants(window_id,create_hash,cleanup_hash,starting_used,maximum_used,state) VALUES(?,?,?,0,80,'delete_unknown')",
+    )
+    .bind(legacyWindow, "a".repeat(64), "b".repeat(64))
+    .run();
+  const captureHistory = (
+    await db.prepare("SELECT * FROM webhook_capture_windows").all()
+  ).results;
+  const subscriptionHistory = (
+    await db.prepare("SELECT * FROM webhook_subscription_grants").all()
+  ).results;
+  await migrate("0024_webhook_event_scopes.sql");
+  assert.deepEqual(
+    (await db.prepare("SELECT * FROM webhook_capture_windows").all()).results,
+    captureHistory,
+  );
+  assert.deepEqual(
+    (await db.prepare("SELECT * FROM webhook_subscription_grants").all())
+      .results,
+    subscriptionHistory,
+  );
+  assert.equal(
+    (await db.prepare("SELECT count(*) n FROM webhook_event_scopes").first()).n,
+    0,
+  );
   assert.equal(
     (
       await mf.dispatchFetch(`${origin}/api/provider/webhook`, {
