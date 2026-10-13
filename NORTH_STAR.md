@@ -1,5 +1,9 @@
 # North Star: dependable customer booking and quick rebooking
 
+## Active subscription baseline restored — 13 October 2026
+
+Approved read-only packet1089bf8b452a returned an empty active-subscription array without repeating DELETE. The original empty active baseline is restored; this does not establish permanent deletion of inactive provider records or webhook delivery acceptance. Independent closure at09:53:37 Singapore verified source1e6bfbe/version84852bef-7346-40de-97df-220cccb9a029, disabled/end0/active0,471/640 calls and all23 historical tables preserved. Carried management310, Worker133, deployments32. The historical delete_unknown grant is unchanged. No booking, cancellation or payment occurred. This packet is consumed; further live work requires new finite authority. Service Contracts and Journey own the evidence and next step.
+
 ## Latest live result: DELETE unknown, test stopped — 13 October 2026
 
 Approved packet10c62a001eea passed actual string-flag and unique subscription identity checks, then dispatched DELETE once and stopped on `provider_representation_unknown`. No new live booking/subscription test started. At09:36:09Singapore, independent closure verified source1e6bfbe/version43fc696a-7d40-4ded-8f58-9871003462dc, disabled/end0/active0,466/640 calls and23 preserved historical tables. Carried management293, Worker125, deployments30. Removal remains unproven; preserve delete_unknown and reconcile read-only before any further action. No DELETE replay, successor flight or owner acceptance. Service Contracts and Journey own the evidence.

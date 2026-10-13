@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Empty active list confirmed after unknown DELETE — 13 October 2026
+
+After clarifying that subscription DELETE does not cancel a booking, YS requested the read-only check and approved the one-extra-deployment amendment31→32. Packet1089bf8b452a reused tested source1e6bfbe and executed one authenticated active-list read. The provider returned an empty array, restoring the original empty active baseline; no DELETE replay was needed. Five calls advanced466→471. Permanent inactive-record deletion and the earlier response shape remain unproven.
+
+Independent closure at09:53:37 Singapore verified disabled/end0/active0 on version84852bef-7346-40de-97df-220cccb9a029, expired/401 new capabilities, empty schedules and all23 historical tables/migrations preserved. Actual cost5 provider/17 management/8 Worker/2 deployments; cumulative471/310/133/32. The ledger closed with a linked reconciliation receipt while historical delete_unknown remained unchanged. No booking, cancellation, payment or owner acceptance occurred. The requested new webhook test remains pending a transport-contract repair and new finite authority.
+
 ## Cleanup crossed the parser guard and stopped at DELETE response — 13 October 2026
 
 YS approved packet10c62a001eea with amended limits, then asked for status. The packet executed once on CI-passing source1e6bfbe. Preflight matched the original closed window and blocked grant to their preserved hashes. Fresh list validation passed the repaired string-flag normalizer and proved a unique original subscription against its baseline. DELETE dispatched once, then transport rejected the returned representation with `provider_representation_unknown`; the separate cleanup grant retained `delete_unknown`. Six provider calls advanced460→466. The exact response metadata/body was not retained, so no particular success status/body format is asserted.

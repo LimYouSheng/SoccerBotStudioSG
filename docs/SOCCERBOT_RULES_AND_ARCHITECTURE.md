@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Active webhook baseline reconciled — 13 October 2026
+
+One approved read-only reconciliation returned an empty active-subscription array, matching the original empty baseline. This resolves the active-subscription restoration condition without replaying DELETE or rewriting the historical delete_unknown record. Preserve the distinction between active baseline restoration, permanent provider record deletion and actual signed delivery acceptance. No new booking or owner acceptance occurred.
+
+Access and preservation were independently verified closed on source1e6bfbe at471/640 calls with all23 historical tables unchanged. Service Contracts owns exact packet/counters/version and remaining transport/delivery work; Journey owns the execution record. The read-only packet is consumed and no successor live flight is authorized.
+
 ## Cleanup response boundary reached; access closed — 13 October 2026
 
 Approved packet10c62a001eea deployed source1e6bfbe and the repaired string-flag parser passed actual subscription identity/baseline validation. The single DELETE dispatch then returned an unrecognized representation. Retain `delete_unknown`; no duplicate DELETE or new booking test is allowed while removal is unproven. A read-only reconciliation must establish current provider state before further action.
