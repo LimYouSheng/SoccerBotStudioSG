@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Cleanup crossed the parser guard and stopped at DELETE response — 13 October 2026
+
+YS approved packet10c62a001eea with amended limits, then asked for status. The packet executed once on CI-passing source1e6bfbe. Preflight matched the original closed window and blocked grant to their preserved hashes. Fresh list validation passed the repaired string-flag normalizer and proved a unique original subscription against its baseline. DELETE dispatched once, then transport rejected the returned representation with `provider_representation_unknown`; the separate cleanup grant retained `delete_unknown`. Six provider calls advanced460→466. The exact response metadata/body was not retained, so no particular success status/body format is asserted.
+
+The first-failure condition stopped the new live test before any new subscription, attempt, booking or link. No DELETE retry or post-delete provider read occurred. Only pre-authorized access closure followed. At09:36:09Singapore, source1e6bfbe/version43fc696a-7d40-4ded-8f58-9871003462dc was independently verified disabled/end0/active0 with expired new authority, denied capabilities, empty schedules and23 historical tables unchanged. Cost6 provider/30 management/10 Worker/3 deployments. Removal remains unproven; next action must be read-only reconciliation, never replay of the unknown DELETE. Private cleanup-retest execution receipts and the durable ledger retain the stopped outcome.
+
 ## Subscription flag mismatch repaired in its owner — 13 October 2026
 
 YS requested “ok fix” after the read-only diagnostic. A new lifecycle regression with string flags failed on the prior numeric-only parser with `webhook_subscription_proof_incomplete`; the private failing receipt is retained. The normalizer now explicitly permits only string"0"/"1" and existing numeric0/1, delegates the boolean decision to the shared flag owner, and emits fixed field rejection codes. The same lifecycle regression then passed. The actual diagnostic did not retain flag values, so this is a strict representation repair rather than a claim that the live subscription was revalidated or removed.

@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Cleanup response boundary reached; access closed — 13 October 2026
+
+Approved packet10c62a001eea deployed source1e6bfbe and the repaired string-flag parser passed actual subscription identity/baseline validation. The single DELETE dispatch then returned an unrecognized representation. Retain `delete_unknown`; no duplicate DELETE or new booking test is allowed while removal is unproven. A read-only reconciliation must establish current provider state before further action.
+
+Independent closure at09:36:09Singapore verified Worker/coordinator version43fc696a-7d40-4ded-8f58-9871003462dc, disabled/end0/active0,466/640 calls, expired new authority, empty schedules and23 preserved historical tables. This proves access closure, not subscription restoration. Service Contracts owns exact outcomes/limits; Journey records the execution. Owner-controlled acceptance has not started and no successor flight is authorized.
+
 ## Subscription flag repair prepared — 13 October 2026
 
 The owning subscription normalizer now permits exact string"0"/"1" alongside numeric0/1 and uses the shared flag decision. Unknown forms remain rejected; inactive flags cannot authorize lifecycle actions. Field-level failures use fixed codes without provider values. Unknown-create/no-replay, exact subscription identity and prior-baseline preservation remain mandatory. Service Contracts owns the repaired input/error contract; Journey records the reproduced failure and verification.

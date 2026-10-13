@@ -1,5 +1,9 @@
 # North Star: dependable customer booking and quick rebooking
 
+## Latest live result: DELETE unknown, test stopped — 13 October 2026
+
+Approved packet10c62a001eea passed actual string-flag and unique subscription identity checks, then dispatched DELETE once and stopped on `provider_representation_unknown`. No new live booking/subscription test started. At09:36:09Singapore, independent closure verified source1e6bfbe/version43fc696a-7d40-4ded-8f58-9871003462dc, disabled/end0/active0,466/640 calls and23 preserved historical tables. Carried management293, Worker125, deployments30. Removal remains unproven; preserve delete_unknown and reconcile read-only before any further action. No DELETE replay, successor flight or owner acceptance. Service Contracts and Journey own the evidence.
+
 ## Current source repair — 13 October 2026
 
 YS requested the subscription parser fix. Exact string"0"/"1" and numeric0/1 are now accepted; unknown flags remain rejected with private field codes. Identity/baseline/no-replay checks remain intact. This repair is source-only; the actual closed Worker remains27f03fc at460/640 and the original subscription remains unresolved. See Service Contracts for input/error semantics and Journey for regression evidence. No successor live flight is authorized.
