@@ -3,7 +3,7 @@ import { nativeValidationReason } from "./provider-normalization";
 import { safeNativeFailure } from "./native-residual";
 import { z } from "zod";
 import { authenticate } from "./access";
-import { ApiError, digest, policy } from "./policy";
+import { ApiError, digest, policy, liveCustomerAccess } from "./policy";
 import {
   intentSchema,
   associationSchema,
@@ -35,8 +35,8 @@ import {
 import { ProviderSession, type ProviderControl } from "./provider-session";
 import { providerSecrets, type NativeExchange } from "./provider-transport";
 
-// One reviewed developer attempt, not an open customer write API. Grants are
-// installed externally from the exact approved packet; this code never grants.
+// Both operator experiments and ongoing customer checkout use one-use grants.
+// Customer grants are issued after authenticated consent and fresh slot reads.
 type Grant = {
   capability_hash: string;
   attempt_id: string | null;
@@ -53,6 +53,7 @@ type Grant = {
   available_dates_json: string;
   availability_json: string | null;
   read_state: string;
+  ongoing: number;
 };
 export async function nativeCheckoutStatus(
   request: Request,
@@ -83,7 +84,10 @@ export async function executeNativeCheckout(options: {
   z.string().uuid().parse(attemptId);
   const p = policy(env),
     now = Date.now();
-  if (p.PROVIDER_ACCESS !== "trusted-reads" || p.CAMPAIGN_END_MS <= now)
+  if (
+    p.PROVIDER_ACCESS !== "trusted-reads" ||
+    (p.CAMPAIGN_END_MS <= now && !liveCustomerAccess(env))
+  )
     throw new ApiError(503, "provider_access_disabled");
   const access = await authenticate(request, env, now);
   const grant = await env.STATE.withSession("first-primary")
@@ -93,6 +97,9 @@ export async function executeNativeCheckout(options: {
     .bind(attemptId, access.capability_hash)
     .first<Grant>();
   if (!grant) throw new ApiError(503, "native_write_grant_unavailable");
+  const ongoing = grant.ongoing === 1 && liveCustomerAccess(env);
+  if (grant.ongoing === 1 && !ongoing)
+    throw new ApiError(503, "provider_access_disabled");
   if (grant.state !== "granted")
     return nativeCheckoutStatus(request, env, attemptId);
   const row = await env.STATE.withSession("first-primary")
@@ -119,7 +126,7 @@ export async function executeNativeCheckout(options: {
     intent.customerMode !== "booking-contact" ||
     intent.customerId !== access.owner_id ||
     !intent.contact ||
-    intent.sessions.length > 2 ||
+    intent.sessions.length > (ongoing ? 12 : 2) ||
     intent.accountId !== p.DEPLOYMENT_ACCOUNT_ID ||
     intent.environmentId !== p.ENVIRONMENT ||
     contract.accountId !== p.DEPLOYMENT_ACCOUNT_ID ||
@@ -140,13 +147,13 @@ export async function executeNativeCheckout(options: {
     now + 180000 >= grant.expires_ms ||
     grant.expires_ms > grant.not_before_ms + 1200000 ||
     row.deadline_ms < grant.expires_ms ||
-    p.CAMPAIGN_END_MS < grant.expires_ms ||
+    (!ongoing && p.CAMPAIGN_END_MS < grant.expires_ms) ||
     !Number.isSafeInteger(grant.starting_used) ||
     !Number.isSafeInteger(grant.maximum_used) ||
     initial.used < grant.starting_used ||
-    initial.used + 20 > grant.maximum_used ||
+    (!ongoing && initial.used + 20 > grant.maximum_used) ||
     initial.active !== 0 ||
-    grant.maximum_used > p.PROVIDER_CALL_CEILING - 16 ||
+    (!ongoing && grant.maximum_used > p.PROVIDER_CALL_CEILING - 16) ||
     grant.maximum_used - grant.starting_used < 20
   )
     throw new ApiError(503, "native_write_scope_unavailable");
@@ -165,7 +172,10 @@ export async function executeNativeCheckout(options: {
   const assertGranted = async () => {
     cleanupSignal?.throwIfAborted();
     const current = Date.now();
-    if (current + 15000 >= Math.min(grant.expires_ms, p.CAMPAIGN_END_MS))
+    if (
+      current + 15000 >=
+      Math.min(grant.expires_ms, ongoing ? grant.expires_ms : p.CAMPAIGN_END_MS)
+    )
       throw new ApiError(503, "native_write_window_closed");
     const valid = await env.STATE.withSession("first-primary")
       .prepare(
@@ -198,7 +208,9 @@ export async function executeNativeCheckout(options: {
         (cleanupMode && cleanupCount >= 16) ||
         count >=
           grant.maximum_used - grant.starting_used + (cleanupMode ? 16 : 0) ||
-        options.accounting().used >= grant.maximum_used + (cleanupMode ? 16 : 0)
+        (!ongoing &&
+          options.accounting().used >=
+            grant.maximum_used + (cleanupMode ? 16 : 0))
       )
         throw new ApiError(503, "native_write_budget_exhausted");
       count++;
@@ -342,7 +354,7 @@ export async function executeNativeCheckout(options: {
       additional: { handle_invoice: true },
       db: env.STATE,
       hasRecoveryCapacity: async () =>
-        grant.maximum_used <= p.PROVIDER_CALL_CEILING - 16 &&
+        (ongoing || grant.maximum_used <= p.PROVIDER_CALL_CEILING - 16) &&
         options.accounting().active === 0,
       prebooking: {
         invalidate: () => prebooking.invalidate(),
@@ -504,17 +516,19 @@ async function customerNativeWindow(request: Request, env: Env) {
     .bind(access.capability_hash)
     .first<Grant>();
   if (!grant) throw new ApiError(503, "native_customer_window_unavailable");
+  const ongoing = grant.ongoing === 1 && liveCustomerAccess(env);
   const failedChecks = Object.entries({
     state: grant.state === "granted",
+    mode: grant.ongoing !== 1 || ongoing,
     access: p.PROVIDER_ACCESS === "trusted-reads",
     source:
       grant.source_revision === p.SOURCE_REVISION &&
       /^[a-f0-9]{40}$/.test(grant.source_revision),
-    ceiling: grant.maximum_used <= p.PROVIDER_CALL_CEILING - 16,
+    ceiling: ongoing || grant.maximum_used <= p.PROVIDER_CALL_CEILING - 16,
     start: now >= grant.not_before_ms,
     remaining: now + 180000 < grant.expires_ms,
     duration: grant.expires_ms <= grant.not_before_ms + 1200000,
-    end: p.CAMPAIGN_END_MS >= grant.expires_ms,
+    end: ongoing || p.CAMPAIGN_END_MS >= grant.expires_ms,
   })
     .filter(([, passed]) => !passed)
     .map(([name]) => name);
@@ -575,7 +589,8 @@ export async function prepareCustomerNative(
   if (grant.read_state !== "available")
     throw new ApiError(503, "native_availability_unavailable");
   if (
-    input.sessions.length > 2 ||
+    input.sessions.length >
+      (grant.ongoing === 1 && liveCustomerAccess(env) ? 12 : 2) ||
     (contract.trialLeadTimeException &&
       (input.sessions.length !== 2 ||
         input.sessions.some((session) => session.instructorId !== "3") ||

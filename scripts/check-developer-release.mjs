@@ -11,6 +11,15 @@ const directory = "test-results/developer-release";
 const read = (file) => JSON.parse(readFileSync(`${directory}/${file}`, "utf8"));
 const manifest = read("manifest.json"),
   config = read("wrangler.json");
+const liveConfig = read("wrangler-live.json");
+assert.deepEqual(liveConfig, {
+  ...config,
+  vars: {
+    ...config.vars,
+    PROVIDER_ACCESS: "trusted-reads",
+    LIVE_CUSTOMER_ACCESS: "enabled",
+  },
+});
 const files = exportInventory(directory);
 delete files["manifest.json"];
 assert.deepEqual(files, manifest.files);
@@ -137,7 +146,9 @@ try {
     .run();
   const grants = (await db.prepare("SELECT * FROM developer_operations").all())
     .results;
-  assert.deepEqual(manifest.pendingRemoteMigrations, []);
+  assert.deepEqual(manifest.pendingRemoteMigrations, [
+    "0026_ongoing_customer_checkout.sql",
+  ]);
   // Old-state compatibility remains tested locally, never re-applied remotely.
   for (const name of names.slice(5, 8)) await migrate(name);
   const appliedEight = {
@@ -366,6 +377,25 @@ try {
     .prepare("UPDATE native_checkout_grants SET maximum_used=?")
     .bind(retainedNative[0].maximum_used)
     .run();
+  const beforeOngoing = new Map();
+  for (const table of ceilingTables)
+    beforeOngoing.set(
+      table,
+      (await db.prepare(`SELECT * FROM "${table}" ORDER BY rowid`).all())
+        .results,
+    );
+  await migrate("0026_ongoing_customer_checkout.sql");
+  for (const table of ceilingTables) {
+    const rows = (
+      await db.prepare(`SELECT * FROM "${table}" ORDER BY rowid`).all()
+    ).results;
+    assert.deepEqual(
+      rows,
+      table === "native_checkout_grants"
+        ? beforeOngoing.get(table).map((row) => ({ ...row, ongoing: 0 }))
+        : beforeOngoing.get(table),
+    );
+  }
   assert.equal(
     (
       await mf.dispatchFetch(`${origin}/api/provider/webhook`, {

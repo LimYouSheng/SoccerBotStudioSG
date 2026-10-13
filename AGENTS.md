@@ -1,5 +1,11 @@
 # SoccerBotStudioSG engineering
 
+## Ongoing customer access and GitHub deployment — 14 October 2026
+
+YS explicitly replaces temporary live-access closure with ongoing developer-site access and confirms native checkout should also remain enabled. The pending inspection packet458d021b4a82 is superseded and must not execute. The user wants the actual customer interface for physical inspection, not a special test-booking UI. Private browsing isolates browser storage, not provider records, payments, webhooks or the shared account cache. Keep browser execution owner/CI-operated.
+
+Implement LIVE_CUSTOMER_ACCESS for continuous four-month browsing and ordinary customer checkout; preserve authentication, fresh server validation, idempotency, request pacing, provider cooldowns and records. Historical finite operator grants remain finite. PR23 was merged by the owner while these changes were being verified; publish this work in a follow-up PR; GitHub main deployment must depend on all three successful exact-source gates and consume the same-run live artifact without rebuilding. User is configuring the CLOUDFLARE_API_TOKEN repository secret directly; never request or retain its value. No assistant booking/payment test is implied by making the website available. Canonical owners below track implementation, verification and live acceptance separately.
+
 ## Completion and developer deployment — 14 October 2026
 
 YS authorized finishing pending interface/prefetch/export code and deploying the verified developer artifact. Anonymous homepage prefetch now has a separate display-only calendar contract; no guest identity or booking permission is created. Confirmation/export share the demo presentation and live exports recheck current ownership and paid evidence. Deploy only after all three exact-source CI gates, retaining closed provider/delivery state and existing data. Browser execution remains owner/CI-operated; hidden-frame session effectiveness is still an external acceptance gate. No new booking, payment, production deployment or merge is part of this code deployment.

@@ -196,6 +196,7 @@
   "scheduled recovery rejects closed expired future unknown and unsigned windows without provider calls",
   "scheduled native recovery preserves conflicting paid evidence for manual review",
   "inspection window serves session catalogue and cached times without granting a booking",
+  "ongoing customer access survives campaign closure and preserves fresh consent and booking replay guards",
   "native availability and preparation cross the real HTTP coordinator boundary under a finite grant",
   "finite webhook subscription preserves prior destinations and deletes only its freshly proven ID",
   "finite webhook subscription accepts exact string flags and restores mixed representation baselines",

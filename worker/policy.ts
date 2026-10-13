@@ -20,6 +20,7 @@ const schema = z.object({
   CAMPAIGN_END_MS: duration(0, Number.MAX_SAFE_INTEGER),
   SOURCE_REVISION: z.string().regex(/^(unpublished|[a-f0-9]{40})$/),
   ENVIRONMENT: z.literal("developer"),
+  LIVE_CUSTOMER_ACCESS: z.enum(["disabled", "enabled"]).default("disabled"),
   PROVIDER_ACCESS: z.enum(["disabled", "trusted-reads"]),
   PROVIDER_CALL_CEILING: z
     .enum(["80", "128", "192", "224", "256", "512", "640", "704", "1024"])
@@ -32,6 +33,16 @@ const schema = z.object({
 });
 export function policy(env: Env) {
   return schema.parse(env);
+}
+// Ongoing customer operations have no campaign expiry. Operator experiments
+// retain their separately installed grants, deadlines and cumulative budgets.
+export function liveCustomerAccess(env: Env) {
+  const p = policy(env);
+  return (
+    p.LIVE_CUSTOMER_ACCESS === "enabled" &&
+    p.PROVIDER_ACCESS === "trusted-reads" &&
+    /^[a-f0-9]{40}$/.test(p.SOURCE_REVISION)
+  );
 }
 export class ApiError extends Error {
   constructor(

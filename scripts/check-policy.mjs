@@ -126,8 +126,10 @@ export function checkPolicy({
     artifact?.with?.path?.includes(
       "test-results/",
     ), "Always retain verification evidence");
+  const verificationOnly = structuredClone(doc);
+  delete verificationOnly.jobs?.cloudflare;
   require(!/secrets\.|pull_request_target/.test(
-    workflow,
+    JSON.stringify(verificationOnly),
   ), "Verification must not use deployment credentials");
   errors.push(...checkPagesPolicy(doc));
   return errors;

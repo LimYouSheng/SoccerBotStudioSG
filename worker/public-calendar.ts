@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ApiError, policy } from "./policy";
+import { ApiError, policy, liveCustomerAccess } from "./policy";
 import { providerSecrets } from "./provider-transport";
 import type { ProviderSession, ProviderControl } from "./provider-session";
 import { calendarDates, NativeCalendarReads } from "./native-calendar";
@@ -24,7 +24,7 @@ const windowSchema = z.strictObject({
   startingUsed: z.number().int().nonnegative(),
   maximumUsed: z.number().int().positive(),
 });
-type ReadOptions = {
+export type ReadOptions = {
   env: Env;
   cache: NativeCalendarReads;
   provider: ProviderSession;
@@ -33,7 +33,10 @@ type ReadOptions = {
   lastDispatchMs?: () => number;
 };
 export function hasPublicCalendarWindow(env: Env) {
-  return Boolean(Reflect.get(env, "PUBLIC_CALENDAR_WINDOW_JSON"));
+  return (
+    liveCustomerAccess(env) ||
+    Boolean(Reflect.get(env, "PUBLIC_CALENDAR_WINDOW_JSON"))
+  );
 }
 function calendarWindow(options: ReadOptions) {
   const { env } = options;
@@ -48,6 +51,28 @@ function calendarWindow(options: ReadOptions) {
   } catch {
     /* Invalid configuration stays closed. */
   }
+  const live = liveCustomerAccess(env);
+  if (live) {
+    const today = new Date(Date.now() + 28800000).toISOString().slice(0, 10);
+    const end = new Date(today.slice(0, 7) + "-01T00:00:00Z");
+    end.setUTCMonth(end.getUTCMonth() + 4);
+    const dates: string[] = [];
+    for (
+      let day = new Date(today + "T00:00:00Z");
+      day < end;
+      day.setUTCDate(day.getUTCDate() + 1)
+    )
+      dates.push(day.toISOString().slice(0, 10));
+    parsed = {
+      sourceRevision: p.SOURCE_REVISION,
+      serviceId: "2",
+      dates,
+      notBeforeMs: Date.now(),
+      expiresMs: Number.MAX_SAFE_INTEGER,
+      startingUsed: 0,
+      maximumUsed: Number.MAX_SAFE_INTEGER,
+    };
+  }
   const scope = windowSchema.safeParse(parsed);
   if (!scope.success) throw new ApiError(503, "public_calendar_closed");
   const window = scope.data;
@@ -57,14 +82,15 @@ function calendarWindow(options: ReadOptions) {
     if (
       p.PROVIDER_ACCESS !== "trusted-reads" ||
       p.SOURCE_REVISION !== window.sourceRevision ||
-      now < window.notBeforeMs ||
-      now >= window.expiresMs ||
-      window.expiresMs > window.notBeforeMs + 1200000 ||
-      window.expiresMs > p.CAMPAIGN_END_MS ||
-      window.maximumUsed <= window.startingUsed ||
-      window.maximumUsed > p.PROVIDER_CALL_CEILING - 48 ||
-      usage.used < window.startingUsed ||
-      usage.used > window.maximumUsed
+      (!live &&
+        (now < window.notBeforeMs ||
+          now >= window.expiresMs ||
+          window.expiresMs > window.notBeforeMs + 1200000 ||
+          window.expiresMs > p.CAMPAIGN_END_MS ||
+          window.maximumUsed <= window.startingUsed ||
+          window.maximumUsed > p.PROVIDER_CALL_CEILING - 48 ||
+          usage.used < window.startingUsed ||
+          usage.used > window.maximumUsed))
     )
       throw new ApiError(503, "public_calendar_closed");
   };

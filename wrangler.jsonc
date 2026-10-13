@@ -35,6 +35,7 @@
     "APP_ORIGIN": "https://soccerbot-dev.limyousheng-94.workers.dev",
     "ENVIRONMENT": "developer",
     "PROVIDER_ACCESS": "disabled",
+    "LIVE_CUSTOMER_ACCESS": "disabled",
     "PROVIDER_CALL_CEILING": "80",
     "IDENTITY_DELIVERY": "disabled",
     "SOURCE_REVISION": "unpublished",
