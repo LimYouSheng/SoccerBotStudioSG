@@ -1,8 +1,8 @@
 # SoccerBotStudioSG engineering
 
-## Webhook delivery diagnosis — 13 October 2026
+## Webhook investigation: verify the event prerequisite — 13 October 2026
 
-Read-only telemetry found no recorded request to the webhook endpoint through 10:35:58 Singapore, while all 14 expected operator requests matched their correlation IDs and statuses. The receipt table remains empty; capture and subscription are closed. This supports non-arrival at the Worker, with the upstream cause still unknown. Service Contracts and Journey own the evidence and limitations. Carried totals are now 516 provider calls, 355 management requests, 150 Worker requests and 35 deployments. Next obtain provider dispatch/delivery or pre-Worker edge evidence for booking 38; no booking replay or owner acceptance.
+No callback was recorded through 10:44:54 Singapore. The exact destination and active `new_booking` registration were verified before booking 38; current Cloudflare reads report Access not enabled and the public Worker address enabled. Older SimplyBook staff answers say priced API booking callbacks wait for payment, while invoice 29 remains unpaid. Current REST documentation does not establish whether that rule applies here. Service Contracts owns the sources, remaining uncertainty and next diagnostic; Journey records the investigation. Keep access closed at 516 provider calls; cumulative management 359, Worker 150, deployments 35. No replay, payment or owner acceptance.
 
 ## Live DELETE fix passed; signed delivery not observed — 13 October 2026
 

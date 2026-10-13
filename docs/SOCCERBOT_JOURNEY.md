@@ -1,5 +1,13 @@
 # SoccerBotStudio — Journey
 
+## Deeper diagnosis identified an unproven event prerequisite — 13 October 2026
+
+YS requested looking deeper. Rechecked the exact subscription destination/event proof and fixed-origin routing, extended stored-log search through10:44:54 Singapore, read Cloudflare Access/subdomain configuration and retained subscription2's closed local reference. There were no endpoint events; Access reported not enabled and workers.dev enabled. Four management reads bring cumulative totals to516 provider/359 management/150 Worker/35 deployments. No provider call, live mutation or support message occurred.
+
+Primary provider staff answers from2024/2025 describe priced API callbacks waiting for payment. Our invoice29 is unpaid. Current REST subscriptions were documented later in2026, and their guide does not resolve this condition, so the finding is a strong hypothesis and a concrete acceptance-prerequisite gap, not a proven cause. Also found a resolved September2026 callback-service incident; do not project it onto this account. The local30-second observation is not a documented SLA.
+
+Service Contracts now retains the exact provider questions and a proposed new_invoice/new_booking comparison under a future bounded packet. No code or configuration was changed and no payment was attempted. Keep the earlier acceptance failure and independent closure intact; obtain event generation/dispatch evidence before spending another booking on the same assumption.
+
 ## Read-only delivery diagnosis completed — 13 October 2026
 
 After YS said “ok determine”, compared stored developer HTTP telemetry with the sealed test's request IDs. All 14 expected operator requests matched correlation ID and status; all returned events were untruncated. Exact webhook endpoint queries found zero events from 10:20:00 through 10:35:58 Singapore, including the later interval after 10:34. A SELECT-only receipt read independently returned zero receipts and closed capture/subscription state. The read-only inspection is completed; the live flight and campaign remain closed.

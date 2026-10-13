@@ -1,8 +1,10 @@
 # SoccerBotStudio — Rules & Architecture
 
-## Diagnose delivery at the observed boundary — 13 October 2026
+## Verify event prerequisites before delivery acceptance — 13 October 2026
 
-The completed stored-log investigation supports no recorded webhook arrival at the Worker during the examined interval, with matched operator requests as controls. This narrows the earlier zero-receipt result without proving that the provider never dispatched or excluding a pre-Worker failure. Preserve these boundaries: absent endpoint logs are not a signature/payload rejection and do not justify weakening validation. Obtain provider dispatch/delivery or edge evidence before choosing a repair or another live experiment. Service Contracts owns exact evidence and limitations; Journey owns the investigation record. Owner-controlled acceptance remains deferred.
+Stored logs support no recorded webhook arrival during the examined interval. Current Cloudflare reads show no Access application barrier and an enabled public Worker address. Older provider staff answers identify payment-gated callbacks for priced API bookings, but current REST semantics for unpaid booking creation remain unproven. Treat this as an acceptance-prerequisite gap, not a proven application validator defect or a confirmed provider outage.
+
+Before another live experiment, establish the event's generation condition and a justified finite observation window. Preserve the failed flight; do not replay booking38, mark paid, disable payment configuration or weaken authentication to pass. A proposed new_invoice/new_booking comparison can distinguish delivery from event-specific timing only under a new bounded packet. Invoice creation is not settlement. Service Contracts owns evidence, source applicability and exact next questions; Journey owns the investigation record. Owner acceptance remains deferred.
 
 ## Separate accepted checkout/cleanup from failed signed-delivery observation — 13 October 2026
 
