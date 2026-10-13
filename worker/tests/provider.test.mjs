@@ -2372,6 +2372,9 @@ async function subscriptionFixture({
   entries = [],
   createFailure = false,
   deleteFailure = false,
+  deleteResponse,
+  deleteEffect = "remove",
+  afterDeleteResponse,
   maximum = 80,
   changeAfterCreate = false,
   createdFlag = 1,
@@ -2389,7 +2392,9 @@ async function subscriptionFixture({
     respond(request, body) {
       const path = new URL(request.url).pathname;
       if (path === "/admin/webhooks" && request.method === "GET")
-        return Response.json(records);
+        return deletes.length && afterDeleteResponse
+          ? afterDeleteResponse()
+          : Response.json(records);
       if (path === "/admin/webhooks" && request.method === "POST") {
         creates++;
         assert.deepEqual(body, {
@@ -2410,8 +2415,12 @@ async function subscriptionFixture({
       if (path === "/admin/webhooks/99" && request.method === "DELETE") {
         deletes.push("99");
         if (deleteFailure) return new Response("unknown", { status: 502 });
-        records = records.filter((entry) => String(entry.id) !== "99");
-        return new Response(null, { status: 204 });
+        if (deleteEffect !== "retain")
+          records = records.filter((entry) => String(entry.id) !== "99");
+        if (deleteEffect === "change-prior") records[0].is_active = 0;
+        return deleteResponse
+          ? deleteResponse()
+          : new Response(null, { status: 204 });
       }
     },
   });
@@ -2727,6 +2736,132 @@ test("finite webhook subscription failed deletion is retained and cannot dispatc
     assert.deepEqual(f.deletes, ["99"]);
   } finally {
     await f.mf.dispose();
+  }
+});
+test("finite webhook cleanup verifies the fresh baseline after body-independent HTTP acknowledgement", async () => {
+  for (const [status, body, contentType] of [
+    [200, null, null],
+    [200, "removed", "text/plain"],
+    [200, "not-json", "application/json"],
+    [202, "accepted", "text/plain"],
+    [204, null, null],
+  ]) {
+    const prior = [
+      {
+        id: 7,
+        event: "new_invoice",
+        url: "https://prior.invalid/hook",
+        is_active: "1",
+      },
+    ];
+    const f = await subscriptionFixture({
+      entries: prior,
+      deleteResponse: () =>
+        new Response(body, {
+          status,
+          headers: contentType ? { "content-type": contentType } : {},
+        }),
+    });
+    try {
+      assert.equal((await f.manage("create")).body.verified, true);
+      const before = f.calls.length;
+      const closed = await f.manage("cleanup");
+      assert.equal(
+        closed.body.verified,
+        true,
+        JSON.stringify({ status, closed }),
+      );
+      assert.equal(closed.body.state, "closed");
+      assert.equal(closed.body.deleteAcknowledgement.httpStatus, status);
+      assert.equal(
+        closed.body.deleteAcknowledgement.contentType,
+        contentType === "application/json"
+          ? "json"
+          : contentType
+            ? "other"
+            : "absent",
+      );
+      assert.deepEqual(f.records(), prior);
+      assert.deepEqual(f.deletes, ["99"]);
+      const cleanupCalls = f.calls.slice(before);
+      assert.equal(cleanupCalls.at(-1).method, "GET");
+      assert.equal(
+        new URL(cleanupCalls.at(-1).url).pathname,
+        "/admin/webhooks",
+      );
+      const count = f.calls.length;
+      assert.equal((await f.manage("cleanup")).status, 503);
+      assert.equal(f.calls.length, count);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+test("finite webhook cleanup never treats acknowledgement as proof when the fresh baseline fails", async () => {
+  for (const mode of ["retain", "change-prior", "bad-read"]) {
+    const f = await subscriptionFixture({
+      entries: [
+        {
+          id: 7,
+          event: "new_invoice",
+          url: "https://prior.invalid/hook",
+          is_active: 1,
+        },
+      ],
+      deleteResponse: () => new Response(null, { status: 200 }),
+      deleteEffect: mode,
+      afterDeleteResponse:
+        mode === "bad-read"
+          ? () =>
+              new Response("not-json", {
+                headers: { "content-type": "application/json" },
+              })
+          : undefined,
+    });
+    try {
+      assert.equal((await f.manage("create")).body.verified, true);
+      const closed = await f.manage("cleanup");
+      assert.equal(closed.body.verified, false);
+      assert.equal(closed.body.state, "delete_unknown");
+      assert.equal(closed.body.deleteAcknowledgement.httpStatus, 200);
+      assert.equal((await f.row()).state, "delete_unknown");
+      const count = f.calls.length;
+      assert.equal((await f.manage("cleanup")).status, 503);
+      assert.equal(f.calls.length, count);
+      assert.deepEqual(f.deletes, ["99"]);
+    } finally {
+      await f.mf.dispose();
+    }
+  }
+});
+test("finite webhook cleanup rejects redirects and HTTP errors without following or replaying DELETE", async () => {
+  for (const status of [302, 401, 404, 502]) {
+    const f = await subscriptionFixture({
+      deleteEffect: "retain",
+      deleteResponse: () =>
+        new Response("private-error", {
+          status,
+          headers: { location: "https://foreign.invalid/hook" },
+        }),
+    });
+    try {
+      assert.equal((await f.manage("create")).body.verified, true);
+      const closed = await f.manage("cleanup");
+      assert.equal(closed.body.verified, false);
+      assert.equal(closed.body.state, "delete_unknown");
+      assert.equal(closed.body.deleteAcknowledgement, undefined);
+      assert.equal(f.calls.at(-1).method, "DELETE");
+      assert.doesNotMatch(
+        JSON.stringify(closed),
+        /private-error|foreign.invalid/,
+      );
+      const count = f.calls.length;
+      assert.equal((await f.manage("cleanup")).status, 503);
+      assert.equal(f.calls.length, count);
+      assert.deepEqual(f.deletes, ["99"]);
+    } finally {
+      await f.mf.dispose();
+    }
   }
 });
 test("finite webhook subscription cap stops before create and preserves recovery reserve", async () => {

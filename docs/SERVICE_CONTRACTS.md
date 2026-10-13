@@ -1,5 +1,13 @@
 # SoccerBotStudio — Service Contracts
 
+## Body-independent DELETE acknowledgement — 13 October 2026
+
+The [official webhook contract](https://help.simplybook.me/wiki/REST_API_webhooks) documents DELETE by subscription ID and an active-only default list, but does not specify a DELETE response body. Read-only reconciliation already established the prior empty active baseline after the unknown response; it did not identify that response's exact format.
+
+For webhook-delete only, provider-transport rejects redirects and unsuccessful HTTP status as before. For successful HTTP status it cancels any response body without parsing or buffering, then returns bounded acknowledgement metadata: httpStatus (200–299), contentType (absent/json/other), bodyPresent (boolean). These fields describe transport acknowledgement, not deletion proof, and expose no response values or arbitrary headers. The subscription lifecycle includes this metadata in its private result, then performs its existing fresh normalized active-list read. Exact baseline equality is required before closed/verified:true. A retained subscription, changed prior record, malformed read or failed verification retains delete_unknown and prohibits DELETE replay. All non-DELETE operations retain existing JSON/content-type/size/UTF-8/RPC validation.
+
+No historical grant, subscription, booking, invoice or applied migration is rewritten. The next acceptance test must use one new finite subscription/booking window on the already selected Nabil3/service2, 15 October at/after15:40 Singapore, fresh availability and the ordinary48-hour guard. No payment or cancellation, checkout opening, schedule edits or owner-controlled acceptance is included. Current remote state stays closed at471/640, active0; cumulative management310, Worker133 and deployments32. Any new sealed flight must amend the exhausted deployment ceiling and other insufficient cumulative limits explicitly before execution.
+
 ## Read-only reconciliation restored the active baseline — 13 October 2026
 
 YS approved packet `1089bf8b452a4c4fdeed711489ec5abaf0ec819d29d1713eece8f243113dbd16` and the cumulative deployment ceiling amendment31→32. It reused exact CI-passing source `1e6bfbe62ad37a832822181b63ec4dcb83ca9e7c` and the verified CI38323937036 artifact11780191693; no new build or migration occurred. Bounds were6 provider calls (466→472 maximum, configured640, recovery16 untouched),24 management requests,12 Worker requests,2 deployments and20minutes, before the unchanged12:30 Singapore deadline.

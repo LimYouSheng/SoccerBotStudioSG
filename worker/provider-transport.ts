@@ -479,9 +479,24 @@ export async function providerRequest(
             : "provider_http_failed",
         );
       }
-      if (native?.kind === "webhook-delete" && response.status === 204) {
+      if (native?.kind === "webhook-delete") {
+        // DELETE's body has no documented representation. HTTP acknowledgement
+        // only permits the lifecycle owner to verify a fresh exact baseline;
+        // it is never proof of removal. Do not buffer or interpret this body.
+        const contentType = response.headers.get("content-type");
+        const acknowledgement = {
+          httpStatus: response.status,
+          contentType:
+            contentType === null
+              ? "absent"
+              : contentType.toLowerCase().includes("application/json")
+                ? "json"
+                : "other",
+          bodyPresent: response.body !== null,
+        };
+        await response.body?.cancel();
         complete = true;
-        return null;
+        return acknowledgement;
       }
       if (
         !response.headers

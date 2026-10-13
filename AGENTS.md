@@ -1,5 +1,9 @@
 # SoccerBotStudioSG engineering
 
+## DELETE acknowledgement repair and next test — 13 October 2026
+
+YS requested resolving DELETE response handling and another acceptance test. The transport now treats successful DELETE HTTP status as acknowledgement only, discards the undocumented body and retains bounded status/type/presence metadata. The existing lifecycle owner must still verify a fresh exact active baseline before closing. Unknown outcomes, failed reads and HTTP failures retain no-replay protections. Service Contracts owns this contract; Journey records regression evidence. Live state remains closed at 471/640 on source1e6bfbe/version84852bef-7346-40de-97df-220cccb9a029. Prepare exact-source CI and a sealed fresh test; the prior cumulative deployment ceiling32 is exhausted, so concrete amended limits are required before live execution. Owner-controlled acceptance remains deferred.
+
 ## Active subscription baseline restored — 13 October 2026
 
 Approved read-only packet1089bf8b452a returned an empty active-subscription array without repeating DELETE. The original empty active baseline is restored; this does not establish permanent deletion of inactive provider records or webhook delivery acceptance. Independent closure at09:53:37 Singapore verified source1e6bfbe/version84852bef-7346-40de-97df-220cccb9a029, disabled/end0/active0,471/640 calls and all23 historical tables preserved. Carried management310, Worker133, deployments32. The historical delete_unknown grant is unchanged. No booking, cancellation or payment occurred. This packet is consumed; further live work requires new finite authority. Service Contracts and Journey own the evidence and next step.

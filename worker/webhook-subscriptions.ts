@@ -137,6 +137,13 @@ export async function manageWebhookSubscription(
     if (!changed) throw denied();
     phase = next;
   };
+  let deleteAcknowledgement:
+    | {
+        httpStatus: number;
+        contentType: "absent" | "json" | "other";
+        bodyPresent: boolean;
+      }
+    | undefined;
   const list = async () => {
     await assertGranted();
     await provider.identity(env, bounded);
@@ -209,17 +216,30 @@ export async function manageWebhookSubscription(
       )
         throw denied();
       await move("deleting", ",subscription_id=?", [candidates[0].id]);
-      await provider.nativeWrite(
+      const acknowledgement = await provider.nativeWrite(
         env,
         bounded,
         { kind: "webhook-delete", subscriptionId: candidates[0].id },
         assertGranted,
       );
+      deleteAcknowledgement = z
+        .object({
+          httpStatus: z.number().int().min(200).max(299),
+          contentType: z.enum(["absent", "json", "other"]),
+          bodyPresent: z.boolean(),
+        })
+        .strict()
+        .parse(acknowledgement.body);
       const after = await list();
       if (canonical(after) !== initial.baseline_json) throw denied();
       await move("closed");
     }
-    return { verified: true, state: phase, accounting: accounting() };
+    return {
+      verified: true,
+      state: phase,
+      accounting: accounting(),
+      ...(deleteAcknowledgement ? { deleteAcknowledgement } : {}),
+    };
   } catch (error) {
     const next =
       phase === "creating"
@@ -231,6 +251,7 @@ export async function manageWebhookSubscription(
     return {
       verified: false,
       state: next,
+      ...(deleteAcknowledgement ? { deleteAcknowledgement } : {}),
       reason:
         error instanceof ApiError
           ? error.code

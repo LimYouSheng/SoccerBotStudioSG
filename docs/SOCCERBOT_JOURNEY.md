@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## DELETE acknowledgement regression and repair — 13 October 2026
+
+YS requested resolving response handling and another acceptance test after the empty active list was verified. Official webhook documentation describes DELETE and active-list semantics without prescribing the DELETE body. A synthetic empty200 regression reproduced provider_representation_unknown and premature delete_unknown before the follow-up list. The transport owner now discards the undocumented successful DELETE body and returns bounded acknowledgement metadata; the existing lifecycle owner still requires a fresh exact baseline for acceptance.
+
+New regressions cover empty200, plain-text200, malformed-JSON200,202 and204 acknowledgements with actual baseline restoration; retained subscriptions, changed old records and malformed post-delete reads; redirects/auth/HTTP failures; and refusal to replay DELETE in both accepted and unknown states. These are synthetic proofs, not claims about the prior live response. Release metadata names the actual closed Worker version84852bef-7346-40de-97df-220cccb9a029. All 14 affected lifecycle tests passed with zero failures/skips; Worker types, affected lint and source/Worker/policy checks passed. The original unknown receipt remains intact. Exact-source CI and new finite live limits remain prerequisites to the requested acceptance test.
+
 ## Empty active list confirmed after unknown DELETE — 13 October 2026
 
 After clarifying that subscription DELETE does not cancel a booking, YS requested the read-only check and approved the one-extra-deployment amendment31→32. Packet1089bf8b452a reused tested source1e6bfbe and executed one authenticated active-list read. The provider returned an empty array, restoring the original empty active baseline; no DELETE replay was needed. Five calls advanced466→471. Permanent inactive-record deletion and the earlier response shape remain unproven.

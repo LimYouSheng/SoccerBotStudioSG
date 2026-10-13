@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## DELETE acknowledgement is separate from restoration proof — 13 October 2026
+
+The webhook subscription lifecycle owns cleanup acceptance. A successful HTTP DELETE acknowledgement permits its existing fresh list read; it never proves removal by itself. The transport discards the undocumented DELETE body without buffering or interpreting it, while preserving redirects, HTTP failures, grant admission, durable call accounting and no-replay rules. Cleanup closes only when the fresh normalized active list exactly equals its preserved baseline. Other provider operations retain strict bounded JSON parsing.
+
+This source repair follows owner authorization to resolve response handling and run a new acceptance test. It changes no existing subscription or historical unknown-response record. Live execution still requires the tested artifact and concrete amended limits, because the previous deployment ceiling is exhausted. Owner payment/browser acceptance remains separate.
+
 ## Active webhook baseline reconciled — 13 October 2026
 
 One approved read-only reconciliation returned an empty active-subscription array, matching the original empty baseline. This resolves the active-subscription restoration condition without replaying DELETE or rewriting the historical delete_unknown record. Preserve the distinction between active baseline restoration, permanent provider record deletion and actual signed delivery acceptance. No new booking or owner acceptance occurred.
