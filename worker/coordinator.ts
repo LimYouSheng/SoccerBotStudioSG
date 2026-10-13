@@ -1,7 +1,10 @@
+import { publicCalendar } from "./public-calendar";
+import { NativeCalendarReads } from "./native-calendar";
 import { manageWebhookSubscription } from "./webhook-subscriptions";
 import {
   executeNativeCheckout,
   customerNativeAvailability,
+  customerNativeCalendar,
 } from "./native-checkout";
 import { z } from "zod";
 import { intentSchema, associationSchema } from "./journal";
@@ -29,6 +32,7 @@ import { ProviderSession, type ProviderControl } from "./provider-session";
 // One instance per actual provider account. No booking or customer data here.
 export class SoccerBotAccountCoordinator extends DurableObject<Env> {
   private provider = new ProviderSession();
+  private calendarReads = new NativeCalendarReads();
   private nativeAvailabilityQueue: Promise<unknown> = Promise.resolve();
   private get sql() {
     return instrumentStorage(this.ctx.storage.sql);
@@ -486,7 +490,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     });
   }
   async nativeAvailability(
-    scope: { date: string; serviceId: string; cookie: string },
+    scope: { date: string; serviceId: string; cookie: string; fresh?: boolean },
     correlationId: string,
   ) {
     const pending = this.nativeAvailabilityQueue.then(() =>
@@ -497,6 +501,8 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           }),
           env: this.env,
           date: scope.date,
+          fresh: scope.fresh,
+          invalidate: () => this.calendarReads.invalidateDate(scope.date),
           serviceId: scope.serviceId,
           provider: this.provider,
           control: this.providerControl(),
@@ -510,10 +516,56 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     );
     return rpcOutcome(() => pending);
   }
+  async publicCalendar(month: string, correlationId: string) {
+    const pending = this.nativeAvailabilityQueue.then(() =>
+      traced(correlationId, "coordinator", () =>
+        publicCalendar({
+          env: this.env,
+          month,
+          cache: this.calendarReads,
+          provider: this.provider,
+          control: this.providerControl(),
+          accounting: () => this.providerAccounting(),
+        }),
+      ),
+    );
+    this.nativeAvailabilityQueue = pending.then(
+      () => undefined,
+      () => undefined,
+    );
+    return rpcOutcome(() => pending);
+  }
+  async nativeCalendar(
+    scope: { month: string; serviceId: string; cookie: string },
+    correlationId: string,
+  ) {
+    const pending = this.nativeAvailabilityQueue.then(() =>
+      traced(correlationId, "coordinator", () =>
+        customerNativeCalendar({
+          request: new Request(this.env.APP_ORIGIN, {
+            headers: { cookie: scope.cookie },
+          }),
+          env: this.env,
+          month: scope.month,
+          serviceId: scope.serviceId,
+          provider: this.provider,
+          control: this.providerControl(),
+          accounting: () => this.providerAccounting(),
+          cache: this.calendarReads,
+        }),
+      ),
+    );
+    this.nativeAvailabilityQueue = pending.then(
+      () => undefined,
+      () => undefined,
+    );
+    return rpcOutcome(() => pending);
+  }
   async nativeCheckout(
     scope: { attemptId: string; cookie: string },
     correlationId: string,
   ) {
+    this.calendarReads.invalidate();
     return rpcOutcome(() =>
       traced(correlationId, "coordinator", () =>
         executeNativeCheckout({
@@ -526,7 +578,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           control: this.providerControl(),
           recoveryControl: this.providerControl(true),
           accounting: () => this.providerAccounting(),
-        }),
+        }).finally(() => this.calendarReads.invalidate()),
       ),
     );
   }

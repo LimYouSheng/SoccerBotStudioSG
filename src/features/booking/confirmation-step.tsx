@@ -7,6 +7,7 @@ import { ADDRESS, CONTACT } from "@/domain/catalog";
 import { PRICE_CENTS, SERVICE_NAME } from "@/domain/demo-catalog";
 import { dateLabel, endTime, money } from "@/domain/dates";
 import { downloadBooking, downloadCalendar } from "@/services/exports";
+import type { Booking } from "@/domain/booking";
 import { useBooking } from "./provider";
 import { SessionList } from "./summary";
 import { Arrival, ClientDetails } from "./review-step";
@@ -14,9 +15,46 @@ export function ConfirmationStep() {
   const { attempt, reset } = useBooking(),
     router = useRouter(),
     booking = attempt?.booking;
+  if (!booking) return null;
+  return (
+    <BookingConfirmation
+      booking={booking}
+      preview
+      onAgain={() => {
+        reset();
+        router.push("/book/account/");
+      }}
+    />
+  );
+}
+export function BookingConfirmation({
+  booking,
+  preview = false,
+  taxMinor = 0,
+  onAgain,
+  calendarDownload,
+  detailsDownload,
+}: {
+  booking: Booking;
+  preview?: boolean;
+  taxMinor?: number;
+  onAgain: () => void;
+  calendarDownload?: () => Promise<void>;
+  detailsDownload?: () => Promise<void>;
+}) {
   const [error, setError] = useState(""),
     [downloading, setDownloading] = useState(false);
-  if (!booking) return null;
+  async function download(operation: () => Promise<void> | void) {
+    setDownloading(true);
+    setError("");
+    try {
+      await operation();
+    } catch {
+      setError("The download could not be created. Please try again.");
+    } finally {
+      setDownloading(false);
+    }
+  }
   return (
     <div className="status-shell">
       <div className="status-heading">
@@ -47,7 +85,9 @@ export function ConfirmationStep() {
             Session Details
           </h2>
           <p className="confirmation-service">
-            <strong>{SERVICE_NAME}</strong>
+            <strong>
+              {booking.slots[0]?.native?.serviceName ?? SERVICE_NAME}
+            </strong>
             <br />
             {booking.draft.players}{" "}
             {booking.draft.players === 1 ? "player" : "players"} per session ·
@@ -80,12 +120,15 @@ export function ConfirmationStep() {
             Amount
           </h2>
           <div className="paid">
-            <span className="pill success">Paid · Preview</span>
+            <span className="pill success">
+              {preview ? "Paid · Preview" : "Paid"}
+            </span>
             <strong>{money(booking.totalCents)}</strong>
           </div>
           <p className="hint">
-            {booking.slots.length} × {money(PRICE_CENTS)} · SGD · Inclusive of
-            GST
+            {preview
+              ? `${booking.slots.length} × ${money(PRICE_CENTS)} · SGD · Inclusive of GST`
+              : `SGD · Tax ${money(taxMinor)}`}
           </p>
         </section>
         <section
@@ -109,42 +152,37 @@ export function ConfirmationStep() {
             Follow your instructor’s safety guidance. Contact the studio for
             changes, cancellations or refund enquiries.
           </p>
-          <p className="payment-foot">
-            Payment preview · No money was charged.
-          </p>
+          {preview && (
+            <p className="payment-foot">
+              Payment preview · No money was charged.
+            </p>
+          )}
         </section>
       </section>
       <div className="confirmation-actions" aria-label="Booking actions">
-        <button className="button" onClick={() => downloadCalendar(booking)}>
+        <button
+          className="button"
+          disabled={downloading}
+          onClick={() =>
+            void download(calendarDownload ?? (() => downloadCalendar(booking)))
+          }
+        >
           <Icon name="calendar" />
           <span>Add to calendar</span>
         </button>
         <button
           className="button"
           disabled={downloading}
-          onClick={async () => {
-            setDownloading(true);
-            try {
-              await downloadBooking(booking);
-            } catch {
-              setError("The download could not be created. Please try again.");
-            } finally {
-              setDownloading(false);
-            }
-          }}
+          onClick={() =>
+            void download(detailsDownload ?? (() => downloadBooking(booking)))
+          }
         >
           <Icon name="download" />
           <span>
             {downloading ? "Preparing download…" : "Download booking details"}
           </span>
         </button>
-        <button
-          className="button secondary"
-          onClick={() => {
-            reset();
-            router.push("/book/account/");
-          }}
-        >
+        <button className="button secondary" onClick={onAgain}>
           <Icon name="plus" />
           <span>Make another booking</span>
         </button>

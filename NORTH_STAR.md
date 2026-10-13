@@ -1,5 +1,28 @@
 # North Star: dependable customer booking and quick rebooking
 
+## Pending implementation completed; deployment gate — 14 October 2026
+
+Anonymous entry prefetch and shared protected confirmation/export implementation are now present. Display cache is non-authoritative; continuation and dispatch checks remain. Deliver the exact CI-tested live interface and Worker to the developer target with provider/delivery access closed. A real browser must still prove hidden SimplyBook initialization and native checkout reachability; fixtures and iframe load events cannot establish that outcome.
+
+## Current North Star: demo parity with truthful live availability — 14 October 2026
+
+The customer uses the same approved demo layout, step order, session card, player control, month calendar, basket, details, review and payment summary. Live records replace demo data; Turnstile, verified identity, protected access and honest provider status remain. Customers never visit SimplyBook's homepage as a visible extra step. Trainer priority is withdrawn: schedules should not overlap, and overlapping live eligibility remains a configuration error.
+
+### Delivery order and acceptance
+
+1. **M5.2 experimental preparation:** one hidden, fixed-origin SimplyBook homepage frame during an authorized live booking session, retained across booking steps. No checkout-token preload, navigation interception, polling/retry, cookie copying or fake readiness. Frame load is not evidence of usable provider authorization. Its effectiveness is accepted only by an owner-run fresh-browser checkout test.
+2. **M4.1/M4.2 calendar and continuation:** prefetch up to four months during authorized session selection through a same-origin range contract: visible month first, then three background months. Fetch provider start-time matrices in bounded ranges, never one provider call per calendar cell. Keep a 60-second, eight-month-entry account/environment/source-scoped display cache. A month has at most31 days; verified empty dates, out-of-scope/unknown dates, loading and failure are distinct. Only verified available dates are selectable, past dates remain disabled, and the next-available action selects a known bookable date. Display cache never reserves capacity. Recheck selected sessions when continuing and preserve fresh server checks at payment/dispatch. On a failed fresh check preserve the basket, invalidate the affected shared month and refresh the calendar; failed reads mean unknown, not sold out.
+3. **M3.2/M6 interface parity first:** use shared demo presentation owners with real live labels/prices; retain approved security additions. No developer labels, catalogue-only replacement screen, demo instructor rotations in live mode, pretend paid status, or demo payment methods asserted as available. Hosted payment itself remains provider-owned. Protected confirmation may show only verified returned fields; missing provider fields remain an explicit acceptance gap, not invented content.
+4. **M5/M6 fuller flight:** after exact-source checks/CI and a separately bounded live window, exercise guest/member, pax/date selection, changed availability, native checkout, owner sandbox payment, independent receipt, callbacks and protected confirmation. Interface/code acceptance can complete even if provider/browser/payment/webhook acceptance is blocked. Report each separately.
+
+### Boundaries and evidence
+
+Keep existing dates/instructor constraints, single studio, 40-minute sessions at50-minute starts,1–4 players, immutable attempt identity, no-write retries, no real charge and no production changes. Calendar range support does not grant live access or widen an existing installed scope: unknown/unapproved dates remain unselectable. Prefetch starts as soon as authorized booking context and a valid service exist; public anonymous homepage prefetch must not bypass account admission. Refresh current entitlements and eligible test dates before a live flight.
+
+Validation: meaningful range/cache/scope/freshness/race tests; calendar unavailable/loading/error states; unchanged demo assertions; security and write-boundary regressions; full non-browser verification where the pinned toolchain is available. User/CI own browser and physical-device execution. Existing quotation and milestone identities remain unchanged. Rules & Architecture owns invariants, Service Contracts owns request/cache/authority semantics, Journey owns evidence; this North Star is the concise execution index.
+
+Current state: owner authorized local implementation and verification; source base matches remote draftPR22 head b2862e0. No publication, deployment, new live budget, provider call or payment is implied. Background-frame feasibility and actual browser parity remain unaccepted until observed.
+
 ## Next proof isolates initial native navigation — 13 October 2026
 
 Prepare the owner-approved checkout-opening diagnostic with browser request evidence captured before navigation and no payment submission. Homepage/payment-feature checks passed but the initial404 cause remains unproven. Budget-schema support and exact artifact/executor validation are preparation prerequisites; a new finite flight requires concrete amended limits. Payment/webhook acceptance follows only after reachable native checkout is demonstrated.

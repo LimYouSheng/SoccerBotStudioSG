@@ -384,7 +384,18 @@ test("unsupported live mode exposes unavailable state and cannot restore a paid 
   saveBooking({ version: 2, draft: draft(), attempt: paid });
   const fetch = vi.spyOn(globalThis, "fetch");
   render(
-    <BookingProvider bookingService={liveBookingService}>
+    <BookingProvider
+      bookingService={{
+        ...liveBookingService,
+        operations: {
+          availability: "unavailable",
+          checkout: "unavailable",
+          pay: "unavailable",
+          check: "unavailable",
+          resolve: "unavailable",
+        },
+      }}
+    >
       <Calendar />
       <Probe />
     </BookingProvider>,

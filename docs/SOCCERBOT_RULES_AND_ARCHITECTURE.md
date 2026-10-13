@@ -1,5 +1,37 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Homepage reads and protected receipt parity — 14 October 2026
+
+M4.1 now starts four-month prefetch on site entry without creating guest access. Anonymous calendar DTOs contain only month, service ID, observation time and date availability booleans. A management-owned, finite, exact-source window bounds dates, service, time and cumulative provider usage; absence means closed. Public/protected reads share the account coordinator cache. Public reads preserve 32 checkout and 16 recovery calls and use ordinary 48-hour lead time. Fresh selection checks still invalidate shared affected dates. M6 uses the same confirmation layout and export owners for preview/live with truthful labels and per-export protected admission. No browser or live-provider acceptance follows from passing synthetic tests.
+
+## Demo parity and cached calendar implementation — 14 October 2026
+
+Owner prioritizes the approved demo interface before complete live-flight acceptance and withdraws trainer priority. Keep existing milestone IDs: M4.1/M4.2 own range availability and fresh continuation, M5.2 owns experimental background homepage initialization, M3.2/M6 own interface parity. Account/session/time/details/review remain shared presentation; live session product/pax/inclusions now use the demo owner, real catalogue fields and the same action. Payment preparation uses the demo two-column layout but never pretends demo Card/PayNow controls are provider-supported. Turnstile, protected identity, guest access and existing exact write checks remain.
+
+A single hidden fixed-origin frame starts during a live booking session; no visible provider-homepage visit, checkout-capability prefetch, cookie copying, top navigation, retries or frame-load authorization signal. This is the first implementation candidate, not a proven solution to intermittent403. Real browser cookie/embedding behavior remains pending.
+
+Calendar overview uses bounded provider date-range reads, a 60-second cache owned by the existing account coordinator (eight month entries), scope isolation and invalidation fencing. Browser prefetches current month then three months sequentially after authorized booking/service selection. No anonymous site-entry read capability was introduced; a broader entry-point preload remains a later authority/performance gate. Installed grant dates still bound every actual range and gaps are never crossed. Existing grants are unchanged; source permits up to124 explicitly granted dates for a four-month test, without raising booking-dispatch counts or budgets. No migration is needed.
+
+Only verified available dates are selectable; unknown/out-of-scope and explicit empty remain distinct. Fresh Continue checks bypass the retained day cache and compare instructor/time/price under the current draft/session. A failed check preserves selections, invalidates shared affected-date data and refreshes calendar. A successful or uncertain checkout invalidates display cache before and after execution. Server prebooking/dispatch remains the final capacity/identity/price authority. No priority tie-break, production activation or complete visual/payment/webhook acceptance is claimed.
+
+## Customer-path constraint and readiness — 14 October 2026
+
+Owner requires no visible SimplyBook homepage detour. Prior homepage-first success remains diagnostic, not an accepted product flow. Background initialization has not been implemented or validated in current local b2862e0, so that experimental variant is not ready. Preserve direct native checkout and paid-state safeguards while preparing any isolated candidate. Service Contracts owns the superseding protocol.
+
+## Current checkout experiment direction — 14 October 2026
+
+Invoice34 body is available and associates confirmed booking43/SGD88; contradictory paid/received-false/PayLater fields do not establish settlement. Full customer journey with owner sandbox payment and active webhook observation is the next proposed experiment. Distinguish SoccerBot homepage from provider-origin session initialization: hidden iframe or server fetch is not an accepted replacement for top-level SimplyBook homepage navigation. Current payment guard requires received HitPay payment; no speculative warmup implemented. Service Contracts owns experiment and evidence limits; Journey owns decision history. This is preparation, not live authorization or acceptance.
+
+## Separate invoice due time, checkout rendering and link authorization — 14 October2026
+
+Owner observed checkout34 render after its displayed due time using homepage-first navigation once. A due-time field is not evidence that provider capability access is revoked; conversely a rendered payment page does not prove fresh invoice authorization, currentbookingeligibility or payment acceptance. Retain local SoccerBot deadlines as local admission rules without claiming provider-linkrevocation. Service Contracts owns this observation and required fresh-response evidence. Homepage-first remains a candidate supported by one reported trial, not a reliablefix.
+
+## Current checkout reliability boundary — 13 October 2026
+
+Native checkout reachability was observed for owner-created order34 with a30-minute payment window, while the owner reports intermittent e403 from the same original link. Payment, sandboxmerchant verification and signedwebhook acceptance remain outstanding. Latest retained Worker closure remains tested b2862e0,25 migrations,provider/identitydisabled; this offline investigation did not query or change it. Carried coordinator655/management567/Worker231/deployments47/attempts8/migrations5; separate owner controls bring conservative bookingdispatches13/issuedlinks10 with physically unmetered nativebrowsertraffic. Timeout restoration30→10 remains owner-unconfirmed.
+
+Source comparison and provider documentation establish no demonstrated SoccerBot URL or cookie defect. Keep native invoice authorization distinct from the mere presence of a browser session cookie. Two session values in a captured table support investigating grant continuity but do not establish a cookie race. Preserve provider boundaries: no automatic checkout retries, invented URL/code, cookie proxy, paid-state shortcut or unsupported session warmup. Require evidence that distinguishes mechanisms before another experiment; Service Contracts owns the current analysis and exclusions.
+
 ## Native diagnostic grant support remains bounded — 13 October 2026
 
 Source-only0025 aligns the native-grant schema upper bound with configured704 minus16 recovery calls:688. Historical rows and applied0001–0024 remain unchanged; no default ceiling, counter, permission, runtime admission or webhook-cap relaxation. This prerequisite permits preparing the owner's requested checkout-only diagnostic after exact CI and finite live approval; it neither fixes the404 nor starts another payment experiment. The actual closed environment remainsadd9cc2 with24 migrations until separately authorized execution.

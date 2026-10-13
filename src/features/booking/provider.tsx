@@ -1,4 +1,7 @@
 "use client";
+import { todaySG } from "@/domain/dates";
+import { slotKey, sessionPrice } from "@/domain/booking";
+import { useCalendarAvailability } from "./calendar-availability";
 import {
   createContext,
   useCallback,
@@ -23,6 +26,7 @@ import {
   BookingServiceError,
   type BookingService,
   type BookingOperation,
+  type AvailableSlot,
 } from "@/services/contracts";
 import {
   loadBooking,
@@ -30,6 +34,7 @@ import {
   type StoredBooking,
 } from "@/services/storage";
 import { useBookingAvailability } from "./availability";
+import { NativeSessionInit } from "./native-session-init";
 type Action = Exclude<BookingOperation, "availability">;
 type ActionState = {
   status:
@@ -40,6 +45,9 @@ type ActionState = {
 interface BookingContextValue extends StoredBooking {
   availability: ReturnType<typeof useBookingAvailability>;
   showDate: (date: string | null) => void;
+  calendar: ReturnType<typeof useCalendarAvailability>;
+  showMonth: (month: string) => void;
+  validateSelection: () => Promise<boolean>;
   ready: boolean;
   now: number;
   revision: number;
@@ -94,11 +102,14 @@ export function BookingProvider({
     controller: AbortController;
     operation: Action;
   } | null>(null);
+  const continuation = useRef<AbortController | null>(null);
   const mounted = useRef(false);
   const [availabilityRevision, invalidateAvailability] = useReducer(
     (revision: number) => revision + 1,
     0,
   );
+  const [calendarMonth, showMonth] = useState(() => todaySG().slice(0, 7));
+  const [calendarPaused, pauseCalendar] = useState(false);
   const [date, showDate] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const sessionKey = useCallback(
@@ -107,6 +118,13 @@ export function BookingProvider({
         ? JSON.stringify(identityService.current())
         : "guest",
     [value.draft.mode, identityService],
+  );
+  const calendar = useCalendarAvailability(
+    service,
+    value.ready && value.draft.mode ? value.draft.nativeServiceId : undefined,
+    calendarMonth,
+    sessionKey(),
+    !value.ready || calendarPaused || !!value.attempt,
   );
   const availability = useBookingAvailability(
     service,
@@ -160,6 +178,7 @@ export function BookingProvider({
     [service],
   );
   const cancel = useCallback(() => {
+    continuation.current?.abort();
     const request = active.current;
     if (!request) return;
     active.current = null;
@@ -312,6 +331,61 @@ export function BookingProvider({
         cancel,
         availability,
         showDate,
+        calendar,
+        showMonth,
+        async validateSelection() {
+          if (continuation.current) return false;
+          const current = latest.current;
+          const revision = current.revision;
+          const identity = sessionKey();
+          pauseCalendar(true);
+          const controller = new AbortController();
+          continuation.current = controller;
+          let succeeded = false;
+          try {
+            const dates = [
+              ...new Set(current.draft.slots.map((slot) => slot.date)),
+            ];
+            const offers: AvailableSlot[] = [];
+            for (const date of dates)
+              offers.push(
+                ...(await service.availability({
+                  date,
+                  players: current.draft.players,
+                  serviceId: current.draft.nativeServiceId,
+                  fresh: true,
+                  signal: controller.signal,
+                })),
+              );
+            succeeded =
+              !controller.signal.aborted &&
+              mounted.current &&
+              sessionKey() === identity &&
+              latest.current.revision === revision &&
+              dates.length > 0 &&
+              current.draft.slots.every((slot) =>
+                offers.some(
+                  (offer) =>
+                    slotKey(offer) === slotKey(slot) &&
+                    offer.available &&
+                    offer.instructor === slot.instructor &&
+                    sessionPrice(offer) === sessionPrice(slot),
+                ),
+              );
+            return succeeded;
+          } catch {
+            return false;
+          } finally {
+            continuation.current = null;
+            if (mounted.current && !controller.signal.aborted) {
+              invalidateAvailability();
+              if (!succeeded) {
+                calendar.retry();
+                pauseCalendar(false);
+              }
+            }
+          }
+        },
         update(change) {
           const current = latest.current;
           if (
@@ -320,6 +394,7 @@ export function BookingProvider({
           )
             return;
           cancel();
+          pauseCalendar(false);
           commit({
             ...current,
             draft: { ...current.draft, accepted: false, ...change },
@@ -343,6 +418,9 @@ export function BookingProvider({
         },
       }}
     >
+      <NativeSessionInit
+        enabled={value.ready && service.mode === "live" && !!value.draft.mode}
+      />
       {children}
     </Context.Provider>
   );

@@ -103,9 +103,8 @@ function intent() {
     ],
   };
 }
-async function prepared(g = undefined, age = 0) {
+async function prepared(g = undefined, age = 0, approved = intent()) {
   g ||= await guest();
-  const approved = intent();
   const a = await result("/test/prepare", {
     owner: g.owner,
     key: crypto.randomUUID(),
@@ -1138,4 +1137,111 @@ test("single statement discovery closure returns expiry then independent D1 read
     fingerprintRows(before.results, "capability_hash"),
     fingerprintRows(after.results, "capability_hash"),
   );
+});
+
+test("fresh availability query reaches authentication and rejects arbitrary query parameters", async () => {
+  const route = origin + "/api/booking/availability/2/2027-01-02";
+  assert.equal((await mf.dispatchFetch(route + "?refresh=1")).status, 401);
+  for (const query of [
+    "?refresh=2",
+    "?refresh=1&extra=1",
+    "?refresh=1&refresh=1",
+  ])
+    assert.equal((await mf.dispatchFetch(route + query)).status, 400);
+  const closed = await mf.dispatchFetch(origin + "/api/calendar/2027-01");
+  assert.equal(closed.status, 503);
+  assert.equal(closed.headers.get("set-cookie"), null);
+});
+
+test("receipt export rechecks ownership paid evidence and revocation without provider calls", async () => {
+  await db.exec(
+    readFileSync("migrations/0016_native_checkout_grants.sql", "utf8")
+      .replace(/^--.*$/gm, "")
+      .replace(/\n/g, " "),
+  );
+  const approved = {
+    ...intent(),
+    contact: {
+      name: "Synthetic Customer",
+      email: "synthetic@example.com",
+      phone: "+6591234567",
+      contactMethod: "email",
+      academy: "",
+    },
+    sessions: [
+      { ...intent().sessions[0], serviceId: "12", instructorId: "14" },
+    ],
+  };
+  const a = await prepared(undefined, 0, approved),
+    other = await guest();
+  const route = origin + `/api/attempts/${a.id}/receipt`;
+  const readReceipt = () =>
+    mf.dispatchFetch(route, { headers: { cookie: a.cookie } });
+  assert.equal((await mf.dispatchFetch(route)).status, 401);
+  assert.equal(
+    (await mf.dispatchFetch(route, { headers: { cookie: other.cookie } }))
+      .status,
+    404,
+  );
+  assert.equal((await readReceipt()).status, 409);
+
+  const evidence = await observation(a);
+  await db
+    .prepare(
+      "UPDATE attempts SET association_json=?,observation_json=? WHERE id=?",
+    )
+    .bind(
+      JSON.stringify({ invoiceId: "invoice-1", bookingIds: ["booking-1"] }),
+      JSON.stringify(evidence),
+      a.id,
+    )
+    .run();
+  const offer = {
+    serviceId: "12",
+    serviceName: "Native Session",
+    instructorId: "14",
+    instructorName: "Native Trainer",
+    startMs: approved.sessions[0].startMs,
+    priceMinor: 8800,
+    currency: "SGD",
+  };
+  const date = new Date(offer.startMs + 28800000).toISOString().slice(0, 10);
+  await db
+    .prepare(
+      "INSERT INTO native_checkout_grants(attempt_id,capability_hash,intent_hash,source_revision,contract_json,not_before_ms,expires_ms,starting_used,maximum_used,state,availability_json) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+    )
+    .bind(
+      a.id,
+      a.hash,
+      "synthetic",
+      "a".repeat(40),
+      "{}",
+      Date.now(),
+      Date.now() + 600000,
+      0,
+      64,
+      "complete",
+      JSON.stringify({
+        [date]: { date, observedAtMs: Date.now(), offers: [offer] },
+      }),
+    )
+    .run();
+  const response = await readReceipt();
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  const receipt = await response.json();
+  assert.equal(receipt.totalMinor, 8800);
+  assert.equal(receipt.sessions[0].serviceName, "Native Session");
+  assert.equal(JSON.stringify(receipt).includes("capability"), false);
+  evidence.invoice.paymentReceived = false;
+  await db
+    .prepare("UPDATE attempts SET observation_json=? WHERE id=?")
+    .bind(JSON.stringify(evidence), a.id)
+    .run();
+  assert.equal((await readReceipt()).status, 409);
+  await db
+    .prepare("UPDATE guest_access SET revoked_ms=? WHERE owner_id=?")
+    .bind(Date.now(), a.owner)
+    .run();
+  assert.equal((await readReceipt()).status, 401);
 });

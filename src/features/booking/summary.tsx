@@ -1,5 +1,7 @@
 "use client";
 import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icon";
 import { PRICE_CENTS, SERVICE_NAME } from "@/domain/demo-catalog";
 import {
@@ -101,7 +103,17 @@ export function PriceSummary({ draft }: { draft: BookingDraft }) {
   );
 }
 export function Summary({ basket = false }: { basket?: boolean }) {
-  const { draft, update, now, availability } = useBooking();
+  const {
+    draft,
+    update,
+    now,
+    availability,
+    validateSelection,
+    bookingService,
+  } = useBooking();
+  const router = useRouter();
+  const [checkingSelection, setCheckingSelection] = useState(false);
+  const [selectionFailed, setSelectionFailed] = useState(false);
   const result = availability.result;
   const valid =
     selectionErrors(draft.slots, now).length === 0 &&
@@ -189,17 +201,41 @@ export function Summary({ basket = false }: { basket?: boolean }) {
           </p>
           {basket &&
             (draft.slots.length > 0 && valid ? (
-              <Link
-                className="button wide basket-continue"
-                href="/book/details/"
-              >
-                Continue <Icon name="arrow" />
-              </Link>
+              bookingService.mode === "live" ? (
+                <button
+                  className="button wide basket-continue"
+                  disabled={checkingSelection}
+                  onClick={async () => {
+                    setCheckingSelection(true);
+                    setSelectionFailed(false);
+                    const valid = await validateSelection();
+                    setCheckingSelection(false);
+                    if (valid) router.push("/book/details/");
+                    else setSelectionFailed(true);
+                  }}
+                >
+                  {checkingSelection ? "Checking availability…" : "Continue"}{" "}
+                  <Icon name="arrow" />
+                </button>
+              ) : (
+                <Link
+                  className="button wide basket-continue"
+                  href="/book/details/"
+                >
+                  Continue <Icon name="arrow" />
+                </Link>
+              )
             ) : (
               <button className="button wide basket-continue" disabled>
                 Continue <Icon name="arrow" />
               </button>
             ))}
+          {selectionFailed && (
+            <p className="field-error" role="alert">
+              Your selection could not be confirmed. Check availability and
+              review your sessions.
+            </p>
+          )}
           {draft.slots.length > 0 && !valid && (
             <p className="field-error" role="status">
               {selectionErrors(draft.slots, now).length > 0 ||

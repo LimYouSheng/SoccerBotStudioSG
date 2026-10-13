@@ -7,7 +7,7 @@ import { SERVICE_NAME } from "@/domain/demo-catalog";
 import { totalCents } from "@/domain/booking";
 import { money } from "@/domain/dates";
 import { useBooking } from "./provider";
-import { SessionList, PriceSummary } from "./summary";
+import { SessionList } from "./summary";
 import { ProtectedConfirmation } from "./protected-confirmation";
 export function PaymentStep() {
   const {
@@ -19,6 +19,7 @@ export function PaymentStep() {
     cancel,
     bookingService,
     revision,
+    reset,
   } = useBooking();
   const [method, setMethod] = useState("card");
   useEffect(() => () => cancel(), [cancel]);
@@ -32,39 +33,73 @@ export function PaymentStep() {
           attemptId={attempt.id}
           checkoutMode="live"
           sessionRevision={revision}
+          onAgain={reset}
         />
       );
     return (
-      <div className="status-shell">
-        <section className="surface confirmation-card">
-          <h1>Continue to payment</h1>
-          <SessionList slots={attempt.draft.slots} />
-          <PriceSummary draft={attempt.draft} />
-          <p>
-            We’ll check your selected sessions again before opening secure
-            checkout.
-          </p>
-          {error && (
-            <p className="alert" role="alert">
-              {error}
-            </p>
-          )}
-          <button
-            className="button wide"
-            disabled={busy}
-            onClick={() => {
-              void pay("pending");
-            }}
-          >
-            {busy ? "Preparing secure checkout…" : "Continue to secure payment"}
-          </button>
-          <Link className="text-link" href="/book/review/">
-            Back to review
+      <div className="payment-shell">
+        <div className="booking-top">
+          <Link className="back" href="/book/review/">
+            <Icon name="back" /> Back to review
           </Link>
-        </section>
+        </div>
+        <div className="payment-layout">
+          <section
+            className="surface payment-summary"
+            aria-label="Order summary"
+          >
+            <div className="payment-merchant">
+              <span className="merchant-icon">
+                <Icon name="ball" />
+              </span>
+              SOCCERBOTSTUDIO Singapore
+            </div>
+            <h1 className="payment-title">Payment</h1>
+            <p className="text-sm text-muted">Total due · SGD</p>
+            <strong className="payment-total block">
+              {money(totalCents(attempt.draft))}
+            </strong>
+            <div className="payment-item">
+              <strong>
+                {attempt.draft.slots[0]?.native?.serviceName ?? "Your session"}
+              </strong>
+              <p>{attempt.draft.players} players · Instructor included</p>
+              <SessionList slots={attempt.draft.slots} />
+            </div>
+          </section>
+          <section className="surface" aria-label="Checkout">
+            <h2 className="section-title">Payment method</h2>
+            <div className="payment-demo">
+              <Icon name="lock" />
+              <h3>Secure payment</h3>
+              <p>Choose your payment method at secure checkout.</p>
+            </div>
+            {error && (
+              <p className="alert" role="alert">
+                {error}
+              </p>
+            )}
+            <button
+              className="button wide"
+              disabled={busy}
+              onClick={() => {
+                void pay("pending");
+              }}
+            >
+              {busy
+                ? "Preparing secure checkout…"
+                : `Pay ${money(totalCents(attempt.draft))}`}
+            </button>
+            <p className="payment-foot">
+              We check your sessions again before preparing checkout. Payment is
+              confirmed only after verification.
+            </p>
+          </section>
+        </div>
       </div>
     );
   }
+
   const waiting = ["checking", "pending", "late"].includes(attempt.status),
     checking = attempt.status === "checking",
     late = attempt.status === "late";

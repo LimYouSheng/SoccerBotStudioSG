@@ -1,3 +1,4 @@
+import { bookingReceipt } from "./receipt";
 import { webhookRoute } from "./webhook-contract";
 import { captureWebhook } from "./webhook";
 import {
@@ -108,7 +109,17 @@ export default {
           request.headers.get("origin") !== env.APP_ORIGIN
         )
           throw new ApiError(403, "origin_denied");
-        if (url.search) throw new ApiError(400, "unexpected_parameters");
+        if (
+          url.search &&
+          !(
+            request.method === "GET" &&
+            /^\/api\/booking\/availability\/[1-9]\d{0,14}\/\d{4}-\d{2}-\d{2}$/.test(
+              url.pathname,
+            ) &&
+            url.search === "?refresh=1"
+          )
+        )
+          throw new ApiError(400, "unexpected_parameters");
         if (webhookRoute(url.pathname)) {
           return json(await captureWebhook(request, env), 202);
         }
@@ -187,6 +198,39 @@ export default {
             throw new ApiError(405, "operation_unavailable");
           return json(await currentCustomerNative(request, env));
         }
+        const publicMonth = /^\/api\/calendar\/(\d{4}-(?:0[1-9]|1[0-2]))$/.exec(
+          url.pathname,
+        );
+        if (publicMonth && request.method === "GET")
+          return json(
+            unwrapRpcOutcome(
+              await env.COORDINATOR.getByName(coordinatorName).publicCalendar(
+                publicMonth[1],
+                correlationId,
+              ),
+            ),
+          );
+        const calendarMatch =
+          /^\/api\/booking\/calendar\/([1-9]\d{0,14})\/(\d{4}-(?:0[1-9]|1[0-2]))$/.exec(
+            url.pathname,
+          );
+        if (calendarMatch) {
+          if (request.method !== "GET")
+            throw new ApiError(405, "operation_unavailable");
+          await authenticate(request, env, Date.now());
+          return json(
+            unwrapRpcOutcome(
+              await env.COORDINATOR.getByName(coordinatorName).nativeCalendar(
+                {
+                  serviceId: calendarMatch[1],
+                  month: calendarMatch[2],
+                  cookie: request.headers.get("cookie") || "",
+                },
+                correlationId,
+              ),
+            ),
+          );
+        }
         const availabilityMatch =
           /^\/api\/booking\/availability\/([1-9]\d{0,14})\/(\d{4}-\d{2}-\d{2})$/.exec(
             url.pathname,
@@ -203,6 +247,7 @@ export default {
                 {
                   serviceId: availabilityMatch[1],
                   date: availabilityMatch[2],
+                  fresh: url.searchParams.get("refresh") === "1",
                   cookie: request.headers.get("cookie") || "",
                 },
                 correlationId,
@@ -384,6 +429,11 @@ export default {
               checkingHeaders["X-Checks-Remaining"] = String(window.remaining);
             }),
           );
+        const receipt = /^\/api\/attempts\/([a-f0-9-]{36})\/receipt$/.exec(
+          url.pathname,
+        );
+        if (receipt && request.method === "GET")
+          return json(await bookingReceipt(request, env, receipt[1], now));
         const checkout = /^\/api\/attempts\/([a-f0-9-]{36})\/checkout$/.exec(
           url.pathname,
         );

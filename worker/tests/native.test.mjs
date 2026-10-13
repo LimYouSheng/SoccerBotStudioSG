@@ -3204,3 +3204,49 @@ test("native date-scoped owner exception reaches fresh availability and exact tw
     }
   }
 });
+
+test("native calendar scopes range reads to granted dates and retains fresh continuation checks", async () => {
+  const data = await prepared(false, true, true);
+  await grantNative(data);
+  const wall = new Date(
+    data.scope.intent.sessions[0].startMs + 8 * 3600000,
+  ).toISOString();
+  const date = wall.slice(0, 10);
+  await db
+    .prepare(
+      "UPDATE native_checkout_grants SET attempt_id=NULL,intent_hash=NULL,available_dates_json=? WHERE attempt_id=?",
+    )
+    .bind(JSON.stringify([date]), data.scope.attemptId)
+    .run();
+  reply = nativeProviderReply(data, wall);
+  try {
+    const result = await call("customer-calendar", {
+      ...data,
+      value: { month: date.slice(0, 7), serviceId: "12" },
+    });
+    assert.equal(result.status, 200, JSON.stringify(result));
+    assert.equal(result.result.dates.length, 1);
+    assert.equal(result.result.dates[0].date, date);
+    assert.equal(result.result.dates[0].offers.length, 1);
+    const cached = await call("customer-availability", {
+      ...data,
+      value: { date, serviceId: "12" },
+    });
+    assert.equal(cached.status, 200);
+    assert.equal(cached.reserved, 0);
+    const fresh = await call("customer-availability", {
+      ...data,
+      value: { date, serviceId: "12", fresh: true },
+    });
+    assert.equal(fresh.status, 200);
+    assert.ok(fresh.reserved > 0);
+    const foreign = await call("customer-calendar", {
+      ...data,
+      value: { month: date.slice(0, 7), serviceId: "99" },
+    });
+    assert.notEqual(foreign.status, 200);
+    assert.equal(foreign.reserved, 0);
+  } finally {
+    reply = undefined;
+  }
+});

@@ -1,6 +1,13 @@
 "use client";
-import { useEffect, useState } from "react";
-import { protectedCheckoutService } from "@/services/confirmation";
+import { useEffect, useRef, useState } from "react";
+import { BookingConfirmation } from "./confirmation-step";
+import { downloadBooking, downloadCalendar } from "@/services/exports";
+type BookingReceipt = Awaited<ReturnType<typeof readBookingReceipt>>;
+import { sitePath } from "@/content/site-path";
+import {
+  readBookingReceipt,
+  protectedCheckoutService,
+} from "@/services/confirmation";
 import type { CheckoutContext } from "@/services/contracts";
 import { money } from "@/domain/dates";
 import { useConfirmationChecking } from "./confirmation-checking";
@@ -8,15 +15,34 @@ export function ProtectedConfirmation({
   attemptId,
   checkoutMode,
   sessionRevision = 0,
+  onAgain,
 }: {
   attemptId: string;
   checkoutMode?: "synthetic" | "live";
   sessionRevision?: number;
+  onAgain?: () => void;
 }) {
   const { view, busy, check, bindWindow } = useConfirmationChecking(
     attemptId,
     sessionRevision,
   );
+  const [receipt, setReceipt] = useState<{
+    value: BookingReceipt;
+    revision: number;
+  } | null>(null);
+  const receiptWork = useRef<AbortController | null>(null);
+  useEffect(() => {
+    if (view !== "confirmed" || checkoutMode === "synthetic") return;
+    const controller = new AbortController();
+    receiptWork.current = controller;
+    void readBookingReceipt(attemptId, controller.signal)
+      .then((value) => {
+        if (!controller.signal.aborted)
+          setReceipt({ value, revision: sessionRevision });
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [attemptId, view, checkoutMode, sessionRevision]);
   const [context, setContext] = useState<{
     value: CheckoutContext;
     revision: number;
@@ -68,6 +94,40 @@ export function ProtectedConfirmation({
     current?.checkout.state === "available" &&
     current.checkout.url !== expiredLink &&
     !["confirmed", "denied", "unresolved"].includes(view);
+  if (
+    view === "confirmed" &&
+    receipt?.value.attemptId === attemptId &&
+    receipt.revision === sessionRevision &&
+    checkoutMode !== "synthetic"
+  ) {
+    const exportReceipt = async (format: "calendar" | "details") => {
+      const controller = receiptWork.current;
+      if (!controller || controller.signal.aborted)
+        throw new Error("receipt_unavailable");
+      const current = await readBookingReceipt(attemptId, controller.signal);
+      if (controller.signal.aborted) throw new Error("receipt_unavailable");
+      if (format === "calendar") downloadCalendar(current.booking, false);
+      else
+        await downloadBooking(
+          current.booking,
+          false,
+          current.taxMinor,
+          controller.signal,
+        );
+    };
+    return (
+      <BookingConfirmation
+        booking={receipt.value.booking}
+        taxMinor={receipt.value.taxMinor}
+        onAgain={() => {
+          onAgain?.();
+          window.location.assign(sitePath("/book/account/"));
+        }}
+        calendarDownload={() => exportReceipt("calendar")}
+        detailsDownload={() => exportReceipt("details")}
+      />
+    );
+  }
   return (
     <div className="status-shell">
       <section className="surface confirmation-card" aria-live="polite">

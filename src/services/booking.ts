@@ -22,7 +22,9 @@ import { MAX_PLAYERS } from "@/domain/booking-policy";
 import { SESSION_STARTS } from "@/domain/demo-catalog";
 import { BookingServiceError, type BookingService } from "./contracts";
 import {
+  publicCalendarSchema,
   nativeAvailabilitySchema,
+  nativeCalendarSchema,
   nativePrepareSchema,
   nativeCurrentSchema,
 } from "@/domain/native-checkout";
@@ -31,6 +33,7 @@ const availabilityInput = z.object({
   date: z.string().refine(isDate),
   players: z.number().int().min(1).max(MAX_PLAYERS),
   serviceId: providerIdentifier.optional(),
+  fresh: z.boolean().optional(),
 });
 const checkoutInput = z.object({
   draft: draftSchema,
@@ -180,6 +183,59 @@ export function defineBookingService(adapter: BookingService): BookingService {
               )
                 throw invalidResponse();
               return parsed;
+            }),
+        }
+      : {}),
+    ...(adapter.publicCalendar
+      ? {
+          publicCalendar: (
+            input: Parameters<NonNullable<BookingService["publicCalendar"]>>[0],
+          ) =>
+            invoke(input.signal, async () => {
+              supported("availability");
+              const value = decode(
+                publicCalendarSchema,
+                await adapter.publicCalendar!(input),
+              );
+              if (
+                value.month !== input.month ||
+                value.observedAtMs > Date.now() ||
+                Date.now() - value.observedAtMs >= CATALOGUE_MAX_AGE_MS
+              )
+                throw invalidResponse();
+              return value;
+            }),
+        }
+      : {}),
+    ...(adapter.calendar
+      ? {
+          calendar: (
+            input: Parameters<NonNullable<BookingService["calendar"]>>[0],
+          ) =>
+            invoke(input.signal, async () => {
+              supported("availability");
+              if (
+                !/^\d{4}-(0[1-9]|1[0-2])$/.test(input.month) ||
+                !providerIdentifier.safeParse(input.serviceId).success
+              )
+                throw invalidResponse();
+              const value = await adapter.calendar!(input);
+              if (
+                value.month !== input.month ||
+                value.observedAtMs > Date.now() ||
+                Date.now() - value.observedAtMs >= CATALOGUE_MAX_AGE_MS ||
+                value.dates.length > 31 ||
+                new Set(value.dates.map((d) => d.date)).size !==
+                  value.dates.length ||
+                value.dates.some(
+                  (d) =>
+                    !isDate(d.date) ||
+                    !d.date.startsWith(input.month + "-") ||
+                    typeof d.available !== "boolean",
+                )
+              )
+                throw invalidResponse();
+              return value;
             }),
         }
       : {}),
@@ -344,12 +400,53 @@ export const liveBookingService: BookingService = defineBookingService({
       },
     };
   },
-  async availability({ date, serviceId, signal }) {
+  async publicCalendar({ month, signal }) {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw invalidResponse();
+    const response = await fetch(`/api/calendar/${month}`, {
+      signal,
+      credentials: "omit",
+      cache: "no-store",
+      redirect: "error",
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) throw invalidResponse();
+    return decode(publicCalendarSchema, await response.json());
+  },
+  async calendar({ month, serviceId, signal }) {
+    const value = nativeCalendarSchema.parse(
+      await nativeRequest(
+        `/api/booking/calendar/${serviceId}/${month}`,
+        "GET",
+        signal,
+      ),
+    );
+    if (
+      value.month !== month ||
+      value.dates.some((day) =>
+        day.offers.some(
+          (o) =>
+            o.serviceId !== serviceId ||
+            new Date(o.startMs + 8 * 3600000).toISOString().slice(0, 10) !==
+              day.date,
+        ),
+      )
+    )
+      throw invalidResponse();
+    return {
+      month,
+      observedAtMs: value.observedAtMs,
+      dates: value.dates.map((day) => ({
+        date: day.date,
+        available: day.offers.some((offer) => offer.startMs > Date.now()),
+      })),
+    };
+  },
+  async availability({ date, serviceId, signal, fresh }) {
     if (!serviceId) return unavailable();
     providerIdentifier.parse(serviceId);
     const data = nativeAvailabilitySchema.parse(
       await nativeRequest(
-        `/api/booking/availability/${serviceId}/${date}`,
+        `/api/booking/availability/${serviceId}/${date}${fresh ? "?refresh=1" : ""}`,
         "GET",
         signal,
       ),

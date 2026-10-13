@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import ts from "typescript";
 const bundle = await build({
   stdin: {
-    contents: `export * from './worker/catalogue'; export * from './worker/prebooking'; export * from './worker/provider-session'; export * from './worker/provider-transport';`,
+    contents: `export * from './worker/public-calendar'; export * from './worker/native-calendar'; export * from './worker/catalogue'; export * from './worker/prebooking'; export * from './worker/provider-session'; export * from './worker/provider-transport';`,
     resolveDir: process.cwd(),
   },
   bundle: true,
@@ -14,6 +14,10 @@ const bundle = await build({
   format: "esm",
 });
 const {
+  publicCalendar,
+  NativeCalendarReads,
+  calendarRanges,
+  calendarDates,
   normalizeCatalogue,
   CatalogueReads,
   NativePrebooking,
@@ -778,4 +782,263 @@ test("owner trial exception rechecks twenty-four-hour minimum and contract expir
     await assert.rejects(validator.review(intent), /native_trial_lead_time/);
     assert.equal(read.calls.length, 5);
   }
+});
+
+function calendarFixture() {
+  const data = fixtures();
+  data.services[12].unit_map = [14];
+  return normalizeCatalogue(
+    data.services,
+    data.instructors,
+    binding,
+    Date.now(),
+  );
+}
+function monthFixture() {
+  const dates = Array.from(
+    { length: 31 },
+    (_, i) => `2027-01-${String(i + 1).padStart(2, "0")}`,
+  );
+  const calls = [];
+  const input = {
+    scope: JSON.stringify(binding),
+    serviceId: "12",
+    month: "2027-01",
+    dates,
+    catalogue: async () => calendarFixture(),
+    exchange: async (request) => {
+      calls.push(request);
+      return {
+        receivedAtMs: Date.now(),
+        body: Object.fromEntries(
+          dates
+            .filter((d) => d >= request.from && d <= request.to)
+            .map((d) => [d, d.endsWith("-02") ? [] : ["09:00:00"]]),
+        ),
+      };
+    },
+  };
+  return { input, calls };
+}
+test("calendar range cache batches a month shares reads and preserves explicit empty versus unknown days", async () => {
+  const { input, calls } = monthFixture();
+  const cache = new NativeCalendarReads();
+  const [first, second] = await Promise.all([
+    cache.read(input),
+    cache.read(input),
+  ]);
+  assert.equal(calls.length, 3);
+  assert.equal(first.dates.length, 31);
+  assert.equal(first.dates[1].offers.length, 0);
+  assert.deepEqual(first, second);
+  first.dates[0].offers.length = 0;
+  assert.equal((await cache.read(input)).dates[0].offers.length, 1);
+  assert.equal(calls.length, 3);
+  const unknown = await new NativeCalendarReads().read({
+    ...input,
+    exchange: async (request) => {
+      const response = await input.exchange(request);
+      delete response.body["2027-01-03"];
+      return response;
+    },
+  });
+  assert.equal(
+    unknown.dates.some((d) => d.date === "2027-01-03"),
+    false,
+  );
+  // A positive offer establishes display availability even when another
+  // instructor's omitted date is unknown. Empty still requires every reply.
+  const mixed = await new NativeCalendarReads().read({
+    ...input,
+    catalogue: async () => {
+      const value = calendarFixture();
+      value.services[0].instructorIds = ["14", "15"];
+      return value;
+    },
+    exchange: async (request) =>
+      request.instructorId === "14"
+        ? { receivedAtMs: Date.now(), body: {} }
+        : input.exchange(request),
+  });
+  assert.equal(
+    mixed.dates.find((day) => day.date === "2027-01-01").offers.length,
+    1,
+  );
+  assert.equal(
+    mixed.dates.some((day) => day.date === "2027-01-02"),
+    false,
+  );
+});
+test("calendar cache isolates scope and invalidates changed dates without stale fallback", async () => {
+  const { input, calls } = monthFixture();
+  const cache = new NativeCalendarReads();
+  await cache.read(input);
+  await cache.read({ ...input, scope: "another-account" });
+  assert.equal(calls.length, 6);
+  cache.invalidateDate("2027-02-01");
+  await cache.read(input);
+  assert.equal(calls.length, 6);
+  cache.invalidateDate("2027-01-01");
+  await assert.rejects(
+    cache.read({
+      ...input,
+      exchange: async () => {
+        throw new Error("offline");
+      },
+    }),
+    /offline/,
+  );
+  const next = await cache.read(input);
+  assert.equal(next.dates.length, 31);
+  assert.equal(calls.length, 9);
+  const now = Date.now;
+  const expiredAt = next.observedAtMs + 60001;
+  Date.now = () => expiredAt;
+  try {
+    await assert.rejects(
+      cache.read({
+        ...input,
+        exchange: async () => {
+          throw new Error("expired");
+        },
+      }),
+      /expired/,
+    );
+  } finally {
+    Date.now = now;
+  }
+});
+test("calendar ranges never bridge unauthorized gaps and reject conflicting or foreign provider data", async () => {
+  assert.deepEqual(
+    calendarDates("2027-01", ["2027-01-03", "2027-02-01", "2027-01-01"]),
+    ["2027-01-01", "2027-01-03"],
+  );
+  assert.equal(calendarRanges(["2027-01-01", "2027-01-03"]).length, 2);
+  assert.throws(() => calendarRanges(["2027-02-30"]), /calendar_date_invalid/);
+  const { input } = monthFixture();
+  await assert.rejects(
+    new NativeCalendarReads().read({
+      ...input,
+      exchange: async () => ({
+        receivedAtMs: Date.now(),
+        body: { "2027-02-01": [] },
+      }),
+    }),
+    /calendar_representation_unavailable/,
+  );
+  await assert.rejects(
+    new NativeCalendarReads().read({
+      ...input,
+      catalogue: async () => {
+        const value = calendarFixture();
+        value.services[0].instructorIds = ["14", "15"];
+        return value;
+      },
+    }),
+    /native_provider_schedule_overlap/,
+  );
+});
+test("calendar invalidation fences an in-flight stale response", async () => {
+  const { input } = monthFixture();
+  let release;
+  const pendingRead = new Promise((resolve) => {
+    release = resolve;
+  });
+  const cache = new NativeCalendarReads();
+  const pending = cache.read({
+    ...input,
+    catalogue: async () => {
+      await pendingRead;
+      return calendarFixture();
+    },
+  });
+  cache.invalidateDate("2027-01-01");
+  release();
+  await assert.rejects(pending, /calendar_read_superseded/);
+});
+
+test("anonymous calendar is bounded and shared without exposing provider slots or customer data", async () => {
+  const config = ts.parseConfigFileTextToJson(
+    "wrangler.jsonc",
+    readFileSync("wrangler.jsonc", "utf8"),
+  ).config;
+  const date = new Date(Date.now() + 4 * 86400000).toISOString().slice(0, 10),
+    month = date.slice(0, 7);
+  const source = "a".repeat(40),
+    start = Date.now();
+  const window = {
+    sourceRevision: source,
+    serviceId: "12",
+    dates: [date],
+    notBeforeMs: start,
+    expiresMs: start + 600000,
+    startingUsed: 0,
+    maximumUsed: 2,
+  };
+  const env = {
+    ...config.vars,
+    SOURCE_REVISION: source,
+    PROVIDER_ACCESS: "trusted-reads",
+    CAMPAIGN_END_MS: String(start + 600000),
+    PUBLIC_CALENDAR_WINDOW_JSON: JSON.stringify(window),
+    SIMPLYBOOK_DEV_COMPANY_LOGIN: "synthetic-company",
+    SIMPLYBOOK_DEV_ADMIN_LOGIN: "synthetic-admin",
+    SIMPLYBOOK_DEV_API_KEY: "synthetic-key",
+    SIMPLYBOOK_DEV_ADMIN_API_USER_KEY: "synthetic-key",
+  };
+  let calls = 0;
+  const input = {
+    env,
+    month,
+    cache: new NativeCalendarReads(),
+    accounting: () => ({ used: calls, active: 0 }),
+    control: {
+      reserve: async () => {
+        calls++;
+        return "test";
+      },
+    },
+    provider: {
+      identity: async () => {},
+      catalogue: async () => calendarFixture(),
+      nativeRead: async (_env, control, request) => {
+        await control.reserve();
+        assert.equal(request.from, date);
+        assert.equal(request.to, date);
+        return { receivedAtMs: Date.now(), body: { [date]: ["09:00:00"] } };
+      },
+    },
+  };
+  const first = await publicCalendar(input);
+  assert.deepEqual(first.dates, [{ date, available: true }]);
+  assert.deepEqual(Object.keys(first).sort(), [
+    "dates",
+    "month",
+    "observedAtMs",
+    "serviceId",
+  ]);
+  assert.equal(calls, 1);
+  await publicCalendar(input);
+  assert.equal(calls, 1);
+  input.cache.invalidateDate(date);
+  await publicCalendar(input);
+  assert.equal(calls, 2);
+  input.cache.invalidateDate(date);
+  await assert.rejects(publicCalendar(input), /budget_exhausted/);
+  for (const changes of [
+    { PUBLIC_CALENDAR_WINDOW_JSON: "" },
+    { SOURCE_REVISION: "b".repeat(40) },
+    { PROVIDER_ACCESS: "disabled" },
+    {
+      PUBLIC_CALENDAR_WINDOW_JSON: JSON.stringify({
+        ...window,
+        expiresMs: start - 1,
+      }),
+    },
+  ])
+    await assert.rejects(
+      publicCalendar({ ...input, env: { ...env, ...changes } }),
+      /public_calendar_closed/,
+    );
+  assert.equal(calls, 2);
 });

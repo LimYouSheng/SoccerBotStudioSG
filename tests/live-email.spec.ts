@@ -36,6 +36,14 @@ async function fixture(page: Page, delivery = false, remembered = false) {
       });
       return;
     }
+    if (url.href === "https://soccerbotstudiosg.simplybook.asia/v2/") {
+      // Synthetic frame only: preserve the no-provider-network browser gate.
+      await route.fulfill({
+        contentType: "text/html",
+        body: "<!doctype html><title>Synthetic initialization</title>",
+      });
+      return;
+    }
     if (url.origin !== "http://127.0.0.1:4173") {
       unexpected.push(url.origin);
       await route.abort();
@@ -326,6 +334,14 @@ test("native guest journey preserves players contact and one checkout across ref
   await page.route("**/*", async (route) => {
     const request = route.request(),
       url = new URL(request.url());
+    if (url.href === "https://soccerbotstudiosg.simplybook.asia/v2/") {
+      // Synthetic frame only: preserve the no-provider-network browser gate.
+      await route.fulfill({
+        contentType: "text/html",
+        body: "<!doctype html><title>Synthetic initialization</title>",
+      });
+      return;
+    }
     if (url.origin !== "http://127.0.0.1:4173") {
       unexpected.push(url.origin);
       await route.abort();
@@ -374,7 +390,24 @@ test("native guest journey preserves players contact and one checkout across ref
         ],
         instructors: [{ id: "14", name: "Native Trainer", active: true }],
       };
-    else if (url.pathname.startsWith("/api/booking/availability/12/")) {
+    else if (url.pathname.startsWith("/api/calendar/")) {
+      const month = url.pathname.split("/").at(-1);
+      result = {
+        month,
+        serviceId: "12",
+        observedAtMs: Date.now(),
+        dates: date.startsWith(month + "-") ? [{ date, available: true }] : [],
+      };
+    } else if (url.pathname.startsWith("/api/booking/calendar/12/")) {
+      const month = url.pathname.split("/").at(-1);
+      result = {
+        month,
+        observedAtMs: Date.now(),
+        dates: date.startsWith(month + "-")
+          ? [{ date, observedAtMs: Date.now(), offers: [offer] }]
+          : [],
+      };
+    } else if (url.pathname.startsWith("/api/booking/availability/12/")) {
       const requested = url.pathname.split("/").at(-1);
       result = {
         date: requested,
@@ -435,7 +468,7 @@ test("native guest journey preserves players contact and one checkout across ref
     .getByRole("button", { name: "Add one player", exact: true })
     .click();
   await page
-    .getByRole("button", { name: "Select session", exact: true })
+    .getByRole("link", { name: "See available times", exact: true })
     .click();
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Singapore",
@@ -462,7 +495,7 @@ test("native guest journey preserves players contact and one checkout across ref
     .getByRole("group", { name: "Session times" })
     .getByRole("button", { name: /08:10–08:50/ })
     .click();
-  await page.getByRole("link", { name: "Continue", exact: true }).click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page.getByLabel("Full name", { exact: false }).fill("Synthetic Guest");
   await page
     .getByLabel("Email address", { exact: false })
@@ -483,9 +516,7 @@ test("native guest journey preserves players contact and one checkout across ref
   await page
     .getByRole("button", { name: "Continue to payment", exact: true })
     .click();
-  await page
-    .getByRole("button", { name: "Continue to secure payment", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Pay $88.00", exact: true }).click();
   await expect(
     page.getByRole("link", { name: "Open checkout", exact: true }),
   ).toHaveAttribute("href", checkoutUrl);
