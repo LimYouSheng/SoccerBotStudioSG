@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Live inspection admission repair — 14 October 2026
+
+YS reported unavailable session information on the deployed live site and requested live access to inspect cached dates/times. A closed deployment alone cannot support this journey: the legacy catalogue grant admits only early-campaign counters, and calendar/time selection previously depended on a checkout grant. The existing source-bound public calendar window now also admits authenticated catalogue, calendar and daily availability reads. It grants no booking, payment, identity-email or operator-write authority. Guest authentication and the original checkout grant/write checks remain. All read paths share coordinator cache/accounting; fresh Continue invalidates the affected month and refreshes catalogue/availability. Pacing consults retained admission timestamps across requests and restarts. The policy permits a separately configured1024 ceiling; the default and deployed704 ceiling are unchanged by source. A finite approved deployment/read window and actual live evidence remain required.
+
 ## Homepage reads and protected receipt parity — 14 October 2026
 
 M4.1 now starts four-month prefetch on site entry without creating guest access. Anonymous calendar DTOs contain only month, service ID, observation time and date availability booleans. A management-owned, finite, exact-source window bounds dates, service, time and cumulative provider usage; absence means closed. Public/protected reads share the account coordinator cache. Public reads preserve 32 checkout and 16 recovery calls and use ordinary 48-hour lead time. Fresh selection checks still invalidate shared affected dates. M6 uses the same confirmation layout and export owners for preview/live with truthful labels and per-export protected admission. No browser or live-provider acceptance follows from passing synthetic tests.

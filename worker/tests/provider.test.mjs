@@ -1103,6 +1103,40 @@ test("native setup rejects changed authority and ranges before any provider requ
     }
   }
 });
+function assertPrivateSetupDiagnostics(response) {
+  // Check the provider fixture values, including the complete invalid date.
+  // A random correlation UUID can legitimately contain the digits 2099.
+  assert.doesNotMatch(
+    JSON.stringify(response),
+    /must-not-escape|payment_settled|2099-01-01/,
+  );
+}
+test("native setup diagnostic privacy rejects fixture values without matching UUID digits", () => {
+  const response = {
+    status: 200,
+    body: { state: "blocked", result: { verified: false } },
+    correlationId: "15adaa49-33fa-465e-8cf7-92099fdd65e2",
+  };
+  assert.doesNotThrow(() => assertPrivateSetupDiagnostics(response));
+  for (const value of [
+    "https://example.test/must-not-escape",
+    "payment_settled",
+    "2099-01-01",
+  ]) {
+    assert.throws(
+      () => assertPrivateSetupDiagnostics({ ...response, leaked: value }),
+      assert.AssertionError,
+    );
+    assert.throws(
+      () =>
+        assertPrivateSetupDiagnostics({
+          ...response,
+          body: { [value]: [] },
+        }),
+      assert.AssertionError,
+    );
+  }
+});
 test("native setup rejects unknown subscription envelopes and malformed hours with bounded private diagnostics", async () => {
   for (const options of [
     { mutateHours: () => ({ "2099-01-01": [] }) },
@@ -1123,10 +1157,7 @@ test("native setup rejects unknown subscription envelopes and malformed hours wi
       assert.ok(r.body.result.stage);
       assert.equal(Object.hasOwn(r.body.result, "hours"), false);
       assert.equal(Object.hasOwn(r.body.result, "subscriptions"), false);
-      assert.doesNotMatch(
-        JSON.stringify(r),
-        /must-not-escape|payment_settled|2099/,
-      );
+      assertPrivateSetupDiagnostics(r);
       const calls = f.calls.length;
       await f.call(f.token, "POST", discoveryOperation);
       assert.equal(f.calls.length, calls);
@@ -2184,6 +2215,169 @@ test("scheduled native recovery preserves conflicting paid evidence for manual r
     assert.equal(row.observation_json, null);
     await tick(f);
     assert.equal(f.calls.length, 6);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+
+test("inspection window serves session catalogue and cached times without granting a booking", async () => {
+  const start = Date.now(),
+    end = start + 600000,
+    revision = "d".repeat(40);
+  const date = new Date(start + 4 * 86400000).toISOString().slice(0, 10),
+    month = date.slice(0, 7);
+  let starts = ["10:00:00"];
+  const f = await fixture({
+    full: true,
+    end,
+    secrets: {
+      SOURCE_REVISION: revision,
+      PROVIDER_CALL_CEILING: "1024",
+      PUBLIC_CALENDAR_WINDOW_JSON: JSON.stringify({
+        sourceRevision: revision,
+        serviceId: "2",
+        dates: [date],
+        notBeforeMs: start,
+        expiresMs: end,
+        startingUsed: 655,
+        maximumUsed: 675,
+      }),
+    },
+    respond: (_request, body) => {
+      const results = {
+        getEventList: {
+          2: {
+            id: 2,
+            name: "Synthetic Session",
+            duration: "40",
+            is_active: "1",
+            is_public: "1",
+            is_recurring: "0",
+            price: "88",
+            currency: "SGD",
+            unit_map: [2],
+          },
+        },
+        getUnitList: {
+          2: { id: 2, name: "Synthetic Trainer", is_active: "1" },
+        },
+        getStartTimeMatrix: { [date]: starts },
+      };
+      if (body && Object.hasOwn(results, body.method))
+        return Response.json({
+          jsonrpc: "2.0",
+          id: body.id,
+          result: results[body.method],
+        });
+    },
+  });
+  try {
+    await f.sql(
+      "INSERT INTO budget(campaign,used) VALUES(?,655)",
+      config.vars.CAMPAIGN_ID,
+    );
+    const publicRead = await f.mf.dispatchFetch(
+      origin + "/api/calendar/" + month,
+    );
+    assert.equal(publicRead.status, 200);
+    assert.equal(publicRead.headers.get("set-cookie"), null);
+    assert.deepEqual((await publicRead.json()).dates, [
+      { date, available: true },
+    ]);
+    const before = f.calls.length;
+    for (const route of [
+      "/api/catalogue",
+      "/api/booking/calendar/2/" + month,
+      "/api/booking/availability/2/" + date,
+    ])
+      assert.equal((await f.mf.dispatchFetch(origin + route)).status, 401);
+    const guest = await f.mf.dispatchFetch(origin + "/api/access", {
+      method: "POST",
+      headers: { origin },
+    });
+    assert.equal(guest.status, 201);
+    const cookie = guest.headers.get("set-cookie").split(";")[0];
+    const read = (path) =>
+      f.mf.dispatchFetch(origin + path, { headers: { cookie } });
+    const catalogue = await read("/api/catalogue");
+    assert.equal(catalogue.status, 200);
+    assert.equal((await catalogue.json()).services[0].priceMinor, 8800);
+    const calendar = await read("/api/booking/calendar/2/" + month);
+    assert.equal(calendar.status, 200);
+    const offers = (await calendar.json()).dates[0].offers;
+    assert.equal(offers.length, 1);
+    assert.equal(
+      (await read("/api/booking/availability/2/" + date)).status,
+      200,
+    );
+    assert.equal(
+      f.calls.length,
+      before,
+      "homepage cache is reused after selecting players",
+    );
+    starts = [];
+    const fresh = await read(
+      "/api/booking/availability/2/" + date + "?refresh=1",
+    );
+    assert.equal(fresh.status, 200, JSON.stringify(await fresh.clone().json()));
+    assert.deepEqual((await fresh.json()).offers, []);
+    assert.ok(f.calls.length > before);
+    const updated = await f.mf.dispatchFetch(origin + "/api/calendar/" + month);
+    assert.deepEqual((await updated.json()).dates, [
+      { date, available: false },
+    ]);
+    const counted = f.calls.length;
+    assert.equal((await read("/api/booking/calendar/99/" + month)).status, 503);
+    assert.equal(f.calls.length, counted);
+    const prepared = await f.mf.dispatchFetch(origin + "/api/booking/prepare", {
+      method: "POST",
+      headers: { origin, cookie, "content-type": "application/json" },
+      body: JSON.stringify({
+        key: crypto.randomUUID(),
+        accepted: true,
+        contact: {
+          name: "Synthetic Guest",
+          email: "guest@example.com",
+          phone: "00000000",
+          contactMethod: "email",
+          academy: "Synthetic school",
+        },
+        sessions: offers.map((offer) => ({
+          serviceId: offer.serviceId,
+          instructorId: offer.instructorId,
+          startMs: offer.startMs,
+          players: 1,
+          totalMinor: 8800,
+        })),
+      }),
+    });
+    assert.equal(prepared.status, 503);
+    assert.equal(
+      (await prepared.json()).error,
+      "native_customer_window_unavailable",
+    );
+    assert.equal(
+      (
+        await f.db
+          .prepare("SELECT COUNT(*) n FROM native_checkout_grants")
+          .first()
+      ).n,
+      0,
+    );
+    assert.equal(
+      (await f.db.prepare("SELECT COUNT(*) n FROM attempts").first()).n,
+      0,
+    );
+    assert.equal(f.calls.length, counted);
+    await f.sql(
+      "UPDATE budget SET used=675 WHERE campaign=?",
+      config.vars.CAMPAIGN_ID,
+    );
+    const exhausted = await read(
+      "/api/booking/availability/2/" + date + "?refresh=1",
+    );
+    assert.equal(exhausted.status, 503);
+    assert.equal(f.calls.length, counted);
   } finally {
     await f.mf.dispose();
   }
