@@ -137,7 +137,9 @@ try {
     .run();
   const grants = (await db.prepare("SELECT * FROM developer_operations").all())
     .results;
-  assert.deepEqual(manifest.pendingRemoteMigrations, []);
+  assert.deepEqual(manifest.pendingRemoteMigrations, [
+    "0025_native_grant_ceiling_704.sql",
+  ]);
   // Old-state compatibility remains tested locally, never re-applied remotely.
   for (const name of names.slice(5, 8)) await migrate(name);
   const appliedEight = {
@@ -335,6 +337,37 @@ try {
     (await db.prepare("SELECT count(*) n FROM webhook_event_scopes").first()).n,
     0,
   );
+  // Raising the native schema ceiling must preserve every historical row,
+  // including unknown webhook effects, and leave the recovery reserve excluded.
+  const beforeCeiling = new Map();
+  const ceilingTables = (
+    await db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name <> '_cf_METADATA' ORDER BY name",
+      )
+      .all()
+  ).results.map((row) => row.name);
+  for (const table of ceilingTables)
+    beforeCeiling.set(
+      table,
+      (await db.prepare(`SELECT * FROM "${table}" ORDER BY rowid`).all())
+        .results,
+    );
+  await migrate("0025_native_grant_ceiling_704.sql");
+  for (const table of ceilingTables)
+    assert.deepEqual(
+      (await db.prepare(`SELECT * FROM "${table}" ORDER BY rowid`).all())
+        .results,
+      beforeCeiling.get(table),
+    );
+  await db.prepare("UPDATE native_checkout_grants SET maximum_used=688").run();
+  await assert.rejects(
+    db.prepare("UPDATE native_checkout_grants SET maximum_used=689").run(),
+  );
+  await db
+    .prepare("UPDATE native_checkout_grants SET maximum_used=?")
+    .bind(retainedNative[0].maximum_used)
+    .run();
   assert.equal(
     (
       await mf.dispatchFetch(`${origin}/api/provider/webhook`, {

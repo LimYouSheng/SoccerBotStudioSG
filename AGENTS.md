@@ -1,5 +1,13 @@
 # SoccerBotStudioSG engineering
 
+## Preparing checkout-opening diagnostic — 13 October 2026
+
+YS authorized preparation of a fresh owner-browser diagnostic, stopping before payment. Native grants still have schema cap624 while coordinator usage is618. Source-only0025 raises that cap to688, matching configured704 minus recovery16; no row/counter reset, webhook-cap change or live authority follows. Current closed version63bea9f0/sourceadd9cc2 and24 applied migrations remain untouched. Service Contracts owns the finite diagnostic and amended limits, Journey records validation. New migration/source need exact CI and a verified artifact before execution approval.
+
+## Checkout page failed; payment flight closed — 13 October 2026
+
+Approved packet301173108ab6 executed once on tested sourceadd9cc2. Booking40 / invoice31, SGD88, were associated successfully. YS reported404 immediately on opening the provider-issued native checkout, before payment selection. No submission occurred; app404 and checkout Sandbox remain unverified. Both subscriptions were restored in reverse order and independent closure passed at14:36:24 Singapore. Current totals618 provider/494 management/199 Worker/41 deployments; configured704, recovery16 untouched;24 historical tables/migrations preserved. Packet consumed. Next investigate the native payment-link contract without replaying booking/payment or guessing an alternate URL. Service Contracts and Journey own the evidence.
+
 ## Checkout-time merchant verification selected — 13 October 2026
 
 YS selected verifying the merchant on checkout. Prepare the payment packet without another dashboard-name question; expected app404 remains conditional until the owner verifies the actual native checkout before one sandbox submission. The prepared policy permits explicit704 for the proposed finite budget, preserving the current closed default, carried usage and16-call reserve. No live limit increase is authorized by this source edit. Fresh exact-source CI/artifact and executor/closure validation precede the consolidated execution request.

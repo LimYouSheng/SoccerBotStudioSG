@@ -1,5 +1,19 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Native diagnostic grant support remains bounded — 13 October 2026
+
+Source-only0025 aligns the native-grant schema upper bound with configured704 minus16 recovery calls:688. Historical rows and applied0001–0024 remain unchanged; no default ceiling, counter, permission, runtime admission or webhook-cap relaxation. This prerequisite permits preparing the owner's requested checkout-only diagnostic after exact CI and finite live approval; it neither fixes the404 nor starts another payment experiment. The actual closed environment remainsadd9cc2 with24 migrations until separately authorized execution.
+
+## Interpret the native error before repairing — 13 October 2026
+
+Offline diagnosis verified the handed-off provider URL and invoice31, with the owner's failure before all local deadlines/access closure. Keep visible page text separate from observed HTTP status: a historical provider report shows a displayed404 can mask invoice-access403 in another flow. Neither that report nor PRO-feature documentation proves this account's cause. No URL rewriting, Client Login change, plan upgrade or alternative payment integration is justified. Preserve closed state and require original browser error evidence/current native settings before a targeted new reproduction.
+
+## Checkout reachability is an outstanding acceptance gate — 13 October 2026
+
+The approved owner payment flight created and associated booking40/invoice31, but the owner saw404 on initial native checkout navigation. A provider-issued, allowlisted link is not proof of reachable checkout, merchant identity, sandbox mode or paid state. No payment was submitted and no post-payment callback comparison occurred. Preserve the successful native association separately from this failed browser boundary. Do not guess a new destination or repeat booking/payment to conceal it.
+
+The packet is consumed and independently closed at14:36:24 Singapore onadd9cc2/version63bea9f0-1593-48d3-8b04-5ac7ba702ad0. Both subscription baselines and all24 historical tables/migrations are preserved; access disabled/end0/active0. Current cumulative618 provider/494 management/199 Worker/41 deployments, configured704 and recovery16 untouched. Service Contracts owns link diagnosis and any future bounded test; no new live authority follows from remaining budgets.
+
 ## Payment preparation retains a separate submission gate — 13 October 2026
 
 YS chose checkout-time merchant verification. The owner must confirm Sandbox, expected merchant app404, exact invoice and SGD88 before one submission; a mismatch stops. The policy now permits an explicit704 ceiling for the proposed packet, without selecting it in default configuration or resetting stored usage. Provider reserve, finite grant and no-replay ownership are unchanged. Release metadata records no pending migration and the last independently closed version. This source-only preparation still needs exact-source CI/artifact and a new finite approval.

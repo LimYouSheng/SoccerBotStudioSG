@@ -1,5 +1,29 @@
 # SoccerBotStudioSG current progress
 
+## Preparing one checkout-opening diagnostic — 13 October 2026
+
+Source-only0025 raises native grant schema cap624→688; carried618 otherwise cannot satisfy availability admission. Focused extended-grant runtime test passed; full checks/CI/artifact and a new executor remain in progress. No link repair is guessed. The proposed owner browser flight creates one fresh eligible checkout, captures redirects/errors, and stops before payment; no webhook subscription. Complete baseline read adds1 management (495), all24 tables/4 event scopes closed. Coordinator618, Worker199, deployments41 unchanged;3 separate connector reads retain unknown physical-call accounting. Finite attempt/link/migration/deployment limits must be amended against the final reviewed packet.
+
+## Owner settings evidence received — 13 October 2026
+
+Homepage loads; SBPay PRO on free trial; Take Me Back Home enabled with no settings available to owner. General homepage failure/disabled PRO are not supported causes. No visible return destination or original browser status is available. Exact invoice-ID lookup is absent from connector schema and its supported number/code selectors are not retained, so no guessed lookup or broad scan ran. Next proof: actual fresh checkout redirect/failed-request evidence, stopping before payment; expired-link replay would be inconclusive. Live remains closed and connector reads remain3.
+
+## Read-only native settings checked; owner browser results pending — 13 October 2026
+
+Connected SimplyBook identity matches the developer binding. Accept Payments enabled/configured; Client Login off; Take Me Back Home on. Current SBPay PRO and return destination are not exposed by the connector; public-site web-reader access failed without proving a site404. Owner has exact homepage/payment-settings links and a three-item read-only check. Wait for those results before choosing a browser reproduction. No application repair, configuration change, booking, payment or Worker opening. Three connector reads are separately counted; underlying physical calls unknown, coordinator618 unchanged.
+
+## Checkout diagnosis: endpoint and handoff match; native error unresolved — 13 October 2026
+
+Confirmed exact handoff/retained URL equality, invoice31 association and failure before the original submission/checkout deadlines and access closure. Official documentation matches our payment-link endpoint. Actual browser status is missing; historical provider evidence makes invoice-access403 hidden by a404 page a specific hypothesis. YS could not recall the original error suffix; it remains unknown. Next obtain browser error evidence and read-only native payment-feature/site settings; no speculative code fix or new booking. Live remains closed at618 provider/494 management/199 Worker/41 deployments.
+
+## Owner checkout 404; test stopped and independently closed — 13 October 2026
+
+Packet301173108ab6 created booking40 and exact unpaid invoice31, SGD88, for Nabil3/service2 on15October15:40 Singapore. Both callback subscriptions were active and the protected checkout handoff passed. The owner reported404 immediately on opening the native link, before payment selection. Stopped forward work; no payment, readback, retry or cancellation. Pre-payment receipt count was0; the planned post-payment180-second comparison did not run. Payment and post-payment webhook acceptance remain pending.
+
+Reverse subscription cleanup and independent closure passed at14:36:24 Singapore on sourceadd9cc20362fba9d23febcd42caebeea19079e6d / version63bea9f0-1593-48d3-8b04-5ac7ba702ad0. Provider/identity disabled, end0, active0, schedules empty; new authority expired/revoked, historical24 tables and24 migrations preserved. Actual cost51 provider/50 management/24 Worker/3 deployments. Cumulative618/494/199/41,7 attempts/10 booking dispatches/7 generated links/4 migrations. Recovery16 untouched within configured704. The packet is consumed; unused limits do not permit a successor.
+
+**Next ready task:** diagnose why the provider-issued native payment link returns404 before checkout. Source passes the returned link unchanged and validates its allowed shape; it does not prove reachability. Do not guess a replacement path, mark payment accepted, reuse this booking, or launch another live flight under consumed authority.
+
 ## Owner payment packet preparation continues — 13 October 2026
 
 Merchant verification will occur on the owner checkout before payment, as requested. Application preparation adds explicit704 budget support and refreshes release metadata; current live640 remains closed. Focused native/recovery/reserve checks and fresh exact-source CI precede packet sealing. New finite executor and independent closure validation remain in progress.

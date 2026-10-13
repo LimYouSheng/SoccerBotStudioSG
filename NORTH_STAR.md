@@ -1,5 +1,13 @@
 # North Star: dependable customer booking and quick rebooking
 
+## Next proof isolates initial native navigation — 13 October 2026
+
+Prepare the owner-approved checkout-opening diagnostic with browser request evidence captured before navigation and no payment submission. Homepage/payment-feature checks passed but the initial404 cause remains unproven. Budget-schema support and exact artifact/executor validation are preparation prerequisites; a new finite flight requires concrete amended limits. Payment/webhook acceptance follows only after reachable native checkout is demonstrated.
+
+## Immediate prerequisite: reachable native checkout — 13 October 2026
+
+The first owner payment flight stopped when the native checkout for booking40/invoice31 returned404 immediately on opening, before payment selection. Native creation/association remain evidenced; payment and the proposed post-payment callback comparison remain untested. Prioritize establishing the correct supported native payment-link contract, then prepare a fresh bounded payment test. The consumed flight is independently closed. Service Contracts and Journey retain evidence and constraints.
+
 ## Current priority: native payment, then webhook confirmation — 13 October 2026
 
 Native booking creation and exact invoice association are accepted within the developer integration scope. The paired unpaid control completed and closed with no recorded callback arrivals. YS now requests an owner-operated payment test and suggests payment completion may trigger delivery. Prepare one sandbox native checkout with both event subscriptions present; prove paid state through the existing authoritative readback owner and assess callback timing separately. Current sandbox/merchant evidence is required before sealing execution. Service Contracts owns the staged test; Journey retains the negative control and authorization change. General browser/device, no-return automation, semantic webhook mapping and client-production acceptance remain later gates.

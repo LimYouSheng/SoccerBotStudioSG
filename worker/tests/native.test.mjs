@@ -1580,6 +1580,9 @@ test("native extended grant needs the exact approved ceiling and retains the car
     ["640", 567, 624, true],
     ["704", 567, 624, true],
     ["705", 567, 624, false],
+    ["640", 618, 658, false],
+    ["704", 618, 658, true],
+    ["704", 618, 688, true],
   ]) {
     const data = await prepared(false, true, true);
     await grantNative(data, { startingUsed, maximumUsed });
