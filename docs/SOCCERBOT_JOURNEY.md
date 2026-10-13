@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## WebKit exposed a calendar clock race — 14 October 2026
+
+CI run38442449150 passed frontend and all295 live Worker cases, but the live guest journey timed out on phone/tablet WebKit clicking a disabled known-available date. The provider receipt was newer than BookingProvider's minute-based display clock, so the freshness upper bound rejected it until the next minute. Corrected the hook to use its locally sampled receipt time for initial presentation, retain the service's future/stale validation, and expire each entry at its actual60-second deadline. Added a component regression that holds the page clock behind the response and verifies immediate display and exact expiry. Browser actions/assertions/timeouts remain unchanged. This candidate supersedes520346c; no deployment of the failed candidate occurred.
+
 ## Final local checks and inventory correction — 14 October 2026
 
 Full website non-browser verification passed with164 unit/component cases, production build and export checks. All295 Worker cases passed with zero failures/skips, but the verification wrapper correctly rejected the reviewed inventory because its file ordering differed from Node execution ordering. Compared the complete sets and counts, then corrected only the inventory order; no test was removed or weakened. Preserved the failed wrapper receipt. Final cache review also ensures a known positive offer remains visible when another instructor omits that date, while missing evidence never establishes a closed day; expanded the existing range regression. Exact-source CI must verify the final candidate before deployment.

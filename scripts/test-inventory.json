@@ -285,6 +285,10 @@
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",
+    "title": "fresh calendar receipts render before the minute clock ticks and expire at their own deadline"
+  },
+  {
+    "file": "src/features/booking/booking-parity.test.tsx",
     "title": "homepage prefetch starts without a booking identity and never creates guest access"
   },
   {

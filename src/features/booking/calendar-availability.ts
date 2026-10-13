@@ -21,7 +21,7 @@ export function useCalendarAvailability(
   const [state, setState] = useState<{
     owner: BookingService;
     key: string;
-    entries: Record<string, CalendarAvailability>;
+    entries: Record<string, CalendarAvailability & { receivedAtMs: number }>;
     failed: string[];
   } | null>(null);
   useEffect(() => {
@@ -54,12 +54,13 @@ export function useCalendarAvailability(
           )
             throw new Error("calendar_service_changed");
           if (controller.signal.aborted) return;
+          const receivedAtMs = Date.now();
           setState((previous) => {
             const entries =
               previous?.owner === service && previous.key === key
                 ? { ...previous.entries }
                 : {};
-            entries[next] = result;
+            entries[next] = { ...result, receivedAtMs };
             const retained = Object.fromEntries(
               Object.entries(entries).slice(-4),
             );
@@ -81,6 +82,32 @@ export function useCalendarAvailability(
     })();
     return () => controller.abort();
   }, [service, serviceId, month, scope, paused, key]);
+  // Expire display entries at their actual receipt deadline, independently of
+  // the booking page's minute clock. No provider polling or silent retries.
+  useEffect(() => {
+    if (!state) return;
+    const deadlines = Object.values(state.entries).map(
+      (value) => value.observedAtMs + CATALOGUE_MAX_AGE_MS,
+    );
+    if (!deadlines.length) return;
+    const timer = setTimeout(
+      () =>
+        setState((previous) => {
+          if (previous !== state) return previous;
+          const now = Date.now();
+          return {
+            ...previous,
+            entries: Object.fromEntries(
+              Object.entries(previous.entries).filter(
+                ([, value]) => value.observedAtMs + CATALOGUE_MAX_AGE_MS > now,
+              ),
+            ),
+          };
+        }),
+      Math.max(0, Math.min(...deadlines) - Date.now()),
+    );
+    return () => clearTimeout(timer);
+  }, [state]);
   const current = state?.owner === service && state.key === key ? state : null;
   const reconcile = useCallback(
     (date: string, available: boolean | undefined) => {
@@ -110,9 +137,10 @@ export function useCalendarAvailability(
     reconcile,
     entry(selected: string, now: number) {
       const value = current?.entries[selected];
+      const observedNow = Math.max(now, value?.receivedAtMs ?? now);
       return value &&
-        value.observedAtMs <= now &&
-        now - value.observedAtMs < CATALOGUE_MAX_AGE_MS
+        value.observedAtMs <= observedNow &&
+        observedNow - value.observedAtMs < CATALOGUE_MAX_AGE_MS
         ? value
         : null;
     },

@@ -283,3 +283,37 @@ test("homepage prefetch starts without a booking identity and never creates gues
     4,
   );
 });
+
+test("fresh calendar receipts render before the minute clock ticks and expire at their own deadline", async () => {
+  vi.useFakeTimers();
+  const initial = Date.parse("2027-01-01T00:00:00Z");
+  vi.setSystemTime(initial);
+  let finish!: (value: CalendarAvailability) => void;
+  const calendar = vi.fn(
+    async ({ month }: { month: string }) =>
+      ({ month, observedAtMs: Date.now(), dates: [] }) as CalendarAvailability,
+  );
+  calendar.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve;
+      }),
+  );
+  render(
+    <CalendarProbe
+      service={{ ...demoBookingService, calendar }}
+      now={initial}
+    />,
+  );
+  vi.setSystemTime(initial + 1500);
+  await act(async () =>
+    finish({
+      month: "2027-01",
+      observedAtMs: Date.now(),
+      dates: [{ date: "2027-01-04", available: true }],
+    }),
+  );
+  expect(screen.getByRole("status")).toHaveTextContent("2027-01-04");
+  await act(async () => vi.advanceTimersByTime(60000));
+  expect(screen.getByRole("status")).toHaveTextContent("loading");
+});
