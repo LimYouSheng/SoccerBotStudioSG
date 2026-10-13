@@ -1,5 +1,19 @@
 # SoccerBotStudio — Service Contracts
 
+## New booking accepted; webhook observation failed; cleanup verified — 13 October 2026
+
+YS approved sealed packet `7ec56094976f658a0f2d4913eeefcb08e307ae9d7f7386ae37afff7764f5b662` on source `44c53fcd28b6ab34e31d3179141304db05c85a22`, with cumulative limits management362, Worker157 and deployments36. The existing provider maximum540/640 and12:30 Singapore deadline stayed unchanged. All three CI38335105069 gates passed; artifact11784941051/SHA256 `92dd5d0bd725f1d0936c56907dc1b20e6826f8c3f41715c5f8278bde99658a67` matched150 sealed files and282 Worker tests with zero failures/skips. No migration was pending.
+
+Fresh subscription creation passed its exact identity and baseline checks at478 calls. Fresh availability selected Nabil3/service2 on **15 October15:40 Singapore** under the ordinary48-hour guard. One new attempt `300cdcc8-9061-47ee-8746-e263d1b2bf46` completed confirmed booking38 and exact invoice29 forSGD88, tax0; authoritative invoice status was unpaid. The native checkout link is available and remains unopened. Checkout completed at509 calls. No booking cancellation or payment occurred.
+
+After the required observation interval, the single authenticated receipt query returned zero rows and the packet stopped at capture with actual_signed_delivery_not_observed. This establishes absence of accepted receipts at that check; it does not distinguish delayed/absent provider delivery from signature, timestamp or other ingress rejection. No second observation, booking replay or further forward work occurred. The test's signed-delivery acceptance is false.
+
+Bounded cleanup passed after the prescribed cooldown. The new DELETE response metadata was httpStatus200, contentType:other and bodyPresent:true. The repair discarded that undocumented body and performed a fresh list read, which exactly restored the subscription baseline; the cleanup grant closed/verified:true at516 calls. This is actual acceptance of the body-independent DELETE lifecycle. The response body and literal media type were not retained; no claim is made about their contents or the older unknown DELETE response. Historical unknown grants remain untouched.
+
+Independent closure at **13 October 10:26:51 Singapore** verified source44c53fc/version `9c555cf2-24ab-4aca-9483-aed345b0e87c`, Worker/coordinator and identity disabled, end0,516/640 calls, active0 and recovery16 untouched. New native authority expired, guest revoked, audit/guest denied401, capture closed, schedules empty and all23 historical table snapshots/migration records preserved. Actual cost:45 provider calls,39 management requests,17 Worker requests,3 deployments. Carried totals:516 provider,349 management,150 Worker,35 deployments,5 attempts,8 conservative book dispatches,5 unopened links and3 migrations.
+
+The ledger is closed and the packet is consumed, with booking/association and DELETE cleanup accepted but signed-delivery acceptance false. Next prepare bounded delivery/rejection diagnostics and provider-supported delivery evidence before another authorized test; do not replay booking38, its checkout or the removed subscription. Event mapping, no-return payment reconciliation and owner-controlled acceptance remain pending. No new live authority is implied by remaining counters.
+
 ## Body-independent DELETE acknowledgement — 13 October 2026
 
 The [official webhook contract](https://help.simplybook.me/wiki/REST_API_webhooks) documents DELETE by subscription ID and an active-only default list, but does not specify a DELETE response body. Read-only reconciliation already established the prior empty active baseline after the unknown response; it did not identify that response's exact format.

@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Live acknowledgement fix accepted; no signed receipt at observation — 13 October 2026
+
+YS approved packet7ec56094976f and amended limits. Exact-source CI and the282-test artifact were verified before execution. New subscription registration and fresh Nabil availability passed; one attempt300cdcc8-9061-47ee-8746-e263d1b2bf46 created booking38/invoice29 for15October15:40 Singapore, SGD88, confirmed/unpaid with checkout unopened. At the single post-checkout observation, the authenticated receipt table returned zero rows. Forward work stopped immediately; no retry or booking replay occurred.
+
+The pre-authorized cleanup then observed HTTP200, contentType:other, bodyPresent:true. The new transport handling discarded the undocumented body and the fresh list proved exact baseline restoration. This directly validates the repair, while leaving delivery-versus-rejection diagnosis unresolved. Independent closure at10:26:51 Singapore verified disabled/end0/active0 on version9c555cf2-24ab-4aca-9483-aed345b0e87c,516/640 calls, revoked/expired/401 new access, closed capture, empty schedules and all23 historical tables/migrations preserved. Cost45 provider/39 management/17 Worker/3 deployments; cumulative516/349/150/35. Signed-delivery acceptance remains false; no payment, cancellation or owner acceptance occurred.
+
 ## DELETE acknowledgement regression and repair — 13 October 2026
 
 YS requested resolving response handling and another acceptance test after the empty active list was verified. Official webhook documentation describes DELETE and active-list semantics without prescribing the DELETE body. A synthetic empty200 regression reproduced provider_representation_unknown and premature delete_unknown before the follow-up list. The transport owner now discards the undocumented successful DELETE body and returns bounded acknowledgement metadata; the existing lifecycle owner still requires a fresh exact baseline for acceptance.

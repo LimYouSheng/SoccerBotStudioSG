@@ -1,5 +1,9 @@
 # SoccerBotStudioSG engineering
 
+## Live DELETE fix passed; signed delivery not observed — 13 October 2026
+
+Packet7ec56094976f created confirmed booking38 and exact unpaid invoice29, SGD88, with Nabil on15October15:40 Singapore. The checkout link remains unopened. The authenticated webhook receipt check returned zero rows, so forward work stopped. Cleanup then passed: HTTP200 with a non-JSON content type/body present, followed by exact active-baseline restoration. Independent closure at10:26:51 Singapore verified source44c53fc/version9c555cf2-24ab-4aca-9483-aed345b0e87c, disabled/end0/active0,516/640 calls and all23 historical tables preserved. Carried management349, Worker150, deployments35. No cancellation or payment occurred. Service Contracts and Journey own exact evidence. Next diagnose delivery versus rejection without replaying booking38; this packet is consumed and owner acceptance remains deferred.
+
 ## DELETE acknowledgement repair and next test — 13 October 2026
 
 YS requested resolving DELETE response handling and another acceptance test. The transport now treats successful DELETE HTTP status as acknowledgement only, discards the undocumented body and retains bounded status/type/presence metadata. The existing lifecycle owner must still verify a fresh exact active baseline before closing. Unknown outcomes, failed reads and HTTP failures retain no-replay protections. Service Contracts owns this contract; Journey records regression evidence. Live state remains closed at 471/640 on source1e6bfbe/version84852bef-7346-40de-97df-220cccb9a029. Prepare exact-source CI and a sealed fresh test; the prior cumulative deployment ceiling32 is exhausted, so concrete amended limits are required before live execution. Owner-controlled acceptance remains deferred.

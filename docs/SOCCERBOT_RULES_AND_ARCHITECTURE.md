@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Separate accepted checkout/cleanup from failed signed-delivery observation — 13 October 2026
+
+The new live test accepted one confirmed/unpaid native booking and the repaired DELETE lifecycle, but observed no authenticated webhook receipt at its bounded check. Preserve that failed observation and do not infer whether the provider failed to deliver or ingress rejected a delivery. Do not replay the booking to produce evidence. Signed delivery, event mapping and payment recovery remain separate acceptance gates.
+
+Bounded cleanup restored the active subscription baseline and independent closure preserved all23 historical tables on source44c53fc at516/640 calls. No payment, cancellation or owner acceptance occurred. Service Contracts owns exact record IDs, counters, source/artifact and closure; Journey records the failed observation and successful cleanup. This packet is consumed.
+
 ## DELETE acknowledgement is separate from restoration proof — 13 October 2026
 
 The webhook subscription lifecycle owns cleanup acceptance. A successful HTTP DELETE acknowledgement permits its existing fresh list read; it never proves removal by itself. The transport discards the undocumented DELETE body without buffering or interpreting it, while preserving redirects, HTTP failures, grant admission, durable call accounting and no-replay rules. Cleanup closes only when the fresh normalized active list exactly equals its preserved baseline. Other provider operations retain strict bounded JSON parsing.
