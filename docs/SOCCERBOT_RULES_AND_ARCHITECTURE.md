@@ -1,5 +1,31 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Payment preparation retains a separate submission gate — 13 October 2026
+
+YS chose checkout-time merchant verification. The owner must confirm Sandbox, expected merchant app404, exact invoice and SGD88 before one submission; a mismatch stops. The policy now permits an explicit704 ceiling for the proposed packet, without selecting it in default configuration or resetting stored usage. Provider reserve, finite grant and no-replay ownership are unchanged. Release metadata records no pending migration and the last independently closed version. This source-only preparation still needs exact-source CI/artifact and a new finite approval.
+
+## Owner payment is the next diagnostic boundary — 13 October 2026
+
+YS requests testing payment before returning to webhook acceptance, reports no developer support, and agrees to prepare an owner-operated test. The next step no longer depends on a support response. Earlier owner-payment deferrals remain historical; the new scope is preparation of one native sandbox submission, subject to current mode/merchant evidence and a new finite execution packet. A real charge is not authorized.
+
+Retain SimplyBook → SBPay → HitPay. Independently read the exact associated invoice and signed booking through the existing one-use native-readback owner. A checkout return, owner success report, callback route or event arrival cannot mark the invoice paid. Keep both authenticated capture channels active before checkout and through payment observation. A receipt after payment is temporal evidence, not proof that payment is a universal event prerequisite; shape-only capture also does not prove which booking generated it. Payment acceptance, authenticated delivery, semantic association, automatic reconciliation and general owner/device acceptance remain distinct.
+
+No application-source change or new deployment has been made for this preparation. Preserve all prior attempts, bookings, subscriptions and24 migrations. Service Contracts owns the staged test, limits and closure; Journey records the changed direction and outstanding inputs.
+
+## Read-only ingress evidence — 13 October 2026
+
+Stored telemetry for the latest paired control contains all 19 expected HTTP requests with matching correlation IDs/statuses and no truncated events. No callback arrivals were recorded on either fixed route between 12:04:00 and 12:31:07 Singapore. This narrows the next investigation to event generation/dispatch or network/pre-Worker edge behavior; it does not prove provider fault or justify a signature/parser change. Signed delivery and payment acceptance remain pending.
+
+The investigation made four management reads, including one SELECT-only subscription/capture read with zero rows written. No provider call, direct Worker request, deployment, live mutation or support communication occurred. Cumulative management is 443/446; provider remains 567, Worker 175 and deployments 38. Access and the campaign remain closed. Service Contracts contains the support-trace boundary and limitations; Journey retains the evidence.
+
+## Current developer acceptance state — 13 October 2026, 12:14 Singapore
+
+The paired booking/invoice delivery control completed on application source `116fd342a8b82c20ff961fff0210ed86feac1648`, backed by287 Worker tests and all three exact-source CI gates. Its single fresh booking and exact confirmed/unpaid invoice association passed. Both temporary subscription lifecycles, reverse cleanup and independent closure passed. Neither capture channel recorded an authenticated receipt during the declared180-second observation; signed-delivery, semantic event mapping and paid reconciliation acceptance remain pending. Owner-controlled payment/browser/device acceptance was not attempted.
+
+The deployed closed version is `ed264d67-6cde-4319-9c58-5e307be35d8a`. Provider and identity access are disabled, campaign end0, active0, schedules empty,567/640 provider calls with16 recovery calls untouched. All24 historical tables and24 applied migrations are preserved. Migration0024 was applied in the preceding stopped packet and verified, not reapplied, in this control. All0001–0024 migrations are now immutable.
+
+Cumulative accounting is567 provider,439 management,175 direct Worker and38 deployments;6 attempts,9 conservative booking dispatches,6 unopened links and4 migration operations. The approved ceilings are596 provider maximum used within configured640,446 management,185 Worker,39 deployments,6 attempts,9 dispatches,6 links and4 migrations. These remaining numbers do not authorize another packet; the single-execution packet is consumed and the attempt/dispatch/link ceilings are reached. Service Contracts owns the next diagnostic boundary. Private execution artifacts retain exact payload-free evidence and costs.
+
 ## Paired diagnostic channels retain independent authority — 13 October 2026
 
 YS authorized proceeding with the proposed control preparation. Extend existing transport, subscription and capture owners; no alternate provider dispatch or payment authority is introduced. A fixed route selects an operator-declared event scope. The route is not covered by the provider body HMAC and must never establish payload event identity, booking association or paid state. Both channels still authenticate the exact body and retain structure only.

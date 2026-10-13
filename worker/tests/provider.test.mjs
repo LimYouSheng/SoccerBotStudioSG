@@ -1686,8 +1686,8 @@ test("scheduled native readback uses the recovery reserve only under explicit fi
 });
 
 test("scheduled recovery admits carried counters through the configured ceiling without resetting or replay", async () => {
-  for (const ceiling of [224, 256, 512]) {
-    const used = ceiling === 512 ? 378 : 196;
+  for (const ceiling of [224, 256, 512, 704]) {
+    const used = ceiling === 704 ? 567 : ceiling === 512 ? 378 : 196;
     const f = await fixture({
       full: true,
       respond: nativeReadResponse,

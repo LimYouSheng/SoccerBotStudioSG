@@ -1,5 +1,13 @@
 # SoccerBotStudioSG current progress
 
+## Owner payment packet preparation continues — 13 October 2026
+
+Merchant verification will occur on the owner checkout before payment, as requested. Application preparation adds explicit704 budget support and refreshes release metadata; current live640 remains closed. Focused native/recovery/reserve checks and fresh exact-source CI precede packet sealing. New finite executor and independent closure validation remain in progress.
+
+## Payment test preparation, access still closed — 13 October 2026
+
+Owner readiness is confirmed for one proposed native payment test. YS confirms Sandbox mode and tentatively names app404; actual merchant display identity remains to be checked in the owner browser. Available integration tools cannot read HitPay merchant settings. Historical Card23 evidence alone cannot prove the current configuration. Reviewed the protected checkout-context endpoint, private one-use native-readback entry, signed booking/exact invoice normalization and canonical confirmation decision. The supervised payment-readback operation already exists. The draft80-call envelope would require a configured ceiling above640, which current policy rejects; that budget option needs a source change and fresh CI before sealing. The prior paired-control runner is consumed and contains historical assumptions, including an empty event-scope table; it must not be reused unchanged now that two scope rows exist. Service Contracts specifies the new preparation and execution gates. Totals remain567 provider/443 management/175 Worker/38 deployments, with24 applied migrations and access closed. No new live operation occurred.
+
 ## Paired control source prepared — 13 October 2026
 
 The next experiment uses fixed booking/invoice callback routes with independent finite windows, caps and deduplication. Each subscription keeps its one-use grant and exact baseline checks; remove invoice first, then booking, preserving prior subscriptions. Additive0024 creates only immutable event scope metadata. Application/source checks and CI/artifact validation must finish before sealing a live packet. Access remains closed at516/359/150/35; the existing management/deployment remainder is insufficient. Owner acceptance remains deferred.

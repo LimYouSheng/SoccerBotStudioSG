@@ -1,5 +1,21 @@
 # SoccerBotStudioSG engineering
 
+## Checkout-time merchant verification selected — 13 October 2026
+
+YS selected verifying the merchant on checkout. Prepare the payment packet without another dashboard-name question; expected app404 remains conditional until the owner verifies the actual native checkout before one sandbox submission. The prepared policy permits explicit704 for the proposed finite budget, preserving the current closed default, carried usage and16-call reserve. No live limit increase is authorized by this source edit. Fresh exact-source CI/artifact and executor/closure validation precede the consolidated execution request.
+
+## Next: owner-operated payment with paired callback observation — 13 October 2026
+
+YS reports no developer support and requests payment first, then webhook confirmation; YS has agreed to prepare an owner-operated payment test. This supersedes the support-dependent next step and the earlier blanket deferral of owner payment for this preparation only. Service Contracts owns the concrete test and missing current sandbox/merchant evidence. Do not infer a real-charge authorization, reuse an expired checkout, or execute a consumed packet. Keep both fixed channels active across the one proposed sandbox submission, independently verify the exact invoice and signed booking, and report payment and callback outcomes separately. The developer environment remains closed at567 provider/443 management/175 Worker/38 deployments. No new live approval or counters are created by this planning update.
+
+## Current webhook diagnosis — 13 October 2026
+
+The owner-authorized read-only investigation matched all 19 operator HTTP requests for booking 39 / invoice 30, with no truncated events. No callback arrival was recorded on either route from 12:04 to 12:31 Singapore. Closed subscription references are 3 (new_booking) and 4 (new_invoice); both retain zero receipts. This is not provider dispatch evidence and does not establish a signature/parser defect. Service Contracts owns the next support trace request; no message has been sent. Access remains closed; totals are 567 provider, 443 management, 175 Worker and 38 deployments.
+
+## Paired delivery control completed and closed — 13 October 2026
+
+The approved paired control completed on tested source116fd34. One new confirmed booking39 and exact unpaid invoice30, SGD88, were created for Nabil/service2 on15October15:40 Singapore. Both new_booking and new_invoice subscriptions registered successfully; neither capture channel retained a signed receipt after the fixed180-second observation. Both subscriptions were removed in reverse order and baseline restoration was verified. At12:14:27 Singapore, independent closure proved disabled/end0/active0,567/640 provider calls, recovery16 untouched and24 preserved historical tables/migration records. Owner payment/browser acceptance remains deferred. Service Contracts owns interpretation and next evidence; Journey retains both preceding executor-check failures and the successful control lifecycle. The packet is consumed. No automatic successor or further booking is authorized.
+
 ## Preparing paired webhook control — 13 October 2026
 
 YS said “ok do it” after the deeper diagnosis. Prepare one future priced checkout observed by separate new_booking/new_invoice subscriptions, retaining the stop before owner-controlled acceptance. The source adds a fixed invoice route and immutable event scopes; it opens nothing. Service Contracts owns channel semantics, reverse cleanup and the exact-source packet requirement. Live remains closed on44c53fc at516 provider/359 management/150 Worker/35 deployments. Existing cumulative limits leave3 management requests and1 deployment, so execution requires a concrete amended packet after CI/artifact validation. No support message, payment or replay.

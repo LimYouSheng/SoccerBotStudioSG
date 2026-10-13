@@ -1,5 +1,9 @@
 # North Star: dependable customer booking and quick rebooking
 
+## Current priority: native payment, then webhook confirmation — 13 October 2026
+
+Native booking creation and exact invoice association are accepted within the developer integration scope. The paired unpaid control completed and closed with no recorded callback arrivals. YS now requests an owner-operated payment test and suggests payment completion may trigger delivery. Prepare one sandbox native checkout with both event subscriptions present; prove paid state through the existing authoritative readback owner and assess callback timing separately. Current sandbox/merchant evidence is required before sealing execution. Service Contracts owns the staged test; Journey retains the negative control and authorization change. General browser/device, no-return automation, semantic webhook mapping and client-production acceptance remain later gates.
+
 ## Next bounded proof: invoice versus booking delivery — 13 October 2026
 
 Prepare separate finite capture channels for new_booking and new_invoice around one new priced checkout. This comparison addresses the unproven pre-payment event expectation; route labels remain diagnostic, never payment or booking association authority. Obtain exact-source CI and the tested artifact, then seal the packet and its reverse cleanup. Current limits cannot fund deployment and closure; amend them concretely before execution. Retain owner-controlled payment/browser acceptance. Service Contracts and Journey own exact scope and evidence.
