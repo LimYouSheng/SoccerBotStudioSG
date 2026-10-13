@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## Protected reload readiness — 14 October 2026
+
+CI run38444619826 passed backend and live-email, including the repaired native guest journey on all three browser projects and295 Worker cases. Frontend passed165 unit/component cases and68 browser cases; one phone-WebKit synthetic reload assertion expired while its protected checkout read was still pending. The retained trace records the pending request and the failure snapshot contains the restored summary. The test now arms and validates that exact protected response around reload and duplicate-tab navigation before its unchanged five-second UI assertion, matching the existing preparation readiness contract. No product evidence is fabricated, no action/assertion removed, no retry or timeout increase. All three gates must pass again on the final source before deployment.
+
 ## WebKit exposed a calendar clock race — 14 October 2026
 
 CI run38442449150 passed frontend and all295 live Worker cases, but the live guest journey timed out on phone/tablet WebKit clicking a disabled known-available date. The provider receipt was newer than BookingProvider's minute-based display clock, so the freshness upper bound rejected it until the next minute. Corrected the hook to use its locally sampled receipt time for initial presentation, retain the service's future/stale validation, and expire each entry at its actual60-second deadline. Added a component regression that holds the page clock behind the response and verifies immediate display and exact expiry. Browser actions/assertions/timeouts remain unchanged. This candidate supersedes520346c; no deployment of the failed candidate occurred.
