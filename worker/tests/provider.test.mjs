@@ -2383,6 +2383,239 @@ test("inspection window serves session catalogue and cached times without granti
   }
 });
 
+test("ongoing customer access survives campaign closure and preserves fresh consent and booking replay guards", async () => {
+  const date = new Date(Date.now() + 4 * 86400000).toISOString().slice(0, 10);
+  const startMs = Date.parse(date + "T10:00:00+08:00");
+  const samples = JSON.parse(
+    readFileSync("worker/tests/native-fixtures.json", "utf8"),
+  ).responses;
+  const creation = samples.creation,
+    booking = samples.bookingBefore,
+    invoice = samples.invoiceBefore;
+  for (const row of [booking, creation.bookings[0]]) {
+    row.event_id = "2";
+    row.unit_id = "2";
+    row.start_date_time = date + " 10:00:00";
+    row.end_date_time = date + " 10:50:00";
+  }
+  creation.bookings[0].client_hash = "synthetic-client-hash";
+  for (const value of [invoice, creation.invoice]) {
+    const row = value.lines[0].bookings[0];
+    row.service_id = 2;
+    row.provider_id = 2;
+    row.start_datetime = date + " 10:00:00";
+    row.end_datetime = date + " 10:50:00";
+  }
+  invoice.due_datetime = new Date(Date.now() + 1200000)
+    .toISOString()
+    .replace(/\.\d{3}Z$/, "Z");
+  let available = true,
+    books = 0;
+  const f = await fixture({
+    full: true,
+    end: 0,
+    secrets: {
+      SOURCE_REVISION: "d".repeat(40),
+      LIVE_CUSTOMER_ACCESS: "enabled",
+      SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret",
+    },
+    respond: (request, body) => {
+      if (request.url.endsWith("/admin/invoices/901/payment-link"))
+        return Response.json({
+          link: "https://soccerbotstudiosg.simplybook.asia/v2/client/pay-later/id/synthetic-id/hash/synthetic-hash",
+        });
+      if (request.url.endsWith("/admin/invoices/901"))
+        return Response.json(invoice);
+      if (!body) return;
+      const matrix = {};
+      if (body.method === "getStartTimeMatrix")
+        for (
+          let day = new Date(body.params[0] + "T00:00:00Z");
+          day.toISOString().slice(0, 10) <= body.params[1];
+          day.setUTCDate(day.getUTCDate() + 1)
+        ) {
+          const key = day.toISOString().slice(0, 10);
+          matrix[key] = key === date && available ? ["10:00:00"] : [];
+        }
+      const results = {
+        getEventList: {
+          2: {
+            id: 2,
+            name: "Synthetic Session",
+            duration: "40",
+            is_active: "1",
+            is_public: "1",
+            is_recurring: "0",
+            price: "88",
+            currency: "SGD",
+            unit_map: [2],
+          },
+        },
+        getUnitList: {
+          2: { id: 2, name: "Synthetic Trainer", is_active: "1" },
+        },
+        getStartTimeMatrix: matrix,
+        getAdditionalFields: [],
+        getAvailableUnits: [2],
+        book: creation,
+        getBookingDetails: booking,
+      };
+      if (body.method === "book") books++;
+      if (Object.hasOwn(results, body.method))
+        return Response.json({
+          jsonrpc: "2.0",
+          id: body.id,
+          result: results[body.method],
+        });
+    },
+  });
+  try {
+    await f.sql(
+      "INSERT INTO budget(campaign,used) VALUES(?,2000)",
+      config.vars.CAMPAIGN_ID,
+    );
+    const home = await f.mf.dispatchFetch(
+      origin + "/api/calendar/" + date.slice(0, 7),
+    );
+    assert.equal(home.status, 200, JSON.stringify(await home.clone().json()));
+    assert.equal(
+      (await home.json()).dates.find((day) => day.date === date).available,
+      true,
+    );
+    assert.equal(
+      (await f.mf.dispatchFetch(origin + "/api/catalogue")).status,
+      401,
+    );
+    const access = await f.mf.dispatchFetch(origin + "/api/access", {
+      method: "POST",
+      headers: { origin },
+    });
+    const cookie = access.headers.get("set-cookie").split(";")[0];
+    const before = f.calls.length;
+    const catalogue = await f.mf.dispatchFetch(origin + "/api/catalogue", {
+      headers: { cookie },
+    });
+    assert.equal(catalogue.status, 200);
+    assert.equal(
+      f.calls.length,
+      before,
+      "shared cache survives a new browser identity",
+    );
+    assert.equal(
+      (
+        await f.db
+          .prepare("SELECT COUNT(*) n FROM native_checkout_grants")
+          .first()
+      ).n,
+      0,
+    );
+    const value = {
+      key: crypto.randomUUID(),
+      accepted: true,
+      contact: {
+        name: "Synthetic Guest",
+        email: "guest@example.com",
+        phone: "00000000",
+        contactMethod: "email",
+        academy: "",
+      },
+      sessions: [
+        {
+          serviceId: "2",
+          instructorId: "2",
+          startMs,
+          players: 2,
+          totalMinor: 8800,
+        },
+      ],
+    };
+    const prepare = (input = value) =>
+      f.mf.dispatchFetch(origin + "/api/booking/prepare", {
+        method: "POST",
+        headers: { cookie, origin, "content-type": "application/json" },
+        body: JSON.stringify(input),
+      });
+    available = false;
+    const changed = await prepare();
+    assert.equal(changed.status, 409);
+    assert.equal((await changed.json()).error, "native_selection_changed");
+    assert.equal(
+      (
+        await f.db
+          .prepare("SELECT COUNT(*) n FROM native_checkout_grants")
+          .first()
+      ).n,
+      0,
+    );
+    const refreshed = await f.mf.dispatchFetch(
+      origin + "/api/calendar/" + date.slice(0, 7),
+    );
+    assert.equal(
+      (await refreshed.json()).dates.find((day) => day.date === date).available,
+      false,
+    );
+    available = true;
+    const prepared = await prepare();
+    assert.equal(
+      prepared.status,
+      201,
+      JSON.stringify(await prepared.clone().json()),
+    );
+    const attempt = await prepared.json();
+    assert.deepEqual(await (await prepare()).json(), attempt);
+    const grant = await f.db
+      .prepare("SELECT * FROM native_checkout_grants")
+      .first();
+    assert.equal(grant.ongoing, 1);
+    assert.ok(grant.starting_used >= 2000);
+    assert.equal(grant.maximum_used - grant.starting_used, 96);
+    assert.equal(books, 0);
+    // Other visitors may consume reads between preparation and checkout.
+    await f.sql(
+      "UPDATE budget SET used=used+1000 WHERE campaign=?",
+      config.vars.CAMPAIGN_ID,
+    );
+    const checkout = () =>
+      f.mf.dispatchFetch(origin + "/api/booking/native/" + attempt.attemptId, {
+        method: "POST",
+        headers: { cookie, origin },
+      });
+    const executed = await checkout();
+    const outcome = await executed.json();
+    assert.equal(executed.status, 200, JSON.stringify(outcome));
+    assert.equal(
+      outcome.state,
+      "associated",
+      JSON.stringify(
+        await f.db
+          .prepare("SELECT result_json FROM native_checkout_grants")
+          .first(),
+      ),
+    );
+    assert.equal(outcome.paymentAvailable, true);
+    assert.equal(books, 1);
+    const count = f.calls.length;
+    assert.equal((await checkout()).status, 200);
+    assert.equal(books, 1);
+    assert.equal(
+      f.calls.length,
+      count,
+      "a duplicate checkout must never redispatch",
+    );
+    const token = await f.grant();
+    const operator = await f.call(token);
+    assert.equal(
+      operator.body.state,
+      "blocked",
+      "ongoing customer access does not reopen operator experiments",
+    );
+    assert.equal(operator.body.result.reason, "campaign_closed");
+    assert.equal(f.calls.length, count);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+
 test("native availability and preparation cross the real HTTP coordinator boundary under a finite grant", async () => {
   const start = Date.now();
   const end = start + 1200000;

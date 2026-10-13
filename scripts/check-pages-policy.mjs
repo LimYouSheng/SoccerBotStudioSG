@@ -16,6 +16,7 @@ export function checkPagesPolicy(doc) {
   ]), "Unexpected workflow trigger");
   require(same(Object.keys(doc.jobs || {}).sort(), [
     "backend",
+    "cloudflare",
     "deploy",
     "frontend",
     "live-email",
@@ -146,5 +147,61 @@ export function checkPagesPolicy(doc) {
       uses: "actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128",
     },
   ]), "Deployment must consume the same-run artifact without rebuilds or extra commands");
+  require(same(doc.jobs?.cloudflare, {
+    name: "deploy / Cloudflare",
+    needs: ["frontend", "backend", "live-email"],
+    if: "github.ref == 'refs/heads/main' && github.event_name != 'pull_request'",
+    "runs-on": "ubuntu-latest",
+    "timeout-minutes": 10,
+    permissions: {
+      contents: "read",
+      actions: "read",
+    },
+    environment: {
+      name: "cloudflare-developer",
+      url: "https://soccerbot-dev.limyousheng-94.workers.dev",
+    },
+    steps: [
+      {
+        uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      },
+      {
+        uses: "actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+        with: {
+          "node-version-file": ".nvmrc",
+          cache: "npm",
+        },
+      },
+      {
+        run: "npm ci",
+      },
+      {
+        name: "Download this run's verified live artifact",
+        env: {
+          GH_TOKEN: "${{ github.token }}",
+        },
+        run: 'gh run download "$GITHUB_RUN_ID" --name "live-email-evidence-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" --dir work/deploy-evidence',
+      },
+      {
+        name: "Deploy verified artifact and check the Worker",
+        env: {
+          CLOUDFLARE_API_TOKEN: "${{ secrets.CLOUDFLARE_API_TOKEN }}",
+          WRANGLER_SEND_METRICS: "false",
+          WRANGLER_LOG_PATH: "work/deploy-evidence/wrangler-logs",
+        },
+        run: "node scripts/deploy-cloudflare.mjs",
+      },
+      {
+        uses: "actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02",
+        if: "always()",
+        with: {
+          name: "cloudflare-deployment-${{ github.run_id }}-${{ github.run_attempt }}",
+          path: "work/deploy-evidence/deployment.json",
+          "retention-days": 14,
+          "if-no-files-found": "warn",
+        },
+      },
+    ],
+  }), "Cloudflare deployment must consume same-run verified main artifact after all three gates");
   return errors;
 }

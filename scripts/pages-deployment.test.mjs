@@ -10,6 +10,25 @@ import { checkExport } from "./check-export.mjs";
 import { exportServer } from "./serve-export.mjs";
 
 for (const [name, mutate] of [
+  [
+    "Cloudflare missing backend gate",
+    (d) => d.jobs.cloudflare.needs.splice(1, 1),
+  ],
+  ["Cloudflare deploy on failure", (d) => (d.jobs.cloudflare.if = "always()")],
+  [
+    "Cloudflare unverified build",
+    (d) => d.jobs.cloudflare.steps.push({ run: "npm run build" }),
+  ],
+  [
+    "Cloudflare foreign artifact",
+    (d) => (d.jobs.cloudflare.steps[3].run += " --repo foreign/repo"),
+  ],
+  [
+    "Cloudflare token exposed to verification",
+    (d) =>
+      (d.jobs.backend.env.CLOUDFLARE_API_TOKEN =
+        "${{ secrets.CLOUDFLARE_API_TOKEN }}"),
+  ],
   ["missing verification dependency", (d) => delete d.jobs.deploy.needs],
   [
     "deploy despite failed verification",

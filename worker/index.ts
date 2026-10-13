@@ -1,11 +1,7 @@
 import { bookingReceipt } from "./receipt";
 import { webhookRoute } from "./webhook-contract";
 import { captureWebhook } from "./webhook";
-import {
-  nativeCheckoutStatus,
-  prepareCustomerNative,
-  currentCustomerNative,
-} from "./native-checkout";
+import { nativeCheckoutStatus, currentCustomerNative } from "./native-checkout";
 import { coordinatorName } from "./bindings";
 import { runScheduledRecovery } from "./scheduled-recovery";
 import { customerCatalogue } from "./customer-catalogue";
@@ -162,7 +158,15 @@ export default {
             throw new ApiError(405, "operation_unavailable");
           await verifyBindings(env);
           return json(
-            await prepareCustomerNative(request, env, await inputBody(request)),
+            unwrapRpcOutcome(
+              await env.COORDINATOR.getByName(coordinatorName).prepareCustomer(
+                {
+                  cookie: request.headers.get("cookie") || "",
+                  value: await inputBody(request),
+                },
+                correlationId,
+              ),
+            ),
             201,
           );
         }
@@ -304,9 +308,11 @@ export default {
             versionId: env.CF_VERSION_METADATA?.id ?? null,
             origin: env.APP_ORIGIN,
             campaignEndMs: Number(env.CAMPAIGN_END_MS),
+            liveCustomerAccess: configuration.LIVE_CUSTOMER_ACCESS,
             effectiveProviderAccess:
               configuration.PROVIDER_ACCESS === "trusted-reads" &&
-              now < Number(env.CAMPAIGN_END_MS)
+              (now < Number(env.CAMPAIGN_END_MS) ||
+                configuration.LIVE_CUSTOMER_ACCESS === "enabled")
                 ? "trusted-reads"
                 : "disabled",
             readinessNonce: /^[a-f0-9]{32}$/.test(

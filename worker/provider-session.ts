@@ -2,7 +2,7 @@ import { discoveryFields } from "./field-discovery";
 import { CatalogueReads } from "./catalogue";
 import { NativePrebooking, type NativeAccountContract } from "./prebooking";
 import { measure } from "./diagnostics";
-import { ApiError, policy } from "./policy";
+import { ApiError, policy, liveCustomerAccess } from "./policy";
 import { historicalComparison } from "./provider-normalization";
 import {
   providerRequest,
@@ -12,6 +12,7 @@ import {
 } from "./provider-transport";
 
 export type ProviderControl = {
+  liveCustomer?: boolean;
   reserve: () => Promise<string>;
   finish: (id: string, cooldown: number) => void;
   claim: (family: ProviderFamily) => { generation: number; claim: string };
@@ -57,7 +58,8 @@ export class ProviderSession {
       secrets = this.bindScope(env);
     if (
       p.PROVIDER_ACCESS !== "trusted-reads" ||
-      p.CAMPAIGN_END_MS <= Date.now()
+      (p.CAMPAIGN_END_MS <= Date.now() &&
+        !(control.liveCustomer && liveCustomerAccess(env)))
     )
       throw new ApiError(503, "provider_access_disabled");
     return this.catalogueReads.read(
@@ -108,7 +110,8 @@ export class ProviderSession {
     const p = policy(env);
     if (
       p.PROVIDER_ACCESS !== "trusted-reads" ||
-      p.CAMPAIGN_END_MS <= Date.now()
+      (p.CAMPAIGN_END_MS <= Date.now() &&
+        !(control.liveCustomer && liveCustomerAccess(env)))
     )
       throw new ApiError(503, "provider_access_disabled");
     await this.identity(env, control);
@@ -183,7 +186,8 @@ export class ProviderSession {
   ) {
     if (
       String(env.PROVIDER_ACCESS) !== "trusted-reads" ||
-      Number(env.CAMPAIGN_END_MS) <= Date.now()
+      (Number(env.CAMPAIGN_END_MS) <= Date.now() &&
+        !(control.liveCustomer && liveCustomerAccess(env)))
     )
       throw new ApiError(503, "provider_access_disabled");
     if (
@@ -234,7 +238,8 @@ export class ProviderSession {
     const p = policy(env);
     if (
       p.PROVIDER_ACCESS !== "trusted-reads" ||
-      p.CAMPAIGN_END_MS <= Date.now()
+      (p.CAMPAIGN_END_MS <= Date.now() &&
+        !(control.liveCustomer && liveCustomerAccess(env)))
     )
       throw new ApiError(503, "provider_access_disabled");
     if (

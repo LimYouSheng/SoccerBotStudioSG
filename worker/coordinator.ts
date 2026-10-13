@@ -1,3 +1,4 @@
+import { authorizeCustomerCheckout } from "./customer-authority";
 import {
   publicCalendar,
   hasPublicCalendarWindow,
@@ -9,6 +10,7 @@ import { authenticate } from "./access";
 import { NativeCalendarReads } from "./native-calendar";
 import { manageWebhookSubscription } from "./webhook-subscriptions";
 import {
+  prepareCustomerNative,
   executeNativeCheckout,
   customerNativeAvailability,
   customerNativeCalendar,
@@ -34,7 +36,7 @@ import {
 } from "./native-residual";
 import { DurableObject } from "cloudflare:workers";
 import { traced, measure, instrumentStorage } from "./diagnostics";
-import { ApiError, policy, rpcOutcome } from "./policy";
+import { ApiError, policy, rpcOutcome, liveCustomerAccess } from "./policy";
 import { ProviderSession, type ProviderControl } from "./provider-session";
 // One instance per actual provider account. No booking or customer data here.
 export class SoccerBotAccountCoordinator extends DurableObject<Env> {
@@ -56,15 +58,17 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       "CREATE TABLE IF NOT EXISTS admissions (id TEXT PRIMARY KEY, campaign TEXT NOT NULL, started_ms INTEGER NOT NULL, finished INTEGER NOT NULL DEFAULT 0)",
     );
   }
-  admit(recovery: boolean) {
+  admit(recovery: boolean, customer = false) {
     const p = policy(this.env);
     const now = Date.now();
+    const ongoing = customer && liveCustomerAccess(this.env);
     if (!["disabled", "trusted-reads"].includes(this.env.PROVIDER_ACCESS))
       throw new Error("Unsupported provider mode");
     // Synthetic admission exercises accounting only. No outbound provider path is enabled.
     if (
-      !Number.isSafeInteger(Number(this.env.CAMPAIGN_END_MS)) ||
-      now >= Number(this.env.CAMPAIGN_END_MS)
+      !ongoing &&
+      (!Number.isSafeInteger(Number(this.env.CAMPAIGN_END_MS)) ||
+        now >= Number(this.env.CAMPAIGN_END_MS))
     )
       return { allowed: false, reason: "campaign_closed" };
     const sql = this.sql;
@@ -79,7 +83,10 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           this.env.CAMPAIGN_ID,
         )
         .one();
-      if (budget.used >= p.PROVIDER_CALL_CEILING - (recovery ? 0 : 16))
+      if (
+        !ongoing &&
+        budget.used >= p.PROVIDER_CALL_CEILING - (recovery ? 0 : 16)
+      )
         return { allowed: false, reason: "budget_exhausted" };
       if (budget.cooldown_ms > now)
         return { allowed: false, reason: "cooldown" };
@@ -115,11 +122,23 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       return { allowed: true, id, used: budget.used + 1 };
     });
   }
-  private providerControl(recovery = false): ProviderControl {
+  private providerControl(recovery = false, customer = false): ProviderControl {
     return {
+      liveCustomer: customer,
       reserve: async () =>
         measure("coordinator", async () => {
-          const admitted = this.admit(recovery);
+          if (customer && liveCustomerAccess(this.env)) {
+            const last =
+              this.sql
+                .exec<{ latest: number | null }>(
+                  "SELECT MAX(started_ms) AS latest FROM admissions",
+                )
+                .one().latest ?? 0;
+            const delay = Math.max(0, last + 300 - Date.now());
+            if (delay)
+              await new Promise((resolve) => setTimeout(resolve, delay));
+          }
+          const admitted = this.admit(recovery, customer);
           if (!admitted.allowed || !admitted.id)
             throw new ApiError(
               503,
@@ -164,6 +183,8 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       if (String(this.env.PROVIDER_ACCESS) !== "trusted-reads")
         throw new ApiError(503, "provider_access_disabled");
       try {
+        if (Date.now() >= Number(this.env.CAMPAIGN_END_MS))
+          throw new ApiError(503, "campaign_closed");
         if (
           operation !== "provider_identity" &&
           operation !== "historical_comparison" &&
@@ -564,7 +585,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       env: this.env,
       cache: this.calendarReads,
       provider: this.provider,
-      control: this.providerControl(),
+      control: this.providerControl(false, true),
       accounting: () => this.providerAccounting(),
       // Carry pacing across consecutive month/day requests and DO restarts.
       lastDispatchMs: () =>
@@ -634,12 +655,36 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     );
     return rpcOutcome(() => pending);
   }
+  async prepareCustomer(
+    scope: { cookie: string; value: unknown },
+    correlationId: string,
+  ) {
+    const pending = this.nativeAvailabilityQueue.then(() =>
+      traced(correlationId, "coordinator", async () => {
+        const request = new Request(this.env.APP_ORIGIN, {
+          headers: { cookie: scope.cookie },
+        });
+        if (liveCustomerAccess(this.env))
+          await authorizeCustomerCheckout(
+            request,
+            scope.value,
+            this.calendarReadOptions(),
+          );
+        return prepareCustomerNative(request, this.env, scope.value);
+      }),
+    );
+    this.nativeAvailabilityQueue = pending.then(
+      () => undefined,
+      () => undefined,
+    );
+    return rpcOutcome(() => pending);
+  }
   async nativeCheckout(
     scope: { attemptId: string; cookie: string },
     correlationId: string,
   ) {
     this.calendarReads.invalidate();
-    return rpcOutcome(() =>
+    const pending = this.nativeAvailabilityQueue.then(() =>
       traced(correlationId, "coordinator", () =>
         executeNativeCheckout({
           request: new Request(this.env.APP_ORIGIN, {
@@ -648,12 +693,17 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           env: this.env,
           attemptId: scope.attemptId,
           provider: this.provider,
-          control: this.providerControl(),
-          recoveryControl: this.providerControl(true),
+          control: this.providerControl(false, true),
+          recoveryControl: this.providerControl(true, true),
           accounting: () => this.providerAccounting(),
         }).finally(() => this.calendarReads.invalidate()),
       ),
     );
+    this.nativeAvailabilityQueue = pending.then(
+      () => undefined,
+      () => undefined,
+    );
+    return rpcOutcome(() => pending);
   }
   async nativeRecovery(
     scope: {

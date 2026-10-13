@@ -86,6 +86,21 @@ writeFileSync(
   `${directory}/wrangler.json`,
   JSON.stringify(config, null, 2) + "\n",
 );
+writeFileSync(
+  `${directory}/wrangler-live.json`,
+  JSON.stringify(
+    {
+      ...config,
+      vars: {
+        ...config.vars,
+        PROVIDER_ACCESS: "trusted-reads",
+        LIVE_CUSTOMER_ACCESS: "enabled",
+      },
+    },
+    null,
+    2,
+  ) + "\n",
+);
 const manifest = {
   format: 1,
   sourceRevision: source,
@@ -98,7 +113,7 @@ const manifest = {
   identityDelivery: "disabled",
   providerAccess: "disabled",
   campaignEndMs: 0,
-  pendingRemoteMigrations: [],
+  pendingRemoteMigrations: ["0026_ongoing_customer_checkout.sql"],
   priorWorkerVersion: "1849b57c-3d9d-432d-9420-e16b0587ef68",
   acceptance:
     profile.name === "live-email"
