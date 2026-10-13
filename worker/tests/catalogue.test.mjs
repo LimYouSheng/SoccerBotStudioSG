@@ -15,6 +15,9 @@ const bundle = await build({
 });
 const {
   publicCalendar,
+  windowCatalogue,
+  windowCalendar,
+  windowAvailability,
   NativeCalendarReads,
   calendarRanges,
   calendarDates,
@@ -1020,6 +1023,29 @@ test("anonymous calendar is bounded and shared without exposing provider slots o
   assert.equal(calls, 1);
   await publicCalendar(input);
   assert.equal(calls, 1);
+  const catalogue = await windowCatalogue(input);
+  assert.deepEqual(
+    catalogue.services.map((service) => service.id),
+    ["12"],
+  );
+  assert.equal("binding" in catalogue, false);
+  const protectedMonth = await windowCalendar({ ...input, serviceId: "12" });
+  assert.equal(protectedMonth.dates[0].offers.length, 1);
+  assert.equal(
+    calls,
+    1,
+    "homepage and protected calendar reuse the same range cache",
+  );
+  await windowAvailability({ ...input, serviceId: "12", date });
+  assert.equal(calls, 1);
+  for (const request of [
+    { ...input, serviceId: "99", date },
+    { ...input, serviceId: "12", date: "2099-01-01" },
+  ])
+    await assert.rejects(
+      windowAvailability(request),
+      /scope_unavailable|month_invalid/,
+    );
   input.cache.invalidateDate(date);
   await publicCalendar(input);
   assert.equal(calls, 2);
@@ -1027,6 +1053,7 @@ test("anonymous calendar is bounded and shared without exposing provider slots o
   await assert.rejects(publicCalendar(input), /budget_exhausted/);
   for (const changes of [
     { PUBLIC_CALENDAR_WINDOW_JSON: "" },
+    { PUBLIC_CALENDAR_WINDOW_JSON: "{" },
     { SOURCE_REVISION: "b".repeat(40) },
     { PROVIDER_ACCESS: "disabled" },
     {

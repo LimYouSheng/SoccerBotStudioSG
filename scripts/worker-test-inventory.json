@@ -195,6 +195,7 @@
   "operator residual recovery scopes cleanup to retained bookings and preserves unsafe records",
   "scheduled recovery rejects closed expired future unknown and unsigned windows without provider calls",
   "scheduled native recovery preserves conflicting paid evidence for manual review",
+  "inspection window serves session catalogue and cached times without granting a booking",
   "native availability and preparation cross the real HTTP coordinator boundary under a finite grant",
   "finite webhook subscription preserves prior destinations and deletes only its freshly proven ID",
   "finite webhook subscription accepts exact string flags and restores mixed representation baselines",

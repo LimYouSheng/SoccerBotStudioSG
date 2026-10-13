@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { authenticate } from "./access";
 import { coordinatorName } from "./bindings";
-import { ApiError, policy } from "./policy";
+import { ApiError, policy, unwrapRpcOutcome } from "./policy";
+import { hasPublicCalendarWindow } from "./public-calendar";
 import { traceId } from "./diagnostics";
 import {
   customerCatalogueSchema,
@@ -17,6 +18,17 @@ export async function customerCatalogue(
   now: number,
 ) {
   const access = await authenticate(request, env, now);
+  if (hasPublicCalendarWindow(env)) {
+    const result = customerCatalogueSchema.parse(
+      unwrapRpcOutcome(
+        await env.COORDINATOR.getByName(coordinatorName).windowCatalogue(
+          traceId(),
+        ),
+      ),
+    );
+    await authenticate(request, env, Date.now());
+    return result;
+  }
   const grant = await env.STATE.withSession("first-primary")
     .prepare(
       "SELECT state,expires_ms,result_json FROM developer_operations WHERE capability_hash=? AND operation='customer_catalogue' AND expires_ms>?",

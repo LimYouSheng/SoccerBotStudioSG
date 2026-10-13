@@ -1,4 +1,11 @@
-import { publicCalendar } from "./public-calendar";
+import {
+  publicCalendar,
+  hasPublicCalendarWindow,
+  windowCatalogue,
+  windowCalendar,
+  windowAvailability,
+} from "./public-calendar";
+import { authenticate } from "./access";
 import { NativeCalendarReads } from "./native-calendar";
 import { manageWebhookSubscription } from "./webhook-subscriptions";
 import {
@@ -494,8 +501,29 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     correlationId: string,
   ) {
     const pending = this.nativeAvailabilityQueue.then(() =>
-      traced(correlationId, "coordinator", () =>
-        customerNativeAvailability({
+      traced(correlationId, "coordinator", async () => {
+        if (hasPublicCalendarWindow(this.env)) {
+          await authenticate(
+            new Request(this.env.APP_ORIGIN, {
+              headers: { cookie: scope.cookie },
+            }),
+            this.env,
+            Date.now(),
+          );
+          const result = await windowAvailability({
+            ...this.calendarReadOptions(),
+            ...scope,
+          });
+          await authenticate(
+            new Request(this.env.APP_ORIGIN, {
+              headers: { cookie: scope.cookie },
+            }),
+            this.env,
+            Date.now(),
+          );
+          return result;
+        }
+        return customerNativeAvailability({
           request: new Request(this.env.APP_ORIGIN, {
             headers: { cookie: scope.cookie },
           }),
@@ -507,8 +535,8 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           provider: this.provider,
           control: this.providerControl(),
           accounting: () => this.providerAccounting(),
-        }),
-      ),
+        });
+      }),
     );
     this.nativeAvailabilityQueue = pending.then(
       () => undefined,
@@ -520,13 +548,37 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     const pending = this.nativeAvailabilityQueue.then(() =>
       traced(correlationId, "coordinator", () =>
         publicCalendar({
-          env: this.env,
+          ...this.calendarReadOptions(),
           month,
-          cache: this.calendarReads,
-          provider: this.provider,
-          control: this.providerControl(),
-          accounting: () => this.providerAccounting(),
         }),
+      ),
+    );
+    this.nativeAvailabilityQueue = pending.then(
+      () => undefined,
+      () => undefined,
+    );
+    return rpcOutcome(() => pending);
+  }
+  private calendarReadOptions() {
+    return {
+      env: this.env,
+      cache: this.calendarReads,
+      provider: this.provider,
+      control: this.providerControl(),
+      accounting: () => this.providerAccounting(),
+      // Carry pacing across consecutive month/day requests and DO restarts.
+      lastDispatchMs: () =>
+        this.sql
+          .exec<{ latest: number | null }>(
+            "SELECT MAX(started_ms) AS latest FROM admissions",
+          )
+          .one().latest ?? 0,
+    };
+  }
+  async windowCatalogue(correlationId: string) {
+    const pending = this.nativeAvailabilityQueue.then(() =>
+      traced(correlationId, "coordinator", () =>
+        windowCatalogue(this.calendarReadOptions()),
       ),
     );
     this.nativeAvailabilityQueue = pending.then(
@@ -540,8 +592,29 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     correlationId: string,
   ) {
     const pending = this.nativeAvailabilityQueue.then(() =>
-      traced(correlationId, "coordinator", () =>
-        customerNativeCalendar({
+      traced(correlationId, "coordinator", async () => {
+        if (hasPublicCalendarWindow(this.env)) {
+          await authenticate(
+            new Request(this.env.APP_ORIGIN, {
+              headers: { cookie: scope.cookie },
+            }),
+            this.env,
+            Date.now(),
+          );
+          const result = await windowCalendar({
+            ...this.calendarReadOptions(),
+            ...scope,
+          });
+          await authenticate(
+            new Request(this.env.APP_ORIGIN, {
+              headers: { cookie: scope.cookie },
+            }),
+            this.env,
+            Date.now(),
+          );
+          return result;
+        }
+        return customerNativeCalendar({
           request: new Request(this.env.APP_ORIGIN, {
             headers: { cookie: scope.cookie },
           }),
@@ -552,8 +625,8 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           control: this.providerControl(),
           accounting: () => this.providerAccounting(),
           cache: this.calendarReads,
-        }),
-      ),
+        });
+      }),
     );
     this.nativeAvailabilityQueue = pending.then(
       () => undefined,
