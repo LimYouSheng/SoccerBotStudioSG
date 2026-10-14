@@ -22,6 +22,7 @@
   "anonymous calendar is bounded and shared without exposing provider slots or customer data",
   "priced customer calendar chooses native service by Singapore weekday and public holiday and refreshes changes",
   "priced prebooking accepts exact mixed service totals and rejects cheap holiday service substitution",
+  "catalogue accepts observed explicit provider null maps without allowing other object relationships",
   "foundation valid bindings emit correlated storage evidence without secret markers",
   "foundation missing and malformed configuration denies before protected reads",
   "foundation foreign database and coordinator namespace identities fail closed",

@@ -38,6 +38,23 @@ function amount(raw: unknown) {
   if (n === null) return unknown();
   return n;
 }
+// Explicit assignments may be a list or the observed legacy keyed null map.
+// Values in the map are not capacity or eligibility: only its provider ID keys
+// express membership. Reject every other object representation.
+function instructorIds(raw: unknown): string[] | null {
+  if (raw === undefined) return null;
+  if (Array.isArray(raw))
+    return raw.length ? raw.map((value) => providerId(value)) : null;
+  if (!raw || typeof raw !== "object") return unknown();
+  const entries = Object.entries(raw);
+  if (
+    !entries.length ||
+    entries.length > CATALOGUE_RECORD_LIMIT ||
+    entries.some(([, value]) => value !== null)
+  )
+    return unknown();
+  return entries.map(([id]) => providerId(id));
+}
 // getEventList(true,false) / getUnitList(true,false) are documented full maps,
 // without pagination arguments. Reject wrappers/cursors/truncation, never take a page.
 export function normalizeCatalogue(
@@ -56,10 +73,8 @@ export function normalizeCatalogue(
       active: flag(row.is_active),
     })),
     services: rows(services).map((row) => {
-      const map = row.unit_map;
       const active = flag(row.is_active),
         visible = flag(row.is_public);
-      if (map !== undefined && !Array.isArray(map)) return unknown();
       return {
         id: providerId(row.id),
         name: row.name,
@@ -68,10 +83,7 @@ export function normalizeCatalogue(
         recurring: flag(row.is_recurring),
         priceMinor: amount(row.price),
         currency: row.currency,
-        instructorIds:
-          map === undefined || map.length === 0
-            ? null
-            : map.map((value) => providerId(value)),
+        instructorIds: instructorIds(row.unit_map),
       };
     }),
   });

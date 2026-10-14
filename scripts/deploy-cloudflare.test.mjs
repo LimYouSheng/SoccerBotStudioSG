@@ -10,7 +10,10 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { exportInventory } from "./check-export.mjs";
-import { validateDeployment } from "./deploy-cloudflare.mjs";
+import {
+  validateDeployment,
+  awaitDeploymentHealth,
+} from "./deploy-cloudflare.mjs";
 const revision = "a".repeat(40);
 function fixture() {
   const root = mkdtempSync(join(tmpdir(), "soccerbot-deploy-"));
@@ -126,5 +129,66 @@ test("Cloudflare deploy refuses failed or substituted browser and Worker receipt
     } finally {
       rmSync(f.root, { recursive: true, force: true });
     }
+  }
+});
+
+test("deployment readiness observes previous revision until the exact new revision is ready", async () => {
+  const old = "b".repeat(40),
+    seen = [old, old, revision],
+    pauses = [];
+  const result = await awaitDeploymentHealth({
+    revision,
+    previousRevision: old,
+    read: async () => ({
+      revision: seen.shift(),
+      liveCustomerAccess: "enabled",
+      effectiveProviderAccess: "trusted-reads",
+      providerCredentialsPresent: true,
+    }),
+    pause: async (ms) => pauses.push(ms),
+  });
+  assert.deepEqual(result.observedRevisions, [old, old, revision]);
+  assert.deepEqual(pauses, [2000, 2000]);
+});
+test("deployment readiness remains bounded and refuses foreign revisions failed reads or missing credentials", async () => {
+  const old = "b".repeat(40);
+  let reads = 0,
+    pauses = 0;
+  await assert.rejects(
+    awaitDeploymentHealth({
+      revision,
+      previousRevision: old,
+      read: async () => {
+        reads++;
+        return { revision: old };
+      },
+      pause: async () => {
+        pauses++;
+      },
+    }),
+    /16 observations/,
+  );
+  assert.equal(reads, 16);
+  assert.equal(pauses, 15);
+  for (const read of [
+    async () => ({ revision: "c".repeat(40) }),
+    async () => {
+      throw new Error("health failed");
+    },
+    async () => ({
+      revision,
+      liveCustomerAccess: "enabled",
+      effectiveProviderAccess: "trusted-reads",
+      providerCredentialsPresent: false,
+    }),
+  ]) {
+    await assert.rejects(
+      awaitDeploymentHealth({
+        revision,
+        previousRevision: old,
+        read,
+        pause: async () => assert.fail("failure must not be retried"),
+      }),
+    );
   }
 });

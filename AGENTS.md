@@ -1,5 +1,9 @@
 # SoccerBotStudioSG engineering
 
+## Live provider-map and deployment readiness correction — 14 October 2026
+
+PR25 passed all three PR/main gates and GitHub deployed b8917b1 as75b5c5d8. Immediate health still returned36b84bd and failed the deployment job; later health proves b8917b1 active. Calendar read then rejected the newly created service's actual keyed null unit_map. Owner-authorized follow-through corrects the strict parser from observed fields and adds bounded deployment-revision observation without a second deploy. Keep first failure and actual deployed state; no rollback, booking or payment. Canonical owners below retain evidence and verification status.
+
 ## Browser slot cache and date pricing — 14 October 2026
 
 Owner authorizes implementation and GitHub deployment of browser-local date/time caching, the fresh main Continue check, SoccerBot logo loading states and SGD88 weekdays / SGD108 weekends and Singapore public holidays, including official substitute holidays. Same provider IDs2/3/4 apply. Service3 was created through the connected SimplyBook tool; owner set its after-buffer, and readback verifies duration40, buffer10, SGD108 and all three providers. Service2 remains SGD88. No new booking or payment test is authorized by this configuration work. Three canonical owners below distinguish code, CI, deployment and physical acceptance.

@@ -1227,3 +1227,29 @@ test("priced prebooking accepts exact mixed service totals and rejects cheap hol
     /native_restart_required/,
   );
 });
+
+test("catalogue accepts observed explicit provider null maps without allowing other object relationships", () => {
+  const data = fixtures();
+  data.services[12].unit_map = { 14: null, 15: null, 16: null };
+  const parsed = normalizeCatalogue(
+    data.services,
+    data.instructors,
+    binding,
+    Date.now(),
+  );
+  assert.deepEqual(parsed.services[0].instructorIds, ["14", "15", "16"]);
+  for (const map of [
+    { 14: 40 },
+    { 14: false },
+    { 14: "14" },
+    { invalid: null },
+    { "014": null },
+    {},
+    null,
+  ]) {
+    data.services[12].unit_map = map;
+    assert.throws(() =>
+      normalizeCatalogue(data.services, data.instructors, binding, Date.now()),
+    );
+  }
+});

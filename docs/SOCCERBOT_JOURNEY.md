@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Preserve two deployment findings and repair their owners — 14 October 2026
+
+PR25/source45655ab passed all three gates, merged asb8917b1, and all three main gates passed. GitHub uploaded and activated Worker75b5c5d8 at10:51 Singapore, but its immediate health response still named36b84bd. Subsequent readback proved b8917b1 active. The first calendar smoke read returned503; the diagnostic read identified catalogue_representation_unavailable. Preserve both failures; do not report a green Cloudflare job or a working calendar from health alone.
+
+Two direct read-only provider calls established the new service's exact keyed-null unit_map, which the array-only parser rejected. Service2's map remains absent. Added strict support and rejection regressions, and bounded post-deploy health observations that never repeat deployment or retry failed health responses. No provider settings, bookings, payment or subscriptions changed during diagnosis. The owner-requested cache/pricing deployment remains incomplete until the repaired public calendar is verified.
+
 ## Complete browser cache, branded loading and dual native prices — 14 October 2026
 
 Owner requested immediate cached date/time selection, fresh validation at main Continue, SoccerBot spinning-logo loading throughout booking, and SGD88 weekday / SGD108 weekend/public-holiday native checkout. Created premium service3 with the explicitly approved three providers. Initial readback showed buffer0; owner saved buffer10, and subsequent readback verified it. Both services inherit identical company hours. No booking/payment was created during setup.
