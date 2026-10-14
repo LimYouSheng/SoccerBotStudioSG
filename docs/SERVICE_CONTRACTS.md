@@ -1,5 +1,11 @@
 # SoccerBotStudio — Service Contracts
 
+## Token-boundary calendar failure and correction — 14 October 2026
+
+GitHub run38512100560 passed all three gates and deployed9d1d107/versiond40c2082-2c4f-4ca6-9aed-276116cd31dd. Anonymous catalogue and sequential October–December reads passed; January returned503 with retained error provider_auth_expired. October now includes14/15October atSGD88, with later weekend offers atSGD108, confirming the150-minute customer cutoff is active. Four-month preload is not yet fully accepted.
+
+A deterministic ProviderSession regression reproduces provider_auth_expired when a cached identity outlives a token. Correction bounds identity caching by both token deadlines and checks token expiry after identity/tariff reads. Regression covers expiry between calls and during verification, exact physical reservation/completion counts, and no implicit renewal from nativeRead. All26 catalogue regressions and Worker TypeScript pass locally; follow-up exact-source CI and deployed four-month readback are required.
+
 ## Customer lead-time contract — 14 October 2026
 
 LIVE_CUSTOMER_ACCESS grants use the owner-approved 150-minute minimum lead, replacing the earlier 48-hour customer policy. The optional strict bookingLeadMinutes=150 contract field is installed by customer-authority, bound to the account/environment/company and actual configured service, and expires with the grant. Missing, foreign or expired contracts cannot claim the shorter policy. The native prepare request schema exposes no lead-time override. Fresh calendar, review, revalidation and dispatch must agree, including a selection crossing the cutoff during a provider read.

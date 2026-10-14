@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Identity cache cannot outlive provider tokens — 14 October 2026
+
+ProviderSession retains tokens locally for60 seconds and account identity for at most5 seconds. An identity receipt near token expiry previously could outlive its authentication, causing a later native read to throw provider_auth_expired. Bound the identity cache by the earliest of its5-second deadline and both token deadlines. At completion of explicit identity verification, check both token families again and renew expired tokens through the same durable physical-call admission. Native reads never reauthenticate implicitly or retry; failures remain failures and all renewals remain accounted. Token retention stays60 seconds.
+
 ## Customer booking cutoff is 150 minutes — 14 October 2026
 
 Owner confirms that 2.5 hours replaces 48 hours for customer bookings. One shared domain constant governs ongoing public calendar filtering, browser snapshot filtering and selected-session validation. Trusted ongoing checkout contracts carry bookingLeadMinutes=150; prebooking checks it before and after provider reads and at dispatch. Exactly 150 minutes is eligible, less is rejected. Customer DTOs cannot choose the lead policy; historical finite operator grants retain their original bounds.
