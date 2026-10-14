@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { sessionRate } from "../src/domain/session-pricing";
 import { ApiError, policy, liveCustomerAccess } from "./policy";
 import { providerSecrets } from "./provider-transport";
 import type { ProviderSession, ProviderControl } from "./provider-session";
@@ -172,20 +173,74 @@ export async function windowCalendar(
   )
     throw new ApiError(503, "calendar_scope_unavailable");
   if (options.fresh && options.date) options.cache.invalidateDate(options.date);
-  const raw = await options.cache.read({
-    scope: JSON.stringify([binding, p.SOURCE_REVISION]),
-    month,
-    serviceId: window.serviceId,
-    dates: options.fresh && options.date ? [options.date] : dates,
-    catalogue: async () => {
-      await provider.identity(env, control);
-      return provider.catalogue(env, control, options.fresh === true);
-    },
-    exchange: async (request) => {
-      await provider.identity(env, control);
-      return provider.nativeRead(env, control, request);
-    },
-  });
+  const read = (serviceId: string) =>
+    options.cache.read({
+      scope: JSON.stringify([binding, p.SOURCE_REVISION]),
+      month,
+      serviceId,
+      dates: options.fresh && options.date ? [options.date] : dates,
+      catalogue: async () => {
+        await provider.identity(env, control);
+        const catalogue = await provider.catalogue(
+          env,
+          control,
+          options.fresh === true,
+        );
+        if (liveCustomerAccess(env) && p.PREMIUM_SERVICE_ID) {
+          const service = catalogue.services.find(
+            (item) => item.id === serviceId,
+          );
+          if (
+            service?.priceMinor !==
+            (serviceId === p.PREMIUM_SERVICE_ID ? 10800 : 8800)
+          )
+            throw new ApiError(503, "native_service_price_changed");
+        }
+        return catalogue;
+      },
+      exchange: async (request) => {
+        await provider.identity(env, control);
+        return provider.nativeRead(env, control, request);
+      },
+    });
+  let raw;
+  if (liveCustomerAccess(env) && p.PREMIUM_SERVICE_ID) {
+    if (p.PREMIUM_SERVICE_ID === window.serviceId)
+      throw new ApiError(503, "native_pricing_configuration_invalid");
+    const selectedDates =
+      options.fresh && options.date ? [options.date] : dates;
+    const rates = selectedDates.map((date) => sessionRate(date));
+    if (rates.some((rate) => !rate))
+      throw new ApiError(503, "native_pricing_calendar_unavailable");
+    const ordinary = rates.some((rate) => !rate!.premium)
+      ? await read(window.serviceId)
+      : null;
+    const premium = rates.some((rate) => rate!.premium)
+      ? await read(p.PREMIUM_SERVICE_ID)
+      : null;
+    raw = {
+      month,
+      observedAtMs: Math.min(
+        ordinary?.observedAtMs ?? Date.now(),
+        premium?.observedAtMs ?? Date.now(),
+      ),
+      dates: selectedDates.flatMap((date) => {
+        const source = sessionRate(date)!.premium ? premium : ordinary;
+        const day = source?.dates.find((entry) => entry.date === date);
+        return day
+          ? [
+              {
+                ...day,
+                offers: day.offers.map((offer) => ({
+                  ...offer,
+                  productServiceId: window.serviceId,
+                })),
+              },
+            ]
+          : [];
+      }),
+    };
+  } else raw = await read(window.serviceId);
   assertOpen();
   return nativeCalendarSchema.parse({
     ...raw,
@@ -219,6 +274,7 @@ export async function publicCalendar(options: ReadOptions & { month: string }) {
     observedAtMs: raw.observedAtMs,
     dates: raw.dates.map((day) => ({
       date: day.date,
+      ...(liveCustomerAccess(options.env) ? { offers: day.offers } : {}),
       available: day.offers.some(
         (offer) => offer.startMs - Date.now() >= 48 * 3600000,
       ),

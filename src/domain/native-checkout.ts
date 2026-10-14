@@ -15,6 +15,7 @@ import { contactSchema } from "./contact";
 import { MAX_PLAYERS } from "./booking-policy";
 export const nativeOfferSchema = z.strictObject({
   serviceId: providerIdentifier,
+  productServiceId: providerIdentifier.optional(),
   serviceName: z.string().min(1).max(256),
   instructorId: providerIdentifier,
   instructorName: z.string().min(1).max(256),
@@ -37,6 +38,7 @@ export const publicCalendarSchema = z
         z.strictObject({
           date: z.string().refine(isDate),
           available: z.boolean(),
+          offers: z.array(nativeOfferSchema).max(100).optional(),
         }),
       )
       .max(31),
@@ -44,7 +46,22 @@ export const publicCalendarSchema = z
   .refine(
     (value) =>
       new Set(value.dates.map((day) => day.date)).size === value.dates.length &&
-      value.dates.every((day) => day.date.startsWith(value.month + "-")),
+      value.dates.every(
+        (day) =>
+          day.date.startsWith(value.month + "-") &&
+          (!day.offers ||
+            (day.available === day.offers.length > 0 &&
+              new Set(day.offers.map((offer) => offer.startMs)).size ===
+                day.offers.length &&
+              day.offers.every(
+                (offer) =>
+                  (offer.productServiceId ?? offer.serviceId) ===
+                    value.serviceId &&
+                  new Date(offer.startMs + 28800000)
+                    .toISOString()
+                    .slice(0, 10) === day.date,
+              ))),
+      ),
   );
 
 export const nativeCalendarSchema = z.strictObject({
@@ -110,3 +127,27 @@ export const receiptSchema = z
       value.sessions.reduce((sum, session) => sum + session.priceMinor, 0) ===
         value.totalMinor,
   );
+
+// Display-only conversion shared by calendar prefetch and fresh daily reads.
+export function nativeDisplaySlots(
+  date: string,
+  offers: z.infer<typeof nativeOfferSchema>[],
+) {
+  return offers.map((offer) => ({
+    date,
+    start: new Date(offer.startMs + 28800000).toISOString().slice(11, 16),
+    instructor: offer.instructorId,
+    available: true,
+    native: {
+      serviceId: offer.serviceId,
+      ...(offer.productServiceId
+        ? { productServiceId: offer.productServiceId }
+        : {}),
+      serviceName: offer.serviceName,
+      instructorName: offer.instructorName,
+      priceMinor: offer.priceMinor,
+      currency: offer.currency,
+    },
+  }));
+}
+export const BROWSER_CALENDAR_MAX_AGE_MS = 5 * 60_000;

@@ -309,3 +309,20 @@ test("rejects a transitive preview dependency in Worker-shared catalogue", () =>
         ),
       ),
   ));
+
+test("rejects preview imports in shared session pricing", () =>
+  fixture(
+    {
+      "src/app/page.tsx":
+        "import '../domain/session-pricing'; export default 1;",
+      "src/domain/session-pricing.ts":
+        "import './demo-catalog'; export const value=1;",
+      "src/domain/demo-catalog.ts": "export const value=1;",
+    },
+    (errors) =>
+      assert.ok(
+        errors.some((error) =>
+          error.includes("Preview dependency in shared domain"),
+        ),
+      ),
+  ));

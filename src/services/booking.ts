@@ -23,6 +23,7 @@ import { SESSION_STARTS } from "@/domain/demo-catalog";
 import { BookingServiceError, type BookingService } from "./contracts";
 import {
   publicCalendarSchema,
+  nativeDisplaySlots,
   nativeAvailabilitySchema,
   nativeCalendarSchema,
   nativePrepareSchema,
@@ -254,7 +255,9 @@ export function defineBookingService(adapter: BookingService): BookingService {
               (adapter.mode === "demo"
                 ? !!slot.native ||
                   !SESSION_STARTS.includes(clockMinutes(slot.start))
-                : !slot.native || slot.native.serviceId !== request.serviceId),
+                : !slot.native ||
+                  (slot.native.productServiceId ?? slot.native.serviceId) !==
+                    request.serviceId),
           ) ||
           new Set(slots.map(slotKey)).size !== slots.length
         )
@@ -376,6 +379,9 @@ export const liveBookingService: BookingService = defineBookingService({
         instructor: offer.instructorId,
         native: {
           serviceId: offer.serviceId,
+          ...(offer.productServiceId
+            ? { productServiceId: offer.productServiceId }
+            : {}),
           serviceName: offer.serviceName,
           instructorName: offer.instructorName,
           priceMinor: offer.priceMinor,
@@ -392,7 +398,8 @@ export const liveBookingService: BookingService = defineBookingService({
       draft: {
         mode: "guest",
         accountEmail: "",
-        nativeServiceId: slots[0].native.serviceId,
+        nativeServiceId:
+          slots[0].native.productServiceId ?? slots[0].native.serviceId,
         contact: current.contact,
         players: current.sessions[0].players,
         accepted: true,
@@ -425,7 +432,7 @@ export const liveBookingService: BookingService = defineBookingService({
       value.dates.some((day) =>
         day.offers.some(
           (o) =>
-            o.serviceId !== serviceId ||
+            (o.productServiceId ?? o.serviceId) !== serviceId ||
             new Date(o.startMs + 8 * 3600000).toISOString().slice(0, 10) !==
               day.date,
         ),
@@ -457,24 +464,16 @@ export const liveBookingService: BookingService = defineBookingService({
       Date.now() - data.observedAtMs >= CATALOGUE_MAX_AGE_MS
     )
       throw invalidResponse();
-    return data.offers.map((offer) => {
-      const wall = new Date(offer.startMs + 8 * 3600000).toISOString();
-      if (offer.serviceId !== serviceId || wall.slice(0, 10) !== date)
-        throw invalidResponse();
-      return {
-        date,
-        start: wall.slice(11, 16),
-        instructor: offer.instructorId,
-        available: true,
-        native: {
-          serviceId,
-          serviceName: offer.serviceName,
-          instructorName: offer.instructorName,
-          priceMinor: offer.priceMinor,
-          currency: offer.currency,
-        },
-      };
-    });
+    if (
+      data.offers.some(
+        (offer) =>
+          (offer.productServiceId ?? offer.serviceId) !== serviceId ||
+          new Date(offer.startMs + 28800000).toISOString().slice(0, 10) !==
+            date,
+      )
+    )
+      throw invalidResponse();
+    return nativeDisplaySlots(date, data.offers);
   },
   async checkout({ draft, previous, signal }) {
     if (draft.slots.some((slot) => !slot.native)) return unavailable();
@@ -483,7 +482,9 @@ export const liveBookingService: BookingService = defineBookingService({
       !draft.accepted ||
       draft.slots.some(
         (slot) =>
-          !slot.native || slot.native.serviceId !== draft.nativeServiceId,
+          !slot.native ||
+          (slot.native.productServiceId ?? slot.native.serviceId) !==
+            draft.nativeServiceId,
       )
     )
       throw new BookingServiceError(

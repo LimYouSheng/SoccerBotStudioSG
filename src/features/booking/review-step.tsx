@@ -1,4 +1,5 @@
 "use client";
+import { BrandLoading } from "@/components/brand-loading";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -144,7 +145,11 @@ export function ReviewStep() {
               router.push("/book/payment/");
           }}
         >
-          {busy ? "Checking your booking…" : "Continue to payment"}{" "}
+          {busy ? (
+            <BrandLoading compact label="Checking your booking…" />
+          ) : (
+            "Continue to payment"
+          )}{" "}
           <Icon name="arrow" />
         </button>
       </div>

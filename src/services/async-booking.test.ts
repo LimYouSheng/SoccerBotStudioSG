@@ -347,13 +347,14 @@ test("native restore reads the authenticated snapshot and cannot manufacture a p
       contact: draft().contact,
       sessions: [
         {
-          serviceId: "2",
+          serviceId: "3",
+          productServiceId: "2",
           serviceName: "Native",
           instructorId: "33",
           instructorName: "Trainer",
-          startMs: Date.parse("2026-10-15T08:10:00+08:00"),
+          startMs: Date.parse("2026-10-17T08:10:00+08:00"),
           players: 4,
-          priceMinor: 8800,
+          priceMinor: 10800,
           currency: "SGD",
         },
       ],
@@ -365,5 +366,11 @@ test("native restore reads the authenticated snapshot and cannot manufacture a p
   expect(restored?.status).toBe("checking");
   expect(restored?.booking).toBeNull();
   expect(restored?.draft.players).toBe(4);
+  expect(restored?.draft.nativeServiceId).toBe("2");
+  expect(restored?.draft.slots[0].native).toMatchObject({
+    serviceId: "3",
+    productServiceId: "2",
+    priceMinor: 10800,
+  });
   expect(restored?.draft.slots[0].instructor).toBe("33");
 });

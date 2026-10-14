@@ -67,6 +67,7 @@ export function checkWorker(root) {
               "../src/domain/booking-policy",
               "../src/domain/catalog",
               "../src/domain/contact",
+              "../src/domain/session-pricing",
             ].includes(spec)
           )
             errors.push(`Forbidden Worker layer: ${name} -> ${spec}`);

@@ -38,6 +38,7 @@ function fixture() {
       ...config.vars,
       PROVIDER_ACCESS: "trusted-reads",
       LIVE_CUSTOMER_ACCESS: "enabled",
+      PREMIUM_SERVICE_ID: "3",
     },
   });
   write("developer-release/manifest.json", {

@@ -1069,3 +1069,161 @@ test("anonymous calendar is bounded and shared without exposing provider slots o
     );
   assert.equal(calls, 2);
 });
+
+test("priced customer calendar chooses native service by Singapore weekday and public holiday and refreshes changes", async (t) => {
+  t.mock.method(Date, "now", () => Date.parse("2026-11-01T00:00:00Z"));
+  const config = ts.parseConfigFileTextToJson(
+    "wrangler.jsonc",
+    readFileSync("wrangler.jsonc", "utf8"),
+  ).config;
+  const data = fixtures();
+  data.services = {
+    2: { ...data.services[12], id: 2, unit_map: [14] },
+    3: { ...data.services[12], id: 3, price: "108", unit_map: [14] },
+  };
+  let calls = 0,
+    available = true;
+  const input = {
+    env: {
+      ...config.vars,
+      SOURCE_REVISION: "a".repeat(40),
+      PROVIDER_ACCESS: "trusted-reads",
+      LIVE_CUSTOMER_ACCESS: "enabled",
+      PREMIUM_SERVICE_ID: "3",
+      SIMPLYBOOK_DEV_COMPANY_LOGIN: "synthetic-company",
+      SIMPLYBOOK_DEV_ADMIN_LOGIN: "synthetic-admin",
+      SIMPLYBOOK_DEV_API_KEY: "synthetic-key",
+      SIMPLYBOOK_DEV_ADMIN_API_USER_KEY: "synthetic-key",
+    },
+    month: "2026-11",
+    cache: new NativeCalendarReads(),
+    accounting: () => ({ used: calls, active: 0 }),
+    control: {},
+    provider: {
+      identity: async () => {},
+      catalogue: async () =>
+        normalizeCatalogue(
+          data.services,
+          data.instructors,
+          binding,
+          Date.now(),
+        ),
+      nativeRead: async (_env, _control, request) => {
+        calls++;
+        const body = {};
+        for (
+          let day = new Date(request.from + "T00:00:00Z");
+          day.toISOString().slice(0, 10) <= request.to;
+          day.setUTCDate(day.getUTCDate() + 1)
+        )
+          body[day.toISOString().slice(0, 10)] = available ? ["09:00:00"] : [];
+        return { receivedAtMs: Date.now(), body };
+      },
+    },
+  };
+  const calendar = await publicCalendar(input);
+  for (const [date, id, price] of [
+    ["2026-11-06", "2", 8800],
+    ["2026-11-07", "3", 10800],
+    ["2026-11-08", "3", 10800],
+    ["2026-11-09", "3", 10800],
+    ["2026-11-10", "2", 8800],
+  ]) {
+    const offer = calendar.dates.find((day) => day.date === date).offers[0];
+    assert.equal(offer.serviceId, id);
+    assert.equal(offer.productServiceId, "2");
+    assert.equal(offer.priceMinor, price);
+  }
+  const count = calls;
+  await publicCalendar(input);
+  assert.equal(calls, count);
+  available = false;
+  const fresh = await windowAvailability({
+    ...input,
+    serviceId: "2",
+    date: "2026-11-09",
+    fresh: true,
+  });
+  assert.deepEqual(fresh.offers, []);
+  assert.equal(calls, count + 1);
+  data.services[3].price = "88";
+  await assert.rejects(
+    windowAvailability({
+      ...input,
+      serviceId: "2",
+      date: "2026-11-09",
+      fresh: true,
+    }),
+    /native_service_price_changed/,
+  );
+});
+
+test("priced prebooking accepts exact mixed service totals and rejects cheap holiday service substitution", async (t) => {
+  t.mock.method(Date, "now", () => Date.parse("2026-11-01T00:00:00Z"));
+  const intent = approved();
+  intent.customerMode = "booking-contact";
+  intent.contact = {
+    name: "Synthetic Guest",
+    email: "guest@example.invalid",
+    phone: "00000000",
+    contactMethod: "email",
+    academy: "",
+  };
+  intent.sessions = [
+    {
+      ...intent.sessions[0],
+      serviceId: "12",
+      startMs: Date.parse("2026-11-06T09:00:00+08:00"),
+      totalMinor: 8800,
+    },
+    {
+      ...intent.sessions[0],
+      serviceId: "13",
+      startMs: Date.parse("2026-11-09T09:00:00+08:00"),
+      totalMinor: 10800,
+    },
+  ];
+  intent.totalMinor = 19600;
+  const data = fixtures();
+  data.services[13] = { ...data.services[12], id: 13, price: "108" };
+  const read = exchangeFor(data, intent);
+  const exchange = async (request) =>
+    request.kind === "availability"
+      ? { receivedAtMs: Date.now(), body: { [request.date]: ["09:00:00"] } }
+      : read.exchange(request);
+  const contract = {
+    ...binding,
+    serviceId: "12",
+    premiumServiceId: "13",
+    priceMinor: 8800,
+    currency: "SGD",
+    taxMinor: 0,
+    durationMinutes: 40,
+    bufferAfterMinutes: 10,
+    clientLoginRequired: false,
+    providerSchedules: "non-overlapping",
+    confirmedAtMs: Date.now() - 1000,
+    expiresAtMs: Date.now() + 600000,
+  };
+  const validation = new NativePrebooking(
+    binding,
+    new CatalogueReads(),
+    exchange,
+    contract,
+  );
+  for (let index = 0; index < 2; index++)
+    assert.deepEqual(await validation.revalidate(intent, index), intent);
+  const wrong = structuredClone(intent);
+  wrong.sessions[1].serviceId = "12";
+  wrong.sessions[1].totalMinor = 8800;
+  wrong.totalMinor = 17600;
+  await assert.rejects(
+    validation.revalidate(wrong, 1),
+    /native_account_contract_unavailable/,
+  );
+  data.services[13].price = "88";
+  await assert.rejects(
+    validation.revalidate(intent, 1),
+    /native_restart_required/,
+  );
+});

@@ -1,4 +1,5 @@
 "use client";
+import { BrandLoading } from "@/components/brand-loading";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icon";
@@ -110,6 +111,7 @@ export function AccountStep() {
       <>
         <h1 className="page-title">Start your booking</h1>
         {error && <p role="alert">{error}</p>}
+        {busy && <BrandLoading compact label="Preparing your booking…" />}
         <div className="access-options">
           <section className="surface access-option">
             <span className="auth-mark">
@@ -219,6 +221,7 @@ export function AccountStep() {
           </>
         )}
       </p>
+      {busy && <BrandLoading compact label="Checking your details…" />}
       <form
         className="surface auth-panel"
         onSubmit={(event) => {

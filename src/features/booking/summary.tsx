@@ -1,4 +1,5 @@
 "use client";
+import { BrandLoading } from "@/components/brand-loading";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -80,14 +81,18 @@ export function SessionList({
 }
 
 export function PriceSummary({ draft }: { draft: BookingDraft }) {
+  const prices = [...new Set(draft.slots.map(sessionPrice))].sort(
+    (a, b) => a - b,
+  );
   return (
     <div className="price-breakdown">
       <div className="line-item">
         <span>
           {draft.slots.length} × 40 min session
           <small>
-            {money(draft.slots[0] ? sessionPrice(draft.slots[0]) : PRICE_CENTS)}{" "}
-            each
+            {prices.length > 1
+              ? `${prices.map(money).join(" / ")} by date`
+              : `${money(prices[0] ?? PRICE_CENTS)} each`}
           </small>
         </span>
         <strong>{money(totalCents(draft))}</strong>
@@ -214,7 +219,11 @@ export function Summary({ basket = false }: { basket?: boolean }) {
                     else setSelectionFailed(true);
                   }}
                 >
-                  {checkingSelection ? "Checking availability…" : "Continue"}{" "}
+                  {checkingSelection ? (
+                    <BrandLoading compact label="Checking availability…" />
+                  ) : (
+                    "Continue"
+                  )}{" "}
                   <Icon name="arrow" />
                 </button>
               ) : (
@@ -239,11 +248,16 @@ export function Summary({ basket = false }: { basket?: boolean }) {
           {draft.slots.length > 0 && !valid && (
             <p className="field-error" role="status">
               {selectionErrors(draft.slots, now).length > 0 ||
-              result?.status === "success"
-                ? "A selected session is no longer available. Remove it and choose another time."
-                : !result
-                  ? "Checking your selected sessions…"
-                  : "Your selections are saved. Availability could not be checked."}
+              result?.status === "success" ? (
+                "A selected session is no longer available. Remove it and choose another time."
+              ) : !result ? (
+                <BrandLoading
+                  compact
+                  label="Checking your selected sessions…"
+                />
+              ) : (
+                "Your selections are saved. Availability could not be checked."
+              )}
             </p>
           )}
           {basket && (

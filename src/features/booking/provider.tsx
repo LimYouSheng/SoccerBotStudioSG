@@ -123,7 +123,7 @@ export function BookingProvider({
     service,
     value.ready && value.draft.mode ? value.draft.nativeServiceId : undefined,
     calendarMonth,
-    sessionKey(),
+    JSON.stringify([sessionKey(), availabilityRevision]),
     !value.ready || calendarPaused || !!value.attempt,
   );
   const availability = useBookingAvailability(
@@ -143,6 +143,7 @@ export function BookingProvider({
     Math.floor(now / 60_000),
     sessionKey,
     value.draft.nativeServiceId,
+    calendar.cachedDates,
   );
   // Every start is minute-aligned. Also refresh after a suspended/background tab
   // resumes; action/service guards still sample the clock at dispatch time.
@@ -369,6 +370,7 @@ export function BookingProvider({
                     slotKey(offer) === slotKey(slot) &&
                     offer.available &&
                     offer.instructor === slot.instructor &&
+                    offer.native?.serviceId === slot.native?.serviceId &&
                     sessionPrice(offer) === sessionPrice(slot),
                 ),
               );

@@ -95,6 +95,7 @@ writeFileSync(
         ...config.vars,
         PROVIDER_ACCESS: "trusted-reads",
         LIVE_CUSTOMER_ACCESS: "enabled",
+        PREMIUM_SERVICE_ID: "3",
       },
     },
     null,
@@ -113,8 +114,8 @@ const manifest = {
   identityDelivery: "disabled",
   providerAccess: "disabled",
   campaignEndMs: 0,
-  pendingRemoteMigrations: ["0026_ongoing_customer_checkout.sql"],
-  priorWorkerVersion: "1849b57c-3d9d-432d-9420-e16b0587ef68",
+  pendingRemoteMigrations: [],
+  priorWorkerVersion: "738f212e-d09b-4131-8956-55b34f49e487",
   acceptance:
     profile.name === "live-email"
       ? "synthetic live-email frontend; delivery closed; no provider or mailbox acceptance"

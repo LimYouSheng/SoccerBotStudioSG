@@ -186,6 +186,7 @@ export function checkSource(root) {
     "booking-policy",
     "confirmation",
     "native-checkout",
+    "session-pricing",
   ]) {
     const seen = new Set();
     function inspectShared(file) {

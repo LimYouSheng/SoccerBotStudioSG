@@ -1,4 +1,5 @@
 "use client";
+import { BrandLoading } from "@/components/brand-loading";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/icon";
@@ -86,9 +87,11 @@ export function PaymentStep() {
                 void pay("pending");
               }}
             >
-              {busy
-                ? "Preparing secure checkout…"
-                : `Pay ${money(totalCents(attempt.draft))}`}
+              {busy ? (
+                <BrandLoading compact label="Preparing secure checkout…" />
+              ) : (
+                `Pay ${money(totalCents(attempt.draft))}`
+              )}
             </button>
             <p className="payment-foot">
               We check your sessions again before preparing checkout. Payment is
@@ -107,12 +110,13 @@ export function PaymentStep() {
     return (
       <div className="status-shell">
         <div role="status" className="status-heading">
-          <span className="status-icon pending">
-            <Icon
-              name={checking ? "spinner" : late ? "lock" : "clock"}
-              className={checking ? "spinner" : ""}
-            />
-          </span>
+          {checking ? (
+            <BrandLoading compact label="Processing payment" />
+          ) : (
+            <span className="status-icon pending">
+              <Icon name={late ? "lock" : "clock"} />
+            </span>
+          )}
           <h1>
             {checking
               ? "Processing payment"
@@ -127,7 +131,6 @@ export function PaymentStep() {
                 ? "The payment arrived after the reservation expired, or availability needs review. Contact the studio before making another payment."
                 : "Your payment is still processing. Please avoid starting another payment."}
           </p>
-          {checking && <div className="checking-progress" aria-hidden="true" />}
         </div>
         <section className="surface">
           <h2 className="section-title">{SERVICE_NAME}</h2>
@@ -156,9 +159,11 @@ export function PaymentStep() {
                 void (checking ? resolve() : check());
               }}
             >
-              {busy || (checking && !error)
-                ? "Checking payment…"
-                : "Check payment status"}
+              {busy || (checking && !error) ? (
+                <BrandLoading compact label="Checking payment…" />
+              ) : (
+                "Check payment status"
+              )}
             </button>
           )}
         </section>
@@ -236,9 +241,11 @@ export function PaymentStep() {
               void pay("success");
             }}
           >
-            {busy
-              ? "Starting payment…"
-              : `Pay ${money(totalCents(attempt.draft))}`}
+            {busy ? (
+              <BrandLoading compact label="Starting payment…" />
+            ) : (
+              `Pay ${money(totalCents(attempt.draft))}`
+            )}
           </button>
           <p className="payment-foot">
             Payment preview · No money will be charged.

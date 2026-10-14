@@ -7,6 +7,7 @@ import {
 } from "./contact";
 import { MAX_PLAYERS, SESSION_MINUTES } from "./booking-policy";
 import { INSTRUCTORS, PRICE_CENTS, SESSION_STARTS } from "./demo-catalog";
+import { sessionRate } from "./session-pricing";
 import { clockMinutes, isDate, todaySG } from "./dates";
 import { providerIdentifier } from "./catalog";
 export const slotSchema = z.object({
@@ -22,6 +23,7 @@ export const sessionSchema = slotSchema
     native: z
       .strictObject({
         serviceId: providerIdentifier,
+        productServiceId: providerIdentifier.optional(),
         serviceName: z.string().min(1).max(256),
         instructorName: z.string().min(1).max(256),
         priceMinor: z.number().int().nonnegative().safe(),
@@ -86,12 +88,9 @@ export const sessionInstructorName = (slot: Session) =>
   slot.native?.instructorName ??
   INSTRUCTORS[instructorSchema.parse(slot.instructor)].name;
 export const sessionPrice = (slot: Session) =>
-  slot.native?.priceMinor ?? PRICE_CENTS;
+  slot.native?.priceMinor ?? sessionRate(slot.date)?.priceMinor ?? PRICE_CENTS;
 export const totalCents = (draft: BookingDraft) =>
-  draft.slots.reduce(
-    (sum, slot) => sum + (slot.native?.priceMinor ?? PRICE_CENTS),
-    0,
-  );
+  draft.slots.reduce((sum, slot) => sum + sessionPrice(slot), 0);
 export const paymentLocked = (attempt: Attempt | null) =>
   !!attempt && ["checking", "pending", "late", "paid"].includes(attempt.status);
 export function overlaps(a: Slot, b: Slot) {

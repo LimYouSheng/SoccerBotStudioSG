@@ -25,6 +25,7 @@ vi.mock("next/navigation", () => ({
 }));
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
   vi.unstubAllGlobals();
   push.mockClear();
 });
@@ -70,6 +71,7 @@ function CalendarProbe({
   );
 }
 test("calendar prefetch publishes the first month before sequential background months and discards an old scope reply", async () => {
+  vi.spyOn(Date, "now").mockReturnValue(Date.parse("2027-01-01T00:00:00Z"));
   let finish!: (value: CalendarAvailability) => void;
   const first = {
     ...demoBookingService,
@@ -315,5 +317,142 @@ test("fresh calendar receipts render before the minute clock ticks and expire at
   );
   expect(screen.getByRole("status")).toHaveTextContent("2027-01-04");
   await act(async () => vi.advanceTimersByTime(60000));
+  expect(screen.getByRole("status")).toHaveTextContent("loading");
+});
+
+test("preloaded browser slots survive date and player changes and Continue refreshes changed availability", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2027-01-01T00:00:00Z"));
+  let changed = false;
+  const availability = vi.fn(
+    async ({ date, fresh }: { date: string; fresh?: boolean }) => {
+      if (fresh) changed = true;
+      return date === slot.date && !changed
+        ? [{ ...slot, available: true }]
+        : [];
+    },
+  );
+  const publicCalendar = vi.fn(async ({ month }: { month: string }) => ({
+    month,
+    serviceId: "12",
+    observedAtMs: Date.now(),
+    dates:
+      month === "2027-01"
+        ? [slot.date, "2027-01-06"].map((date) => ({
+            date,
+            available: !changed,
+            offers: changed
+              ? []
+              : [
+                  {
+                    serviceId: "12",
+                    serviceName: "Native Session",
+                    instructorId: slot.instructor,
+                    instructorName: "Native Trainer",
+                    startMs: Date.parse(`${date}T${slot.start}:00+08:00`),
+                    priceMinor: 8800,
+                    currency: "SGD" as const,
+                  },
+                ],
+          }))
+        : [],
+  }));
+  function Players() {
+    const { update } = useBooking();
+    return <button onClick={() => update({ players: 2 })}>Two players</button>;
+  }
+  render(
+    <BookingProvider
+      bookingService={{
+        ...demoBookingService,
+        mode: "live",
+        operations: { ...demoBookingService.operations, availability: "live" },
+        publicCalendar,
+        availability,
+      }}
+    >
+      <Seed />
+      <Players />
+      <TimeStep />
+      <Summary basket />
+    </BookingProvider>,
+  );
+  await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(4));
+  fireEvent.click(screen.getByRole("button", { name: "Choose test session" }));
+  await act(async () => {});
+  availability.mockClear();
+  const region = screen.getByRole("region", { name: "Booking calendar" });
+  for (const date of [slot.date, "2027-01-06", slot.date]) {
+    fireEvent.click(
+      within(region).getByRole("button", { name: dateLabel(date) }),
+    );
+    expect(
+      screen.getByRole("group", { name: "Session times" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Checking available times…"),
+    ).not.toBeInTheDocument();
+  }
+  fireEvent.click(screen.getByRole("button", { name: "Two players" }));
+  await act(async () => {});
+  expect(availability).not.toHaveBeenCalled();
+  expect(publicCalendar).toHaveBeenCalledTimes(4);
+  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "could not be confirmed",
+  );
+  expect(availability.mock.calls.some(([input]) => input.fresh === true)).toBe(
+    true,
+  );
+  expect(push).not.toHaveBeenCalled();
+  expect(
+    screen.getByRole("button", {
+      name: `Remove ${slot.date} at ${slot.start}`,
+    }),
+  ).toBeInTheDocument();
+  await waitFor(() =>
+    expect(
+      within(region).getByRole("button", { name: dateLabel(slot.date) }),
+    ).toBeDisabled(),
+  );
+});
+
+test("browser slot cache expires after five minutes", async () => {
+  vi.useFakeTimers();
+  const initial = Date.parse("2027-01-01T00:00:00Z");
+  vi.setSystemTime(initial);
+  const publicCalendar = vi.fn(async ({ month }: { month: string }) => ({
+    month,
+    serviceId: "12",
+    observedAtMs: initial,
+    dates: [
+      {
+        date: month + "-05",
+        available: true,
+        offers: [
+          {
+            serviceId: "12",
+            serviceName: "Session",
+            instructorId: "3",
+            instructorName: "Trainer",
+            startMs: Date.parse(`${month}-05T09:00:00+08:00`),
+            priceMinor: 8800,
+            currency: "SGD" as const,
+          },
+        ],
+      },
+    ],
+  }));
+  render(
+    <CalendarProbe
+      service={{ ...demoBookingService, publicCalendar }}
+      now={initial}
+    />,
+  );
+  await act(async () => {});
+  expect(screen.getByRole("status")).toHaveTextContent("2027-01-05");
+  await act(async () => vi.advanceTimersByTime(60000));
+  expect(screen.getByRole("status")).toHaveTextContent("2027-01-05");
+  await act(async () => vi.advanceTimersByTime(240000));
   expect(screen.getByRole("status")).toHaveTextContent("loading");
 });

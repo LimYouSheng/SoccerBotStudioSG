@@ -2478,10 +2478,21 @@ test("ongoing customer access survives campaign closure and preserves fresh cons
       origin + "/api/calendar/" + date.slice(0, 7),
     );
     assert.equal(home.status, 200, JSON.stringify(await home.clone().json()));
-    assert.equal(
-      (await home.json()).dates.find((day) => day.date === date).available,
-      true,
+    const homepageDay = (await home.json()).dates.find(
+      (day) => day.date === date,
     );
+    assert.equal(homepageDay.available, true);
+    assert.deepEqual(homepageDay.offers, [
+      {
+        serviceId: "2",
+        serviceName: "Synthetic Session",
+        instructorId: "2",
+        instructorName: "Synthetic Trainer",
+        startMs: Date.parse(date + "T10:00:00+08:00"),
+        priceMinor: 8800,
+        currency: "SGD",
+      },
+    ]);
     assert.equal(
       (await f.mf.dispatchFetch(origin + "/api/catalogue")).status,
       401,

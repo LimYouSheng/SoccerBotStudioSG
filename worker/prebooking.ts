@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { sessionRate } from "../src/domain/session-pricing";
 import {
   CATALOGUE_RECORD_LIMIT,
   catalogueSelection,
@@ -65,6 +66,10 @@ export const nativeAccountContractSchema = z
     companyLogin: z.string().min(1).max(128),
     serviceId: z.string().regex(/^[1-9]\d{0,14}$/),
     priceMinor: z.literal(8800),
+    premiumServiceId: z
+      .string()
+      .regex(/^[1-9]\d{0,14}$/)
+      .optional(),
     currency: z.literal("SGD"),
     taxMinor: z.literal(0),
     durationMinutes: z.literal(40),
@@ -75,8 +80,28 @@ export const nativeAccountContractSchema = z
     confirmedAtMs: z.number().int().positive().safe(),
     expiresAtMs: z.number().int().positive().safe(),
   })
-  .refine((value) => value.expiresAtMs > value.confirmedAtMs);
+  .refine(
+    (value) =>
+      value.expiresAtMs > value.confirmedAtMs &&
+      value.premiumServiceId !== value.serviceId,
+  );
 export type NativeAccountContract = z.infer<typeof nativeAccountContractSchema>;
+// The server selects the priced native service; browser prices never authorize a charge.
+export function nativeContractSelection(
+  contract: NativeAccountContract,
+  startMs: number,
+) {
+  if (!contract.premiumServiceId)
+    return { serviceId: contract.serviceId, priceMinor: contract.priceMinor };
+  const rate = sessionRate(
+    new Date(startMs + 28800000).toISOString().slice(0, 10),
+  );
+  if (!rate) throw new ApiError(503, "native_pricing_calendar_unavailable");
+  return {
+    serviceId: rate.premium ? contract.premiumServiceId : contract.serviceId,
+    priceMinor: rate.priceMinor,
+  };
+}
 // This date-specific owner exception exists only in an externally installed
 // developer contract. Customer DTOs cannot supply it; all other trials retain48h.
 export function nativeTrialLeadMs(
@@ -243,12 +268,16 @@ export class NativePrebooking {
         contract.accountId !== this.binding.accountId ||
         contract.environmentId !== this.binding.environmentId ||
         contract.companyLogin !== this.binding.companyLogin ||
-        contract.serviceId !== service.id ||
+        nativeContractSelection(contract, session.startMs).serviceId !==
+          service.id ||
         contract.confirmedAtMs > completed ||
         contract.expiresAtMs <= completed
       )
         throw new ApiError(503, "native_account_contract_unavailable");
-      if (service.priceMinor !== contract.priceMinor)
+      if (
+        service.priceMinor !==
+        nativeContractSelection(contract, session.startMs).priceMinor
+      )
         return { state: "restart_required" as const, review, intent };
       if (intent.customerMode === "booking-contact" && intent.contact)
         return {

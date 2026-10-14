@@ -1,4 +1,5 @@
 "use client";
+import { BrandLoading } from "@/components/brand-loading";
 import { useEffect, useRef, useState } from "react";
 import { BookingConfirmation } from "./confirmation-step";
 import { downloadBooking, downloadCalendar } from "@/services/exports";
@@ -137,13 +138,15 @@ export function ProtectedConfirmation({
           </p>
         )}
         <h1>
-          {view === "checking"
-            ? "Checking your payment and booking…"
-            : view === "confirmed"
-              ? "Booking confirmed"
-              : view === "unresolved"
-                ? "Your booking needs review"
-                : "Confirmation unavailable"}
+          {view === "checking" ? (
+            <BrandLoading compact label="Checking your payment and booking…" />
+          ) : view === "confirmed" ? (
+            "Booking confirmed"
+          ) : view === "unresolved" ? (
+            "Your booking needs review"
+          ) : (
+            "Confirmation unavailable"
+          )}
         </h1>
         <p>
           {view === "confirmed"
@@ -206,9 +209,11 @@ export function ProtectedConfirmation({
               </a>
             ) : view === "checking" || view === "unavailable" ? (
               <p role="status">
-                {preparation === "loading"
-                  ? "Preparing checkout…"
-                  : "Checkout unavailable. Do not start another payment."}
+                {preparation === "loading" ? (
+                  <BrandLoading compact label="Preparing checkout…" />
+                ) : (
+                  "Checkout unavailable. Do not start another payment."
+                )}
               </p>
             ) : null}
           </>
@@ -219,7 +224,11 @@ export function ProtectedConfirmation({
             disabled={busy}
             onClick={check}
           >
-            {busy ? "Checking status…" : "Check status"}
+            {busy ? (
+              <BrandLoading compact label="Checking status…" />
+            ) : (
+              "Check status"
+            )}
           </button>
         )}
       </section>

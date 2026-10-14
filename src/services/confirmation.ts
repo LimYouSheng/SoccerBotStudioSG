@@ -122,6 +122,9 @@ export async function readBookingReceipt(
       studio: LOCATION.building,
       native: {
         serviceId: offer.serviceId,
+        ...(offer.productServiceId
+          ? { productServiceId: offer.productServiceId }
+          : {}),
         serviceName: offer.serviceName,
         instructorName: offer.instructorName,
         priceMinor: offer.priceMinor,
@@ -137,7 +140,8 @@ export async function readBookingReceipt(
     draft: {
       mode: "guest",
       accountEmail: "",
-      nativeServiceId: receipt.sessions[0].serviceId,
+      nativeServiceId:
+        receipt.sessions[0].productServiceId ?? receipt.sessions[0].serviceId,
       players: receipt.sessions[0].players,
       slots,
       contact: receipt.contact,

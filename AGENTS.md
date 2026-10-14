@@ -1,5 +1,9 @@
 # SoccerBotStudioSG engineering
 
+## Browser slot cache and date pricing — 14 October 2026
+
+Owner authorizes implementation and GitHub deployment of browser-local date/time caching, the fresh main Continue check, SoccerBot logo loading states and SGD88 weekdays / SGD108 weekends and Singapore public holidays, including official substitute holidays. Same provider IDs2/3/4 apply. Service3 was created through the connected SimplyBook tool; owner set its after-buffer, and readback verifies duration40, buffer10, SGD108 and all three providers. Service2 remains SGD88. No new booking or payment test is authorized by this configuration work. Three canonical owners below distinguish code, CI, deployment and physical acceptance.
+
 ## Ongoing customer access and GitHub deployment — 14 October 2026
 
 YS explicitly replaces temporary live-access closure with ongoing developer-site access and confirms native checkout should also remain enabled. The pending inspection packet458d021b4a82 is superseded and must not execute. The user wants the actual customer interface for physical inspection, not a special test-booking UI. Private browsing isolates browser storage, not provider records, payments, webhooks or the shared account cache. Keep browser execution owner/CI-operated.

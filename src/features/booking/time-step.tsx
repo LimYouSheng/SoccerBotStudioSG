@@ -1,4 +1,5 @@
 "use client";
+import { BrandLoading } from "@/components/brand-loading";
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/icon";
 
@@ -200,11 +201,13 @@ export function TimeStep() {
         </div>
         {live && (
           <p role="status" className="hint">
-            {monthResult
-              ? "Only dates with available sessions can be selected."
-              : calendar.failed.includes(month.slice(0, 7))
-                ? "Availability could not be checked. Your selections are saved."
-                : "Checking available dates…"}{" "}
+            {monthResult ? (
+              "Only dates with available sessions can be selected."
+            ) : calendar.failed.includes(month.slice(0, 7)) ? (
+              "Availability could not be checked. Your selections are saved."
+            ) : (
+              <BrandLoading compact label="Checking available dates…" />
+            )}{" "}
             <button className="text-link" onClick={calendar.retry}>
               Refresh availability
             </button>
@@ -226,7 +229,7 @@ export function TimeStep() {
         <span>SGT · Per session</span>
       </div>
       {!result ? (
-        <p role="status">Checking available times…</p>
+        <BrandLoading compact label="Checking available times…" />
       ) : result.status !== "success" ? (
         <div className="alert" role="alert">
           <p>{result.message}</p>

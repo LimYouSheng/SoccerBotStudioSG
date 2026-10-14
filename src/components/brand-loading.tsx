@@ -1,21 +1,30 @@
 import { darkLogo } from "@/content/media";
 export function BrandLoading({
+  compact = false,
   leaving = false,
   overlay = true,
   label = "Opening booking",
 }: {
+  compact?: boolean;
   leaving?: boolean;
   overlay?: boolean;
   label?: string;
 }) {
+  const Container = compact ? "span" : "div";
   return (
-    <div
-      className={overlay ? "page-loading" : "booking-loading"}
+    <Container
+      className={
+        compact
+          ? "booking-loading-inline"
+          : overlay
+            ? "page-loading"
+            : "booking-loading"
+      }
       data-phase={leaving ? "leaving" : "loading"}
       role="status"
       aria-label={label}
     >
-      <div className="page-loading-content">
+      <span className="page-loading-content">
         <svg
           className="page-loading-emblem"
           viewBox="0 0 120 120"
@@ -35,10 +44,11 @@ export function BrandLoading({
           width={565}
           height={190}
           className="official-logo loading-logo"
-          alt="SOCCERBOTSTUDIO Singapore"
+          alt={compact ? "" : "SOCCERBOTSTUDIO Singapore"}
         />
-        <div className="page-loading-track" aria-hidden="true" />
-      </div>
-    </div>
+        {!compact && <span className="page-loading-track" aria-hidden="true" />}
+        {compact && <span>{label}</span>}
+      </span>
+    </Container>
   );
 }
