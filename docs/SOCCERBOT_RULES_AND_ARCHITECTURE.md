@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Observed catalogue representation and deployment propagation — 14 October 2026
+
+The premium service's public getEventList response uses unit_map={"2":null,"3":null,"4":null}; ordinary service2 omits unit_map. Normalize both existing ID arrays and nonempty maps whose every key is a valid provider ID and every value is null. Reject all other object relationships. This preserves exact trainer assignment instead of treating a map as unrestricted service access.
+
+GitHub deployment must distinguish accepted upload/activation from edge readiness. Capture the previously served revision before deploying once. Afterwards allow at most16 health observations,2 seconds apart, accepting only that prior revision while awaiting the exact new revision. Foreign revisions, transport/non-200 failures, malformed health and missing new-version credentials fail immediately. Retain observations in deployment evidence. No repeat upload, booking request or test retry is part of readiness observation.
+
 ## Browser availability and date-dependent pricing — 14 October 2026
 
 Ongoing customer calendars now expose bounded public scheduling offers so four prefetched months include dates and times. The booking-level browser memory cache keeps these for five minutes, reuses them immediately across date/player changes, and discards them on scope changes, expiry and failed continuation. The account coordinator retains its sixty-second bounded cache. Continue bypasses both display caches; preparation and dispatch still validate provider truth. No persistent personal data, reservation authority or checkout capability is placed in the calendar cache. All booking loading indicators use the existing SoccerBot brand component.

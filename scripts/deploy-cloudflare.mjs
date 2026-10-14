@@ -54,6 +54,51 @@ export function validateDeployment(directory, revision) {
   assert.equal(config.vars.CAMPAIGN_END_MS, "0");
   return config;
 }
+// Cloudflare can acknowledge activation before every edge reports the new
+// revision. Observe only the known previous revision while propagation settles;
+// never redeploy, accept a third revision, or retry failed/malformed health reads.
+export async function awaitDeploymentHealth({
+  revision,
+  previousRevision,
+  read,
+  pause,
+}) {
+  const observedRevisions = [];
+  for (let observation = 0; observation < 16; observation++) {
+    const health = await read();
+    assert.match(health.revision, /^[a-f0-9]{40}$/);
+    observedRevisions.push(health.revision);
+    if (health.revision === revision) {
+      assert.equal(health.liveCustomerAccess, "enabled");
+      assert.equal(health.effectiveProviderAccess, "trusted-reads");
+      assert.equal(health.providerCredentialsPresent, true);
+      return { health, observedRevisions };
+    }
+    assert.equal(
+      health.revision,
+      previousRevision,
+      "Unexpected deployment revision",
+    );
+    console.log(
+      `Waiting for deployed revision (${observation + 1}/16): ${health.revision}`,
+    );
+    if (observation < 15) await pause(2000);
+  }
+  throw new Error("Deployed revision did not propagate within 16 observations");
+}
+async function readHealth(origin) {
+  const response = await fetch(`${origin}/api/health`, {
+    headers: {
+      accept: "application/json",
+      "User-Agent": "SoccerBot-deployment-verification",
+    },
+    cache: "no-store",
+    redirect: "error",
+    signal: AbortSignal.timeout(15000),
+  });
+  assert.equal(response.status, 200);
+  return response.json();
+}
 async function deploy() {
   assert.equal(process.env.GITHUB_REF, "refs/heads/main");
   assert.ok(
@@ -81,29 +126,24 @@ async function deploy() {
         env: { ...process.env, WRANGLER_SEND_METRICS: "false" },
       },
     );
+  const previous = await readHealth(config.vars.APP_ORIGIN);
+  assert.match(previous.revision, /^[a-f0-9]{40}$/);
   // Applied migrations are skipped by D1; only reviewed artifact SQL is supplied.
   wrangler(["d1", "migrations", "apply", "STATE", "--remote"]);
   wrangler(["deploy", "--no-bundle"]);
-  const response = await fetch(`${config.vars.APP_ORIGIN}/api/health`, {
-    headers: {
-      accept: "application/json",
-      "User-Agent": "SoccerBot-deployment-verification",
-    },
-    redirect: "error",
-    signal: AbortSignal.timeout(15000),
+  const { health, observedRevisions } = await awaitDeploymentHealth({
+    revision,
+    previousRevision: previous.revision,
+    read: () => readHealth(config.vars.APP_ORIGIN),
+    pause: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   });
-  assert.equal(response.status, 200);
-  const health = await response.json();
-  assert.equal(health.revision, revision);
-  assert.equal(health.liveCustomerAccess, "enabled");
-  assert.equal(health.effectiveProviderAccess, "trusted-reads");
-  assert.equal(health.providerCredentialsPresent, true);
   writeFileSync(
     `${directory}/deployment.json`,
     JSON.stringify(
       {
         sourceRevision: revision,
         status: "deployed",
+        observedRevisions,
         versionId: health.versionId,
         origin: config.vars.APP_ORIGIN,
         liveCustomerAccess: "enabled",
