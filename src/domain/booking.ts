@@ -5,7 +5,11 @@ import {
   contactErrors,
   normalizeContact,
 } from "./contact";
-import { MAX_PLAYERS, SESSION_MINUTES } from "./booking-policy";
+import {
+  BOOKING_LEAD_MS,
+  MAX_PLAYERS,
+  SESSION_MINUTES,
+} from "./booking-policy";
 import { INSTRUCTORS, PRICE_CENTS, SESSION_STARTS } from "./demo-catalog";
 import { sessionRate } from "./session-pricing";
 import { clockMinutes, isDate, todaySG } from "./dates";
@@ -134,6 +138,16 @@ export function selectionErrors(slots: Slot[], now = Date.now()): string[] {
     return [
       "A selected session has started. Remove it and choose a future time.",
     ];
+  if (
+    slots.some(
+      (slot) =>
+        "native" in slot &&
+        slot.native !== undefined &&
+        Date.parse(`${slot.date}T${slot.start}:00+08:00`) - now <
+          BOOKING_LEAD_MS,
+    )
+  )
+    return ["Book sessions at least 2.5 hours before their start time."];
   if (
     slots.some((slot, i) =>
       slots.slice(0, i).some((other) => overlaps(slot, other)),

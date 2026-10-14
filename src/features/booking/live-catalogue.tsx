@@ -23,7 +23,10 @@ export function LiveCatalogue({
     revision: number;
     data?: CustomerCatalogue;
     failed?: boolean;
-  } | null>(null);
+  } | null>(() => {
+    const data = service.peek?.();
+    return data ? { owner: service, revision: 0, data } : null;
+  });
   useEffect(() => {
     const controller = new AbortController();
     void service

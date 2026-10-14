@@ -396,7 +396,9 @@ test("native guest journey preserves players contact and one checkout across ref
         month,
         serviceId: "12",
         observedAtMs: Date.now(),
-        dates: date.startsWith(month + "-") ? [{ date, available: true }] : [],
+        dates: date.startsWith(month + "-")
+          ? [{ date, available: true, offers: [offer] }]
+          : [],
       };
     } else if (url.pathname.startsWith("/api/booking/calendar/12/")) {
       const month = url.pathname.split("/").at(-1);
@@ -455,11 +457,19 @@ test("native guest journey preserves players contact and one checkout across ref
     }
     await route.fulfill({ status, json: result });
   });
-  await page.goto("/book/account/");
+  await page.goto("/");
   await page
     .getByRole("dialog", { name: "Get the SoccerBot Player App" })
     .getByRole("button", { name: "Not now", exact: true })
     .click();
+  await expect
+    .poll(() => calls.filter((c) => c.path.startsWith("/api/calendar/")).length)
+    .toBe(4);
+  await expect
+    .poll(() => calls.filter((c) => c.path === "/api/catalogue").length)
+    .toBe(1);
+  expect(calls.filter((c) => c.path === "/api/access")).toHaveLength(0);
+  await page.getByRole("link", { name: "Book now", exact: true }).click();
   await page
     .getByRole("button", { name: "Continue as guest", exact: true })
     .click();
@@ -495,7 +505,20 @@ test("native guest journey preserves players contact and one checkout across ref
     .getByRole("group", { name: "Session times" })
     .getByRole("button", { name: /08:10–08:50/ })
     .click();
+  expect(calls.filter((c) => c.path.startsWith("/api/calendar/"))).toHaveLength(
+    4,
+  );
+  expect(calls.filter((c) => c.path === "/api/catalogue")).toHaveLength(1);
+  expect(
+    calls.filter((c) => c.path.startsWith("/api/booking/availability/")),
+  ).toHaveLength(0);
   await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Your details", exact: true }),
+  ).toBeVisible();
+  expect(
+    calls.filter((c) => c.path.startsWith("/api/booking/availability/")),
+  ).toHaveLength(1);
   await page.getByLabel("Full name", { exact: false }).fill("Synthetic Guest");
   await page
     .getByLabel("Email address", { exact: false })

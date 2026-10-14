@@ -1,5 +1,31 @@
 # SoccerBotStudio — Journey
 
+## Owner replaces customer 48-hour lead — 14 October 2026
+
+YS sets the latest business decision to 2.5 hours before session start and explicitly confirms it supersedes 48 hours. Implementation shares 150 minutes across customer display and server checks; finite historical trials remain unchanged. Inspection also found ongoing authority admitted only native service2 despite the premium mapping: it now admits the configured service3 before the existing exact dated-offer/price checks.
+
+All25 catalogue regressions pass, including exact-cutoff and post-read boundary checks; both targeted ongoing HTTP/coordinator tests pass, including premium preparation without booking dispatch. Initial frontend regression exposed an unavailable-adapter state hidden by the new no-speculative-date guard; scoped that guard to supported live availability, retaining the original alert assertion. Final frozen code verification, exact-source CI, GitHub deployment and public smoke are still required. This entry supersedes the earlier journey note describing 48-hour customer filtering.
+
+## Homepage browser gate catches impossible-date display reads — 14 October 2026
+
+CI38508429832 passed Worker boundaries and frontend browsers. The expanded native homepage flight rejected two pre-Continue daily requests for today, while retaining the expected four calendar requests and one catalogue request. TimeStep initially displays today; the fixture deliberately leaves that date unknown. Live availability now resolves dates whose final possible start is before the48-hour lead boundary locally as empty, without calling the provider. Demo behavior and eligible unknown-date fallback remain unchanged. Keep the zero-extra-read browser assertion and test the same too-soon behavior locally before a new exact-source run.
+
+## Homepage public metadata regression alignment — 14 October 2026
+
+CI38507816042 rejected the old ongoing-access assertion that anonymous /api/catalogue returns401. The authorized homepage contract now returns only public service metadata. Updated that integration test to require200, exact public DTO fields, no Set-Cookie and no extra provider read, while explicitly retaining401 for protected daily availability. This changes the expected public-read contract without loosening booking/identity admission. The corrected full HTTP/coordinator regression passes locally. The frontend browser gate also retained one visible loading-text locator; updated it to the accessible status label after the owner requested hidden status text, preserving the same pending-checkout visibility and link-absence assertions. No browser retry or timeout change. Frozen source7446bc3 had passed full local code verification; final CI must include this corrected boundary test.
+
+## Owner refines homepage prefetch and loading presentation — 14 October 2026
+
+While PR27 cold-cache CI ran, YS requested immediate homepage warming, no new cache request on guest/email entry, a larger centred spinning logo without visible status text, and a check of Details ordering. Inspection found public months already start on homepage but member/service transitions could restart reads; session metadata was only fetched after entry. Main Continue already awaited availability, but success invalidated display data and caused another read as Details opened.
+
+The follow-through retains public cache across entry, warms/shares public metadata, and renders the cached session immediately. It removes the post-success re-read and guards Details until a successful fresh check of that selection. Meaningful regressions cover guest/member cache reuse, shared in-flight metadata and expiry, delayed validation/direct-route admission, unchanged failed-selection recovery, and public metadata schema/auth boundaries. Local unit/component execution passed172 cases; all24 catalogue/Worker regressions and Worker type/layer checks passed. Build/export passed, but its combined receipt was correctly refused because source changed during verification; rerun against the frozen source and require exact-source CI. The existing CI-only native guest flight now starts on the homepage and asserts four prefetched months, one catalogue request, zero pre-Continue availability reads and one fresh check before Details. No booking/payment or browser execution is performed by Codex.
+
+## Live prices verified; reproduce cold-prefetch expiry before repair — 14 October 2026
+
+PR26 passed all PR/main gates and deployed46b3201/versiona42014f2-3171-401c-ba78-9ce1d3cf0d46 through successful GitHub run38504874365. October public offers now validate at the intended two native service prices. Sequential smoke stopped at a November503; its error body was not captured. Later individual November/December/January reads all returned200 with no offers. Preserve that limitation instead of asserting a root cause from an absent error code.
+
+Code inspection found a catalogue may be served at59 seconds old before range reads finish. Extended the existing priced-calendar regression with that aged snapshot and advancing read clock: the old source fails provider_data_stale. The corrected owner lazily fetches one fresh catalogue per uncached ongoing month and shares it across both service ranges. All24 catalogue cases and Worker TypeScript pass. No TTL extension, retry, booking, payment or provider setting change. Final exact-source CI/deployment and sequential four-month verification are pending at this entry.
+
 ## Preserve two deployment findings and repair their owners — 14 October 2026
 
 PR25/source45655ab passed all three gates, merged asb8917b1, and all three main gates passed. GitHub uploaded and activated Worker75b5c5d8 at10:51 Singapore, but its immediate health response still named36b84bd. Subsequent readback proved b8917b1 active. The first calendar smoke read returned503; the diagnostic read identified catalogue_representation_unavailable. Preserve both failures; do not report a green Cloudflare job or a working calendar from health alone.

@@ -240,8 +240,8 @@ export function DetailsStep({
                 <BrandLoading compact label="Saving details…" />
               ) : (
                 "Review booking"
-              )}{" "}
-              <Icon name="arrow" />
+              )}
+              {!saving && <Icon name="arrow" />}
             </button>
           </div>
         )}

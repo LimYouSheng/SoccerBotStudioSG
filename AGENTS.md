@@ -1,5 +1,17 @@
 # SoccerBotStudioSG engineering
 
+## Customer minimum lead time — 14 October 2026
+
+Owner explicitly replaces the customer 48-hour booking lead with 2.5 hours (150 minutes). Apply the shared policy to cached offers, fresh Continue, preparation and final writes. Historical finite trial contracts retain their old bounds. This is part of the already-authorized PR27 GitHub deployment; no new booking/payment experiment is required.
+
+## Homepage cache handoff and confirmation ordering — 14 October 2026
+
+Owner extends the in-flight deployment: preload on homepage before guest/email; reuse cached public dates/times and session information across authentication; enlarge/centre the SoccerBot loading emblem and remove visible status text. Keep accessible status labels and required identity calls. Details must wait for fresh main Continue validation. This supersedes identity-keyed public display cache invalidation, not authentication or final native write checks. PR27 remains the integration branch; final exact-source CI, GitHub deployment and public read verification are required.
+
+## Cold-month catalogue freshness — 14 October 2026
+
+PR26 deployed46b3201/versiona42014f2 through a successful GitHub job. October live offers match weekday8800/service2 and weekend10800/service3; subsequent independent November–January reads returned200 with no available slots. The first sequential November smoke returned503 without a retained error body. A deterministic regression then reproduced a cold-month failure when a59-second-old catalogue aged past60 seconds during range reads. Fix that reproducible case without claiming the missing live error code: one fresh catalogue per uncached ongoing month, shared across both priced services; no retries or longer TTL. CI/deployment and final sequential smoke remain required.
+
 ## Live provider-map and deployment readiness correction — 14 October 2026
 
 PR25 passed all three PR/main gates and GitHub deployed b8917b1 as75b5c5d8. Immediate health still returned36b84bd and failed the deployment job; later health proves b8917b1 active. Calendar read then rejected the newly created service's actual keyed null unit_map. Owner-authorized follow-through corrects the strict parser from observed fields and adds bounded deployment-revision observation without a second deploy. Keep first failure and actual deployed state; no rollback, booking or payment. Canonical owners below retain evidence and verification status.

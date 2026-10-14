@@ -7,6 +7,8 @@ import {
   type CatalogueBinding,
 } from "../src/domain/catalog";
 import {
+  BOOKING_LEAD_MINUTES,
+  BOOKING_LEAD_MS,
   NATIVE_TRIAL_LEAD_MS,
   SESSION_MINUTES,
 } from "../src/domain/booking-policy";
@@ -76,6 +78,7 @@ export const nativeAccountContractSchema = z
     bufferAfterMinutes: z.literal(10),
     clientLoginRequired: z.literal(false),
     providerSchedules: z.literal("non-overlapping"),
+    bookingLeadMinutes: z.literal(BOOKING_LEAD_MINUTES).optional(),
     trialLeadTimeException: z.literal("owner-2026-10-14-15").optional(),
     confirmedAtMs: z.number().int().positive().safe(),
     expiresAtMs: z.number().int().positive().safe(),
@@ -102,8 +105,9 @@ export function nativeContractSelection(
     priceMinor: rate.priceMinor,
   };
 }
-// This date-specific owner exception exists only in an externally installed
-// developer contract. Customer DTOs cannot supply it; all other trials retain48h.
+// Lead policy comes from a trusted server-owned account contract, never a
+// customer DTO. Ongoing customer contracts use 150 minutes; historical finite
+// trials retain their original 48-hour rule or exact date-specific exception.
 export function nativeTrialLeadMs(
   contractValue: unknown,
   binding: CatalogueBinding,
@@ -113,6 +117,17 @@ export function nativeTrialLeadMs(
   const parsed = nativeAccountContractSchema.safeParse(contractValue);
   if (!parsed.success) return NATIVE_TRIAL_LEAD_MS;
   const contract = parsed.data;
+  if (
+    contract.bookingLeadMinutes === BOOKING_LEAD_MINUTES &&
+    contract.accountId === binding.accountId &&
+    contract.environmentId === binding.environmentId &&
+    contract.companyLogin === binding.companyLogin &&
+    (session.serviceId === contract.serviceId ||
+      session.serviceId === contract.premiumServiceId) &&
+    contract.confirmedAtMs <= now &&
+    contract.expiresAtMs > now
+  )
+    return BOOKING_LEAD_MS;
   const date = new Date(session.startMs + 8 * 3600000)
     .toISOString()
     .slice(0, 10);

@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import ts from "typescript";
 const bundle = await build({
   stdin: {
-    contents: `export * from './worker/public-calendar'; export * from './worker/native-calendar'; export * from './worker/catalogue'; export * from './worker/prebooking'; export * from './worker/provider-session'; export * from './worker/provider-transport';`,
+    contents: `export * from './worker/customer-catalogue'; export * from './worker/public-calendar'; export * from './worker/native-calendar'; export * from './worker/catalogue'; export * from './worker/prebooking'; export * from './worker/provider-session'; export * from './worker/provider-transport';`,
     resolveDir: process.cwd(),
   },
   bundle: true,
@@ -14,6 +14,7 @@ const bundle = await build({
   format: "esm",
 });
 const {
+  customerCatalogue,
   publicCalendar,
   windowCatalogue,
   windowCalendar,
@@ -1029,6 +1030,39 @@ test("anonymous calendar is bounded and shared without exposing provider slots o
     ["12"],
   );
   assert.equal("binding" in catalogue, false);
+  const visitor = new Request("https://synthetic.example/api/catalogue");
+  const publicEnv = {
+    ...env,
+    LIVE_CUSTOMER_ACCESS: "enabled",
+    COORDINATOR: {
+      getByName: () => ({
+        windowCatalogue: async () => ({ ok: true, value: catalogue }),
+      }),
+    },
+  };
+  assert.deepEqual(
+    await customerCatalogue(visitor, publicEnv, Date.now()),
+    catalogue,
+  );
+  await assert.rejects(
+    customerCatalogue(
+      visitor,
+      { ...publicEnv, LIVE_CUSTOMER_ACCESS: "disabled" },
+      Date.now(),
+    ),
+  );
+  const privateEnv = {
+    ...publicEnv,
+    COORDINATOR: {
+      getByName: () => ({
+        windowCatalogue: async () => ({
+          ok: true,
+          value: { ...catalogue, customer: "private" },
+        }),
+      }),
+    },
+  };
+  await assert.rejects(customerCatalogue(visitor, privateEnv, Date.now()));
   const protectedMonth = await windowCalendar({ ...input, serviceId: "12" });
   assert.equal(protectedMonth.dates[0].offers.length, 1);
   assert.equal(
@@ -1071,7 +1105,9 @@ test("anonymous calendar is bounded and shared without exposing provider slots o
 });
 
 test("priced customer calendar chooses native service by Singapore weekday and public holiday and refreshes changes", async (t) => {
-  t.mock.method(Date, "now", () => Date.parse("2026-11-01T00:00:00Z"));
+  let now = Date.parse("2026-11-01T00:00:00Z");
+  t.mock.method(Date, "now", () => now);
+  const catalogueReads = [];
   const config = ts.parseConfigFileTextToJson(
     "wrangler.jsonc",
     readFileSync("wrangler.jsonc", "utf8"),
@@ -1101,15 +1137,18 @@ test("priced customer calendar chooses native service by Singapore weekday and p
     control: {},
     provider: {
       identity: async () => {},
-      catalogue: async () =>
-        normalizeCatalogue(
+      catalogue: async (_env, _control, fresh) => {
+        catalogueReads.push(fresh);
+        return normalizeCatalogue(
           data.services,
           data.instructors,
           binding,
-          Date.now(),
-        ),
+          now - (fresh ? 0 : 59000),
+        );
+      },
       nativeRead: async (_env, _control, request) => {
         calls++;
+        now += 2000;
         const body = {};
         for (
           let day = new Date(request.from + "T00:00:00Z");
@@ -1134,9 +1173,15 @@ test("priced customer calendar chooses native service by Singapore weekday and p
     assert.equal(offer.productServiceId, "2");
     assert.equal(offer.priceMinor, price);
   }
+  assert.deepEqual(
+    catalogueReads,
+    [true],
+    "one fresh catalogue is shared by both priced service ranges",
+  );
   const count = calls;
   await publicCalendar(input);
   assert.equal(calls, count);
+  assert.deepEqual(catalogueReads, [true]);
   available = false;
   const fresh = await windowAvailability({
     ...input,
@@ -1155,6 +1200,27 @@ test("priced customer calendar chooses native service by Singapore weekday and p
       fresh: true,
     }),
     /native_service_price_changed/,
+  );
+  data.services[3].price = "108";
+  available = true;
+  now = Date.parse("2026-11-06T06:29:58+08:00");
+  const boundary = await windowAvailability({
+    ...input,
+    serviceId: "2",
+    date: "2026-11-06",
+    fresh: true,
+  });
+  assert.equal(
+    boundary.offers.length,
+    1,
+    "exactly 150 minutes remains bookable",
+  );
+  now++;
+  assert.deepEqual(
+    (await windowAvailability({ ...input, serviceId: "2", date: "2026-11-06" }))
+      .offers,
+    [],
+    "cached offers cross the cutoff without a stale fallback",
   );
 });
 
@@ -1252,4 +1318,77 @@ test("catalogue accepts observed explicit provider null maps without allowing ot
       normalizeCatalogue(data.services, data.instructors, binding, Date.now()),
     );
   }
+});
+
+test("customer booking accepts exactly 150 minutes and rechecks the cutoff after provider reads", async (t) => {
+  let now = Date.parse("2026-11-06T06:30:00+08:00");
+  t.mock.method(Date, "now", () => now);
+  const intent = approved();
+  intent.sessions[0].startMs = now + 150 * 60000;
+  intent.customerMode = "booking-contact";
+  intent.contact = {
+    name: "Synthetic Guest",
+    email: "guest@example.invalid",
+    phone: "00000000",
+    contactMethod: "email",
+    academy: "",
+  };
+  const contract = {
+    ...binding,
+    serviceId: "12",
+    priceMinor: 8800,
+    currency: "SGD",
+    taxMinor: 0,
+    durationMinutes: 40,
+    bufferAfterMinutes: 10,
+    clientLoginRequired: false,
+    providerSchedules: "non-overlapping",
+    bookingLeadMinutes: 150,
+    confirmedAtMs: now - 1000,
+    expiresAtMs: now + 600000,
+  };
+  const read = exchangeFor(fixtures(), intent);
+  const validator = new NativePrebooking(
+    binding,
+    new CatalogueReads(),
+    read.exchange,
+    contract,
+  );
+  assert.equal(
+    nativeTrialLeadMs(contract, binding, intent.sessions[0], now),
+    150 * 60000,
+  );
+  assert.equal((await validator.review(intent)).state, "ready");
+  assert.deepEqual(await validator.revalidate(intent), intent);
+  const count = read.calls.length;
+  now++;
+  await assert.rejects(validator.review(intent), /native_trial_lead_time/);
+  assert.equal(read.calls.length, count);
+  now--;
+  const delayed = new NativePrebooking(
+    binding,
+    new CatalogueReads(),
+    async (request) => {
+      const result = await read.exchange(request);
+      now++;
+      return result;
+    },
+    contract,
+  );
+  await assert.rejects(delayed.revalidate(intent), /native_trial_lead_time/);
+  for (const change of [
+    { accountId: "foreign" },
+    { bookingLeadMinutes: 0 },
+    { expiresAtMs: now - 1 },
+  ])
+    assert.equal(
+      nativeTrialLeadMs(
+        { ...contract, ...change },
+        binding,
+        intent.sessions[0],
+        now,
+      ),
+      48 * 3600000,
+    );
+  assert.ok(read.calls.every((request) => request.kind !== "book"));
 });

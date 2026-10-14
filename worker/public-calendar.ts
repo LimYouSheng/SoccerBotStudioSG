@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  BOOKING_LEAD_MS,
+  NATIVE_TRIAL_LEAD_MS,
+} from "../src/domain/booking-policy";
 import { sessionRate } from "../src/domain/session-pricing";
 import { ApiError, policy, liveCustomerAccess } from "./policy";
 import { providerSecrets } from "./provider-transport";
@@ -173,6 +177,19 @@ export async function windowCalendar(
   )
     throw new ApiError(503, "calendar_scope_unavailable");
   if (options.fresh && options.date) options.cache.invalidateDate(options.date);
+  // A cold month can require many range reads. Start it with one fresh catalogue
+  // so a nearly expired shared snapshot cannot age out halfway through prefetch.
+  // Both priced services share this read; complete month-cache hits do no work.
+  let cataloguePending: ReturnType<ProviderSession["catalogue"]> | undefined;
+  const catalogueForMonth = () =>
+    (cataloguePending ??= (async () => {
+      await provider.identity(env, control);
+      return provider.catalogue(
+        env,
+        control,
+        liveCustomerAccess(env) || options.fresh === true,
+      );
+    })());
   const read = (serviceId: string) =>
     options.cache.read({
       scope: JSON.stringify([binding, p.SOURCE_REVISION]),
@@ -180,12 +197,7 @@ export async function windowCalendar(
       serviceId,
       dates: options.fresh && options.date ? [options.date] : dates,
       catalogue: async () => {
-        await provider.identity(env, control);
-        const catalogue = await provider.catalogue(
-          env,
-          control,
-          options.fresh === true,
-        );
+        const catalogue = await catalogueForMonth();
         if (liveCustomerAccess(env) && p.PREMIUM_SERVICE_ID) {
           const service = catalogue.services.find(
             (item) => item.id === serviceId,
@@ -247,7 +259,11 @@ export async function windowCalendar(
     dates: raw.dates.map((day) => ({
       ...day,
       offers: day.offers.filter(
-        (offer) => offer.startMs - Date.now() >= 48 * 3600000,
+        (offer) =>
+          offer.startMs - Date.now() >=
+          (liveCustomerAccess(options.env)
+            ? BOOKING_LEAD_MS
+            : NATIVE_TRIAL_LEAD_MS),
       ),
     })),
   });
@@ -276,7 +292,11 @@ export async function publicCalendar(options: ReadOptions & { month: string }) {
       date: day.date,
       ...(liveCustomerAccess(options.env) ? { offers: day.offers } : {}),
       available: day.offers.some(
-        (offer) => offer.startMs - Date.now() >= 48 * 3600000,
+        (offer) =>
+          offer.startMs - Date.now() >=
+          (liveCustomerAccess(options.env)
+            ? BOOKING_LEAD_MS
+            : NATIVE_TRIAL_LEAD_MS),
       ),
     })),
   });

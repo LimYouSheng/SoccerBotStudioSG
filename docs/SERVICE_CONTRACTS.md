@@ -1,5 +1,23 @@
 # SoccerBotStudio — Service Contracts
 
+## Customer lead-time contract — 14 October 2026
+
+LIVE_CUSTOMER_ACCESS grants use the owner-approved 150-minute minimum lead, replacing the earlier 48-hour customer policy. The optional strict bookingLeadMinutes=150 contract field is installed by customer-authority, bound to the account/environment/company and actual configured service, and expires with the grant. Missing, foreign or expired contracts cannot claim the shorter policy. The native prepare request schema exposes no lead-time override. Fresh calendar, review, revalidation and dispatch must agree, including a selection crossing the cutoff during a provider read.
+
+Boundary regression covers exact 150-minute eligibility, one millisecond too late, crossing during reads and invalid contract bindings. The ongoing HTTP/coordinator regression checks the installed policy and a separate actual premium-service preparation at SGD108, without booking dispatch. Native payment and webhook acceptance remain separate.
+
+## Anonymous homepage metadata and entry reuse — 14 October 2026
+
+GET /api/catalogue in LIVE_CUSTOMER_ACCESS mode returns the existing strict CustomerCatalogue DTO through windowCatalogue admission, without creating a guest or reading private identity data. Other modes retain their authenticated grant contract. Browser transport still validates response age under60 seconds and bounded/schema-safe bytes; its public display snapshot can then be retained for five minutes from observedAtMs. Homepage and booking share one in-flight request; leaving one consumer does not cancel another, and failed/expired data never becomes a fallback. LiveCatalogue can render an existing snapshot synchronously.
+
+Calendar prefetch starts before account selection and retains its public scope across guest/email entry. Cached date/player clicks cause no availability requests; mandatory identity requests are separate. Main Continue awaits all selected-date fresh reads and only then permits Details; successful validation does not trigger an additional availability request. Selection identity/adapter changes invalidate the UI admission; server preparation/payment checks remain independently authoritative.
+
+## Cold calendar prefetch freshness contract — 14 October 2026
+
+windowCalendar lazily acquires one request-owned catalogue promise only when NativeCalendarReads misses. Ongoing reads force fresh catalogue metadata; both service2 and3 validate against that same snapshot. Cached complete months still make zero catalogue/range calls. Fresh daily continuation preserves cache invalidation and provider revalidation. No freshness timestamp is rewritten and no stale data is accepted by extending a TTL.
+
+Regression advances provider-read time after supplying a59-second-old cached catalogue: the old implementation throws provider_data_stale; the correction uses one fresh catalogue for both price ranges, reuses complete month cache, and still detects changed availability/price on fresh reads. PR26 live proof: October23 has9 slots and30 has11 at8800/service2; October24/31 each have12 at10800/service3. Independent November,December,January reads returned30,31,31 known days respectively, all with no offers. The first sequential November503 body was not retained, so its exact error code is unknown; do not conflate that missing body with the deterministic regression.
+
 ## Premium catalogue map and deployment health evidence — 14 October 2026
 
 After PR25, fresh public calendar returned503 catalogue_representation_unavailable. A separate authenticated public API read (getToken then getEventList(true,false), two direct provider operations outside coordinator accounting) established service2 price88.0000,40 minutes,is_active/is_public1,is_recurring0,unit_map absent; service3 price108.0000 with the same scalar formats and unit_map={"2":null,"3":null,"4":null}. Store only these public fields; tokens remain in process memory. The strict normalizer now accepts that keyed-null representation and validates its IDs, while retaining rejection of capacity values, arbitrary strings/booleans, empty objects and malformed keys.

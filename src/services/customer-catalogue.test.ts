@@ -1,6 +1,9 @@
 import { afterEach, expect, test, vi } from "vitest";
-import { customerCatalogueService } from "./customer-catalogue";
-afterEach(() => vi.unstubAllGlobals());
+import { createCustomerCatalogueService } from "./customer-catalogue";
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.useRealTimers();
+});
 const catalogue = () => ({
   environment: "developer",
   observedAtMs: Date.now(),
@@ -19,7 +22,8 @@ const catalogue = () => ({
   ],
   instructors: [{ id: "9", name: "Updated instructor", active: true }],
 });
-test("customer catalogue accepts current mutable provider data only through protected same-origin reads", async () => {
+test("customer catalogue accepts current mutable provider data only through same-origin public display reads", async () => {
+  const customerCatalogueService = createCustomerCatalogueService();
   const data = catalogue(),
     request = vi.fn().mockResolvedValue(Response.json(data));
   vi.stubGlobal("fetch", request);
@@ -28,7 +32,7 @@ test("customer catalogue accepts current mutable provider data only through prot
   expect(request).toHaveBeenCalledWith(
     "/api/catalogue",
     expect.objectContaining({
-      signal,
+      signal: expect.any(AbortSignal),
       credentials: "same-origin",
       cache: "no-store",
       redirect: "error",
@@ -36,6 +40,7 @@ test("customer catalogue accepts current mutable provider data only through prot
   );
 });
 test("customer catalogue rejects stale future partial foreign oversized and unavailable data without fallback", async () => {
+  const customerCatalogueService = createCustomerCatalogueService();
   const request = vi.fn();
   vi.stubGlobal("fetch", request);
   for (const response of [
@@ -53,4 +58,35 @@ test("customer catalogue rejects stale future partial foreign oversized and unav
       customerCatalogueService.read(new AbortController().signal),
     ).rejects.toThrow();
   }
+});
+
+test("homepage catalogue cache shares in-flight reads and survives authentication until five-minute expiry", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2027-01-01T00:00:00Z"));
+  const service = createCustomerCatalogueService();
+  let finish!: (value: Response) => void;
+  const request = vi.fn(
+    () =>
+      new Promise<Response>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  vi.stubGlobal("fetch", request);
+  const homepage = new AbortController();
+  const first = service.read(homepage.signal);
+  const booking = service.read(new AbortController().signal);
+  homepage.abort();
+  const data = catalogue();
+  finish(Response.json(data));
+  await expect(first).rejects.toThrow();
+  expect(await booking).toEqual(data);
+  expect(service.peek()).toEqual(data);
+  expect(await service.read(new AbortController().signal)).toEqual(data);
+  expect(request).toHaveBeenCalledTimes(1);
+  vi.setSystemTime(Date.now() + 300000);
+  expect(service.peek()).toBeUndefined();
+  const refreshed = service.read(new AbortController().signal);
+  expect(request).toHaveBeenCalledTimes(2);
+  finish(Response.json(catalogue()));
+  await refreshed;
 });

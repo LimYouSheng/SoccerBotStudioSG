@@ -324,6 +324,10 @@
     "title": "preloaded browser slots survive date and player changes and Continue refreshes changed availability"
   },
   {
+    "file": "src/features/booking/booking-parity.test.tsx",
+    "title": "Details waits for the complete fresh selection check without another display read after success"
+  },
+  {
     "file": "src/features/booking/confirmation-checking.test.tsx",
     "title": "aborts stale session reads and cannot reuse their confirmed result"
   },
@@ -633,11 +637,15 @@
   },
   {
     "file": "src/services/customer-catalogue.test.ts",
-    "title": "customer catalogue accepts current mutable provider data only through protected same-origin reads"
+    "title": "customer catalogue accepts current mutable provider data only through same-origin public display reads"
   },
   {
     "file": "src/services/customer-catalogue.test.ts",
     "title": "customer catalogue rejects stale future partial foreign oversized and unavailable data without fallback"
+  },
+  {
+    "file": "src/services/customer-catalogue.test.ts",
+    "title": "homepage catalogue cache shares in-flight reads and survives authentication until five-minute expiry"
   },
   {
     "file": "src/services/identity.test.ts",
