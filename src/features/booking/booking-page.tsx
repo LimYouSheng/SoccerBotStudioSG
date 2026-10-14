@@ -31,14 +31,21 @@ const screens = {
   confirmation: ConfirmationStep,
 };
 export function BookingPage({ step }: { step: BookingStep }) {
-  const { ready, draft, attempt, now, bookingService } = useBooking(),
+  const { ready, draft, attempt, now, bookingService, selectionConfirmed } =
+      useBooking(),
     router = useRouter();
   const actual =
       bookingService.mode === "live" &&
       bookingService.operations.availability === "unavailable" &&
       step !== "account"
         ? "session"
-        : guardedStep(step, draft, attempt, now),
+        : bookingService.mode === "live" &&
+            !attempt &&
+            draft.mode &&
+            ["details", "review", "payment"].includes(step) &&
+            !selectionConfirmed
+          ? "time"
+          : guardedStep(step, draft, attempt, now),
     current = progress.findIndex(([id]) => id === step);
   useEffect(() => {
     if (ready && actual !== step) router.replace(`/book/${actual}/`);

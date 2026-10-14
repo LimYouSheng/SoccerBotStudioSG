@@ -1,7 +1,12 @@
 import { z } from "zod";
 import { authenticate } from "./access";
 import { coordinatorName } from "./bindings";
-import { ApiError, policy, unwrapRpcOutcome } from "./policy";
+import {
+  ApiError,
+  policy,
+  liveCustomerAccess,
+  unwrapRpcOutcome,
+} from "./policy";
 import { hasPublicCalendarWindow } from "./public-calendar";
 import { traceId } from "./diagnostics";
 import {
@@ -17,6 +22,16 @@ export async function customerCatalogue(
   env: Env,
   now: number,
 ) {
+  // Ongoing browsing exposes only the strict public service/instructor DTO.
+  // Historical finite catalogue grants still require their customer identity.
+  if (liveCustomerAccess(env))
+    return customerCatalogueSchema.parse(
+      unwrapRpcOutcome(
+        await env.COORDINATOR.getByName(coordinatorName).windowCatalogue(
+          traceId(),
+        ),
+      ),
+    );
   const access = await authenticate(request, env, now);
   if (hasPublicCalendarWindow(env)) {
     const result = customerCatalogueSchema.parse(

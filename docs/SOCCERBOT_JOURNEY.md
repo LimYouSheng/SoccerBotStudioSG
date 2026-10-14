@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Owner refines homepage prefetch and loading presentation — 14 October 2026
+
+While PR27 cold-cache CI ran, YS requested immediate homepage warming, no new cache request on guest/email entry, a larger centred spinning logo without visible status text, and a check of Details ordering. Inspection found public months already start on homepage but member/service transitions could restart reads; session metadata was only fetched after entry. Main Continue already awaited availability, but success invalidated display data and caused another read as Details opened.
+
+The follow-through retains public cache across entry, warms/shares public metadata, and renders the cached session immediately. It removes the post-success re-read and guards Details until a successful fresh check of that selection. Meaningful regressions cover guest/member cache reuse, shared in-flight metadata and expiry, delayed validation/direct-route admission, unchanged failed-selection recovery, and public metadata schema/auth boundaries. Local unit/component execution passed172 cases; all24 catalogue/Worker regressions and Worker type/layer checks passed. Build/export passed, but its combined receipt was correctly refused because source changed during verification; rerun against the frozen source and require exact-source CI. The existing CI-only native guest flight now starts on the homepage and asserts four prefetched months, one catalogue request, zero pre-Continue availability reads and one fresh check before Details. No booking/payment or browser execution is performed by Codex.
+
 ## Live prices verified; reproduce cold-prefetch expiry before repair — 14 October 2026
 
 PR26 passed all PR/main gates and deployed46b3201/versiona42014f2-3171-401c-ba78-9ce1d3cf0d46 through successful GitHub run38504874365. October public offers now validate at the intended two native service prices. Sequential smoke stopped at a November503; its error body was not captured. Later individual November/December/January reads all returned200 with no offers. Preserve that limitation instead of asserting a root cause from an absent error code.

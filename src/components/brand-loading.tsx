@@ -47,7 +47,6 @@ export function BrandLoading({
           alt={compact ? "" : "SOCCERBOTSTUDIO Singapore"}
         />
         {!compact && <span className="page-loading-track" aria-hidden="true" />}
-        {compact && <span>{label}</span>}
       </span>
     </Container>
   );

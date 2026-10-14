@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import ts from "typescript";
 const bundle = await build({
   stdin: {
-    contents: `export * from './worker/public-calendar'; export * from './worker/native-calendar'; export * from './worker/catalogue'; export * from './worker/prebooking'; export * from './worker/provider-session'; export * from './worker/provider-transport';`,
+    contents: `export * from './worker/customer-catalogue'; export * from './worker/public-calendar'; export * from './worker/native-calendar'; export * from './worker/catalogue'; export * from './worker/prebooking'; export * from './worker/provider-session'; export * from './worker/provider-transport';`,
     resolveDir: process.cwd(),
   },
   bundle: true,
@@ -14,6 +14,7 @@ const bundle = await build({
   format: "esm",
 });
 const {
+  customerCatalogue,
   publicCalendar,
   windowCatalogue,
   windowCalendar,
@@ -1029,6 +1030,39 @@ test("anonymous calendar is bounded and shared without exposing provider slots o
     ["12"],
   );
   assert.equal("binding" in catalogue, false);
+  const visitor = new Request("https://synthetic.example/api/catalogue");
+  const publicEnv = {
+    ...env,
+    LIVE_CUSTOMER_ACCESS: "enabled",
+    COORDINATOR: {
+      getByName: () => ({
+        windowCatalogue: async () => ({ ok: true, value: catalogue }),
+      }),
+    },
+  };
+  assert.deepEqual(
+    await customerCatalogue(visitor, publicEnv, Date.now()),
+    catalogue,
+  );
+  await assert.rejects(
+    customerCatalogue(
+      visitor,
+      { ...publicEnv, LIVE_CUSTOMER_ACCESS: "disabled" },
+      Date.now(),
+    ),
+  );
+  const privateEnv = {
+    ...publicEnv,
+    COORDINATOR: {
+      getByName: () => ({
+        windowCatalogue: async () => ({
+          ok: true,
+          value: { ...catalogue, customer: "private" },
+        }),
+      }),
+    },
+  };
+  await assert.rejects(customerCatalogue(visitor, privateEnv, Date.now()));
   const protectedMonth = await windowCalendar({ ...input, serviceId: "12" });
   assert.equal(protectedMonth.dates[0].offers.length, 1);
   assert.equal(

@@ -17,6 +17,7 @@ import type {
 import { BookingProvider, useBooking } from "./provider";
 import { TimeStep } from "./time-step";
 import { Summary } from "./summary";
+import { BookingPage } from "./booking-page";
 import { SessionStep } from "./session-step";
 import { dateLabel } from "@/domain/dates";
 const push = vi.fn();
@@ -274,13 +275,38 @@ test("homepage prefetch starts without a booking identity and never creates gues
     },
     publicCalendar,
   };
+  function Entry() {
+    const { update } = useBooking();
+    return (
+      <>
+        <p>Homepage</p>
+        <button
+          onClick={() => update({ mode: "guest", nativeServiceId: "12" })}
+        >
+          Guest entry
+        </button>
+        <button
+          onClick={() =>
+            update({ mode: "member", accountEmail: "synthetic@example.test" })
+          }
+        >
+          Email entry
+        </button>
+      </>
+    );
+  }
   render(
     <BookingProvider bookingService={service}>
-      <p>Homepage</p>
+      <Entry />
     </BookingProvider>,
   );
   await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(4));
   expect(screen.getByText("Homepage")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Guest entry" }));
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: "Email entry" }));
+  await act(async () => {});
+  expect(publicCalendar).toHaveBeenCalledTimes(4);
   expect(publicCalendar.mock.calls.map(([input]) => input.month)).toHaveLength(
     4,
   );
@@ -455,4 +481,80 @@ test("browser slot cache expires after five minutes", async () => {
   expect(screen.getByRole("status")).toHaveTextContent("2027-01-05");
   await act(async () => vi.advanceTimersByTime(240000));
   expect(screen.getByRole("status")).toHaveTextContent("loading");
+});
+
+test("Details waits for the complete fresh selection check without another display read after success", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2027-01-01T00:00:00Z"));
+  let finish!: (slots: Array<typeof slot & { available: boolean }>) => void;
+  const availability = vi.fn(
+    () =>
+      new Promise<Array<typeof slot & { available: boolean }>>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const publicCalendar = vi.fn(async ({ month }: { month: string }) => ({
+    month,
+    serviceId: "12",
+    observedAtMs: Date.now(),
+    dates:
+      month === "2027-01"
+        ? [
+            {
+              date: slot.date,
+              available: true,
+              offers: [
+                {
+                  serviceId: "12",
+                  serviceName: slot.native.serviceName,
+                  instructorId: slot.instructor,
+                  instructorName: slot.native.instructorName,
+                  startMs: Date.parse(`${slot.date}T${slot.start}:00+08:00`),
+                  priceMinor: 8800,
+                  currency: "SGD" as const,
+                },
+              ],
+            },
+          ]
+        : [],
+  }));
+  const service = {
+    ...demoBookingService,
+    mode: "live" as const,
+    operations: {
+      ...demoBookingService.operations,
+      availability: "live" as const,
+    },
+    publicCalendar,
+    availability,
+  };
+  const tree = (step: "time" | "details") => (
+    <BookingProvider bookingService={service}>
+      <Seed />
+      <BookingPage step={step} />
+    </BookingProvider>
+  );
+  const view = render(tree("time"));
+  await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(4));
+  fireEvent.click(screen.getByRole("button", { name: "Choose test session" }));
+  view.rerender(tree("details"));
+  expect(
+    screen.queryByRole("heading", { name: "Your details" }),
+  ).not.toBeInTheDocument();
+  view.rerender(tree("time"));
+  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+  expect(availability).toHaveBeenCalledTimes(1);
+  expect(push).not.toHaveBeenCalled();
+  expect(
+    screen.queryByRole("heading", { name: "Your details" }),
+  ).not.toBeInTheDocument();
+  await act(async () => finish([{ ...slot, available: true }]));
+  expect(push).toHaveBeenCalledWith("/book/details/");
+  view.rerender(tree("details"));
+  expect(
+    screen.getByRole("heading", { name: "Your details" }),
+  ).toBeInTheDocument();
+  await act(async () => {});
+  expect(availability).toHaveBeenCalledTimes(1);
+  expect(publicCalendar).toHaveBeenCalledTimes(4);
 });

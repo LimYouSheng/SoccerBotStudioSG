@@ -114,7 +114,9 @@ test("calendar and basket share delayed availability once and preserve selection
       <Probe />
     </BookingProvider>,
   );
-  expect(screen.getByText("Checking available times…")).toBeVisible();
+  expect(
+    screen.getByRole("status", { name: "Checking available times…" }),
+  ).toBeVisible();
   expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
   expect(loadBooking().draft.slots).toHaveLength(1);
   expect(availability).toHaveBeenCalledTimes(1);
@@ -160,7 +162,9 @@ test("availability failure is not no slots and an explicit retry retains the bas
   expect(screen.queryByText(/synthetic private/)).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
   fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-  expect(screen.getByText("Checking available times…")).toBeVisible();
+  expect(
+    screen.getByRole("status", { name: "Checking available times…" }),
+  ).toBeVisible();
   await act(async () => {
     second.resolve(demoBookingModel.availability(date));
   });
@@ -215,11 +219,15 @@ test("reordered dates and player revisions discard old replies even when the ada
   });
   expect(screen.getByRole("button", { name: /09:00–09:40/ })).toBeEnabled();
   fireEvent.click(screen.getByRole("button", { name: "Change players" }));
-  expect(screen.getByText("Checking available times…")).toBeVisible();
+  expect(
+    screen.getByRole("status", { name: "Checking available times…" }),
+  ).toBeVisible();
   await act(async () => {
     old.resolve(demoBookingModel.availability("2026-10-09"));
   });
-  expect(screen.getByText("Checking available times…")).toBeVisible();
+  expect(
+    screen.getByRole("status", { name: "Checking available times…" }),
+  ).toBeVisible();
   await act(async () => {
     changed.resolve(demoBookingModel.availability(date));
   });
@@ -612,7 +620,9 @@ test("replacing an adapter with the same mode invalidates its completed availabi
       <Summary basket />
     </BookingProvider>,
   );
-  expect(screen.getByText("Checking available times…")).toBeVisible();
+  expect(
+    screen.getByRole("status", { name: "Checking available times…" }),
+  ).toBeVisible();
   expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
   await act(async () => {
     pending.resolve([]);

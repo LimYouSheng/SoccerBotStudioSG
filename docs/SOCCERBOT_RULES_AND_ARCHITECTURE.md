@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Homepage display cache survives entry — 14 October 2026
+
+BookingProvider starts public calendar and session-metadata prefetch on homepage. Public calendar scope excludes guest/member identity and selected-service effect changes, so entry neither discards completed months nor aborts an in-flight month. Public display metadata uses one browser-memory five-minute cache and coalesces in-flight consumers; page reload clears it. Ongoing customer mode allows only the strict public service/instructor catalogue without identity. Historical finite catalogue grants remain authenticated. Booking/session/identity authority never comes from this display cache.
+
+Main Continue validates every selected date before Details. A successful check records a UI selection fingerprint bound to booking adapter, identity, service, players and slots; direct Details/Review entry without that result returns to Time. Contact edits retain the checked selection; selection changes require validation again. Success no longer invalidates display data and starts a redundant read behind Details. Failure retains basket and invalidates/reloads display data. Native preparation and each write still check authoritative availability and price. Loading components centre an enlarged branded emblem/logo and keep status text accessible only.
+
 ## Fresh catalogue for cold month reads — 14 October 2026
 
 An ongoing uncached calendar month starts with one fresh provider catalogue snapshot, shared between weekday and premium service range reads. Complete monthly cache hits do not fetch catalogue metadata. This prevents a previously cached catalogue near its60-second expiry from invalidating an otherwise fresh multi-range read. Keep the60-second server and five-minute browser limits, fresh Continue and write validation, unknown-date behavior and no automatic retries. Historical finite windows retain their existing freshness/budget semantics.

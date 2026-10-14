@@ -3,11 +3,13 @@ import {
   CATALOGUE_MAX_AGE_MS,
   type CustomerCatalogue,
 } from "@/domain/catalog";
+import { BROWSER_CALENDAR_MAX_AGE_MS } from "@/domain/native-checkout";
 import { BookingServiceError } from "./contracts";
 export interface CustomerCatalogueService {
   read(signal: AbortSignal): Promise<CustomerCatalogue>;
+  peek?(): CustomerCatalogue | undefined;
 }
-export const customerCatalogueService: CustomerCatalogueService = {
+const transport: CustomerCatalogueService = {
   async read(signal) {
     const unavailable = () =>
       new BookingServiceError(
@@ -56,3 +58,45 @@ export const customerCatalogueService: CustomerCatalogueService = {
     return result.data;
   },
 };
+
+// Public display metadata only. A page reload gets a new cache; authentication
+// never becomes a cache key and this snapshot cannot authorize a booking.
+export function createCustomerCatalogueService(): CustomerCatalogueService & {
+  peek(): CustomerCatalogue | undefined;
+} {
+  let retained: CustomerCatalogue | undefined;
+  let pending: Promise<CustomerCatalogue> | undefined;
+  function peek() {
+    if (
+      retained &&
+      (retained.observedAtMs > Date.now() ||
+        Date.now() - retained.observedAtMs >= BROWSER_CALENDAR_MAX_AGE_MS)
+    )
+      retained = undefined;
+    return retained;
+  }
+  return {
+    peek,
+    async read(signal) {
+      signal.throwIfAborted();
+      const cached = peek();
+      if (cached) return cached;
+      if (!pending) {
+        // One consumer leaving must not abort the homepage/booking shared read.
+        pending = transport
+          .read(new AbortController().signal)
+          .then((data) => {
+            retained = data;
+            return data;
+          })
+          .finally(() => {
+            pending = undefined;
+          });
+      }
+      const data = await pending;
+      signal.throwIfAborted();
+      return data;
+    },
+  };
+}
+export const customerCatalogueService = createCustomerCatalogueService();

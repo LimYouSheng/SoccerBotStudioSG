@@ -21,6 +21,7 @@ import {
 } from "@/domain/booking";
 import type { CustomerIdentityService } from "@/services/contracts";
 import { services } from "@/services";
+import { customerCatalogueService } from "@/services/customer-catalogue";
 import { defineBookingService } from "@/services/booking";
 import {
   BookingServiceError,
@@ -48,6 +49,7 @@ interface BookingContextValue extends StoredBooking {
   calendar: ReturnType<typeof useCalendarAvailability>;
   showMonth: (month: string) => void;
   validateSelection: () => Promise<boolean>;
+  selectionConfirmed: boolean;
   ready: boolean;
   now: number;
   revision: number;
@@ -119,13 +121,40 @@ export function BookingProvider({
         : "guest",
     [value.draft.mode, identityService],
   );
+  const [confirmedSelection, confirmSelection] = useState<{
+    owner: BookingService;
+    key: string;
+  } | null>(null);
+  const selectionKey = JSON.stringify([
+    service.mode,
+    sessionKey(),
+    value.draft.nativeServiceId,
+    value.draft.players,
+    value.draft.slots,
+  ]);
   const calendar = useCalendarAvailability(
     service,
     value.ready && value.draft.mode ? value.draft.nativeServiceId : undefined,
     calendarMonth,
-    JSON.stringify([sessionKey(), availabilityRevision]),
+    JSON.stringify([
+      service.publicCalendar ? "public" : sessionKey(),
+      availabilityRevision,
+    ]),
     !value.ready || calendarPaused || !!value.attempt,
   );
+  useEffect(() => {
+    if (
+      service.mode !== "live" ||
+      service.operations.availability !== "live" ||
+      !service.publicCalendar
+    )
+      return;
+    const controller = new AbortController();
+    void customerCatalogueService.read(controller.signal).catch(() => {
+      // The booking screen owns the recoverable error; no background retry.
+    });
+    return () => controller.abort();
+  }, [service]);
   const availability = useBookingAvailability(
     service,
     [
@@ -333,12 +362,16 @@ export function BookingProvider({
         availability,
         showDate,
         calendar,
+        selectionConfirmed:
+          confirmedSelection?.owner === service &&
+          confirmedSelection.key === selectionKey,
         showMonth,
         async validateSelection() {
           if (continuation.current) return false;
           const current = latest.current;
           const revision = current.revision;
           const identity = sessionKey();
+          confirmSelection(null);
           pauseCalendar(true);
           const controller = new AbortController();
           continuation.current = controller;
@@ -374,14 +407,16 @@ export function BookingProvider({
                     sessionPrice(offer) === sessionPrice(slot),
                 ),
               );
+            if (succeeded)
+              confirmSelection({ owner: service, key: selectionKey });
             return succeeded;
           } catch {
             return false;
           } finally {
             continuation.current = null;
             if (mounted.current && !controller.signal.aborted) {
-              invalidateAvailability();
               if (!succeeded) {
+                invalidateAvailability();
                 calendar.retry();
                 pauseCalendar(false);
               }

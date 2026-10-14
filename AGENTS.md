@@ -1,5 +1,9 @@
 # SoccerBotStudioSG engineering
 
+## Homepage cache handoff and confirmation ordering — 14 October 2026
+
+Owner extends the in-flight deployment: preload on homepage before guest/email; reuse cached public dates/times and session information across authentication; enlarge/centre the SoccerBot loading emblem and remove visible status text. Keep accessible status labels and required identity calls. Details must wait for fresh main Continue validation. This supersedes identity-keyed public display cache invalidation, not authentication or final native write checks. PR27 remains the integration branch; final exact-source CI, GitHub deployment and public read verification are required.
+
 ## Cold-month catalogue freshness — 14 October 2026
 
 PR26 deployed46b3201/versiona42014f2 through a successful GitHub job. October live offers match weekday8800/service2 and weekend10800/service3; subsequent independent November–January reads returned200 with no available slots. The first sequential November smoke returned503 without a retained error body. A deterministic regression then reproduced a cold-month failure when a59-second-old catalogue aged past60 seconds during range reads. Fix that reproducible case without claiming the missing live error code: one fresh catalogue per uncached ongoing month, shared across both priced services; no retries or longer TTL. CI/deployment and final sequential smoke remain required.

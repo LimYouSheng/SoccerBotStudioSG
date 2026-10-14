@@ -1,5 +1,11 @@
 # SoccerBotStudio — Service Contracts
 
+## Anonymous homepage metadata and entry reuse — 14 October 2026
+
+GET /api/catalogue in LIVE_CUSTOMER_ACCESS mode returns the existing strict CustomerCatalogue DTO through windowCatalogue admission, without creating a guest or reading private identity data. Other modes retain their authenticated grant contract. Browser transport still validates response age under60 seconds and bounded/schema-safe bytes; its public display snapshot can then be retained for five minutes from observedAtMs. Homepage and booking share one in-flight request; leaving one consumer does not cancel another, and failed/expired data never becomes a fallback. LiveCatalogue can render an existing snapshot synchronously.
+
+Calendar prefetch starts before account selection and retains its public scope across guest/email entry. Cached date/player clicks cause no availability requests; mandatory identity requests are separate. Main Continue awaits all selected-date fresh reads and only then permits Details; successful validation does not trigger an additional availability request. Selection identity/adapter changes invalidate the UI admission; server preparation/payment checks remain independently authoritative.
+
 ## Cold calendar prefetch freshness contract — 14 October 2026
 
 windowCalendar lazily acquires one request-owned catalogue promise only when NativeCalendarReads misses. Ongoing reads force fresh catalogue metadata; both service2 and3 validate against that same snapshot. Cached complete months still make zero catalogue/range calls. Fresh daily continuation preserves cache invalidation and provider revalidation. No freshness timestamp is rewritten and no stale data is accepted by extending a TTL.

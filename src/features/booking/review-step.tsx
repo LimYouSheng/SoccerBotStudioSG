@@ -149,8 +149,8 @@ export function ReviewStep() {
             <BrandLoading compact label="Checking your booking…" />
           ) : (
             "Continue to payment"
-          )}{" "}
-          <Icon name="arrow" />
+          )}
+          {!busy && <Icon name="arrow" />}
         </button>
       </div>
       {policy && (

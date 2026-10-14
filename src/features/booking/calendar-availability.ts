@@ -25,6 +25,7 @@ export function useCalendarAvailability(
   paused: boolean,
 ) {
   const [reload, setReload] = useState(0);
+  const protectedServiceId = service.publicCalendar ? undefined : serviceId;
   const key = JSON.stringify([
     service.publicCalendar ? "public" : serviceId,
     scope,
@@ -43,7 +44,7 @@ export function useCalendarAvailability(
   useEffect(() => {
     if (
       paused ||
-      (!service.publicCalendar && (!service.calendar || !serviceId))
+      (!service.publicCalendar && (!service.calendar || !protectedServiceId))
     )
       return;
     const controller = new AbortController();
@@ -75,13 +76,13 @@ export function useCalendarAvailability(
               })
             : await calendar!({
                 month: next,
-                serviceId: serviceId!,
+                serviceId: protectedServiceId!,
                 signal: controller.signal,
               });
           if (
-            serviceId &&
+            protectedServiceId &&
             "serviceId" in result &&
-            result.serviceId !== serviceId
+            result.serviceId !== protectedServiceId
           )
             throw new Error("calendar_service_changed");
           if (controller.signal.aborted) return;
@@ -112,7 +113,7 @@ export function useCalendarAvailability(
       }
     })();
     return () => controller.abort();
-  }, [service, serviceId, month, scope, paused, key]);
+  }, [service, protectedServiceId, month, scope, paused, key]);
   // Expire display entries at their actual receipt deadline, independently of
   // the booking page's minute clock. No provider polling or silent retries.
   useEffect(() => {

@@ -223,8 +223,8 @@ export function Summary({ basket = false }: { basket?: boolean }) {
                     <BrandLoading compact label="Checking availability…" />
                   ) : (
                     "Continue"
-                  )}{" "}
-                  <Icon name="arrow" />
+                  )}
+                  {!checkingSelection && <Icon name="arrow" />}
                 </button>
               ) : (
                 <Link
