@@ -357,6 +357,11 @@ export class ProviderSession {
         .find((v) => v.key === "sheduler_limit");
       const total = allowance?.total,
         remaining = allowance?.rest;
+      // Identity reads can cross our local token-retention boundary. Renew an
+      // expired family through this explicit, accounted identity operation;
+      // nativeRead still never reauthenticates or retries a request implicitly.
+      await this.token("public", env, control);
+      await this.token("admin", env, control);
       const value = {
         verified: true,
         publicAuthenticated: true,
@@ -374,7 +379,14 @@ export class ProviderSession {
           tariffMs: performance.now() - start - authMs - identityMs,
         },
       };
-      this.cachedIdentity = { value, until: Date.now() + 5000 };
+      this.cachedIdentity = {
+        value,
+        until: Math.min(
+          Date.now() + 5000,
+          this.tokens.get("public")!.until,
+          this.tokens.get("admin")!.until,
+        ),
+      };
       return value;
     };
     const pending = run();

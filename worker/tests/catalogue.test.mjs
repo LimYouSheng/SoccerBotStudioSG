@@ -1392,3 +1392,81 @@ test("customer booking accepts exactly 150 minutes and rechecks the cutoff after
     );
   assert.ok(read.calls.every((request) => request.kind !== "book"));
 });
+
+test("provider identity renewal keeps native reads valid across token retention boundaries", async (t) => {
+  const config = ts.parseConfigFileTextToJson(
+    "wrangler.jsonc",
+    readFileSync("wrangler.jsonc", "utf8"),
+  ).config;
+  let now = Date.parse("2026-10-14T12:00:00+08:00");
+  t.mock.method(Date, "now", () => now);
+  const env = {
+    ...config.vars,
+    PROVIDER_ACCESS: "trusted-reads",
+    CAMPAIGN_END_MS: String(now + 3600000),
+    SIMPLYBOOK_DEV_COMPANY_LOGIN: "synthetic-company",
+    SIMPLYBOOK_DEV_ADMIN_LOGIN: "synthetic-admin",
+    SIMPLYBOOK_DEV_API_KEY: "synthetic-public-key",
+    SIMPLYBOOK_DEV_ADMIN_API_USER_KEY: "synthetic-admin-key",
+  };
+  for (const crossesDuringIdentity of [false, true]) {
+    const start = now;
+    const calls = [];
+    let reserved = 0;
+    let finished = 0;
+    let slowIdentity = false;
+    const control = {
+      reserve: async () => String(++reserved),
+      finish: () => finished++,
+      claim: () => ({ generation: 1, claim: "synthetic" }),
+      complete: () => true,
+      pause: () => assert.fail("successful renewal must not pause the account"),
+    };
+    t.mock.method(globalThis, "fetch", async (url, options) => {
+      const path = new URL(url).pathname;
+      const body = options.body ? JSON.parse(options.body) : null;
+      calls.push(path);
+      if (path === "/login")
+        return Response.json({ id: body.id, result: "synthetic-public-token" });
+      if (path === "/admin/auth")
+        return Response.json({ token: "synthetic-admin-token" });
+      if (path === "/admin/company/info")
+        return Response.json({ login: "synthetic-company" });
+      if (path === "/admin/tariff/current") {
+        if (slowIdentity) now += 2000;
+        return Response.json({ limits: [] });
+      }
+      assert.equal(body.method, "getEventList");
+      return Response.json({ id: body.id, result: fixtures().services });
+    });
+    const session = new ProviderSession();
+    await session.identity(env, control);
+    assert.equal(calls.length, 4);
+    now = start + 59000;
+    slowIdentity = crossesDuringIdentity;
+    await session.identity(env, control);
+    if (!crossesDuringIdentity) {
+      now = start + 60001;
+      await session.identity(env, control);
+    }
+    const response = await session.nativeRead(env, control, {
+      kind: "catalogue-services",
+    });
+    assert.deepEqual(response.body, fixtures().services);
+    assert.equal(calls.filter((path) => path === "/login").length, 2);
+    assert.equal(calls.filter((path) => path === "/admin/auth").length, 2);
+    assert.equal(reserved, calls.length);
+    assert.equal(finished, calls.length);
+    const before = calls.length;
+    now += 60001;
+    await assert.rejects(
+      session.nativeRead(env, control, { kind: "catalogue-services" }),
+      /provider_identity_expired/,
+    );
+    assert.equal(
+      calls.length,
+      before,
+      "nativeRead never reauthenticates implicitly",
+    );
+  }
+});

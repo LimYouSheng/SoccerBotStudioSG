@@ -1,5 +1,9 @@
 # SoccerBotStudioSG engineering
 
+## Provider identity and token lifetime — 14 October 2026
+
+PR27 is merged and deployed as9d1d107/versiond40c2082 with all three PR/main gates and Cloudflare successful. Live October proves same-day150-minute eligibility and88/108 pricing; November and December load, but January fails provider_auth_expired. Preserve that failure. The explicit identity owner must not cache identity beyond either token and must check expiry after its own reads. No TTL extension, nativeRead retry or booking/payment experiment; finish the authorized follow-up through CI/GitHub deployment and sequential readback.
+
 ## Customer minimum lead time — 14 October 2026
 
 Owner explicitly replaces the customer 48-hour booking lead with 2.5 hours (150 minutes). Apply the shared policy to cached offers, fresh Continue, preparation and final writes. Historical finite trial contracts retain their old bounds. This is part of the already-authorized PR27 GitHub deployment; no new booking/payment experiment is required.

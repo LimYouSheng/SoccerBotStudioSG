@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Deployed customer rule; final month exposes token timing — 14 October 2026
+
+PR27/source95df33c passed172 local unit/component tests and all three PR gates, merged as9d1d107, then passed all main gates and GitHub Cloudflare deployment. Worker suite303 and live browser15 passed; user browser execution and paid/webhook acceptance remain separate. Live catalogue succeeds and October has six eligible same-day slots plus15October and correctly priced later dates. November and December return known empty calendars. January fails503 provider_auth_expired; retain this concrete body instead of retrying the failed smoke.
+
+The local boundary regression fails with that exact error before repair and all26 catalogue tests pass after repair. The account identity cache could retain a result five seconds past token expiry. Cap it by both token deadlines and check tokens after explicit identity verification. No wider TTL, bypassed admission, failed-request replay, booking or payment. Follow-up release/readback remains pending.
+
 ## Owner replaces customer 48-hour lead — 14 October 2026
 
 YS sets the latest business decision to 2.5 hours before session start and explicitly confirms it supersedes 48 hours. Implementation shares 150 minutes across customer display and server checks; finite historical trials remain unchanged. Inspection also found ongoing authority admitted only native service2 despite the premium mapping: it now admits the configured service3 before the existing exact dated-offer/price checks.
