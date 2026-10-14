@@ -69,6 +69,7 @@ export async function authorizeCustomerCheckout(
     companyLogin: providerSecrets(env).company,
     serviceId: "2",
     priceMinor: 8800,
+    ...(p.PREMIUM_SERVICE_ID ? { premiumServiceId: p.PREMIUM_SERVICE_ID } : {}),
     currency: "SGD",
     taxMinor: 0,
     durationMinutes: 40,

@@ -20,6 +20,10 @@ const schema = z.object({
   CAMPAIGN_END_MS: duration(0, Number.MAX_SAFE_INTEGER),
   SOURCE_REVISION: z.string().regex(/^(unpublished|[a-f0-9]{40})$/),
   ENVIRONMENT: z.literal("developer"),
+  PREMIUM_SERVICE_ID: z
+    .string()
+    .regex(/^(?:[1-9]\d{0,14})?$/)
+    .default(""),
   LIVE_CUSTOMER_ACCESS: z.enum(["disabled", "enabled"]).default("disabled"),
   PROVIDER_ACCESS: z.enum(["disabled", "trusted-reads"]),
   PROVIDER_CALL_CEILING: z

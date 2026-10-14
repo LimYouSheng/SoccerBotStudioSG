@@ -1044,8 +1044,29 @@
     pointer-events: none;
   }
   .page-loading-content {
+    display: block;
     text-align: center;
     padding: 28px;
+  }
+  .booking-loading-inline .page-loading-content {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0;
+    vertical-align: middle;
+  }
+  .booking-loading-inline .page-loading-emblem {
+    width: 28px;
+    height: 28px;
+    margin: 0;
+    flex: 0 0 28px;
+    stroke: currentColor;
+  }
+  .booking-loading-inline .loading-logo {
+    width: 75px;
+    height: auto;
+    margin: 0;
   }
   .page-loading-emblem {
     display: block;
@@ -1064,6 +1085,7 @@
     animation: page-loading-orbit 2.4s linear infinite;
   }
   .page-loading-track {
+    display: block;
     position: relative;
     width: 176px;
     height: 2px;
@@ -3012,23 +3034,6 @@
   .summary .series-date {
     font-size: var(--text-caption);
   }
-  .checking-progress {
-    height: 4px;
-    overflow: hidden;
-    border-radius: 4px;
-    background: var(--color-brand-tint);
-    margin: 24px auto 13px;
-    max-width: 260px;
-  }
-  .checking-progress::after {
-    content: "";
-    display: block;
-    height: 100%;
-    width: 42%;
-    border-radius: 4px;
-    background: var(--color-action);
-    animation: checking-slide 1.7s ease-in-out infinite;
-  }
   .payment-status-action {
     margin-top: 24px;
   }
@@ -3501,14 +3506,6 @@
   .basket-list {
     max-height: 340px;
     overflow-y: auto;
-  }
-  @keyframes checking-slide {
-    0% {
-      transform: translateX(-110%);
-    }
-    100% {
-      transform: translateX(340%);
-    }
   }
 
   @media (max-width: 1200px) {

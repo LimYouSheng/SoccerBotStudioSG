@@ -1,4 +1,5 @@
 "use client";
+import { BrandLoading } from "@/components/brand-loading";
 import Link from "next/link";
 import { useEffect } from "react";
 import type { CustomerCatalogue } from "@/domain/catalog";
@@ -123,6 +124,10 @@ function SessionPresentation({
           </div>
         </div>
       </section>
+      <p className="hint">
+        S$88 weekdays · S$108 weekends and Singapore public holidays. Per
+        session for 1–4 players.
+      </p>
       {playerSelection}
       <section className="session-inclusions">
         <h2 className="section-title">Included with your session</h2>
@@ -156,7 +161,7 @@ function SessionPresentation({
       <div className="actions">
         {pending ? (
           <button className="button" disabled>
-            Loading available times…
+            <BrandLoading compact label="Loading available times…" />
           </button>
         ) : (
           <Link href="/book/time/" className="button">

@@ -13,6 +13,7 @@ import {
 } from "./journal";
 import {
   nativeAccountContractSchema,
+  nativeContractSelection,
   offeredStarts,
   nativeTrialLeadMs,
 } from "./prebooking";
@@ -135,7 +136,9 @@ export async function executeNativeCheckout(options: {
     contract.confirmedAtMs > now ||
     contract.expiresAtMs < grant.expires_ms ||
     intent.sessions.some(
-      (session) => session.serviceId !== contract.serviceId,
+      (session) =>
+        session.serviceId !==
+        nativeContractSelection(contract, session.startMs).serviceId,
     ) ||
     grant.intent_hash !== row.intent_hash ||
     (await digest(row.intent_json)) !== row.intent_hash ||
@@ -602,7 +605,8 @@ export async function prepareCustomerNative(
           .join(",") !== "2026-10-14,2026-10-15")) ||
     input.sessions.some(
       (session) =>
-        session.serviceId !== contract.serviceId ||
+        session.serviceId !==
+          nativeContractSelection(contract, session.startMs).serviceId ||
         session.startMs - now <
           nativeTrialLeadMs(contract, binding, session, now) ||
         !dates.includes(
@@ -612,7 +616,11 @@ export async function prepareCustomerNative(
   )
     throw new ApiError(409, "native_selection_changed");
   if (
-    input.sessions.some((session) => session.totalMinor !== contract.priceMinor)
+    input.sessions.some(
+      (session) =>
+        session.totalMinor !==
+        nativeContractSelection(contract, session.startMs).priceMinor,
+    )
   )
     throw new ApiError(409, "native_restart_required");
   const offers = Object.values(

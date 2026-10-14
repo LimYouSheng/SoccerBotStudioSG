@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { expect, test, vi } from "vitest";
 import { AccountStep } from "./account-step";
 import { BookingProvider } from "./provider";
@@ -130,8 +136,10 @@ test("signed-in customer manages saved contact on Account without entering unava
   });
   expect(saveProfile).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "Save contact details" }));
-  expect(await screen.findByRole("status")).toHaveTextContent(
-    "Contact details saved",
+  await waitFor(() =>
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Contact details saved",
+    ),
   );
   expect(saveProfile).toHaveBeenCalledExactlyOnceWith(
     expect.objectContaining({ name: "Updated Contact", email: verified.email }),

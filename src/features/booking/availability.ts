@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   BookingServiceError,
   type AvailableSlot,
@@ -31,6 +31,7 @@ export function useBookingAvailability(
   minute: number,
   sessionKey: () => string,
   serviceId?: string,
+  cachedDates?: Record<string, AvailableSlot[]>,
 ) {
   const datesKey = JSON.stringify([...new Set(dates)].sort());
   const session = sessionKey();
@@ -43,20 +44,44 @@ export function useBookingAvailability(
     minute,
     session,
   ]);
+  const requested: string[] = useMemo(() => JSON.parse(datesKey), [datesKey]);
+  const cached = useMemo(
+    () =>
+      requested.length && requested.every((date) => cachedDates?.[date])
+        ? {
+            owner: service,
+            key,
+            dates: requested,
+            status: "success" as const,
+            slots: requested
+              .flatMap((date) => cachedDates![date])
+              .filter(
+                (slot) =>
+                  Date.parse(`${slot.date}T${slot.start}:00+08:00`) -
+                    minute * 60_000 >=
+                  48 * 3600000,
+              ),
+          }
+        : null,
+    [requested, cachedDates, service, key, minute],
+  );
   const [result, setResult] = useState<Result | null>(null);
   const [reload, setReload] = useState(0);
   useEffect(() => {
+    if (cached) return;
     const controller = new AbortController();
     let current = true;
     const requested: string[] = JSON.parse(datesKey);
     void Promise.all(
-      requested.map((date) =>
-        service.availability({
-          date,
-          players,
-          ...(serviceId ? { serviceId } : {}),
-          signal: controller.signal,
-        }),
+      requested.map(
+        (date) =>
+          cachedDates?.[date] ??
+          service.availability({
+            date,
+            players,
+            ...(serviceId ? { serviceId } : {}),
+            signal: controller.signal,
+          }),
       ),
     ).then(
       (values) => {
@@ -103,9 +128,22 @@ export function useBookingAvailability(
       current = false;
       controller.abort();
     };
-  }, [service, datesKey, players, key, reload, session, sessionKey, serviceId]);
+  }, [
+    service,
+    datesKey,
+    players,
+    key,
+    reload,
+    session,
+    sessionKey,
+    serviceId,
+    cached,
+    cachedDates,
+  ]);
   return {
-    result: result?.key === key && result.owner === service ? result : null,
+    result:
+      cached ??
+      (result?.key === key && result.owner === service ? result : null),
     retry() {
       setResult(null);
       setReload((value) => value + 1);

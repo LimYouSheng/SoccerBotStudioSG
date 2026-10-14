@@ -1,3 +1,5 @@
+import type { z } from "zod";
+import type { nativeOfferSchema } from "@/domain/native-checkout";
 import type {
   Attempt,
   Booking,
@@ -19,7 +21,11 @@ export type AvailabilityInput = BookingRequest & {
 export type CalendarAvailability = {
   month: string;
   observedAtMs: number;
-  dates: { date: string; available: boolean }[];
+  dates: {
+    date: string;
+    available: boolean;
+    offers?: z.infer<typeof nativeOfferSchema>[];
+  }[];
 };
 export type CheckoutInput = BookingRequest & {
   draft: BookingDraft;

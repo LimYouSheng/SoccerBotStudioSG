@@ -160,6 +160,18 @@
     "title": "uses explicit inclusive access start and exclusive expiry boundaries"
   },
   {
+    "file": "src/domain/session-pricing.test.ts",
+    "title": "accepts priced public slots and rejects foreign dates, services, duplicate starts and private fields"
+  },
+  {
+    "file": "src/domain/session-pricing.test.ts",
+    "title": "charges weekdays at 88 and weekends and gazetted substitute holidays at 108"
+  },
+  {
+    "file": "src/domain/session-pricing.test.ts",
+    "title": "totals a mixed demo cart by date and preserves native quote amounts"
+  },
+  {
     "file": "src/features/assistant/assistant.test.tsx",
     "title": "Escape closes the assistant after a touch reply leaves focus outside the panel"
   },
@@ -281,6 +293,10 @@
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",
+    "title": "browser slot cache expires after five minutes"
+  },
+  {
+    "file": "src/features/booking/booking-parity.test.tsx",
     "title": "calendar prefetch publishes the first month before sequential background months and discards an old scope reply"
   },
   {
@@ -302,6 +318,10 @@
   {
     "file": "src/features/booking/booking-parity.test.tsx",
     "title": "native initialization stays hidden and stable and never preloads a payment capability"
+  },
+  {
+    "file": "src/features/booking/booking-parity.test.tsx",
+    "title": "preloaded browser slots survive date and player changes and Continue refreshes changed availability"
   },
   {
     "file": "src/features/booking/confirmation-checking.test.tsx",

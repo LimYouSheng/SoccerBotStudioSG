@@ -1,4 +1,5 @@
 "use client";
+import { BrandLoading } from "@/components/brand-loading";
 import { useEffect, useState, type ReactNode } from "react";
 import type { CustomerCatalogue } from "@/domain/catalog";
 import {
@@ -39,7 +40,8 @@ export function LiveCatalogue({
   }, [service, revision]);
   const current =
     result?.owner === service && result.revision === revision ? result : null;
-  if (!current) return <p role="status">Loading current sessions…</p>;
+  if (!current)
+    return <BrandLoading compact label="Loading current sessions…" />;
   if (current.failed)
     return (
       <section className="surface">

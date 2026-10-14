@@ -1,12 +1,20 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
-import { monthAt } from "@/domain/dates";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  BROWSER_CALENDAR_MAX_AGE_MS,
+  nativeDisplaySlots,
+} from "@/domain/native-checkout";
+import { monthAt, todaySG } from "@/domain/dates";
 import { CATALOGUE_MAX_AGE_MS } from "@/domain/catalog";
 import type {
   BookingService,
   CalendarAvailability,
 } from "@/services/contracts";
 
+const retention = (entry: CalendarAvailability) =>
+  entry.dates.every((day) => day.offers !== undefined)
+    ? BROWSER_CALENDAR_MAX_AGE_MS
+    : CATALOGUE_MAX_AGE_MS;
 // One booking-level prefetch owner. Current month first, then three following
 // months sequentially; never 120 per-day requests or a retry/polling loop.
 export function useCalendarAvailability(
@@ -17,13 +25,21 @@ export function useCalendarAvailability(
   paused: boolean,
 ) {
   const [reload, setReload] = useState(0);
-  const key = JSON.stringify([serviceId, scope, reload]);
+  const key = JSON.stringify([
+    service.publicCalendar ? "public" : serviceId,
+    scope,
+    reload,
+  ]);
   const [state, setState] = useState<{
     owner: BookingService;
     key: string;
     entries: Record<string, CalendarAvailability & { receivedAtMs: number }>;
     failed: string[];
   } | null>(null);
+  const retained = useRef(state);
+  useEffect(() => {
+    retained.current = state;
+  }, [state]);
   useEffect(() => {
     if (
       paused ||
@@ -35,7 +51,22 @@ export function useCalendarAvailability(
     void (async () => {
       for (let offset = 0; offset < 4; offset++) {
         const next = monthAt(month + "-01", offset).slice(0, 7);
+        if (
+          next >
+          monthAt(todaySG(new Date(Date.now())).slice(0, 7) + "-01", 3).slice(
+            0,
+            7,
+          )
+        )
+          break;
         if (controller.signal.aborted) return;
+        const previous = retained.current;
+        const saved =
+          previous?.owner === service && previous.key === key
+            ? previous.entries[next]
+            : undefined;
+        if (saved && Date.now() - saved.observedAtMs < retention(saved))
+          continue;
         try {
           const result = service.publicCalendar
             ? await service.publicCalendar({
@@ -87,7 +118,7 @@ export function useCalendarAvailability(
   useEffect(() => {
     if (!state) return;
     const deadlines = Object.values(state.entries).map(
-      (value) => value.observedAtMs + CATALOGUE_MAX_AGE_MS,
+      (value) => value.observedAtMs + retention(value),
     );
     if (!deadlines.length) return;
     const timer = setTimeout(
@@ -99,7 +130,7 @@ export function useCalendarAvailability(
             ...previous,
             entries: Object.fromEntries(
               Object.entries(previous.entries).filter(
-                ([, value]) => value.observedAtMs + CATALOGUE_MAX_AGE_MS > now,
+                ([, value]) => value.observedAtMs + retention(value) > now,
               ),
             ),
           };
@@ -117,6 +148,8 @@ export function useCalendarAvailability(
         const month = date.slice(0, 7);
         const entry = previous.entries[month];
         if (!entry) return previous;
+        const existing = entry.dates.find((day) => day.date === date);
+        if (existing?.available === available) return previous;
         const dates = entry.dates.filter((day) => day.date !== date);
         if (available !== undefined) dates.push({ date, available });
         return {
@@ -133,14 +166,32 @@ export function useCalendarAvailability(
     },
     [service, key],
   );
+  const cachedDates = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.values(current?.entries ?? {}).flatMap((entry) =>
+          entry.dates.flatMap((day) =>
+            day.offers &&
+            day.offers.every(
+              (offer) =>
+                (offer.productServiceId ?? offer.serviceId) === serviceId,
+            )
+              ? [[day.date, nativeDisplaySlots(day.date, day.offers)]]
+              : [],
+          ),
+        ),
+      ),
+    [current, serviceId],
+  );
   return {
+    cachedDates,
     reconcile,
     entry(selected: string, now: number) {
       const value = current?.entries[selected];
       const observedNow = Math.max(now, value?.receivedAtMs ?? now);
       return value &&
         value.observedAtMs <= observedNow &&
-        observedNow - value.observedAtMs < CATALOGUE_MAX_AGE_MS
+        observedNow - value.observedAtMs < retention(value)
         ? value
         : null;
     },

@@ -1,5 +1,13 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Browser availability and date-dependent pricing — 14 October 2026
+
+Ongoing customer calendars now expose bounded public scheduling offers so four prefetched months include dates and times. The booking-level browser memory cache keeps these for five minutes, reuses them immediately across date/player changes, and discards them on scope changes, expiry and failed continuation. The account coordinator retains its sixty-second bounded cache. Continue bypasses both display caches; preparation and dispatch still validate provider truth. No persistent personal data, reservation authority or checkout capability is placed in the calendar cache. All booking loading indicators use the existing SoccerBot brand component.
+
+The approved customer price is SGD88 on weekdays and SGD108 on weekends and Singapore public holidays, including announced substitute holidays. One shared domain calendar contains MOM's 2026/2027 dates; unreviewed years fail closed for native pricing. The logical website product remains service2; its offers carry the actual priced service2 or3. The server selects and verifies the dated service and amount independently of browser input. Mixed carts sum actual line prices. Historical fixed-price operator contracts retain their original scope.
+
+SimplyBook readback verifies service2 SGD88/duration40/buffer10 and new service3 SGD108/duration40/buffer10, both assigned providers2/3/4. Both inherit company hours; existing trainer schedules still decide actual availability. These services are not individually day-restricted in the provider dashboard: date routing is enforced by SoccerBot. Owner supplied service3's buffer because the connected editor lacks that field. GitHub's sealed customer configuration adds PREMIUM_SERVICE_ID=3; default-closed configuration and historical contracts remain unchanged. Migration0026 was applied by prior successful main deployment36b84bd; no new migration is needed. Current work requires fresh exact-source CI and deployment evidence; provider payment/webhook acceptance remains separate.
+
 ## Ongoing developer customer access — 14 October 2026
 
 Owner withdraws automatic campaign closure for the customer website and explicitly enables continuous native checkout, with manual owner control over actual bookings/payment. This supersedes the unexecuted finite inspection packet458d021b4a82. LIVE_CUSTOMER_ACCESS=enabled plus trusted provider mode and a published source enables ordinary customer operations. No expiry timestamp is extended to simulate permanence. The existing account coordinator retains all usage, provider cooldowns, pacing and concurrency; historical operator workflows keep their independent campaign limits.

@@ -1,10 +1,11 @@
 "use client";
+import { BrandLoading } from "@/components/brand-loading";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icon";
 import { ADDRESS, CONTACT } from "@/domain/catalog";
-import { PRICE_CENTS, SERVICE_NAME } from "@/domain/demo-catalog";
+import { SERVICE_NAME } from "@/domain/demo-catalog";
 import { dateLabel, endTime, money } from "@/domain/dates";
 import { downloadBooking, downloadCalendar } from "@/services/exports";
 import type { Booking } from "@/domain/booking";
@@ -127,7 +128,7 @@ export function BookingConfirmation({
           </div>
           <p className="hint">
             {preview
-              ? `${booking.slots.length} × ${money(PRICE_CENTS)} · SGD · Inclusive of GST`
+              ? `${booking.slots.length} session${booking.slots.length === 1 ? "" : "s"} · SGD · Inclusive of GST`
               : `SGD · Tax ${money(taxMinor)}`}
           </p>
         </section>
@@ -179,7 +180,11 @@ export function BookingConfirmation({
         >
           <Icon name="download" />
           <span>
-            {downloading ? "Preparing download…" : "Download booking details"}
+            {downloading ? (
+              <BrandLoading compact label="Preparing download…" />
+            ) : (
+              "Download booking details"
+            )}
           </span>
         </button>
         <button className="button secondary" onClick={onAgain}>

@@ -38,6 +38,7 @@ export function validateDeployment(directory, revision) {
       ...closed.vars,
       PROVIDER_ACCESS: "trusted-reads",
       LIVE_CUSTOMER_ACCESS: "enabled",
+      PREMIUM_SERVICE_ID: "3",
     },
   });
   assert.equal(config.name, "soccerbot-dev");

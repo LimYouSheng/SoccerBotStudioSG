@@ -18,6 +18,7 @@ assert.deepEqual(liveConfig, {
     ...config.vars,
     PROVIDER_ACCESS: "trusted-reads",
     LIVE_CUSTOMER_ACCESS: "enabled",
+    PREMIUM_SERVICE_ID: "3",
   },
 });
 const files = exportInventory(directory);
@@ -146,9 +147,7 @@ try {
     .run();
   const grants = (await db.prepare("SELECT * FROM developer_operations").all())
     .results;
-  assert.deepEqual(manifest.pendingRemoteMigrations, [
-    "0026_ongoing_customer_checkout.sql",
-  ]);
+  assert.deepEqual(manifest.pendingRemoteMigrations, []);
   // Old-state compatibility remains tested locally, never re-applied remotely.
   for (const name of names.slice(5, 8)) await migrate(name);
   const appliedEight = {

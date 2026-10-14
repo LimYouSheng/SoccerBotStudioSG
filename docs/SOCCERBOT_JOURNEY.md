@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Complete browser cache, branded loading and dual native prices — 14 October 2026
+
+Owner requested immediate cached date/time selection, fresh validation at main Continue, SoccerBot spinning-logo loading throughout booking, and SGD88 weekday / SGD108 weekend/public-holiday native checkout. Created premium service3 with the explicitly approved three providers. Initial readback showed buffer0; owner saved buffer10, and subsequent readback verified it. Both services inherit identical company hours. No booking/payment was created during setup.
+
+Implementation extends anonymous ongoing calendars with public offers, browser memory retention to five minutes and logical-to-priced service mapping. Shared MOM2026/2027 pricing drives native selection and demo totals; mixed price summaries no longer claim every session has the first line's price. Existing tests cover expiry, cached date/player changes and fresh Continue conflicts; added regressions cover holidays/substitutes, mixed totals, malformed public offers, priced calendar refresh and rejected cheap holiday substitution. First focused Worker invocation was blocked by the local sandbox subprocess environment; network-enabled execution passed23/23. Focused frontend passed11/11. Full non-browser verification exposed an assertion that found the new loading status before the saved-contact result. The test now waits for its unchanged saved-content assertion rather than merely the presence of any status; no action, coverage or timeout was removed. Reload mapping also now preserves the logical product ID for premium slots, with an explicit restored-premium regression. Exact-source CI, merge and GitHub deployment remain pending at this entry. No owner payment/webhook or device acceptance claimed.
+
 ## Replace experiment closure with ordinary customer access — 14 October 2026
 
 YS asked to remove automatic live-access closure, enable native checkout continuously and deploy from GitHub. Clarified that private browsing resets browser state but shares the backend/cache and produces real booking/payment effects. The pending bounded inspection packet is superseded without execution. User wants the actual customer website for physical visualization; no special test UI is introduced.

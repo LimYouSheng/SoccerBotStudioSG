@@ -1,4 +1,5 @@
 "use client";
+import { BrandLoading } from "@/components/brand-loading";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icon";
@@ -223,7 +224,11 @@ export function DetailsStep({
         {profileOnly && draft.mode === "member" && remember && (
           <>
             <button type="submit" className="button" disabled={saving}>
-              {saving ? "Saving contact details…" : "Save contact details"}
+              {saving ? (
+                <BrandLoading compact label="Saving contact details…" />
+              ) : (
+                "Save contact details"
+              )}
             </button>
           </>
         )}
@@ -231,7 +236,11 @@ export function DetailsStep({
         {!profileOnly && (
           <div className="actions">
             <button className="button" type="submit" disabled={saving}>
-              {saving ? "Saving details…" : "Review booking"}{" "}
+              {saving ? (
+                <BrandLoading compact label="Saving details…" />
+              ) : (
+                "Review booking"
+              )}{" "}
               <Icon name="arrow" />
             </button>
           </div>
