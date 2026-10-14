@@ -1,5 +1,9 @@
 # SoccerBotStudio — Service Contracts
 
+## Indexed admission acceptance — 14 October 2026
+
+The coordinator constructor adds admissions_started_ms(started_ms) and partial admissions_unfinished(finished) WHERE finished=0. Existing MAX(started_ms), unfinished count and rolling-second count queries remain unchanged. Workerd regression starts with an unindexed10,002-row populated object, proves each query originally reads the whole history, restarts into the constructor upgrade and measures at most2 rows read per query with identical results. Budget/history preservation, concurrency release and a second idempotent startup are checked; existing rolling-rate, cooldown and budget tests remain required. Live Cloudflare SQL inspection returned500 for both supported object-name and object-ID forms before deployment; no live index mutation or live read-reduction claim follows from that failure.
+
 ## Token-boundary calendar failure and correction — 14 October 2026
 
 GitHub run38512100560 passed all three gates and deployed9d1d107/versiond40c2082-2c4f-4ca6-9aed-276116cd31dd. Anonymous catalogue and sequential October–December reads passed; January returned503 with retained error provider_auth_expired. October now includes14/15October atSGD88, with later weekend offers atSGD108, confirming the150-minute customer cutoff is active. Four-month preload is not yet fully accepted.

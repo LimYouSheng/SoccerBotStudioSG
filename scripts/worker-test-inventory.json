@@ -267,6 +267,7 @@
   "tampered observations cannot replace the immutable approved price",
   "stale observations and absent invoice stay unresolved or pending",
   "observation storage failure cannot produce success",
+  "coordinator upgrades retained admissions to indexed bounded reads without losing reservations",
   "coordinator persists in-flight concurrency reservations across restart",
   "coordinator enforces four starts per rolling second and cooldown",
   "migration constraints and existing journal survive additive migration",

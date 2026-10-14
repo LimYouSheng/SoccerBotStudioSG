@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Admission storage query cost — 14 October 2026
+
+Retained coordinator admissions must not make pacing, active-reservation or rolling-second reads proportional to all historical requests. Additive idempotent SQLite indexes cover started_ms and the unfinished subset (finished=0). All admission logic, history, budget accounting and unknown in-flight reservations remain authoritative and unchanged. Index creation belongs to the existing Durable Object constructor; it needs no D1 migration or data reset and incurs a one-time build plus incremental index write cost.
+
 ## Identity cache cannot outlive provider tokens — 14 October 2026
 
 ProviderSession retains tokens locally for60 seconds and account identity for at most5 seconds. An identity receipt near token expiry previously could outlive its authentication, causing a later native read to throw provider_auth_expired. Bound the identity cache by the earliest of its5-second deadline and both token deadlines. At completion of explicit identity verification, check both token families again and renew expired tokens through the same durable physical-call admission. Native reads never reauthenticate implicitly or retry; failures remain failures and all renewals remain accounted. Token retention stays60 seconds.

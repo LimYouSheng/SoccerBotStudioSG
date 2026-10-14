@@ -61,7 +61,9 @@ export function EmailBotProof({
         onReady={() => setReady(true)}
         onError={() => onToken("")}
       />
-      <div ref={container} aria-label="Email security check" />
+      <div className="auth-bot-proof">
+        <div ref={container} aria-label="Email security check" />
+      </div>
     </>
   );
 }

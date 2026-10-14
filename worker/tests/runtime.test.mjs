@@ -495,6 +495,73 @@ test("observation storage failure cannot produce success", async () => {
     await db.exec("DROP TRIGGER fail_observation;");
   }
 });
+test("coordinator upgrades retained admissions to indexed bounded reads without losing reservations", async () => {
+  const coordinator = "indexed-history";
+  const a = await result("/test/admit", { coordinator });
+  assert.equal(a.allowed, true);
+  const storage = await mf.unsafeGetDurableObjectStorage(
+    "soccerbot-test",
+    "SoccerBotAccountCoordinator",
+    { name: coordinator },
+  );
+  // Reproduce an existing unindexed object, including an unknown in-flight
+  // reservation. Constructor upgrade must preserve all history and budgets.
+  await storage.exec("DROP INDEX admissions_started_ms");
+  await storage.exec("DROP INDEX admissions_unfinished");
+  const now = Date.now();
+  await storage.exec("UPDATE admissions SET started_ms=?", now - 60000);
+  await storage.exec(
+    "WITH RECURSIVE history(n) AS (VALUES(1) UNION ALL SELECT n+1 FROM history WHERE n<10000) INSERT INTO admissions(id,campaign,started_ms,finished) SELECT 'history-'||n,'retained',?,1 FROM history",
+    now - 60000,
+  );
+  await storage.exec(
+    "INSERT INTO admissions VALUES ('recent','retained',?,1)",
+    now,
+  );
+  const budget = await storage.exec("SELECT * FROM budget");
+  const before = await result("/test/admission-query-metrics", {
+    coordinator,
+    now,
+  });
+  assert.ok(before.every((q) => q.rowsRead >= 10002));
+  await mf.dispose();
+  await start();
+  const after = await result("/test/admission-query-metrics", {
+    coordinator,
+    now,
+  });
+  assert.deepEqual(
+    after.map((q) => q.rows),
+    before.map((q) => q.rows),
+  );
+  assert.ok(after.every((q) => q.rowsRead <= 2 && q.rowsWritten === 0));
+  const upgraded = await mf.unsafeGetDurableObjectStorage(
+    "soccerbot-test",
+    "SoccerBotAccountCoordinator",
+    { name: coordinator },
+  );
+  assert.deepEqual(await upgraded.exec("SELECT * FROM budget"), budget);
+  assert.equal(
+    (await upgraded.exec("SELECT count(*) n FROM admissions"))[0].n,
+    10002,
+  );
+  const b = await result("/test/admit", { coordinator });
+  assert.equal(b.allowed, true);
+  assert.equal(b.used, a.used + 1);
+  assert.equal(
+    (await result("/test/admit", { coordinator })).reason,
+    "concurrency",
+  );
+  await result("/test/finish", { coordinator, id: a.id, cooldown: 0 });
+  assert.equal((await result("/test/admit", { coordinator })).allowed, true);
+  // A second constructor pass must remain safe and retain both active holds.
+  await mf.dispose();
+  await start();
+  assert.equal(
+    (await result("/test/admit", { coordinator })).reason,
+    "concurrency",
+  );
+});
 test("coordinator persists in-flight concurrency reservations across restart", async () => {
   const coordinator = "restart";
   assert.equal((await result("/test/admit", { coordinator })).allowed, true);
