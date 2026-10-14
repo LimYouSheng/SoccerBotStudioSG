@@ -1071,7 +1071,9 @@ test("anonymous calendar is bounded and shared without exposing provider slots o
 });
 
 test("priced customer calendar chooses native service by Singapore weekday and public holiday and refreshes changes", async (t) => {
-  t.mock.method(Date, "now", () => Date.parse("2026-11-01T00:00:00Z"));
+  let now = Date.parse("2026-11-01T00:00:00Z");
+  t.mock.method(Date, "now", () => now);
+  const catalogueReads = [];
   const config = ts.parseConfigFileTextToJson(
     "wrangler.jsonc",
     readFileSync("wrangler.jsonc", "utf8"),
@@ -1101,15 +1103,18 @@ test("priced customer calendar chooses native service by Singapore weekday and p
     control: {},
     provider: {
       identity: async () => {},
-      catalogue: async () =>
-        normalizeCatalogue(
+      catalogue: async (_env, _control, fresh) => {
+        catalogueReads.push(fresh);
+        return normalizeCatalogue(
           data.services,
           data.instructors,
           binding,
-          Date.now(),
-        ),
+          now - (fresh ? 0 : 59000),
+        );
+      },
       nativeRead: async (_env, _control, request) => {
         calls++;
+        now += 2000;
         const body = {};
         for (
           let day = new Date(request.from + "T00:00:00Z");
@@ -1134,9 +1139,15 @@ test("priced customer calendar chooses native service by Singapore weekday and p
     assert.equal(offer.productServiceId, "2");
     assert.equal(offer.priceMinor, price);
   }
+  assert.deepEqual(
+    catalogueReads,
+    [true],
+    "one fresh catalogue is shared by both priced service ranges",
+  );
   const count = calls;
   await publicCalendar(input);
   assert.equal(calls, count);
+  assert.deepEqual(catalogueReads, [true]);
   available = false;
   const fresh = await windowAvailability({
     ...input,

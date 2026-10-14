@@ -1,5 +1,11 @@
 # SoccerBotStudio — Service Contracts
 
+## Cold calendar prefetch freshness contract — 14 October 2026
+
+windowCalendar lazily acquires one request-owned catalogue promise only when NativeCalendarReads misses. Ongoing reads force fresh catalogue metadata; both service2 and3 validate against that same snapshot. Cached complete months still make zero catalogue/range calls. Fresh daily continuation preserves cache invalidation and provider revalidation. No freshness timestamp is rewritten and no stale data is accepted by extending a TTL.
+
+Regression advances provider-read time after supplying a59-second-old cached catalogue: the old implementation throws provider_data_stale; the correction uses one fresh catalogue for both price ranges, reuses complete month cache, and still detects changed availability/price on fresh reads. PR26 live proof: October23 has9 slots and30 has11 at8800/service2; October24/31 each have12 at10800/service3. Independent November,December,January reads returned30,31,31 known days respectively, all with no offers. The first sequential November503 body was not retained, so its exact error code is unknown; do not conflate that missing body with the deterministic regression.
+
 ## Premium catalogue map and deployment health evidence — 14 October 2026
 
 After PR25, fresh public calendar returned503 catalogue_representation_unavailable. A separate authenticated public API read (getToken then getEventList(true,false), two direct provider operations outside coordinator accounting) established service2 price88.0000,40 minutes,is_active/is_public1,is_recurring0,unit_map absent; service3 price108.0000 with the same scalar formats and unit_map={"2":null,"3":null,"4":null}. Store only these public fields; tokens remain in process memory. The strict normalizer now accepts that keyed-null representation and validates its IDs, while retaining rejection of capacity values, arbitrary strings/booleans, empty objects and malformed keys.

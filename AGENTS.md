@@ -1,5 +1,9 @@
 # SoccerBotStudioSG engineering
 
+## Cold-month catalogue freshness — 14 October 2026
+
+PR26 deployed46b3201/versiona42014f2 through a successful GitHub job. October live offers match weekday8800/service2 and weekend10800/service3; subsequent independent November–January reads returned200 with no available slots. The first sequential November smoke returned503 without a retained error body. A deterministic regression then reproduced a cold-month failure when a59-second-old catalogue aged past60 seconds during range reads. Fix that reproducible case without claiming the missing live error code: one fresh catalogue per uncached ongoing month, shared across both priced services; no retries or longer TTL. CI/deployment and final sequential smoke remain required.
+
 ## Live provider-map and deployment readiness correction — 14 October 2026
 
 PR25 passed all three PR/main gates and GitHub deployed b8917b1 as75b5c5d8. Immediate health still returned36b84bd and failed the deployment job; later health proves b8917b1 active. Calendar read then rejected the newly created service's actual keyed null unit_map. Owner-authorized follow-through corrects the strict parser from observed fields and adds bounded deployment-revision observation without a second deploy. Keep first failure and actual deployed state; no rollback, booking or payment. Canonical owners below retain evidence and verification status.

@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Fresh catalogue for cold month reads — 14 October 2026
+
+An ongoing uncached calendar month starts with one fresh provider catalogue snapshot, shared between weekday and premium service range reads. Complete monthly cache hits do not fetch catalogue metadata. This prevents a previously cached catalogue near its60-second expiry from invalidating an otherwise fresh multi-range read. Keep the60-second server and five-minute browser limits, fresh Continue and write validation, unknown-date behavior and no automatic retries. Historical finite windows retain their existing freshness/budget semantics.
+
 ## Observed catalogue representation and deployment propagation — 14 October 2026
 
 The premium service's public getEventList response uses unit_map={"2":null,"3":null,"4":null}; ordinary service2 omits unit_map. Normalize both existing ID arrays and nonempty maps whose every key is a valid provider ID and every value is null. Reject all other object relationships. This preserves exact trainer assignment instead of treating a map as unrestricted service access.

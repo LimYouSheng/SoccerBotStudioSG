@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Live prices verified; reproduce cold-prefetch expiry before repair — 14 October 2026
+
+PR26 passed all PR/main gates and deployed46b3201/versiona42014f2-3171-401c-ba78-9ce1d3cf0d46 through successful GitHub run38504874365. October public offers now validate at the intended two native service prices. Sequential smoke stopped at a November503; its error body was not captured. Later individual November/December/January reads all returned200 with no offers. Preserve that limitation instead of asserting a root cause from an absent error code.
+
+Code inspection found a catalogue may be served at59 seconds old before range reads finish. Extended the existing priced-calendar regression with that aged snapshot and advancing read clock: the old source fails provider_data_stale. The corrected owner lazily fetches one fresh catalogue per uncached ongoing month and shares it across both service ranges. All24 catalogue cases and Worker TypeScript pass. No TTL extension, retry, booking, payment or provider setting change. Final exact-source CI/deployment and sequential four-month verification are pending at this entry.
+
 ## Preserve two deployment findings and repair their owners — 14 October 2026
 
 PR25/source45655ab passed all three gates, merged asb8917b1, and all three main gates passed. GitHub uploaded and activated Worker75b5c5d8 at10:51 Singapore, but its immediate health response still named36b84bd. Subsequent readback proved b8917b1 active. The first calendar smoke read returned503; the diagnostic read identified catalogue_representation_unavailable. Preserve both failures; do not report a green Cloudflare job or a working calendar from health alone.
