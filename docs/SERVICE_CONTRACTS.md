@@ -1,5 +1,11 @@
 # SoccerBotStudio — Service Contracts
 
+## Customer lead-time contract — 14 October 2026
+
+LIVE_CUSTOMER_ACCESS grants use the owner-approved 150-minute minimum lead, replacing the earlier 48-hour customer policy. The optional strict bookingLeadMinutes=150 contract field is installed by customer-authority, bound to the account/environment/company and actual configured service, and expires with the grant. Missing, foreign or expired contracts cannot claim the shorter policy. The native prepare request schema exposes no lead-time override. Fresh calendar, review, revalidation and dispatch must agree, including a selection crossing the cutoff during a provider read.
+
+Boundary regression covers exact 150-minute eligibility, one millisecond too late, crossing during reads and invalid contract bindings. The ongoing HTTP/coordinator regression checks the installed policy and a separate actual premium-service preparation at SGD108, without booking dispatch. Native payment and webhook acceptance remain separate.
+
 ## Anonymous homepage metadata and entry reuse — 14 October 2026
 
 GET /api/catalogue in LIVE_CUSTOMER_ACCESS mode returns the existing strict CustomerCatalogue DTO through windowCatalogue admission, without creating a guest or reading private identity data. Other modes retain their authenticated grant contract. Browser transport still validates response age under60 seconds and bounded/schema-safe bytes; its public display snapshot can then be retained for five minutes from observedAtMs. Homepage and booking share one in-flight request; leaving one consumer does not cancel another, and failed/expired data never becomes a fallback. LiveCatalogue can render an existing snapshot synchronously.

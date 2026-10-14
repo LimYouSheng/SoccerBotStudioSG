@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  BOOKING_LEAD_MS,
+  NATIVE_TRIAL_LEAD_MS,
+} from "../src/domain/booking-policy";
 import { sessionRate } from "../src/domain/session-pricing";
 import { ApiError, policy, liveCustomerAccess } from "./policy";
 import { providerSecrets } from "./provider-transport";
@@ -255,7 +259,11 @@ export async function windowCalendar(
     dates: raw.dates.map((day) => ({
       ...day,
       offers: day.offers.filter(
-        (offer) => offer.startMs - Date.now() >= 48 * 3600000,
+        (offer) =>
+          offer.startMs - Date.now() >=
+          (liveCustomerAccess(options.env)
+            ? BOOKING_LEAD_MS
+            : NATIVE_TRIAL_LEAD_MS),
       ),
     })),
   });
@@ -284,7 +292,11 @@ export async function publicCalendar(options: ReadOptions & { month: string }) {
       date: day.date,
       ...(liveCustomerAccess(options.env) ? { offers: day.offers } : {}),
       available: day.offers.some(
-        (offer) => offer.startMs - Date.now() >= 48 * 3600000,
+        (offer) =>
+          offer.startMs - Date.now() >=
+          (liveCustomerAccess(options.env)
+            ? BOOKING_LEAD_MS
+            : NATIVE_TRIAL_LEAD_MS),
       ),
     })),
   });

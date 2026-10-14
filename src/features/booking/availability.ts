@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { BOOKING_LEAD_MS } from "@/domain/booking-policy";
 import {
   BookingServiceError,
   type AvailableSlot,
@@ -51,7 +52,7 @@ export function useBookingAvailability(
       for (const date of requested)
         if (
           Date.parse(`${date}T23:59:59+08:00`) <
-          minute * 60_000 + 48 * 3600000
+          minute * 60_000 + BOOKING_LEAD_MS
         )
           entries[date] = [];
     return entries;
@@ -76,7 +77,7 @@ export function useBookingAvailability(
                 (slot) =>
                   Date.parse(`${slot.date}T${slot.start}:00+08:00`) -
                     minute * 60_000 >=
-                  48 * 3600000,
+                  BOOKING_LEAD_MS,
               ),
           }
         : null,

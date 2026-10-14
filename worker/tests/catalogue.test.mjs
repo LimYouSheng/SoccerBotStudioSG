@@ -1201,6 +1201,27 @@ test("priced customer calendar chooses native service by Singapore weekday and p
     }),
     /native_service_price_changed/,
   );
+  data.services[3].price = "108";
+  available = true;
+  now = Date.parse("2026-11-06T06:29:58+08:00");
+  const boundary = await windowAvailability({
+    ...input,
+    serviceId: "2",
+    date: "2026-11-06",
+    fresh: true,
+  });
+  assert.equal(
+    boundary.offers.length,
+    1,
+    "exactly 150 minutes remains bookable",
+  );
+  now++;
+  assert.deepEqual(
+    (await windowAvailability({ ...input, serviceId: "2", date: "2026-11-06" }))
+      .offers,
+    [],
+    "cached offers cross the cutoff without a stale fallback",
+  );
 });
 
 test("priced prebooking accepts exact mixed service totals and rejects cheap holiday service substitution", async (t) => {
@@ -1297,4 +1318,77 @@ test("catalogue accepts observed explicit provider null maps without allowing ot
       normalizeCatalogue(data.services, data.instructors, binding, Date.now()),
     );
   }
+});
+
+test("customer booking accepts exactly 150 minutes and rechecks the cutoff after provider reads", async (t) => {
+  let now = Date.parse("2026-11-06T06:30:00+08:00");
+  t.mock.method(Date, "now", () => now);
+  const intent = approved();
+  intent.sessions[0].startMs = now + 150 * 60000;
+  intent.customerMode = "booking-contact";
+  intent.contact = {
+    name: "Synthetic Guest",
+    email: "guest@example.invalid",
+    phone: "00000000",
+    contactMethod: "email",
+    academy: "",
+  };
+  const contract = {
+    ...binding,
+    serviceId: "12",
+    priceMinor: 8800,
+    currency: "SGD",
+    taxMinor: 0,
+    durationMinutes: 40,
+    bufferAfterMinutes: 10,
+    clientLoginRequired: false,
+    providerSchedules: "non-overlapping",
+    bookingLeadMinutes: 150,
+    confirmedAtMs: now - 1000,
+    expiresAtMs: now + 600000,
+  };
+  const read = exchangeFor(fixtures(), intent);
+  const validator = new NativePrebooking(
+    binding,
+    new CatalogueReads(),
+    read.exchange,
+    contract,
+  );
+  assert.equal(
+    nativeTrialLeadMs(contract, binding, intent.sessions[0], now),
+    150 * 60000,
+  );
+  assert.equal((await validator.review(intent)).state, "ready");
+  assert.deepEqual(await validator.revalidate(intent), intent);
+  const count = read.calls.length;
+  now++;
+  await assert.rejects(validator.review(intent), /native_trial_lead_time/);
+  assert.equal(read.calls.length, count);
+  now--;
+  const delayed = new NativePrebooking(
+    binding,
+    new CatalogueReads(),
+    async (request) => {
+      const result = await read.exchange(request);
+      now++;
+      return result;
+    },
+    contract,
+  );
+  await assert.rejects(delayed.revalidate(intent), /native_trial_lead_time/);
+  for (const change of [
+    { accountId: "foreign" },
+    { bookingLeadMinutes: 0 },
+    { expiresAtMs: now - 1 },
+  ])
+    assert.equal(
+      nativeTrialLeadMs(
+        { ...contract, ...change },
+        binding,
+        intent.sessions[0],
+        now,
+      ),
+      48 * 3600000,
+    );
+  assert.ok(read.calls.every((request) => request.kind !== "book"));
 });

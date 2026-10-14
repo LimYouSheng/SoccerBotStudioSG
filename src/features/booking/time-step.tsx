@@ -1,6 +1,6 @@
 "use client";
 import { BrandLoading } from "@/components/brand-loading";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/icon";
 
 import {
@@ -31,7 +31,21 @@ export function TimeStep() {
     bookingService,
   } = useBooking();
   const today = todaySG(new Date(now));
-  const [date, setDate] = useState(() => draft.slots[0]?.date || today),
+  const live = bookingService.mode === "live";
+  const publicCalendarReady =
+    live &&
+    bookingService.operations.availability === "live" &&
+    !!bookingService.publicCalendar;
+  const [date, setDate] = useState(
+      () =>
+        draft.slots[0]?.date ||
+        (live
+          ? calendar
+              .entry(today.slice(0, 7), now)
+              ?.dates.find((day) => day.available)?.date
+          : undefined) ||
+        today,
+    ),
     [selectedMonth, setMonth] = useState(() =>
       monthAt(draft.slots[0]?.date || today, 0),
     );
@@ -48,23 +62,32 @@ export function TimeStep() {
     firstDay = (new Date(`${month}T12:00:00Z`).getUTCDay() + 6) % 7;
   const days = new Date(`${monthAt(today, offset + 1)}T12:00:00Z`);
   days.setUTCDate(0);
-  useEffect(() => {
-    showMonth(month.slice(0, 7));
-    showDate(date);
-    return () => showDate(null);
-  }, [date, showDate, month, showMonth]);
-  const live = bookingService.mode === "live";
   const monthResult = calendar.entry(month.slice(0, 7), now);
   const dayAvailability = new Map(
     monthResult?.dates.map((day) => [day.date, day.available]),
   );
+  const displayDate =
+    publicCalendarReady && dayAvailability.get(date) !== true ? null : date;
+  useEffect(() => {
+    showMonth(month.slice(0, 7));
+    showDate(displayDate);
+    return () => showDate(null);
+  }, [displayDate, showDate, month, showMonth]);
   const nextAvailable = monthResult?.dates.find(
     (day) => day.date > date && day.available,
   )?.date;
   const { retry } = availability;
-  const result = availability.result?.dates.includes(date)
-    ? availability.result
-    : null;
+  const displayUnavailable =
+    publicCalendarReady && !!monthResult && dayAvailability.get(date) !== true;
+  const result = useMemo(
+    () =>
+      availability.result?.dates.includes(date)
+        ? availability.result
+        : displayUnavailable
+          ? { status: "success" as const, slots: [], dates: [date] }
+          : null,
+    [availability.result, date, displayUnavailable],
+  );
   const { reconcile } = calendar;
   useEffect(() => {
     if (!live || !result) return;

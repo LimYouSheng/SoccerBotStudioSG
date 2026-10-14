@@ -1,3 +1,4 @@
+import { BOOKING_LEAD_MINUTES } from "../src/domain/booking-policy";
 import { authenticate } from "./access";
 import { ApiError, liveCustomerAccess, policy } from "./policy";
 import { nativePrepareSchema } from "../src/domain/native-checkout";
@@ -16,6 +17,7 @@ export async function authorizeCustomerCheckout(
   if (!liveCustomerAccess(env))
     throw new ApiError(503, "provider_access_disabled");
   const input = nativePrepareSchema.parse(value);
+  const p = policy(env);
   const access = await authenticate(request, env, Date.now());
   const existing = await env.STATE.withSession("first-primary")
     .prepare("SELECT 1 FROM native_checkout_grants WHERE capability_hash=?")
@@ -29,7 +31,12 @@ export async function authorizeCustomerCheckout(
       ),
     ),
   ].sort();
-  if (input.sessions.some((session) => session.serviceId !== "2"))
+  if (
+    input.sessions.some(
+      (session) =>
+        session.serviceId !== "2" && session.serviceId !== p.PREMIUM_SERVICE_ID,
+    )
+  )
     throw new ApiError(409, "native_selection_changed");
   const available: Record<
     string,
@@ -62,7 +69,6 @@ export async function authorizeCustomerCheckout(
   await authenticate(request, env, now);
   const expires = Math.min(now + 1200000, access.expires_ms);
   if (expires <= now + 180000) throw new ApiError(401, "access_expiring");
-  const p = policy(env);
   const contract = nativeAccountContractSchema.parse({
     accountId: p.DEPLOYMENT_ACCOUNT_ID,
     environmentId: p.ENVIRONMENT,
@@ -76,6 +82,7 @@ export async function authorizeCustomerCheckout(
     bufferAfterMinutes: 10,
     clientLoginRequired: false,
     providerSchedules: "non-overlapping",
+    bookingLeadMinutes: BOOKING_LEAD_MINUTES,
     confirmedAtMs: now,
     expiresAtMs: expires,
   });

@@ -2600,6 +2600,7 @@ test("ongoing customer access survives campaign closure and preserves fresh cons
       .prepare("SELECT * FROM native_checkout_grants")
       .first();
     assert.equal(grant.ongoing, 1);
+    assert.equal(JSON.parse(grant.contract_json).bookingLeadMinutes, 150);
     assert.ok(grant.starting_used >= 2000);
     assert.equal(grant.maximum_used - grant.starting_used, 96);
     assert.equal(books, 0);
@@ -3604,6 +3605,108 @@ test("invoice webhook scope enforces its own event cap before any subscription w
     assert.equal(f.creates(), 0);
     assert.deepEqual(f.records(), entries);
     assert.deepEqual(f.deletes, []);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+
+test("ongoing checkout admits the priced weekend service with the customer lead-time contract", async () => {
+  const day = new Date(Date.now() + 3 * 86400000);
+  while (day.getUTCDay() !== 6) day.setUTCDate(day.getUTCDate() + 1);
+  const date = day.toISOString().slice(0, 10);
+  const f = await fixture({
+    full: true,
+    end: 0,
+    secrets: {
+      SOURCE_REVISION: "d".repeat(40),
+      LIVE_CUSTOMER_ACCESS: "enabled",
+      PREMIUM_SERVICE_ID: "3",
+    },
+    respond: (_request, body) => {
+      if (!body) return;
+      const matrix = {};
+      if (body.method === "getStartTimeMatrix")
+        for (
+          let cursor = new Date(body.params[0] + "T00:00:00Z");
+          cursor.toISOString().slice(0, 10) <= body.params[1];
+          cursor.setUTCDate(cursor.getUTCDate() + 1)
+        ) {
+          const key = cursor.toISOString().slice(0, 10);
+          matrix[key] = key === date ? ["10:00:00"] : [];
+        }
+      const results = {
+        getEventList: Object.fromEntries(
+          [2, 3].map((id) => [
+            id,
+            {
+              id,
+              name: "Synthetic Session " + id,
+              duration: "40",
+              is_active: "1",
+              is_public: "1",
+              is_recurring: "0",
+              price: id === 3 ? "108" : "88",
+              currency: "SGD",
+              unit_map: [2],
+            },
+          ]),
+        ),
+        getUnitList: {
+          2: { id: 2, name: "Synthetic Trainer", is_active: "1" },
+        },
+        getStartTimeMatrix: matrix,
+        getAdditionalFields: [],
+        getAvailableUnits: [2],
+      };
+      if (Object.hasOwn(results, body.method))
+        return Response.json({
+          jsonrpc: "2.0",
+          id: body.id,
+          result: results[body.method],
+        });
+    },
+  });
+  try {
+    const access = await f.mf.dispatchFetch(origin + "/api/access", {
+      method: "POST",
+      headers: { origin },
+    });
+    const cookie = access.headers.get("set-cookie").split(";")[0];
+    const prepared = await f.mf.dispatchFetch(origin + "/api/booking/prepare", {
+      method: "POST",
+      headers: { cookie, origin, "content-type": "application/json" },
+      body: JSON.stringify({
+        key: crypto.randomUUID(),
+        accepted: true,
+        contact: {
+          name: "Synthetic Guest",
+          email: "guest@example.com",
+          phone: "00000000",
+          contactMethod: "email",
+          academy: "",
+        },
+        sessions: [
+          {
+            serviceId: "3",
+            instructorId: "2",
+            startMs: Date.parse(date + "T10:00:00+08:00"),
+            players: 2,
+            totalMinor: 10800,
+          },
+        ],
+      }),
+    });
+    assert.equal(
+      prepared.status,
+      201,
+      JSON.stringify(await prepared.clone().json()),
+    );
+    const grant = await f.db
+      .prepare("SELECT contract_json FROM native_checkout_grants")
+      .first();
+    assert.equal(JSON.parse(grant.contract_json).bookingLeadMinutes, 150);
+    assert.equal(JSON.parse(grant.contract_json).premiumServiceId, "3");
+    assert.ok(f.calls.every((call) => call.body?.method !== "book"));
   } finally {
     await f.mf.dispose();
   }

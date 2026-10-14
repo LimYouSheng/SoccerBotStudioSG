@@ -1,5 +1,9 @@
 # SoccerBotStudioSG engineering
 
+## Customer minimum lead time — 14 October 2026
+
+Owner explicitly replaces the customer 48-hour booking lead with 2.5 hours (150 minutes). Apply the shared policy to cached offers, fresh Continue, preparation and final writes. Historical finite trial contracts retain their old bounds. This is part of the already-authorized PR27 GitHub deployment; no new booking/payment experiment is required.
+
 ## Homepage cache handoff and confirmation ordering — 14 October 2026
 
 Owner extends the in-flight deployment: preload on homepage before guest/email; reuse cached public dates/times and session information across authentication; enlarge/centre the SoccerBot loading emblem and remove visible status text. Keep accessible status labels and required identity calls. Details must wait for fresh main Continue validation. This supersedes identity-keyed public display cache invalidation, not authentication or final native write checks. PR27 remains the integration branch; final exact-source CI, GitHub deployment and public read verification are required.

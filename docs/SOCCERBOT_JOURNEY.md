@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Owner replaces customer 48-hour lead — 14 October 2026
+
+YS sets the latest business decision to 2.5 hours before session start and explicitly confirms it supersedes 48 hours. Implementation shares 150 minutes across customer display and server checks; finite historical trials remain unchanged. Inspection also found ongoing authority admitted only native service2 despite the premium mapping: it now admits the configured service3 before the existing exact dated-offer/price checks.
+
+All25 catalogue regressions pass, including exact-cutoff and post-read boundary checks; both targeted ongoing HTTP/coordinator tests pass, including premium preparation without booking dispatch. Initial frontend regression exposed an unavailable-adapter state hidden by the new no-speculative-date guard; scoped that guard to supported live availability, retaining the original alert assertion. Final frozen code verification, exact-source CI, GitHub deployment and public smoke are still required. This entry supersedes the earlier journey note describing 48-hour customer filtering.
+
 ## Homepage browser gate catches impossible-date display reads — 14 October 2026
 
 CI38508429832 passed Worker boundaries and frontend browsers. The expanded native homepage flight rejected two pre-Continue daily requests for today, while retaining the expected four calendar requests and one catalogue request. TimeStep initially displays today; the fixture deliberately leaves that date unknown. Live availability now resolves dates whose final possible start is before the48-hour lead boundary locally as empty, without calling the provider. Demo behavior and eligible unknown-date fallback remain unchanged. Keep the zero-extra-read browser assertion and test the same too-soon behavior locally before a new exact-source run.

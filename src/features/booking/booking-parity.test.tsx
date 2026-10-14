@@ -348,7 +348,7 @@ test("fresh calendar receipts render before the minute clock ticks and expire at
 
 test("preloaded browser slots survive date and player changes and Continue refreshes changed availability", async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
-  vi.setSystemTime(new Date("2027-01-01T00:00:00Z"));
+  vi.setSystemTime(new Date("2027-01-04T22:30:00Z"));
   let changed = false;
   const availability = vi.fn(
     async ({ date, fresh }: { date: string; fresh?: boolean }) => {
@@ -388,7 +388,7 @@ test("preloaded browser slots survive date and player changes and Continue refre
     return (
       <>
         <button onClick={() => update({ players: 2 })}>Two players</button>
-        <button onClick={() => showDate("2027-01-01")}>Inspect today</button>
+        <button onClick={() => showDate("2026-12-31")}>Inspect past day</button>
       </>
     );
   }
@@ -426,7 +426,7 @@ test("preloaded browser slots survive date and player changes and Continue refre
   }
   fireEvent.click(screen.getByRole("button", { name: "Two players" }));
   await act(async () => {});
-  fireEvent.click(screen.getByRole("button", { name: "Inspect today" }));
+  fireEvent.click(screen.getByRole("button", { name: "Inspect past day" }));
   await act(async () => {});
   expect(availability).not.toHaveBeenCalled();
   expect(publicCalendar).toHaveBeenCalledTimes(4);

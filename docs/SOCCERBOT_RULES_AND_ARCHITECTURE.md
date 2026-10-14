@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Customer booking cutoff is 150 minutes — 14 October 2026
+
+Owner confirms that 2.5 hours replaces 48 hours for customer bookings. One shared domain constant governs ongoing public calendar filtering, browser snapshot filtering and selected-session validation. Trusted ongoing checkout contracts carry bookingLeadMinutes=150; prebooking checks it before and after provider reads and at dispatch. Exactly 150 minutes is eligible, less is rejected. Customer DTOs cannot choose the lead policy; historical finite operator grants retain their original bounds.
+
+Public-calendar TimeStep only requests dates explicitly available in its loaded month, preferring an already-cached available date on entry. Unknown dates do not trigger speculative daily reads; unavailable adapters still expose their unavailable state. Ongoing checkout admits the configured premium native service as well as service2, then verifies date routing and price independently.
+
 ## Homepage display cache survives entry — 14 October 2026
 
 BookingProvider starts public calendar and session-metadata prefetch on homepage. Public calendar scope excludes guest/member identity and selected-service effect changes, so entry neither discards completed months nor aborts an in-flight month. Public display metadata uses one browser-memory five-minute cache and coalesces in-flight consumers; page reload clears it. Ongoing customer mode allows only the strict public service/instructor catalogue without identity. Historical finite catalogue grants remain authenticated. Booking/session/identity authority never comes from this display cache.
