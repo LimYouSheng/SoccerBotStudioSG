@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## Homepage public metadata regression alignment — 14 October 2026
+
+CI38507816042 rejected the old ongoing-access assertion that anonymous /api/catalogue returns401. The authorized homepage contract now returns only public service metadata. Updated that integration test to require200, exact public DTO fields, no Set-Cookie and no extra provider read, while explicitly retaining401 for protected daily availability. This changes the expected public-read contract without loosening booking/identity admission. The corrected full HTTP/coordinator regression passes locally. The frontend browser gate also retained one visible loading-text locator; updated it to the accessible status label after the owner requested hidden status text, preserving the same pending-checkout visibility and link-absence assertions. No browser retry or timeout change. Frozen source7446bc3 had passed full local code verification; final CI must include this corrected boundary test.
+
 ## Owner refines homepage prefetch and loading presentation — 14 October 2026
 
 While PR27 cold-cache CI ran, YS requested immediate homepage warming, no new cache request on guest/email entry, a larger centred spinning logo without visible status text, and a check of Details ordering. Inspection found public months already start on homepage but member/service transitions could restart reads; session metadata was only fetched after entry. Main Continue already awaited availability, but success invalidated display data and caused another read as Details opened.

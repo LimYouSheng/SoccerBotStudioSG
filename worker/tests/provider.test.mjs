@@ -2493,9 +2493,31 @@ test("ongoing customer access survives campaign closure and preserves fresh cons
         currency: "SGD",
       },
     ]);
+    const beforeAnonymous = f.calls.length;
+    const anonymousCatalogue = await f.mf.dispatchFetch(
+      origin + "/api/catalogue",
+    );
+    assert.equal(anonymousCatalogue.status, 200);
+    assert.equal(anonymousCatalogue.headers.get("set-cookie"), null);
+    const publicData = await anonymousCatalogue.json();
+    assert.deepEqual(Object.keys(publicData).sort(), [
+      "complete",
+      "environment",
+      "instructors",
+      "observedAtMs",
+      "services",
+    ]);
+    assert.equal(publicData.services[0].id, "2");
     assert.equal(
-      (await f.mf.dispatchFetch(origin + "/api/catalogue")).status,
+      f.calls.length,
+      beforeAnonymous,
+      "homepage metadata reuses the shared catalogue",
+    );
+    assert.equal(
+      (await f.mf.dispatchFetch(origin + "/api/booking/availability/2/" + date))
+        .status,
       401,
+      "public display metadata never grants protected availability access",
     );
     const access = await f.mf.dispatchFetch(origin + "/api/access", {
       method: "POST",

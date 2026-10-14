@@ -288,7 +288,7 @@ test("checkout stays unavailable while its protected context is pending", async 
   try {
     await requested;
     await expect(
-      page.getByText("Preparing checkout…", { exact: true }),
+      page.getByRole("status", { name: "Preparing checkout…", exact: true }),
     ).toBeVisible();
     await expect(page.getByRole("link", { name: /Open checkout/ })).toHaveCount(
       0,
