@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## Durable Object read optimization and Turnstile layout — 14 October 2026
+
+Current baseline is deployed f268988. Additive admission indexes and a populated-object runtime regression are implemented; focused regression and Worker types/source checks passed. Full Worker checks and exact-source CI are next, followed by the authorized GitHub delivery. Turnstile is centred with24px spacing; authentication/remembering is unchanged. Cloudflare query/v2 returned500 for both name and ID inspection; preserve that failure and verify live rows_read when inspection is available. No booking/payment/provider experiment or data reset.
+
 ## Preparing one checkout-opening diagnostic — 13 October 2026
 
 Source-only0025 raises native grant schema cap624→688; carried618 otherwise cannot satisfy availability admission. Focused extended-grant runtime test passed; full checks/CI/artifact and a new executor remain in progress. No link repair is guessed. The proposed owner browser flight creates one fresh eligible checkout, captures redirects/errors, and stops before payment; no webhook subscription. Complete baseline read adds1 management (495), all24 tables/4 event scopes closed. Coordinator618, Worker199, deployments41 unchanged;3 separate connector reads retain unknown physical-call accounting. Finite attempt/link/migration/deployment limits must be amended against the final reviewed packet.

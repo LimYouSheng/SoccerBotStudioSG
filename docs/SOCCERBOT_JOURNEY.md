@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## Coordinator optimization and security-widget layout — 14 October 2026
+
+Owner reports roughly1,461 rows per admission query and4,690,285 daily rows read. Source optimization adds two indexes without relaxing provider limits or deleting history. Local populated-object regression proves bounded reads and reservation preservation. Owner withdraws Turnstile/Remember me behavioural changes but then explicitly requests Turnstile centring and spacing: the existing widget gets a centred wrapper,24px top spacing and the existing24px separation before Continue. Siteverify, expiry, email delivery and remembered identity are unchanged. Browser visual acceptance stays owner/CI-operated; live measured query acceptance and GitHub delivery are pending.
+
 ## Deployed customer rule; final month exposes token timing — 14 October 2026
 
 PR27/source95df33c passed172 local unit/component tests and all three PR gates, merged as9d1d107, then passed all main gates and GitHub Cloudflare deployment. Worker suite303 and live browser15 passed; user browser execution and paid/webhook acceptance remain separate. Live catalogue succeeds and October has six eligible same-day slots plus15October and correctly priced later dates. November and December return known empty calendars. January fails503 provider_auth_expired; retain this concrete body instead of retrying the failed smoke.

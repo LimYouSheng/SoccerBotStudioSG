@@ -57,6 +57,14 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     ctx.storage.sql.exec(
       "CREATE TABLE IF NOT EXISTS admissions (id TEXT PRIMARY KEY, campaign TEXT NOT NULL, started_ms INTEGER NOT NULL, finished INTEGER NOT NULL DEFAULT 0)",
     );
+    // Keep pacing/rate reads independent of retained admission history. The
+    // partial index contains only reservations that still hold concurrency.
+    ctx.storage.sql.exec(
+      "CREATE INDEX IF NOT EXISTS admissions_started_ms ON admissions(started_ms)",
+    );
+    ctx.storage.sql.exec(
+      "CREATE INDEX IF NOT EXISTS admissions_unfinished ON admissions(finished) WHERE finished=0",
+    );
   }
   admit(recovery: boolean, customer = false) {
     const p = policy(this.env);

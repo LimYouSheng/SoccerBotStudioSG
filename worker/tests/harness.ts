@@ -1,7 +1,7 @@
 // Local workerd test driver; never the deployment entry point.
 import { ApiError } from "../policy";
 import worker, {
-  SoccerBotAccountCoordinator,
+  SoccerBotAccountCoordinator as ProductionCoordinator,
   prepareAttempt,
   claimDispatch,
   recordObservation,
@@ -13,7 +13,27 @@ import worker, {
   runRecoveryBatch,
   retentionPreview,
 } from "../index";
-export { SoccerBotAccountCoordinator };
+export class SoccerBotAccountCoordinator extends ProductionCoordinator {
+  // Test-only metrics; never exported by the deployment entry point.
+  admissionQueryMetrics(now: number) {
+    return [
+      { sql: "SELECT MAX(started_ms) AS latest FROM admissions", params: [] },
+      { sql: "SELECT count(*) n FROM admissions WHERE finished=0", params: [] },
+      {
+        sql: "SELECT count(*) n FROM admissions WHERE started_ms>?",
+        params: [now - 1000],
+      },
+    ].map(({ sql, params }) => {
+      const cursor = this.ctx.storage.sql.exec(sql, ...params);
+      const rows = cursor.toArray();
+      return {
+        rows,
+        rowsRead: cursor.rowsRead,
+        rowsWritten: cursor.rowsWritten,
+      };
+    });
+  }
+}
 const harness = {
   async fetch(request: Request, env: Env) {
     const p = new URL(request.url).pathname;
@@ -45,6 +65,11 @@ const harness = {
         input.coordinator || "synthetic-account",
       );
       switch (p) {
+        case "/test/admission-query-metrics":
+          result = await (
+            coordinator as DurableObjectStub<SoccerBotAccountCoordinator>
+          ).admissionQueryMetrics(input.now);
+          break;
         case "/test/recovery-claim":
           result = await claimRecovery(
             env.STATE,

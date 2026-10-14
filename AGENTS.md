@@ -1,5 +1,9 @@
 # SoccerBotStudioSG engineering
 
+## Admission query indexes and Turnstile spacing — 14 October 2026
+
+Owner requests Durable Object row-read optimization and centred, spaced Turnstile presentation. Preserve admission history, budgets, pacing, four-start rolling limit and two-request concurrency. Constructor adds idempotent started_ms and unfinished-only indexes to existing SQLite admissions. A workerd regression upgrades10,002 retained rows, measures every query at at most2 rows read and checks budget/reservation preservation across two restarts. Turnstile verification and email remembering are unchanged. Complete exact-source CI/GitHub delivery; live SQL inspection currently returns Cloudflare500, so live row-read acceptance remains pending.
+
 ## Provider identity and token lifetime — 14 October 2026
 
 PR27 is merged and deployed as9d1d107/versiond40c2082 with all three PR/main gates and Cloudflare successful. Live October proves same-day150-minute eligibility and88/108 pricing; November and December load, but January fails provider_auth_expired. Preserve that failure. The explicit identity owner must not cache identity beyond either token and must check expiry after its own reads. No TTL extension, nativeRead retry or booking/payment experiment; finish the authorized follow-up through CI/GitHub deployment and sequential readback.
