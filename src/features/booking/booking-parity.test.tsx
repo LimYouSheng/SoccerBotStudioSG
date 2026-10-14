@@ -384,8 +384,13 @@ test("preloaded browser slots survive date and player changes and Continue refre
         : [],
   }));
   function Players() {
-    const { update } = useBooking();
-    return <button onClick={() => update({ players: 2 })}>Two players</button>;
+    const { update, showDate } = useBooking();
+    return (
+      <>
+        <button onClick={() => update({ players: 2 })}>Two players</button>
+        <button onClick={() => showDate("2027-01-01")}>Inspect today</button>
+      </>
+    );
   }
   render(
     <BookingProvider
@@ -420,6 +425,8 @@ test("preloaded browser slots survive date and player changes and Continue refre
     ).not.toBeInTheDocument();
   }
   fireEvent.click(screen.getByRole("button", { name: "Two players" }));
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: "Inspect today" }));
   await act(async () => {});
   expect(availability).not.toHaveBeenCalled();
   expect(publicCalendar).toHaveBeenCalledTimes(4);

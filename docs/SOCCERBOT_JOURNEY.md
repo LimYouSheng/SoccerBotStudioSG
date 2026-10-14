@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## Homepage browser gate catches impossible-date display reads — 14 October 2026
+
+CI38508429832 passed Worker boundaries and frontend browsers. The expanded native homepage flight rejected two pre-Continue daily requests for today, while retaining the expected four calendar requests and one catalogue request. TimeStep initially displays today; the fixture deliberately leaves that date unknown. Live availability now resolves dates whose final possible start is before the48-hour lead boundary locally as empty, without calling the provider. Demo behavior and eligible unknown-date fallback remain unchanged. Keep the zero-extra-read browser assertion and test the same too-soon behavior locally before a new exact-source run.
+
 ## Homepage public metadata regression alignment — 14 October 2026
 
 CI38507816042 rejected the old ongoing-access assertion that anonymous /api/catalogue returns401. The authorized homepage contract now returns only public service metadata. Updated that integration test to require200, exact public DTO fields, no Set-Cookie and no extra provider read, while explicitly retaining401 for protected daily availability. This changes the expected public-read contract without loosening booking/identity admission. The corrected full HTTP/coordinator regression passes locally. The frontend browser gate also retained one visible loading-text locator; updated it to the accessible status label after the owner requested hidden status text, preserving the same pending-checkout visibility and link-absence assertions. No browser retry or timeout change. Frozen source7446bc3 had passed full local code verification; final CI must include this corrected boundary test.

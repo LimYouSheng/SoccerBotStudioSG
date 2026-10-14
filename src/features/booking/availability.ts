@@ -45,16 +45,33 @@ export function useBookingAvailability(
     session,
   ]);
   const requested: string[] = useMemo(() => JSON.parse(datesKey), [datesKey]);
+  const displayCache = useMemo(() => {
+    const entries = { ...cachedDates };
+    if (service.mode === "live" && service.operations.availability === "live")
+      for (const date of requested)
+        if (
+          Date.parse(`${date}T23:59:59+08:00`) <
+          minute * 60_000 + 48 * 3600000
+        )
+          entries[date] = [];
+    return entries;
+  }, [
+    cachedDates,
+    service.mode,
+    service.operations.availability,
+    requested,
+    minute,
+  ]);
   const cached = useMemo(
     () =>
-      requested.length && requested.every((date) => cachedDates?.[date])
+      requested.length && requested.every((date) => displayCache[date])
         ? {
             owner: service,
             key,
             dates: requested,
             status: "success" as const,
             slots: requested
-              .flatMap((date) => cachedDates![date])
+              .flatMap((date) => displayCache[date])
               .filter(
                 (slot) =>
                   Date.parse(`${slot.date}T${slot.start}:00+08:00`) -
@@ -63,7 +80,7 @@ export function useBookingAvailability(
               ),
           }
         : null,
-    [requested, cachedDates, service, key, minute],
+    [requested, displayCache, service, key, minute],
   );
   const [result, setResult] = useState<Result | null>(null);
   const [reload, setReload] = useState(0);
@@ -75,7 +92,7 @@ export function useBookingAvailability(
     void Promise.all(
       requested.map(
         (date) =>
-          cachedDates?.[date] ??
+          displayCache[date] ??
           service.availability({
             date,
             players,
@@ -138,7 +155,7 @@ export function useBookingAvailability(
     sessionKey,
     serviceId,
     cached,
-    cachedDates,
+    displayCache,
   ]);
   return {
     result:
