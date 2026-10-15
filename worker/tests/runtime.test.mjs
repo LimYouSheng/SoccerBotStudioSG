@@ -201,6 +201,11 @@ before(async () => {
       .replace(/^--.*$/gm, "")
       .replace(/\n/g, " "),
   );
+  await db.exec(
+    readFileSync("migrations/0029_direct_hitpay.sql", "utf8")
+      .replace(/^--.*$/gm, "")
+      .replace(/\n/g, " "),
+  );
 });
 after(async () => {
   if (mf) await mf.dispose();

@@ -1,3 +1,6 @@
+import { payHitpayHold } from "./hitpay-hold";
+import { hitpayRecoveryEnabled } from "./hitpay-contract";
+import { recoverHitpay } from "./hitpay-recovery";
 import { ongoingReadbackDue } from "./ongoing-readback";
 import { authorizeCustomerCheckout } from "./customer-authority";
 import {
@@ -61,6 +64,9 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     ctx.storage.sql.exec(
       "CREATE TABLE IF NOT EXISTS admission_releases (id TEXT PRIMARY KEY, campaign TEXT NOT NULL, started_ms INTEGER NOT NULL, reason TEXT NOT NULL CHECK(reason IN ('read_transport_ended','reviewed_historical_read_timeout')), recorded_ms INTEGER NOT NULL, evidence TEXT)",
     );
+    ctx.storage.sql.exec(
+      "CREATE TABLE IF NOT EXISTS financial_releases(id TEXT PRIMARY KEY,attempt_id TEXT NOT NULL,recorded_ms INTEGER NOT NULL)",
+    );
     // Keep pacing/rate reads independent of retained admission history. The
     // partial index contains only reservations that still hold concurrency.
     ctx.storage.sql.exec(
@@ -70,10 +76,12 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       "CREATE INDEX IF NOT EXISTS admissions_unfinished ON admissions(finished) WHERE finished=0",
     );
   }
-  admit(recovery: boolean, customer = false) {
+  admit(recovery: boolean, customer = false, financial = false) {
     const p = policy(this.env);
     const now = Date.now();
-    const ongoing = customer && liveCustomerAccess(this.env);
+    const ongoing =
+      (customer && liveCustomerAccess(this.env)) ||
+      (financial && recovery && hitpayRecoveryEnabled(this.env));
     if (!["disabled", "trusted-reads"].includes(this.env.PROVIDER_ACCESS))
       throw new Error("Unsupported provider mode");
     // Synthetic admission exercises accounting only. No outbound provider path is enabled.
@@ -134,12 +142,36 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       return { allowed: true, id, used: budget.used + 1 };
     });
   }
-  private providerControl(recovery = false, customer = false): ProviderControl {
+  private providerControl(
+    recovery = false,
+    customer = false,
+    financial = false,
+  ): ProviderControl {
     return {
       liveCustomer: customer,
+      financialRecovery: financial,
+      reconciled: (id, attemptId) => {
+        if (!financial || !recovery)
+          throw new ApiError(403, "financial_recovery_required");
+        this.ctx.storage.transactionSync(() => {
+          this.sql.exec(
+            "INSERT INTO financial_releases SELECT id,?,? FROM admissions WHERE id=? AND finished=0 ON CONFLICT(id) DO NOTHING",
+            attemptId,
+            Date.now(),
+            id,
+          );
+          this.sql.exec(
+            "UPDATE admissions SET finished=1 WHERE id=? AND finished=0",
+            id,
+          );
+        });
+      },
       reserve: async () =>
         measure("coordinator", async () => {
-          if (customer && liveCustomerAccess(this.env)) {
+          if (
+            (customer && liveCustomerAccess(this.env)) ||
+            (financial && recovery && hitpayRecoveryEnabled(this.env))
+          ) {
             const last =
               this.sql
                 .exec<{ latest: number | null }>(
@@ -150,7 +182,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
             if (delay)
               await new Promise((resolve) => setTimeout(resolve, delay));
           }
-          const admitted = this.admit(recovery, customer);
+          const admitted = this.admit(recovery, customer, financial);
           if (!admitted.allowed || !admitted.id)
             throw new ApiError(
               503,
@@ -692,7 +724,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     return rpcOutcome(() => pending);
   }
   async nativeCheckout(
-    scope: { attemptId: string; cookie: string },
+    scope: { attemptId: string; cookie: string; holding?: boolean },
     correlationId: string,
   ) {
     this.calendarReads.invalidate();
@@ -704,6 +736,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           }),
           env: this.env,
           attemptId: scope.attemptId,
+          holding: scope.holding,
           provider: this.provider,
           control: this.providerControl(false, true),
           recoveryControl: this.providerControl(true, true),
@@ -716,6 +749,46 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       () => undefined,
     );
     return rpcOutcome(() => pending);
+  }
+  async hitpayPayment(
+    scope: { attemptId: string; cookie: string },
+    correlationId: string,
+  ) {
+    const pending = this.nativeAvailabilityQueue.then(() =>
+      traced(correlationId, "coordinator", () =>
+        payHitpayHold(
+          new Request(this.env.APP_ORIGIN, {
+            headers: { cookie: scope.cookie },
+          }),
+          this.env,
+          scope.attemptId,
+          this.provider,
+          this.providerControl(false, true),
+        ),
+      ),
+    );
+    this.nativeAvailabilityQueue = pending.then(
+      () => undefined,
+      () => undefined,
+    );
+    return rpcOutcome(() => pending);
+  }
+  async hitpayRecovery(attemptId: string, correlationId: string) {
+    const run = this.nativeAvailabilityQueue.then(() =>
+      traced(correlationId, "coordinator", () =>
+        recoverHitpay(
+          this.env,
+          attemptId,
+          this.provider,
+          this.providerControl(true, false, true),
+        ),
+      ),
+    );
+    this.nativeAvailabilityQueue = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
   }
   async ongoingRecovery(attemptId: string, correlationId: string) {
     const run = this.nativeAvailabilityQueue.then(async () => {

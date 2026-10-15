@@ -1,4 +1,6 @@
 "use client";
+import { protectedCheckoutService } from "@/services/confirmation";
+import { isHitpayCheckoutUrl } from "@/domain/native-checkout";
 import { todaySG } from "@/domain/dates";
 import { slotKey, sessionPrice } from "@/domain/booking";
 import { useCalendarAvailability } from "./calendar-availability";
@@ -36,7 +38,7 @@ import {
 } from "@/services/storage";
 import { useBookingAvailability } from "./availability";
 import { NativeSessionInit } from "./native-session-init";
-type Action = Exclude<BookingOperation, "availability">;
+type Action = Exclude<BookingOperation, "availability"> | "reserve";
 type ActionState = {
   status:
     "idle" | "loading" | "success" | "failure" | "unavailable" | "cancelled";
@@ -48,7 +50,10 @@ interface BookingContextValue extends StoredBooking {
   showDate: (date: string | null) => void;
   calendar: ReturnType<typeof useCalendarAvailability>;
   showMonth: (month: string) => void;
-  validateSelection: () => Promise<boolean>;
+  validateSelection: () => Promise<
+    "available" | "unavailable" | "error" | "cancelled"
+  >;
+  selectionNotice: string | null;
   selectionConfirmed: boolean;
   ready: boolean;
   now: number;
@@ -58,6 +63,7 @@ interface BookingContextValue extends StoredBooking {
   action: ActionState;
   cancel: () => void;
   update: (change: Partial<BookingDraft>) => void;
+  reserve: () => Promise<boolean>;
   checkout: () => Promise<boolean>;
   pay: (outcome: Outcome) => Promise<boolean>;
   check: () => Promise<boolean>;
@@ -74,6 +80,7 @@ export function BookingProvider({
   bookingService?: BookingService;
   identityService?: CustomerIdentityService;
 }) {
+  const [selectionNotice, setSelectionNotice] = useState<string | null>(null);
   const service = useMemo(
     () => defineBookingService(bookingService),
     [bookingService],
@@ -157,10 +164,12 @@ export function BookingProvider({
   }, [service]);
   const availability = useBookingAvailability(
     service,
-    [
-      ...(date ? [date] : []),
-      ...(value.ready ? value.draft.slots.map((slot) => slot.date) : []),
-    ],
+    value.attempt
+      ? []
+      : [
+          ...(date ? [date] : []),
+          ...(value.ready ? value.draft.slots.map((slot) => slot.date) : []),
+        ],
     value.draft.players,
     JSON.stringify([
       availabilityRevision,
@@ -265,8 +274,13 @@ export function BookingProvider({
     async (operation: Action, outcome: Outcome = "success") => {
       if (active.current || !mounted.current || !latest.current.ready)
         return false;
-      const current = latest.current;
-      if (operation !== "checkout" && !current.attempt) return false;
+      let current = latest.current;
+      if (
+        operation !== "checkout" &&
+        operation !== "reserve" &&
+        !current.attempt
+      )
+        return false;
       const request = { controller: new AbortController(), operation };
       active.current = request; // Synchronous guard also catches same-turn double clicks.
       setAction({ status: "loading", operation });
@@ -290,20 +304,26 @@ export function BookingProvider({
             "Your email session has expired. Verify your email again.",
           );
         const signal = request.controller.signal;
-        const attempt =
-          operation === "checkout"
-            ? await service.checkout({
-                draft: current.draft,
-                previous: current.attempt,
-                signal,
-              })
-            : operation === "pay"
-              ? await service.pay({
-                  attempt: current.attempt!,
-                  outcome,
+        let attempt =
+          operation === "checkout" && current.attempt?.held
+            ? current.attempt
+            : operation === "checkout" || operation === "reserve"
+              ? await service.checkout({
+                  holding: operation === "reserve",
+                  draft: current.draft,
+                  previous: current.attempt,
                   signal,
                 })
-              : await service[operation]({ attempt: current.attempt!, signal });
+              : operation === "pay"
+                ? await service.pay({
+                    attempt: current.attempt!,
+                    outcome,
+                    signal,
+                  })
+                : await service[operation]({
+                    attempt: current.attempt!,
+                    signal,
+                  });
         if (!isCurrent()) return false;
         if (JSON.stringify(identity()) !== sessionKey)
           throw new BookingServiceError(
@@ -311,6 +331,44 @@ export function BookingProvider({
             "Your email session has changed. Verify your email again.",
           );
         commit({ ...current, attempt });
+        current = latest.current;
+        if (
+          (operation === "checkout" || operation === "reserve") &&
+          service.mode === "live"
+        ) {
+          // Retain the prepared attempt before the one-use provider write.
+          // A missing reply must never cause a new preparation or payment.
+          attempt = await service.pay({
+            attempt,
+            outcome: "pending",
+            signal,
+            holding: operation === "reserve",
+          });
+          if (!isCurrent()) return false;
+          commit({ ...current, attempt });
+          current = latest.current;
+          if (operation === "reserve") {
+            setAction({ status: "success", operation });
+            return attempt.held === true && attempt.status === "ready";
+          }
+          const context = await protectedCheckoutService.context({
+            attemptId: attempt.id,
+            mode: "live",
+            signal,
+          });
+          if (!isCurrent()) return false;
+          if (
+            context.checkout.state === "available" &&
+            isHitpayCheckoutUrl(context.checkout.url)
+          ) {
+            setAction({ status: "success", operation });
+            location.assign(context.checkout.url);
+            // Do not also navigate to the intermediate SoccerBot route.
+            return false;
+          }
+          // Existing native attempts and unknown creation outcomes keep their
+          // protected recovery route; never invent or substitute a payment URL.
+        }
         setAction({ status: "success", operation });
         return true;
       } catch (error) {
@@ -362,12 +420,13 @@ export function BookingProvider({
         availability,
         showDate,
         calendar,
+        selectionNotice,
         selectionConfirmed:
           confirmedSelection?.owner === service &&
           confirmedSelection.key === selectionKey,
         showMonth,
         async validateSelection() {
-          if (continuation.current) return false;
+          if (continuation.current) return "cancelled";
           const current = latest.current;
           const revision = current.revision;
           const identity = sessionKey();
@@ -407,11 +466,33 @@ export function BookingProvider({
                     sessionPrice(offer) === sessionPrice(slot),
                 ),
               );
-            if (succeeded)
+            if (
+              controller.signal.aborted ||
+              !mounted.current ||
+              sessionKey() !== identity ||
+              latest.current.revision !== revision
+            )
+              return "cancelled";
+            if (succeeded) {
               confirmSelection({ owner: service, key: selectionKey });
-            return succeeded;
+              setSelectionNotice(null);
+              return "available";
+            }
+            setSelectionNotice(
+              "One or more chosen dates and times are no longer available or have changed. Please choose another time. Your entered details have been kept.",
+            );
+            return "unavailable";
           } catch {
-            return false;
+            if (
+              controller.signal.aborted ||
+              !mounted.current ||
+              latest.current.revision !== revision
+            )
+              return "cancelled";
+            setSelectionNotice(
+              "We couldn’t check availability. Your details have been kept. Please try again before continuing.",
+            );
+            return "error";
           } finally {
             continuation.current = null;
             if (mounted.current && !controller.signal.aborted) {
@@ -425,6 +506,21 @@ export function BookingProvider({
         },
         update(change) {
           const current = latest.current;
+          if (current.attempt?.held) {
+            if (
+              active.current ||
+              current.attempt.status !== "ready" ||
+              Object.keys(change).some((key) => key !== "accepted")
+            )
+              return;
+            const draft = { ...current.draft, ...change };
+            commit({
+              ...current,
+              draft,
+              attempt: { ...current.attempt, draft },
+            });
+            return;
+          }
           if (
             paymentLocked(current.attempt) ||
             (active.current && active.current.operation !== "checkout")
@@ -438,6 +534,7 @@ export function BookingProvider({
             attempt: null,
           });
         },
+        reserve: () => run("reserve"),
         checkout: () => run("checkout"),
         pay: (outcome) => run("pay", outcome),
         check: () => run("check"),
@@ -447,10 +544,14 @@ export function BookingProvider({
           if (
             active.current ||
             (current.attempt &&
-              ["checking", "pending", "late"].includes(current.attempt.status))
+              (current.attempt.held ||
+                ["checking", "pending", "late"].includes(
+                  current.attempt.status,
+                )))
           )
             return;
           cancel();
+          setSelectionNotice(null);
           commit({ version: 2, draft: blankDraft(), attempt: null });
         },
       }}

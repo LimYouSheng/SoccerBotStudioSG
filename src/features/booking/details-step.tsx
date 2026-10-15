@@ -17,9 +17,28 @@ export function DetailsStep({
   profileOnly = false,
   onClose,
 }: { profileOnly?: boolean; onClose?: () => void } = {}) {
-  const { draft, update, identityService } = useBooking(),
+  const {
+      draft,
+      update,
+      identityService,
+      bookingService,
+      validateSelection,
+      reserve,
+      action,
+      cancel,
+    } = useBooking(),
     router = useRouter(),
     c = draft.contact;
+  const [checking, setChecking] = useState(false);
+  const submitting = useRef(false);
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      cancel();
+    };
+  }, [cancel]);
   const [errors, setErrors] = useState<ContactErrors>({});
   const [saveState, setSaveState] = useState({
     key: "",
@@ -174,13 +193,40 @@ export function DetailsStep({
           setErrors(next);
           const first = Object.keys(next)[0];
           if (first) document.getElementById(first)?.focus();
-          else if (draft.mode === "member" && remember) {
-            void save().then((saved) => {
-              if (saved) router.push("/book/review/");
-            });
-          } else router.push("/book/review/");
+          else {
+            if (submitting.current) return;
+            submitting.current = true;
+            setChecking(true);
+            void (async () => {
+              try {
+                if (draft.mode === "member" && remember && !(await save()))
+                  return;
+                const result =
+                  bookingService.mode === "live"
+                    ? await validateSelection()
+                    : "available";
+                if (!mounted.current || result === "cancelled") return;
+                if (result !== "available") {
+                  router.push("/book/time/");
+                  return;
+                }
+                if (bookingService.mode === "live" && !(await reserve()))
+                  return;
+                if (mounted.current) router.push("/book/review/");
+              } finally {
+                submitting.current = false;
+                if (mounted.current) setChecking(false);
+              }
+            })();
+          }
         }}
       >
+        {!profileOnly && bookingService.mode === "live" && (
+          <p>
+            Review booking checks your selected times and places a temporary
+            hold while you review and pay.
+          </p>
+        )}
         <p className="booking-required">* Required fields</p>
         <section className="surface">
           <h2 className="section-title">
@@ -223,7 +269,11 @@ export function DetailsStep({
         </section>
         {profileOnly && draft.mode === "member" && remember && (
           <>
-            <button type="submit" className="button" disabled={saving}>
+            <button
+              type="submit"
+              className="button"
+              disabled={saving || checking}
+            >
               {saving ? (
                 <BrandLoading compact label="Saving contact details…" />
               ) : (
@@ -233,15 +283,23 @@ export function DetailsStep({
           </>
         )}
         {saveMessage && <p role="status">{saveMessage}</p>}
+        {action.error && <p role="alert">{action.error}</p>}
         {!profileOnly && (
           <div className="actions">
-            <button className="button" type="submit" disabled={saving}>
-              {saving ? (
-                <BrandLoading compact label="Saving details…" />
+            <button
+              className="button"
+              type="submit"
+              disabled={saving || checking}
+            >
+              {checking || saving ? (
+                <BrandLoading
+                  compact
+                  label={saving ? "Saving details…" : "Checking availability…"}
+                />
               ) : (
                 "Review booking"
               )}
-              {!saving && <Icon name="arrow" />}
+              {!saving && !checking && <Icon name="arrow" />}
             </button>
           </div>
         )}

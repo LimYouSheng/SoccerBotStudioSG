@@ -153,6 +153,7 @@ try {
   assert.deepEqual(manifest.pendingRemoteMigrations, [
     "0027_ongoing_identity_delivery.sql",
     "0028_ongoing_native_readback.sql",
+    "0029_direct_hitpay.sql",
   ]);
   // Old-state compatibility remains tested locally, never re-applied remotely.
   for (const name of names.slice(5, 8)) await migrate(name);
@@ -408,6 +409,7 @@ try {
   ).results;
   await migrate("0027_ongoing_identity_delivery.sql");
   await migrate("0028_ongoing_native_readback.sql");
+  await migrate("0029_direct_hitpay.sql");
   assert.deepEqual(
     (
       await db

@@ -1,5 +1,12 @@
 # North Star: dependable customer booking and quick rebooking
 
+
+## Direct hosted HitPay source checkpoint — 15 October 2026
+
+Finish final non-browser verification and source review of the disabled direct HitPay integration, then publish the feature PR and obtain exact-source CI evidence. Customer flow is calendar → Details/fresh check → disclaimer → hosted HitPay → protected confirmation; retain details on unavailable selections. Independent payment, invoice and all-booking evidence remains mandatory. Next external stage requires a concrete sandbox deployment/configuration and owner-operated test packet; no provider or physical acceptance is claimed.
+
+Latest owner clarification: Review booking after Details creates the SimplyBook holding appointment and invoice. Continue to payment uses that existing hold, with no further slot availability query or booking recreation. Backend holding/payment separation and frontend held-state restoration/consent handling are implemented; non-browser verification passed (177 frontend unit tests and333 Worker tests); exact-source CI remains pending.
+
 ## Pending implementation completed; deployment gate — 14 October 2026
 
 Anonymous entry prefetch and shared protected confirmation/export implementation are now present. Display cache is non-authoritative; continuation and dispatch checks remain. Deliver the exact CI-tested live interface and Worker to the developer target with provider/delivery access closed. A real browser must still prove hidden SimplyBook initialization and native checkout reachability; fixtures and iframe load events cannot establish that outcome.

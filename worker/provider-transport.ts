@@ -190,6 +190,7 @@ export type NativeRequest =
       signature: string;
       evidenceObservedAtMs: number;
     }
+  | { kind: "invoice-external-payment"; invoiceId: string; processor: string }
   | { kind: "invoice-read"; invoiceId: string }
   | { kind: "payment-link"; invoiceId: string };
 export type ProviderSecrets = {
@@ -322,13 +323,28 @@ export async function providerRequest(
         method = "GET";
         break;
       }
-      if (native.kind === "invoice-read" || native.kind === "payment-link") {
+      if (
+        native.kind === "invoice-read" ||
+        native.kind === "payment-link" ||
+        native.kind === "invoice-external-payment"
+      ) {
         const invoiceId = providerId(native.invoiceId);
         url =
           "https://user-api-v2.simplybook.me/admin/invoices/" +
           invoiceId +
-          (native.kind === "payment-link" ? "/payment-link" : "");
-        method = "GET";
+          (native.kind === "payment-link"
+            ? "/payment-link"
+            : native.kind === "invoice-external-payment"
+              ? "/accept-payment"
+              : "");
+        method = native.kind === "invoice-external-payment" ? "PUT" : "GET";
+        if (native.kind === "invoice-external-payment")
+          body = JSON.stringify({
+            payment_processor: z
+              .string()
+              .regex(/^[A-Za-z0-9_-]{1,64}$/)
+              .parse(native.processor),
+          });
         break;
       }
       url = "https://user-api.simplybook.me/";
@@ -605,4 +621,79 @@ export async function providerRequest(
         );
     }
   });
+}
+
+// HitPay credentials are confined to one sandbox host; redirects never carry them.
+// The caller must durably reserve creation or a recovery claim before dispatch.
+export async function hitpayRequest(
+  key: string,
+  operation:
+    | { kind: "create"; body: Record<string, unknown> }
+    | { kind: "read"; id: string }
+    | { kind: "search"; reference: string; page: 1 | 2 },
+  reserve: () => Promise<void>,
+): Promise<unknown> {
+  const base = "https://api.sandbox.hit-pay.com/v1/payment-requests";
+  const url =
+    operation.kind === "read"
+      ? base + "/" + z.string().uuid().parse(operation.id)
+      : operation.kind === "search"
+        ? base +
+          "?per_page=20&current_page=" +
+          operation.page +
+          "&search=" +
+          encodeURIComponent(operation.reference)
+        : base;
+  if (!key || /[\r\n]/.test(key))
+    throw new ApiError(503, "hitpay_credentials_unavailable");
+  await reserve();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 20000);
+  try {
+    const response = await fetch(url, {
+      method: operation.kind === "create" ? "POST" : "GET",
+      redirect: "manual",
+      signal: controller.signal,
+      headers: {
+        "X-BUSINESS-API-KEY": key,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      ...(operation.kind === "create"
+        ? { body: JSON.stringify(operation.body) }
+        : {}),
+    });
+    if (
+      !response.ok ||
+      !response.headers
+        .get("content-type")
+        ?.toLowerCase()
+        .includes("application/json") ||
+      !response.body
+    ) {
+      await response.body?.cancel();
+      throw new ApiError(503, "hitpay_transport_unknown");
+    }
+    const reader = response.body.getReader(),
+      decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
+    let size = 0,
+      text = "";
+    try {
+      for (;;) {
+        const part = await reader.read();
+        controller.signal.throwIfAborted();
+        if (part.done) break;
+        size += part.value.byteLength;
+        if (size > 262144)
+          throw new ApiError(503, "hitpay_representation_unverified");
+        text += decoder.decode(part.value, { stream: true });
+      }
+      return JSON.parse(text + decoder.decode()) as unknown;
+    } finally {
+      void reader.cancel().catch(() => {});
+    }
+  } finally {
+    clearTimeout(timer);
+    controller.abort();
+  }
 }

@@ -1,3 +1,4 @@
+import { hitpayRecoveryEnabled } from "./hitpay-contract";
 import { discoveryFields } from "./field-discovery";
 import { CatalogueReads } from "./catalogue";
 import { NativePrebooking, type NativeAccountContract } from "./prebooking";
@@ -13,6 +14,8 @@ import {
 
 export type ProviderControl = {
   liveCustomer?: boolean;
+  financialRecovery?: boolean;
+  reconciled?: (id: string, attemptId: string) => void;
   reserve: () => Promise<string>;
   finish: (
     id: string,
@@ -191,10 +194,12 @@ export class ProviderSession {
     if (
       String(env.PROVIDER_ACCESS) !== "trusted-reads" ||
       (Number(env.CAMPAIGN_END_MS) <= Date.now() &&
-        !(control.liveCustomer && liveCustomerAccess(env)))
+        !(control.liveCustomer && liveCustomerAccess(env)) &&
+        !(control.financialRecovery && hitpayRecoveryEnabled(env)))
     )
       throw new ApiError(503, "provider_access_disabled");
     if (
+      request.kind === "invoice-external-payment" ||
       request.kind === "book" ||
       request.kind === "payment-link" ||
       request.kind === "batch-create" ||
@@ -204,6 +209,11 @@ export class ProviderSession {
       request.kind === "webhook-delete"
     )
       throw new ApiError(503, "native_write_grant_unavailable");
+    if (
+      control.financialRecovery &&
+      !["booking-read", "invoice-read"].includes(request.kind)
+    )
+      throw new ApiError(503, "provider_operation_unavailable");
     signal?.throwIfAborted();
     const secrets = this.bindScope(env);
     if (secrets.company.toLowerCase() === "soccerbotstudio")
@@ -238,16 +248,19 @@ export class ProviderSession {
     control: ProviderControl,
     request: NativeRequest,
     assertGranted: () => Promise<void>,
+    onReserved?: (id: string) => Promise<void>,
   ) {
     const p = policy(env);
     if (
       p.PROVIDER_ACCESS !== "trusted-reads" ||
       (p.CAMPAIGN_END_MS <= Date.now() &&
-        !(control.liveCustomer && liveCustomerAccess(env)))
+        !(control.liveCustomer && liveCustomerAccess(env)) &&
+        !(control.financialRecovery && hitpayRecoveryEnabled(env)))
     )
       throw new ApiError(503, "provider_access_disabled");
     if (
       ![
+        "invoice-external-payment",
         "book",
         "batch-create",
         "batch-close",
@@ -258,10 +271,21 @@ export class ProviderSession {
       ].includes(request.kind)
     )
       throw new ApiError(503, "provider_operation_unavailable");
+    if (
+      control.financialRecovery &&
+      request.kind !== "invoice-external-payment"
+    )
+      throw new ApiError(503, "provider_operation_unavailable");
+    if (
+      request.kind === "invoice-external-payment" &&
+      !control.financialRecovery
+    )
+      throw new ApiError(503, "financial_recovery_required");
     await assertGranted();
     await this.identity(env, control);
     const secrets = this.bindScope(env);
     const family = [
+      "invoice-external-payment",
       "payment-link",
       "webhook-create",
       "webhook-delete",
@@ -276,7 +300,16 @@ export class ProviderSession {
       "native",
       secrets,
       token.value,
-      control,
+      onReserved
+        ? {
+            ...control,
+            reserve: async () => {
+              const id = await control.reserve();
+              await onReserved(id);
+              return id;
+            },
+          }
+        : control,
       request,
     );
     return { body, receivedAtMs: Date.now() };

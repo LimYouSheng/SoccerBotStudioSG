@@ -42,7 +42,7 @@ export function BookingPage({ step }: { step: BookingStep }) {
         : bookingService.mode === "live" &&
             !attempt &&
             draft.mode &&
-            ["details", "review", "payment"].includes(step) &&
+            ["review", "payment"].includes(step) &&
             !selectionConfirmed
           ? "time"
           : guardedStep(step, draft, attempt, now),

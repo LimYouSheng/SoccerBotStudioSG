@@ -1,5 +1,14 @@
 # SoccerBotStudioSG current progress
 
+
+## Direct hosted HitPay implementation resumed — 15 October 2026
+
+Worktree /workspace/work/direct-hitpay, branch feat/direct-hitpay-sandbox, refreshed main baseline49eed77f10811c8787596b1ca44a49dfb50c889c. Source implementation now includes direct hosted navigation, Details-stage fresh selection validation, additive0029 payment provenance, independent HitPay ingress/retrieval, one-shot external SimplyBook finalisation and bounded financial recovery. Committed gates stay disabled. Original checkout and unknown local work are preserved.
+
+Non-browser verification passed: npm run verify:code (177 unit tests, source/tooling/lint/types/build) and npm run verify:worker (333 tests, no skips or failures, zero provider requests). Updated browser fixture source passed TypeScript/ESLint/source checks; browser execution remains owner/CI-operated. Next: publish draft PR and obtain exact-source CI. No merge, deployment, migration, webhook registration or payment test executed. Actual API schemas/accounting and physical browser/no-return acceptance remain pending. Latest Codex HitPay GET403; key works on owner's computer only. Periodic15-minute shared cache warming remains proposed. Browser polling still has its finite customer window; financial work survives it and escalates unresolved/late outcomes visibly.
+
+Latest owner clarification: Review booking after Details creates the SimplyBook holding appointment and invoice. Continue to payment uses that existing hold, with no further slot availability query or booking recreation. Backend holding/payment separation and frontend held-state restoration/consent handling are implemented; non-browser verification passed (177 frontend unit tests and333 Worker tests); exact-source CI remains pending.
+
 ## Durable Object read optimization and Turnstile layout — 14 October 2026
 
 Current baseline is deployed f268988. Additive admission indexes and a populated-object runtime regression are implemented; focused regression and Worker types/source checks passed. Full Worker checks and exact-source CI are next, followed by the authorized GitHub delivery. Turnstile is centred with24px spacing; authentication/remembering is unchanged. Cloudflare query/v2 returned500 for both name and ID inspection; preserve that failure and verify live rows_read when inspection is available. No booking/payment/provider experiment or data reset.

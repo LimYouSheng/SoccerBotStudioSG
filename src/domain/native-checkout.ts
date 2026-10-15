@@ -1,3 +1,10 @@
+// Initial sandbox checkout URL only; the server binds merchant and request ID.
+export function isHitpayCheckoutUrl(value: string): boolean {
+  return /^https:\/\/securecheckout\.sandbox\.hit-pay\.com\/payment-request\/@[A-Za-z0-9_-]{1,80}\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/checkout$/.test(
+    value,
+  );
+}
+
 // Owner-supplied token-free historical native destination shape, 9 October 2026.
 // Validating this initial URL does not attest downstream redirects or sandbox mode.
 export function isNativeCheckoutUrl(value: string): boolean {
@@ -69,28 +76,31 @@ export const nativeCalendarSchema = z.strictObject({
   observedAtMs: z.number().int().nonnegative().safe(),
   dates: z.array(nativeAvailabilitySchema).max(31),
 });
-export const nativePrepareSchema = z.strictObject({
-  key: z.string().regex(/^[A-Za-z0-9_-]{16,128}$/),
-  contact: contactSchema.strict(),
-  accepted: z.literal(true),
-  sessions: z
-    .array(
-      z.strictObject({
-        serviceId: providerIdentifier,
-        instructorId: providerIdentifier,
-        startMs: z.number().int().positive().safe(),
-        players: z.number().int().min(1).max(MAX_PLAYERS),
-        totalMinor: z.number().int().nonnegative().safe(),
-      }),
-    )
-    .min(1)
-    .max(12),
-});
+export const nativePrepareSchema = z
+  .strictObject({
+    key: z.string().regex(/^[A-Za-z0-9_-]{16,128}$/),
+    contact: contactSchema.strict(),
+    accepted: z.boolean(),
+    holding: z.literal(true).optional(),
+    sessions: z
+      .array(
+        z.strictObject({
+          serviceId: providerIdentifier,
+          instructorId: providerIdentifier,
+          startMs: z.number().int().positive().safe(),
+          players: z.number().int().min(1).max(MAX_PLAYERS),
+          totalMinor: z.number().int().nonnegative().safe(),
+        }),
+      )
+      .min(1)
+      .max(12),
+  })
+  .refine((value) => value.accepted || value.holding === true);
 
 export const nativeCurrentSchema = z.union([
   z.strictObject({ state: z.literal("empty") }),
   z.strictObject({
-    state: z.enum(["prepared", "checking"]),
+    state: z.enum(["prepared", "held", "checking"]),
     attemptId: z.string().uuid(),
     contact: contactSchema.strict(),
     sessions: z

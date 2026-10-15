@@ -1,4 +1,5 @@
 "use client";
+import { isHitpayCheckoutUrl } from "@/domain/native-checkout";
 import { BrandLoading } from "@/components/brand-loading";
 import { useEffect, useRef, useState } from "react";
 import { BookingConfirmation } from "./confirmation-step";
@@ -23,10 +24,8 @@ export function ProtectedConfirmation({
   sessionRevision?: number;
   onAgain?: () => void;
 }) {
-  const { view, busy, check, bindWindow } = useConfirmationChecking(
-    attemptId,
-    sessionRevision,
-  );
+  const { view, busy, check, bindWindow, paymentReceived } =
+    useConfirmationChecking(attemptId, sessionRevision);
   const [receipt, setReceipt] = useState<{
     value: BookingReceipt;
     revision: number;
@@ -138,7 +137,9 @@ export function ProtectedConfirmation({
           </p>
         )}
         <h1>
-          {view === "checking" ? (
+          {paymentReceived && view !== "confirmed" && view !== "denied" ? (
+            "Payment received; booking confirmation pending"
+          ) : view === "checking" ? (
             <BrandLoading compact label="Checking your payment and booking…" />
           ) : view === "confirmed" ? (
             "Booking confirmed"
@@ -184,7 +185,7 @@ export function ProtectedConfirmation({
             </p>
           </section>
         )}
-        {checkoutMode && (
+        {checkoutMode && !(link && isHitpayCheckoutUrl(link.url)) && (
           <>
             <p>
               Checkout opens separately. Your browser may use a tab or window.

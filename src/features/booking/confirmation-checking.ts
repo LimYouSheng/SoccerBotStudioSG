@@ -37,6 +37,7 @@ export function useConfirmationChecking(
     id: string;
     revision: number;
     view: View;
+    paymentReceived: boolean;
     busy: boolean;
     next: number;
   } | null>(null);
@@ -61,11 +62,13 @@ export function useConfirmationChecking(
           id: attemptId,
           revision: sessionRevision,
           view,
+          paymentReceived,
           busy,
           next: budget.next,
         });
     };
     let terminal = false;
+    let paymentReceived = false;
     function schedule() {
       clearTimeout(timer);
       if (!active || terminal || document.hidden) return;
@@ -152,6 +155,9 @@ export function useConfirmationChecking(
         );
         budget.next = Math.max(budget.next, response.checking.nextCheckMs ?? 0);
         save(attemptId, budget);
+        paymentReceived =
+          response.reason === "payment_received_booking_pending" ||
+          response.status === "confirmed";
         if (response.status === "confirmed") {
           terminal = true;
           show("confirmed");
@@ -243,6 +249,10 @@ export function useConfirmationChecking(
     };
   }, [attemptId, sessionRevision]);
   return {
+    paymentReceived:
+      result?.id === attemptId && result.revision === sessionRevision
+        ? result.paymentReceived
+        : false,
     view:
       result?.id === attemptId && result.revision === sessionRevision
         ? result.view

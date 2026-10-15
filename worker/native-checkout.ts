@@ -1,3 +1,6 @@
+import { retainHitpayHold } from "./hitpay-hold";
+import { hitpaySetting } from "./hitpay-contract";
+import { selectPaymentRoute } from "./hitpay-journal";
 import { NativeCalendarReads, calendarDates } from "./native-calendar";
 import { nativeValidationReason } from "./provider-normalization";
 import { safeNativeFailure } from "./native-residual";
@@ -26,6 +29,7 @@ import {
 import { freshReceipt } from "./catalogue";
 import { orchestrateBooking } from "./orchestration";
 import {
+  nativeCheckoutDeadline,
   nativeBookingOperations,
   nativeBookingSignature,
   prepareNativeLink,
@@ -80,6 +84,7 @@ export async function executeNativeCheckout(options: {
   control: ProviderControl;
   recoveryControl: ProviderControl;
   accounting: () => { used: number; active: number };
+  holding?: boolean;
 }) {
   const { request, env, attemptId, provider } = options;
   z.string().uuid().parse(attemptId);
@@ -163,6 +168,9 @@ export async function executeNativeCheckout(options: {
   const secret: unknown = Reflect.get(env, "SIMPLYBOOK_DEV_SIGNING_SECRET");
   if (typeof secret !== "string" || !secret || secret.includes("["))
     throw new ApiError(503, "native_signing_unavailable");
+  const paymentRoute = await selectPaymentRoute(env, attemptId);
+  if ((paymentRoute === "hitpay") !== (options.holding === true))
+    throw new ApiError(409, "booking_hold_required");
   const claimed = await env.STATE.prepare(
     "UPDATE native_checkout_grants SET state='running' WHERE attempt_id=? AND capability_hash=? AND state='granted' AND expires_ms>?",
   )
@@ -439,12 +447,21 @@ export async function executeNativeCheckout(options: {
         controller.abort();
       }
       await assertGranted();
-      await prepareNativeLink(env.STATE, scope, exchange, true, {
+      const timing = {
         invoiceId: refs.invoiceId,
         dueDatetime,
         supervisionDeadlineMs: grant.expires_ms,
         handoffAtMs: Date.now(),
-      });
+      };
+      if (paymentRoute === "hitpay") {
+        await retainHitpayHold(
+          env,
+          scope,
+          associated.association_json,
+          row.intent_hash,
+          nativeCheckoutDeadline(timing, Date.now()),
+        );
+      } else await prepareNativeLink(env.STATE, scope, exchange, true, timing);
       await recordObservation(
         env.STATE,
         attemptId,
@@ -452,7 +469,10 @@ export async function executeNativeCheckout(options: {
         observation!,
         Date.now(),
       );
-      result = { state: "associated", paymentAvailable: true };
+      result = {
+        state: "associated",
+        paymentAvailable: paymentRoute !== "hitpay",
+      };
     }
   } catch (error) {
     retainFailure(error, "execution");
@@ -464,6 +484,7 @@ export async function executeNativeCheckout(options: {
   }
   if (
     result.state === "recovery_required" &&
+    paymentRoute !== "hitpay" &&
     grant.cleanup_allowed === 1 &&
     options.accounting().active === 0
   ) {
@@ -587,8 +608,13 @@ export async function prepareCustomerNative(
 ) {
   const { p, access, grant, contract, dates, binding } =
     await customerNativeWindow(request, env);
-  const input = nativePrepareSchema.parse(value),
-    now = Date.now();
+  const input = nativePrepareSchema.parse(value);
+  if (
+    input.holding &&
+    hitpaySetting(env, "CHECKOUT_PAYMENT_ROUTE") !== "hitpay"
+  )
+    throw new ApiError(503, "hitpay_checkout_disabled");
+  const now = Date.now();
   if (grant.read_state !== "available")
     throw new ApiError(503, "native_availability_unavailable");
   if (
@@ -868,12 +894,18 @@ export async function currentCustomerNative(request: Request, env: Env) {
     if (!offer) throw new ApiError(503, "native_snapshot_unavailable");
     return { ...offer, players: session.players };
   });
+  const held = await env.STATE.prepare(
+    "SELECT 1 FROM hitpay_holds h WHERE h.attempt_id=? AND NOT EXISTS(SELECT 1 FROM hitpay_payments p WHERE p.attempt_id=h.attempt_id)",
+  )
+    .bind(row.id)
+    .first();
   return nativeCurrentSchema.parse({
     attemptId: row.id,
     contact: intent.contact,
     sessions,
-    state:
-      row.state === "prepared" && row.grant_state === "granted"
+    state: held
+      ? "held"
+      : row.state === "prepared" && row.grant_state === "granted"
         ? "prepared"
         : "checking",
   });

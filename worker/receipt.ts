@@ -1,3 +1,4 @@
+import { hitpayConfirmationGuard } from "./hitpay-journal";
 import { z } from "zod";
 import { authenticate } from "./access";
 import { ApiError, policy } from "./policy";
@@ -23,8 +24,9 @@ export async function bookingReceipt(
     .first<StoredAttempt>();
   if (!row) throw new ApiError(404, "attempt_unavailable");
   if (
+    (await hitpayConfirmationGuard(env, id)) ||
     decideStoredConfirmation(row, access, now, policy(env)).status !==
-    "confirmed"
+      "confirmed"
   )
     throw new ApiError(409, "receipt_not_verified");
   const intent = intentSchema.parse(JSON.parse(row.intent_json));

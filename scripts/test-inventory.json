@@ -301,6 +301,10 @@
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",
+    "title": "Details accepts input before checking the complete selection on submission"
+  },
+  {
+    "file": "src/features/booking/booking-parity.test.tsx",
     "title": "fresh calendar receipts render before the minute clock ticks and expire at their own deadline"
   },
   {
@@ -322,10 +326,6 @@
   {
     "file": "src/features/booking/booking-parity.test.tsx",
     "title": "preloaded browser slots survive date and player changes and Continue refreshes changed availability"
-  },
-  {
-    "file": "src/features/booking/booking-parity.test.tsx",
-    "title": "Details waits for the complete fresh selection check without another display read after success"
   },
   {
     "file": "src/features/booking/confirmation-checking.test.tsx",
@@ -370,6 +370,22 @@
   {
     "file": "src/features/booking/details-step.test.tsx",
     "title": "verified opt-out details submit without saving a contact profile"
+  },
+  {
+    "file": "src/features/booking/direct-checkout.test.tsx",
+    "title": "cancelled direct checkout never navigates"
+  },
+  {
+    "file": "src/features/booking/direct-checkout.test.tsx",
+    "title": "direct checkout opens HitPay once in the same tab"
+  },
+  {
+    "file": "src/features/booking/direct-checkout.test.tsx",
+    "title": "direct checkout rejects an untrusted destination"
+  },
+  {
+    "file": "src/features/booking/direct-checkout.test.tsx",
+    "title": "holds once before review and starts payment without preparing or checking availability again"
   },
   {
     "file": "src/features/booking/email-bot-proof.test.tsx",
@@ -622,6 +638,10 @@
   {
     "file": "src/services/catalogue.test.ts",
     "title": "live catalogue boundary rejects stale incomplete foreign and unavailable data"
+  },
+  {
+    "file": "src/services/confirmation.test.ts",
+    "title": "accepts only a bounded protected HitPay sandbox checkout URL"
   },
   {
     "file": "src/services/confirmation.test.ts",

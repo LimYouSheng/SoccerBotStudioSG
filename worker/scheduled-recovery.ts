@@ -1,3 +1,4 @@
+import { hitpayRecoveryEnabled } from "./hitpay-contract";
 import { ongoingReadbackDue, ongoingReadbackEnabled } from "./ongoing-readback";
 import { z } from "zod";
 import { coordinatorName, verifyBindings } from "./bindings";
@@ -32,6 +33,20 @@ export async function runScheduledRecovery(
 ) {
   const p = policy(env),
     now = clock();
+  if (capabilityHash === undefined && hitpayRecoveryEnabled(env)) {
+    await verifyBindings(env);
+    const due = await env.STATE.withSession("first-primary")
+      .prepare(
+        "SELECT attempt_id FROM hitpay_payments WHERE state IN ('due','claimed') AND ready_ms<=? ORDER BY ready_ms,attempt_id LIMIT 1",
+      )
+      .bind(now)
+      .first<{ attempt_id: string }>();
+    if (due)
+      await env.COORDINATOR.getByName(coordinatorName).hitpayRecovery(
+        due.attempt_id,
+        crypto.randomUUID(),
+      );
+  }
   if (capabilityHash === undefined && ongoingReadbackEnabled(env)) {
     await verifyBindings(env);
     const due = await ongoingReadbackDue(env, now);
