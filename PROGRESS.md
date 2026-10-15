@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## Deterministic booking test clock — 16 October 2026
+
+PR33 merged6a88134; main run38816624792 frontend failed two real-clock tomorrow fixtures at Singapore midnight (expected8800, correct Saturday price10800). Pin the test Date clock to a known weekday without changing product pricing or receipt assertions. Focused28 tests pass. Next: complete177-unit/static verification and publish a follow-up PR with all CI gates. No booking/payment or deployment has been performed; the hold-query fix remains awaiting successful main deployment.
+
 ## Holding HTTP boundary repair — 15 October 2026
 
 Baseline deployed40cca80, branch fix/allow-booking-hold-request. HAR03 and bounded backend evidence identify a missing hold=1 query allowance before authentication/provider dispatch. Narrow correction and positive/negative real Worker-entry regression implemented; focused regression reproduced the original400 and passes after repair. Complete Worker/source checks and exact-source CI, then publish for specific merge approval. Preserve the prepared attempt; no assistant booking/payment or data reset. After deployment verify sandbox flags again before owner testing.

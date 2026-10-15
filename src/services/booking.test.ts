@@ -49,6 +49,9 @@ function validDraft(): BookingDraft {
   };
 }
 beforeEach(() => {
+  // Keep tomorrow on a weekday for the exact $88 receipt fixtures.
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-15T04:00:00Z"));
   vi.stubGlobal("sessionStorage", new StorageMock());
   vi.stubGlobal("localStorage", new StorageMock());
 });

@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## Main CI weekday fixture failure — 16 October 2026
+
+Owner merged PR33 as6a88134. Main run38816624792 failed frontend unit verification: two booking receipt tests expected8800 but received10800 after Singapore midnight made their real-clock tomorrow a Saturday. The PR run had passed before that boundary. Production weekend pricing is correct; no application pricing change is needed. Pin the booking service test Date clock to15October2026 noon Singapore so its exact8800 weekday fixtures stay deterministic. Existing explicit clock-boundary tests override it, and dedicated pricing tests retain weekday/weekend/holiday coverage. No assertion, timeout or retry is weakened. Focused28 service tests pass; full unit/static and exact-source CI verification follow. Deployment remains blocked by the failed main gate; no owner payment trial until the fix is merged/deployed and sandbox flags are verified.
+
 ## HAR03 holding request rejected before provider dispatch — 15 October 2026
 
 PR32 merged/deployed40cca80; main run38755799186 succeeded. HAR02 exposed reset sandbox flags; these were restored/read back with unrelated bindings and secrets preserved. HAR03 at23:15 Singapore shows fresh availability200 and holding=true preparation201. The capture ends there; backend logs around that attempt show HTTP400 with zero provider/storage/coordinator spans. D1 shows prepared/granted, no association and zero dispatches; total HitPay holds/payments remain zero.
