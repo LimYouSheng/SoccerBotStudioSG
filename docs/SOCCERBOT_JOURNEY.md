@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## Confirmation restoration race exposed by mechanism tests — 16 October 2026
+
+CI38823092566 reaches real holding/payment on all browser projects. Paid return passes on phone/tablet, while desktop receives confirmed200 then remains Checking: initial BookingProvider hydration/restoration changes the revision and cancels that protected read before a second request is throttled. Separate protected-confirmation invalidation from draft restoration: hydration and read-only restoration preserve the in-flight confirmation, while customer actions and service/identity changes still invalidate it. Confirmation remains independent of slow or failed metadata restoration. Deferred-restoration and failed-restoration regressions pass, alongside existing stale-session and revoked-access coverage. Shared public-month cache refresh after a hold is intended; browser no-recheck assertions now distinguish that from selected-day/unit checkout validation, while the HTTP-only mechanism test retains its strict zero post-hold availability assertion. Canceled background requests are drained safely by the loopback adapter. Final non-browser and exact-source CI remain required. No real booking/payment, merge or deployment.
+
 ## Test longevity audit — 16 October 2026
 
 Owner requests a review of all tests following the weekday-dependent CI failure. Inventory:50 files, comprising24 frontend/unit,10 Worker,3 browser and13 tooling/installer files. Review covers clock/date boundaries, repeated execution and cleanup, title-dependent fixtures, assertions that can pass without observing behavior, timer use, and mock/real-HTTP boundaries.

@@ -417,7 +417,15 @@
   },
   {
     "file": "src/features/booking/protected-confirmation.test.tsx",
+    "title": "booking restoration does not restart a protected confirmation read"
+  },
+  {
+    "file": "src/features/booking/protected-confirmation.test.tsx",
     "title": "denied and malformed responses cannot show confirmation or protected details"
+  },
+  {
+    "file": "src/features/booking/protected-confirmation.test.tsx",
+    "title": "failed booking restoration does not block independent protected confirmation"
   },
   {
     "file": "src/features/booking/protected-confirmation.test.tsx",

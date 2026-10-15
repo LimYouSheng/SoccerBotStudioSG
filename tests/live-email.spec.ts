@@ -395,11 +395,19 @@ async function mechanismTransport(
     const responseBody = await response.text();
     if (url.pathname === "/api/booking/prepare" && response.status === 201)
       attemptId = JSON.parse(responseBody).attemptId;
-    await route.fulfill({
-      status: response.status,
-      headers: responseHeaders,
-      body: responseBody,
-    });
+    // A reload or hosted handoff can cancel a background calendar request.
+    // Its provider work still completes; there is no browser recipient left.
+    if (!request.failure()) {
+      try {
+        await route.fulfill({
+          status: response.status,
+          headers: responseHeaders,
+          body: responseBody,
+        });
+      } catch (error) {
+        if (!request.failure() && !page.isClosed()) throw error;
+      }
+    }
   });
   return { calls, unexpected, attemptId: () => attemptId };
 }
@@ -607,13 +615,18 @@ test("native guest journey preserves players contact and one checkout across ref
       ),
     ).toHaveLength(1);
     expect(
-      mechanism.calls
-        .slice(bookingIndex + 1)
-        .filter((c) =>
-          ["getStartTimeMatrix", "getAvailableUnits"].includes(
-            String(c.body?.method),
-          ),
-        ),
+      mechanism.calls.slice(bookingIndex + 1).filter((c) => {
+        const params = c.body?.params;
+        // Shared month-cache refresh is allowed after a hold; revalidating
+        // that reserved slot in the checkout path is not.
+        return (
+          c.body?.method === "getAvailableUnits" ||
+          (c.body?.method === "getStartTimeMatrix" &&
+            Array.isArray(params) &&
+            params[0] === date &&
+            params[1] === date)
+        );
+      }),
     ).toHaveLength(0);
     expect(mechanism.unexpected).toEqual([]);
   } finally {
