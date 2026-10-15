@@ -378,19 +378,23 @@ test("native guest journey preserves players contact and one checkout across ref
         body: responseBody,
       });
     });
+    const warmedMonths = new Set<string>();
+    const calendarReady = page.waitForResponse((response) => {
+      const path = new URL(response.url()).pathname;
+      if (path.startsWith("/api/calendar/") && response.status() === 200)
+        warmedMonths.add(path);
+      return warmedMonths.size === 4;
+    });
     await page.goto("/");
     await page
       .getByRole("dialog", { name: "Get the SoccerBot Player App" })
       .getByRole("button", { name: "Not now", exact: true })
       .click();
-    await expect
-      .poll(
-        () => calls.filter((c) => c.path.startsWith("/api/calendar/")).length,
-      )
-      .toBe(4);
-    await expect
-      .poll(() => calls.filter((c) => c.path === "/api/catalogue").length)
-      .toBe(1);
+    await calendarReady;
+    expect(
+      calls.filter((c) => c.path.startsWith("/api/calendar/")),
+    ).toHaveLength(4);
+    expect(calls.filter((c) => c.path === "/api/catalogue")).toHaveLength(1);
     expect(calls.filter((c) => c.path === "/api/access")).toHaveLength(0);
     await page.getByRole("link", { name: "Book now", exact: true }).click();
     await page
@@ -457,9 +461,18 @@ test("native guest journey preserves players contact and one checkout across ref
     await page
       .getByLabel("Academy / school / organisation", { exact: false })
       .fill("Synthetic School");
+    const holdResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+      return (
+        url.pathname.startsWith("/api/booking/native/") &&
+        url.search === "?hold=1" &&
+        response.request().method() === "POST"
+      );
+    });
     await page
       .getByRole("button", { name: "Review booking", exact: true })
       .click();
+    expect((await holdResponse).status()).toBe(200);
     await expect(
       page.getByRole("heading", { name: "Review booking", exact: true }),
     ).toBeVisible();
@@ -571,6 +584,7 @@ test("native guest journey preserves players contact and one checkout across ref
     ).toHaveLength(0);
     expect(mechanism.unexpected).toEqual([]);
   } finally {
+    await page.unrouteAll({ behavior: "wait" });
     await mechanism.close();
   }
 });
