@@ -1703,6 +1703,19 @@ test("ongoing readback excludes finite unassociated expired and exhausted attemp
     },
   });
   try {
+    const plan = await f.db
+      .prepare(
+        "EXPLAIN QUERY PLAN SELECT attempt_id FROM native_checkout_grants INDEXED BY native_checkout_ongoing_expiry WHERE ongoing=1 AND expires_ms>?",
+      )
+      .bind(Date.now())
+      .all();
+    assert.ok(
+      plan.results.some((row) =>
+        /COVERING INDEX native_checkout_ongoing_expiry.*ongoing=.*expires_ms>/.test(
+          row.detail,
+        ),
+      ),
+    );
     await ongoingAttempt(f, { finite: true });
     await ongoingAttempt(f, { unassociated: true });
     await ongoingAttempt(f, { deadline: Date.now() - 1 });

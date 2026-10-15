@@ -117,7 +117,10 @@ const manifest = {
   identityDelivery: "disabled",
   providerAccess: "disabled",
   campaignEndMs: 0,
-  pendingRemoteMigrations: ["0027_ongoing_identity_delivery.sql"],
+  pendingRemoteMigrations: [
+    "0027_ongoing_identity_delivery.sql",
+    "0028_ongoing_native_readback.sql",
+  ],
   priorWorkerVersion: "fdd603d2-ce9f-4c89-b1be-e20b6be1e1c8",
   acceptance:
     profile.name === "live-email"
