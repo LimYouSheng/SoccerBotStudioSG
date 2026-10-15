@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Review booking repair boundary — 15 October 2026
+
+Keep the Details operation mounted until preparation and holding complete. Persisted prepared state is recovery evidence, not permission to navigate away during its active write. Confirmed unavailable/changed selections are pruned before calendar return; contact data survives. Failed provider reads preserve selection and remain errors. Details does not perform passive availability polling or show a second loader beside the price. Existing authoritative booking/write and held-booking/payment checks remain unchanged.
+
 ## Direct hosted HitPay handoff — 15 October 2026
 
 Owner selects direct hosted HitPay sandbox checkout. Calendar Continue leads to Details; Details validates contact and then freshly checks every chosen date. Unavailable/changed selections return to the calendar with a notification and retained contact fields. Transport failures retain details but never claim that a date was booked. Existing shared server cache invalidation precedes fresh date checks; checkout invalidates shared availability around booking writes. A periodic 15-minute cache warm-up remains a proposal, not implemented.

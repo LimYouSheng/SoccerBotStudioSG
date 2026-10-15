@@ -22,14 +22,16 @@ import { BookingPage } from "./booking-page";
 import { SessionStep } from "./session-step";
 import { dateLabel } from "@/domain/dates";
 const push = vi.fn();
+const replace = vi.fn();
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push, replace: vi.fn() }),
+  useRouter: () => ({ push, replace }),
 }));
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   push.mockClear();
+  replace.mockClear();
 });
 
 test("native initialization stays hidden and stable and never preloads a payment capability", () => {
@@ -151,7 +153,7 @@ function Seed() {
     </button>
   );
 }
-test("live calendar disables empty and unknown dates and a failed fresh continuation preserves the basket and refreshes calendar", async () => {
+test("live calendar removes unavailable selections after fresh review and retains contact details", async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2027-01-01T00:00:00Z"));
   let stale = false;
@@ -210,15 +212,15 @@ test("live calendar disables empty and unknown dates and a failed fresh continua
   );
   fireEvent.click(screen.getByRole("button", { name: "Review booking" }));
   expect(await screen.findByRole("alert")).toHaveTextContent(
-    "no longer available",
+    "sessions were removed",
   );
   expect(push).toHaveBeenCalledWith("/book/time/");
   expect(screen.getByLabelText(/Full name/)).toHaveValue("Test Customer");
   expect(
-    screen.getByRole("button", {
+    screen.queryByRole("button", {
       name: `Remove ${slot.date} at ${slot.start}`,
     }),
-  ).toBeInTheDocument();
+  ).not.toBeInTheDocument();
   await waitFor(() =>
     expect(
       within(region).getByRole("button", { name: dateLabel(slot.date) }),
@@ -461,7 +463,7 @@ test("preloaded browser slots survive date and player changes and Continue refre
   );
   fireEvent.click(screen.getByRole("button", { name: "Review booking" }));
   expect(await screen.findByRole("alert")).toHaveTextContent(
-    "no longer available",
+    "sessions were removed",
   );
   expect(availability.mock.calls.some(([input]) => input.fresh === true)).toBe(
     true,
@@ -469,10 +471,10 @@ test("preloaded browser slots survive date and player changes and Continue refre
   expect(push).toHaveBeenCalledWith("/book/time/");
   expect(screen.getByLabelText(/Full name/)).toHaveValue("Test Customer");
   expect(
-    screen.getByRole("button", {
+    screen.queryByRole("button", {
       name: `Remove ${slot.date} at ${slot.start}`,
     }),
-  ).toBeInTheDocument();
+  ).not.toBeInTheDocument();
   await waitFor(() =>
     expect(
       within(region).getByRole("button", { name: dateLabel(slot.date) }),
@@ -523,12 +525,16 @@ test("browser slot cache expires after five minutes", async () => {
 test("Details accepts input before checking the complete selection on submission", async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2027-01-01T00:00:00Z"));
+  let fail!: (error: Error) => void;
   let finish!: (slots: Array<typeof slot & { available: boolean }>) => void;
   const availability = vi.fn(
     () =>
-      new Promise<Array<typeof slot & { available: boolean }>>((resolve) => {
-        finish = resolve;
-      }),
+      new Promise<Array<typeof slot & { available: boolean }>>(
+        (resolve, reject) => {
+          finish = resolve;
+          fail = reject;
+        },
+      ),
   );
   const publicCalendar = vi.fn(async ({ month }: { month: string }) => ({
     month,
@@ -555,6 +561,7 @@ test("Details accepts input before checking the complete selection on submission
           ]
         : [],
   }));
+  let finishHold!: () => void;
   const service = {
     ...demoBookingService,
     mode: "live" as const,
@@ -577,16 +584,16 @@ test("Details accepts input before checking the complete selection on submission
       }),
     ),
     pay: vi.fn(
-      async ({ attempt }: Parameters<typeof demoBookingService.pay>[0]) => ({
-        ...attempt,
-        held: true as const,
-      }),
+      ({ attempt }: Parameters<typeof demoBookingService.pay>[0]) =>
+        new Promise<typeof attempt>((resolve) => {
+          finishHold = () => resolve({ ...attempt, held: true });
+        }),
     ),
   };
   const tree = (step: "time" | "details") => (
     <BookingProvider bookingService={service}>
       <Seed />
-      {step === "details" ? <DetailsStep /> : <BookingPage step={step} />}
+      <BookingPage step={step} />
     </BookingProvider>
   );
   const view = render(tree("time"));
@@ -607,9 +614,31 @@ test("Details accepts input before checking the complete selection on submission
   expect(
     screen.getByRole("button", { name: "Checking availability…" }),
   ).toBeDisabled();
-  await act(async () => finish([{ ...slot, available: true }]));
-  expect(push).toHaveBeenCalledWith("/book/review/");
+  await act(async () => fail(new Error("provider_auth_failed")));
+  expect(
+    screen.getByRole("heading", { name: "Your details" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText(/We couldn’t check availability/),
+  ).toBeInTheDocument();
   expect(screen.getByLabelText(/Full name/)).toHaveValue("Test Customer");
-  expect(availability).toHaveBeenCalledTimes(1);
-  expect(publicCalendar).toHaveBeenCalledTimes(4);
+  expect(service.checkout).not.toHaveBeenCalled();
+  expect(push).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Review booking" }));
+  await act(async () => finish([{ ...slot, available: true }]));
+  expect(service.pay).toHaveBeenCalledTimes(1);
+  expect(service.pay.mock.calls[0][0].signal?.aborted).toBe(false);
+  expect(
+    screen.getByRole("heading", { name: "Your details" }),
+  ).toBeInTheDocument();
+  expect(screen.getByLabelText(/Full name/)).toHaveValue("Test Customer");
+  expect(push).not.toHaveBeenCalled();
+  await act(async () => finishHold());
+  expect(replace).toHaveBeenCalledWith("/book/review/");
+  expect(service.pay.mock.calls[0][0].attempt.draft.contact.name).toBe(
+    "Test Customer",
+  );
+  expect(availability).toHaveBeenCalledTimes(2);
+  // The failed fresh read invalidates and refreshes all four display months.
+  expect(publicCalendar).toHaveBeenCalledTimes(8);
 });

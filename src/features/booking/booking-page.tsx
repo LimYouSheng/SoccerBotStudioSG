@@ -47,19 +47,25 @@ export function BookingPage({ step }: { step: BookingStep }) {
     !!attempt &&
     (action.status === "loading" || action.status === "success") &&
     action.operation === "checkout";
-  const actual = handingOff
-      ? step
-      : bookingService.mode === "live" &&
-          bookingService.operations.availability === "unavailable" &&
-          step !== "account"
-        ? "session"
+  const reserving =
+    bookingService.mode === "live" &&
+    step === "details" &&
+    action.operation === "reserve" &&
+    action.status === "loading";
+  const actual =
+      handingOff || reserving
+        ? step
         : bookingService.mode === "live" &&
-            !attempt &&
-            draft.mode &&
-            ["review", "payment"].includes(step) &&
-            !selectionConfirmed
-          ? "time"
-          : guardedStep(step, draft, attempt, now),
+            bookingService.operations.availability === "unavailable" &&
+            step !== "account"
+          ? "session"
+          : bookingService.mode === "live" &&
+              !attempt &&
+              draft.mode &&
+              ["review", "payment"].includes(step) &&
+              !selectionConfirmed
+            ? "time"
+            : guardedStep(step, draft, attempt, now),
     current = progress.findIndex(([id]) => id === step);
   useEffect(() => {
     if (ready && actual !== step) router.replace(`/book/${actual}/`);

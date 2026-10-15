@@ -205,7 +205,7 @@ export function Summary({ basket = false }: { basket?: boolean }) {
                 Continue <Icon name="arrow" />
               </button>
             ))}
-          {draft.slots.length > 0 && !valid && (
+          {basket && draft.slots.length > 0 && !valid && (
             <p className="field-error" role="status">
               {selectionErrors(draft.slots, now).length > 0 ||
               result?.status === "success" ? (
