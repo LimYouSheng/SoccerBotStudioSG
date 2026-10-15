@@ -1211,7 +1211,7 @@ test("single statement discovery closure returns expiry then independent D1 read
   );
 });
 
-test("fresh availability query reaches authentication and rejects arbitrary query parameters", async () => {
+test("fresh availability and holding queries reach authentication and reject arbitrary parameters", async () => {
   const route = origin + "/api/booking/availability/2/2027-01-02";
   assert.equal((await mf.dispatchFetch(route + "?refresh=1")).status, 401);
   for (const query of [
@@ -1220,6 +1220,43 @@ test("fresh availability query reaches authentication and rejects arbitrary quer
     "?refresh=1&refresh=1",
   ])
     assert.equal((await mf.dispatchFetch(route + query)).status, 400);
+  const holdRoute =
+    origin + "/api/booking/native/00000000-0000-4000-8000-000000000001";
+  const beforeOutbound = outbound;
+  const hold = await mf.dispatchFetch(holdRoute + "?hold=1", {
+    method: "POST",
+    headers: { Origin: origin },
+  });
+  assert.equal(hold.status, 401);
+  for (const query of [
+    "?hold=0",
+    "?hold=1&extra=1",
+    "?hold=1&hold=1",
+    "?hold=%31",
+  ]) {
+    const rejected = await mf.dispatchFetch(holdRoute + query, {
+      method: "POST",
+      headers: { Origin: origin },
+    });
+    assert.equal(rejected.status, 400);
+    assert.equal((await rejected.json()).error, "unexpected_parameters");
+  }
+  for (const [method, route] of [
+    ["GET", holdRoute],
+    ["POST", origin + "/api/booking/prepare"],
+    ["POST", origin + "/api/booking/native/not-an-id"],
+  ]) {
+    assert.equal(
+      (
+        await mf.dispatchFetch(route + "?hold=1", {
+          method,
+          headers: { Origin: origin },
+        })
+      ).status,
+      400,
+    );
+  }
+  assert.equal(outbound, beforeOutbound);
   const closed = await mf.dispatchFetch(origin + "/api/calendar/2027-01");
   assert.equal(closed.status, 503);
   assert.equal(closed.headers.get("set-cookie"), null);

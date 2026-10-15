@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## Holding HTTP boundary repair — 15 October 2026
+
+Baseline deployed40cca80, branch fix/allow-booking-hold-request. HAR03 and bounded backend evidence identify a missing hold=1 query allowance before authentication/provider dispatch. Narrow correction and positive/negative real Worker-entry regression implemented; focused regression reproduced the original400 and passes after repair. Complete Worker/source checks and exact-source CI, then publish for specific merge approval. Preserve the prepared attempt; no assistant booking/payment or data reset. After deployment verify sandbox flags again before owner testing.
+
 ## Review booking owner-test repair — 15 October 2026
 
 Current branch fix/review-hold-continuation starts from deployed main1971d26. HAR and D1 establish preparation without holding/payment. Repair covers route-guard cancellation, unavailable-selection pruning with contact retention, error-on-Details presentation and duplicate/background availability loading. Deferred-hold regression covers the intermediate prepared state. Complete non-browser verification, publish repair PR and require all exact-source CI gates. Specific merge approval and verified deployment/flag reactivation precede another owner test. Provider_auth_failed remains a separate unresolved observation; do not spend either remaining booking on an assistant test.

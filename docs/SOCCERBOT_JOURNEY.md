@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## HAR03 holding request rejected before provider dispatch — 15 October 2026
+
+PR32 merged/deployed40cca80; main run38755799186 succeeded. HAR02 exposed reset sandbox flags; these were restored/read back with unrelated bindings and secrets preserved. HAR03 at23:15 Singapore shows fresh availability200 and holding=true preparation201. The capture ends there; backend logs around that attempt show HTTP400 with zero provider/storage/coordinator spans. D1 shows prepared/granted, no association and zero dispatches; total HitPay holds/payments remain zero.
+
+Source inspection identified the global query guard allowing only GET availability?refresh=1 while the holding client sends POST native/{id}?hold=1. A real Worker-entry regression reproduced400 instead of authentication401; the narrow allowlist correction passes while rejecting duplicate/altered/foreign parameters, with no provider requests. Prior direct hold-handler and mocked-browser checks missed this ingress mismatch. The earlier provider_auth_failed observation is separate and not claimed resolved. No browser, provider booking or payment test was run by Codex.
+
 ## Owner HAR: Review booking interrupted — 15 October 2026
 
 PR31 merged as1971d26; GitHub main run38747070570 passed verification and deployment. Owner registered completed/failed HitPay webhook and replaced placeholder salt; sandbox activation was separately read back. Owner then reported duplicate loading, stale unavailable selections and failure before any SimplyBook session. Sanitized HAR:14:24UTC fresh availability200 followed by prepare201, no native booking POST; later fresh availability also200, then passive reads503/provider_auth_failed and provider_refresh_busy. Read-only D1 inspection confirms zero HitPay holds/payments. Do not retain HAR credentials/customer fields in the repository.

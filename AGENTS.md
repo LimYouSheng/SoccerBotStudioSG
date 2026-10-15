@@ -1,5 +1,9 @@
 # SoccerBotStudioSG engineering
 
+## Holding HTTP query repair — 15 October 2026
+
+PR32 merged/deployed as40cca80; sandbox settings were restored and verified after deployment reset them. Owner HAR03 reaches fresh availability200 and holding preparation201; bounded backend logs show a subsequent HTTP400 with zero provider/storage/coordinator work. The HTTP query allowlist omitted POST native/{id}?hold=1. Repair that exact route/query only, retain authentication and reject malformed/duplicate/unrelated parameters. Reproduced400 before fix; regression reaches401 authentication afterward with zero provider calls. No assistant booking/payment. Require new exact-source CI and specific merge approval; deployment will again require verified sandbox reactivation.
+
 ## Review booking repair — 15 October 2026
 
 Owner HAR shows fresh availability200 and prepare201 without a native booking request; D1 confirms zero HitPay holds/payments. Preserve Details throughout reserve, remove freshly disproved selections while preserving contact, and suppress passive Details availability reads/duplicate price loaders. Do not treat provider_auth_failed and subsequent provider_refresh_busy as proof of unavailable slots or a resolved provider-auth defect. No provider booking/payment test by Codex; owner has two remaining bookings. PR31 is merged/deployed at1971d26; sandbox flags were separately enabled with owner-installed endpoint salt. Committed gates remain closed, so a later deployment needs explicit verified reactivation before the owner trial. Publish this repair through exact-source CI; specific new-PR merge approval remains required.
