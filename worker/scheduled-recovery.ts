@@ -1,3 +1,4 @@
+import { ongoingReadbackDue, ongoingReadbackEnabled } from "./ongoing-readback";
 import { z } from "zod";
 import { coordinatorName, verifyBindings } from "./bindings";
 import { policy } from "./policy";
@@ -20,7 +21,7 @@ const windowSchema = z
         (value.useRecoveryReserve !== true &&
           value.maximumUsed - value.startingUsed === 6)),
   );
-// No browser trigger, callback guess, draining loop, cron config or self-grant.
+// Finite operator windows remain separate from ongoing checkout reconciliation.
 // Each installed one-use window permits one known-attempt readback: N + 5
 // physical calls including cold setup. The grant must cover that exact cost;
 // aggregate admission and the existing time limit remain in the account DO.
@@ -31,6 +32,16 @@ export async function runScheduledRecovery(
 ) {
   const p = policy(env),
     now = clock();
+  if (capabilityHash === undefined && ongoingReadbackEnabled(env)) {
+    await verifyBindings(env);
+    const due = await ongoingReadbackDue(env, now);
+    if (!due) return { state: "idle" };
+    await env.COORDINATOR.getByName(coordinatorName).ongoingRecovery(
+      due.id,
+      crypto.randomUUID(),
+    );
+    return { state: "complete" };
+  }
   if (p.PROVIDER_ACCESS !== "trusted-reads" || now >= p.CAMPAIGN_END_MS)
     return { state: "closed" };
   await verifyBindings(env);

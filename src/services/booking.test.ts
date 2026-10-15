@@ -203,6 +203,8 @@ describe("service and payment invariants", () => {
     expect(late.booking).toBeNull();
   });
   it("records multiple dates and generates one calendar event per session in UTC", () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-14T00:00:00Z"));
     const draft = validDraft();
     draft.slots.push(
       demoSession({ date: addDays(tomorrow(), 1), start: "09:00" })!,

@@ -1,3 +1,4 @@
+import { ongoingReadbackDue } from "./ongoing-readback";
 import { verifyBindings } from "./bindings";
 import {
   readNativeAttempt,
@@ -210,19 +211,30 @@ export async function completeRecovery(
   return { state, reason };
 }
 
-async function boundedRead(reader: RecoveryReader, input: RecoveryInput) {
+async function boundedRead(
+  reader: RecoveryReader,
+  input: RecoveryInput,
+  prepare?: (signal: AbortSignal) => Promise<unknown>,
+) {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
-  try {
-    return await Promise.race([
-      Promise.resolve().then(() => reader.read(input, controller.signal)),
+  const stage = (operation: () => Promise<unknown>, timeout: number) =>
+    Promise.race([
+      Promise.resolve().then(operation),
       new Promise<never>((_, reject) => {
         timer = setTimeout(() => {
           controller.abort();
           reject(new Error("recovery_read_deadline"));
-        }, 5000);
+        }, timeout);
       }),
     ]);
+  try {
+    // Setup plus the unchanged evidence window fit inside the 30-second lease.
+    if (prepare) {
+      await stage(() => prepare(controller.signal), 20000);
+      clearTimeout(timer);
+    }
+    return await stage(() => reader.read(input, controller.signal), 5000);
   } finally {
     clearTimeout(timer);
     controller.abort();
@@ -239,6 +251,7 @@ async function runSelectedRecovery(
   },
   reader?: RecoveryReader,
   nativeAuthorized = false,
+  prepare?: (signal: AbortSignal) => Promise<unknown>,
 ) {
   owner.parse(options.claimant);
   limitSchema.parse(options.limit);
@@ -300,10 +313,14 @@ async function runSelectedRecovery(
         .bind(item.attempt_id)
         .all<RecoveryInput["effects"][number]>();
       try {
-        result = await boundedRead(reader, {
-          ...row,
-          effects: effects.results,
-        });
+        result = await boundedRead(
+          reader,
+          {
+            ...row,
+            effects: effects.results,
+          },
+          nativeAuthorized ? prepare : undefined,
+        );
       } catch (error) {
         // A known native representation mismatch is not a transient transport
         // failure. Preserve the attempt for review instead of repeating reads.
@@ -387,14 +404,21 @@ export async function runNativeReadback(
     phase: "initial" | "reserve" | "background";
     invocationId?: string;
     grantExpiresMs: number;
+    ongoing?: boolean;
+    prepare?: (signal: AbortSignal) => Promise<unknown>;
     exchange: NativeExchange;
     signature: (bookingId: string) => Promise<string>;
   },
 ) {
   policy(env);
+  const ongoing =
+    options.ongoing === true &&
+    options.phase === "background" &&
+    !!(await ongoingReadbackDue(env, Date.now(), options.scope.attemptId));
   if (
+    (options.ongoing === true && !ongoing) ||
     String(env.PROVIDER_ACCESS) !== "trusted-reads" ||
-    Date.now() >= Number(env.CAMPAIGN_END_MS) ||
+    (!ongoing && Date.now() >= Number(env.CAMPAIGN_END_MS)) ||
     !Number.isSafeInteger(options.grantExpiresMs) ||
     options.grantExpiresMs <= Date.now() ||
     options.grantExpiresMs > Date.now() + 1800000
@@ -454,6 +478,7 @@ export async function runNativeReadback(
     },
     reader,
     true,
+    ongoing ? options.prepare : undefined,
   );
   await env.STATE.prepare(
     "UPDATE session_effects SET outcome='observed' WHERE attempt_id=? AND step=? AND outcome='unknown'",

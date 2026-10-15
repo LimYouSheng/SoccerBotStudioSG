@@ -14,11 +14,14 @@ const manifest = read("manifest.json"),
 const liveConfig = read("wrangler-live.json");
 assert.deepEqual(liveConfig, {
   ...config,
+  triggers: { crons: ["* * * * *"] },
   vars: {
     ...config.vars,
     PROVIDER_ACCESS: "trusted-reads",
     LIVE_CUSTOMER_ACCESS: "enabled",
     PREMIUM_SERVICE_ID: "3",
+    IDENTITY_DELIVERY: "ongoing",
+    LIVE_READBACK: "enabled",
   },
 });
 const files = exportInventory(directory);
@@ -147,7 +150,10 @@ try {
     .run();
   const grants = (await db.prepare("SELECT * FROM developer_operations").all())
     .results;
-  assert.deepEqual(manifest.pendingRemoteMigrations, []);
+  assert.deepEqual(manifest.pendingRemoteMigrations, [
+    "0027_ongoing_identity_delivery.sql",
+    "0028_ongoing_native_readback.sql",
+  ]);
   // Old-state compatibility remains tested locally, never re-applied remotely.
   for (const name of names.slice(5, 8)) await migrate(name);
   const appliedEight = {
@@ -395,6 +401,21 @@ try {
         : beforeOngoing.get(table),
     );
   }
+  const beforeDeliveryUpgrade = (
+    await db
+      .prepare("SELECT * FROM identity_delivery_dispatches ORDER BY id")
+      .all()
+  ).results;
+  await migrate("0027_ongoing_identity_delivery.sql");
+  await migrate("0028_ongoing_native_readback.sql");
+  assert.deepEqual(
+    (
+      await db
+        .prepare("SELECT * FROM identity_delivery_dispatches ORDER BY id")
+        .all()
+    ).results,
+    beforeDeliveryUpgrade.map((row) => ({ ...row, ongoing: 0 })),
+  );
   assert.equal(
     (
       await mf.dispatchFetch(`${origin}/api/provider/webhook`, {

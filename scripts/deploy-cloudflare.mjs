@@ -34,11 +34,14 @@ export function validateDeployment(directory, revision) {
   const config = read("developer-release/wrangler-live.json");
   assert.deepEqual(config, {
     ...closed,
+    triggers: { crons: ["* * * * *"] },
     vars: {
       ...closed.vars,
       PROVIDER_ACCESS: "trusted-reads",
       LIVE_CUSTOMER_ACCESS: "enabled",
       PREMIUM_SERVICE_ID: "3",
+      IDENTITY_DELIVERY: "ongoing",
+      LIVE_READBACK: "enabled",
     },
   });
   assert.equal(config.name, "soccerbot-dev");
