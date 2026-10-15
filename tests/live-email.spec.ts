@@ -365,10 +365,32 @@ test("native guest journey preserves players contact and one checkout across ref
         },
       );
       const responseHeaders = Object.fromEntries(response.headers);
-      if (responseHeaders["set-cookie"])
+      if (responseHeaders["set-cookie"]) {
         responseHeaders["set-cookie"] = responseHeaders["set-cookie"]
           .replace("__Host-soccerbot-access=", "soccerbot-mechanism-access=")
           .replace("; Secure", "");
+        // WebKit does not persist Set-Cookie from this intercepted response.
+        // Carry only the actual server-issued capability into the loopback jar.
+        const [pair, ...attributes] = responseHeaders["set-cookie"].split(";");
+        const separator = pair.indexOf("=");
+        const age = attributes.find((value) =>
+          value.trim().startsWith("Max-Age="),
+        );
+        expect(age).toBeDefined();
+        await page.context().addCookies([
+          {
+            name: pair.slice(0, separator),
+            value: pair.slice(separator + 1),
+            url: url.origin,
+            httpOnly: true,
+            secure: false,
+            sameSite: "Strict",
+            expires:
+              Math.floor(Date.now() / 1000) +
+              Number(age!.trim().slice("Max-Age=".length)),
+          },
+        ]);
+      }
       const responseBody = await response.text();
       if (url.pathname === "/api/booking/prepare" && response.status === 201)
         attemptId = JSON.parse(responseBody).attemptId;
