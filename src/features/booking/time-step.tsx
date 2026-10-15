@@ -20,6 +20,7 @@ import {
 import type { AvailableSlot } from "@/services/contracts";
 import { useBooking } from "./provider";
 export function TimeStep() {
+  const { selectionNotice } = useBooking();
   const {
     draft,
     update,
@@ -138,6 +139,11 @@ export function TimeStep() {
   return (
     <>
       <h1 className="page-title">Select dates and times</h1>
+      {selectionNotice && (
+        <p className="alert" role="alert">
+          {selectionNotice}
+        </p>
+      )}
       <p className="lead">
         Add 40-minute sessions on the same or different dates. Start times are
         50 minutes apart, with 10 minutes for exit and entry.

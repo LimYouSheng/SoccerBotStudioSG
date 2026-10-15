@@ -104,6 +104,7 @@ export function historicalComparison(
 // Supplied historical response bodies establish field paths, not current account
 // authority. Callers bind these values from authenticated reads and immutable D1.
 export type NativeReadContext = {
+  paymentProcessor?: string;
   attemptId: string;
   intent: unknown;
   association: unknown;
@@ -589,7 +590,7 @@ function invoiceEvidence(raw: unknown, context: NativeReadContext) {
   if (
     invoice.status === "paid" &&
     received &&
-    invoice.payment_processor === "hitpay"
+    invoice.payment_processor === (context.paymentProcessor ?? "hitpay")
   )
     status = "paid";
   else if (

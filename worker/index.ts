@@ -1,3 +1,5 @@
+import { z } from "zod";
+import { receiveHitpayWebhook } from "./hitpay-webhook";
 import { bookingReceipt } from "./receipt";
 import { webhookRoute } from "./webhook-contract";
 import { captureWebhook } from "./webhook";
@@ -116,6 +118,9 @@ export default {
           )
         )
           throw new ApiError(400, "unexpected_parameters");
+        if (url.pathname === "/api/webhooks/hitpay") {
+          return json(await receiveHitpayWebhook(request, env), 202);
+        }
         if (webhookRoute(url.pathname)) {
           return json(await captureWebhook(request, env), 202);
         }
@@ -171,6 +176,31 @@ export default {
           );
         }
         // These initial named operations accept no payload at all.
+        const hitpayPayment = /^\/api\/booking\/hitpay\/([a-f0-9-]{36})$/.exec(
+          url.pathname,
+        );
+        if (hitpayPayment) {
+          if (request.method !== "POST")
+            throw new ApiError(405, "operation_unavailable");
+          if (
+            !z
+              .strictObject({ accepted: z.literal(true) })
+              .safeParse(await inputBody(request)).success
+          )
+            throw new ApiError(400, "payment_consent_required");
+          await authenticate(request, env, Date.now());
+          return json(
+            unwrapRpcOutcome(
+              await env.COORDINATOR.getByName(coordinatorName).hitpayPayment(
+                {
+                  attemptId: hitpayPayment[1],
+                  cookie: request.headers.get("cookie") || "",
+                },
+                correlationId,
+              ),
+            ),
+          );
+        }
         if (request.body !== null) {
           const reader = request.body.getReader();
           let timer: ReturnType<typeof setTimeout> | undefined;
@@ -273,6 +303,7 @@ export default {
               await env.COORDINATOR.getByName(coordinatorName).nativeCheckout(
                 {
                   attemptId,
+                  holding: url.searchParams.get("hold") === "1",
                   cookie: request.headers.get("cookie") || "",
                 },
                 correlationId,

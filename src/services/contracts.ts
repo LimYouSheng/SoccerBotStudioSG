@@ -28,10 +28,15 @@ export type CalendarAvailability = {
   }[];
 };
 export type CheckoutInput = BookingRequest & {
+  holding?: boolean;
   draft: BookingDraft;
   previous: Attempt | null;
 };
-export type PayInput = BookingRequest & { attempt: Attempt; outcome: Outcome };
+export type PayInput = BookingRequest & {
+  attempt: Attempt;
+  outcome: Outcome;
+  holding?: boolean;
+};
 export type AttemptInput = BookingRequest & { attempt: Attempt };
 export type ResolveInput = AttemptInput & { now?: number };
 export interface BookingService {

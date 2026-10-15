@@ -341,6 +341,7 @@ export function nativeBookingOperations(options: {
 // authenticated exchange, not by provider entity timestamps or browser polling.
 export async function readNativeAttempt(options: {
   scope: NativeScope;
+  paymentProcessor?: string;
   association: unknown;
   exchange: NativeExchange;
   signature: (bookingId: string) => Promise<string>;
@@ -375,6 +376,7 @@ export async function readNativeAttempt(options: {
     kind: "observation" as const,
     observation: normalizeNativeReads(bookings, invoice.body, {
       ...options.scope,
+      paymentProcessor: options.paymentProcessor,
       association: refs,
       bookingObservedAtMs: observedAtMs,
       invoiceObservedAtMs: invoice.receivedAtMs,
@@ -911,6 +913,13 @@ export async function compensateNativeAttempt(options: {
   invalidate: () => void;
   operatorRecovery?: { expiresMs: number; expectedBookingIds: string[] };
 }) {
+  const route = await options.db
+    .withSession("first-primary")
+    .prepare("SELECT route FROM checkout_payment_routes WHERE attempt_id=?")
+    .bind(options.scope.attemptId)
+    .first<{ route: string }>();
+  if (route?.route === "hitpay")
+    throw new ApiError(409, "native_cleanup_not_replayable");
   const intent = validateScope(options.scope);
   const row = await options.db
     .withSession("first-primary")

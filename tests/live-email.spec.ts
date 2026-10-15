@@ -316,7 +316,7 @@ test("native guest journey preserves players contact and one checkout across ref
   const startMs = Date.parse(`${date}T08:10:00+08:00`);
   const attemptId = "20000000-0000-4000-8000-000000000001";
   const checkoutUrl =
-    "https://soccerbotstudiosg.simplybook.asia/v2/client/pay-later/id/synthetic-id/hash/synthetic-hash";
+    "https://securecheckout.sandbox.hit-pay.com/payment-request/@soccerbot/20000000-0000-4000-8000-000000000002/checkout";
   const offer = {
     serviceId: "12",
     serviceName: "Native Session",
@@ -331,6 +331,7 @@ test("native guest journey preserves players contact and one checkout across ref
   let prepared: { contact: unknown; sessions: { players: number }[] } | null =
     null;
   let committed = false;
+  let paymentStarted = false;
   await page.route("**/*", async (route) => {
     const request = route.request(),
       url = new URL(request.url());
@@ -339,6 +340,13 @@ test("native guest journey preserves players contact and one checkout across ref
       await route.fulfill({
         contentType: "text/html",
         body: "<!doctype html><title>Synthetic initialization</title>",
+      });
+      return;
+    }
+    if (url.href === checkoutUrl) {
+      await route.fulfill({
+        contentType: "text/html",
+        body: "<!doctype html><h1>Synthetic HitPay checkout</h1>",
       });
       return;
     }
@@ -365,7 +373,11 @@ test("native guest journey preserves players contact and one checkout across ref
     else if (url.pathname === "/api/booking/current")
       result = prepared
         ? {
-            state: committed ? "checking" : "prepared",
+            state: paymentStarted
+              ? "checking"
+              : committed
+                ? "held"
+                : "prepared",
             attemptId,
             contact: prepared.contact,
             sessions: [{ ...offer, players: prepared.sessions[0].players }],
@@ -426,7 +438,16 @@ test("native guest journey preserves players contact and one checkout across ref
       url.pathname === `/api/booking/native/${attemptId}` &&
       request.method() === "POST"
     ) {
+      expect(url.searchParams.get("hold")).toBe("1");
       committed = true;
+      result = { attemptId, state: "associated", paymentAvailable: false };
+    } else if (
+      url.pathname === `/api/booking/hitpay/${attemptId}` &&
+      request.method() === "POST"
+    ) {
+      expect(committed).toBe(true);
+      expect(body).toEqual({ accepted: true });
+      paymentStarted = true;
       result = { attemptId, state: "associated", paymentAvailable: true };
     } else if (url.pathname === `/api/attempts/${attemptId}/checkout`)
       result = {
@@ -512,13 +533,13 @@ test("native guest journey preserves players contact and one checkout across ref
   expect(
     calls.filter((c) => c.path.startsWith("/api/booking/availability/")),
   ).toHaveLength(0);
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByRole("link", { name: "Continue", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Your details", exact: true }),
   ).toBeVisible();
   expect(
     calls.filter((c) => c.path.startsWith("/api/booking/availability/")),
-  ).toHaveLength(1);
+  ).toHaveLength(0);
   await page.getByLabel("Full name", { exact: false }).fill("Synthetic Guest");
   await page
     .getByLabel("Email address", { exact: false })
@@ -533,19 +554,40 @@ test("native guest journey preserves players contact and one checkout across ref
   await page
     .getByRole("button", { name: "Review booking", exact: true })
     .click();
+  await expect(
+    page.getByRole("heading", { name: "Review booking", exact: true }),
+  ).toBeVisible();
+  expect(
+    calls.filter((c) => c.path.startsWith("/api/booking/availability/")),
+  ).toHaveLength(1);
+  expect(
+    calls.filter((c) => c.path === `/api/booking/native/${attemptId}`),
+  ).toHaveLength(1);
+  expect(
+    calls.filter((c) => c.path === `/api/booking/hitpay/${attemptId}`),
+  ).toHaveLength(0);
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Review booking", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Synthetic Guest", { exact: true }),
+  ).toBeVisible();
   await page
     .getByRole("checkbox", { name: /I’ve reviewed all selected/ })
     .check();
   await page
     .getByRole("button", { name: "Continue to payment", exact: true })
     .click();
-  await page.getByRole("button", { name: "Pay $88.00", exact: true }).click();
+  await expect(page).toHaveURL(checkoutUrl);
   await expect(
-    page.getByRole("link", { name: "Open checkout", exact: true }),
-  ).toHaveAttribute("href", checkoutUrl);
+    page.getByRole("heading", { name: "Synthetic HitPay checkout" }),
+  ).toBeVisible();
   expect(
     calls.filter((c) => c.path === "/api/booking/prepare")[0].body,
   ).toMatchObject({
+    accepted: false,
+    holding: true,
     contact: {
       name: "Synthetic Guest",
       email: "synthetic@example.test",
@@ -562,10 +604,20 @@ test("native guest journey preserves players contact and one checkout across ref
       },
     ],
   });
+  await page.goto(`http://127.0.0.1:4173/confirmation/?attempt=${attemptId}`);
   await page.reload();
   await expect(
     page.getByRole("link", { name: "Open checkout", exact: true }),
-  ).toHaveAttribute("href", checkoutUrl);
+  ).toHaveCount(0);
+  expect(
+    calls.filter(
+      (c) =>
+        c.path === `/api/booking/hitpay/${attemptId}` && c.method === "POST",
+    ),
+  ).toHaveLength(1);
+  expect(
+    calls.filter((c) => c.path.startsWith("/api/booking/availability/")),
+  ).toHaveLength(1);
   await expect(
     page.getByRole("heading", { name: "Booking confirmed", exact: true }),
   ).toHaveCount(0);

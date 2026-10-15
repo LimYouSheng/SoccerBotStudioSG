@@ -69,6 +69,7 @@ export type Booking = z.infer<typeof bookingSchema>;
 export const outcomeSchema = z.enum(["success", "declined", "pending", "late"]);
 export type Outcome = z.infer<typeof outcomeSchema>;
 export const attemptSchema = z.object({
+  held: z.literal(true).optional(),
   id: z.string(),
   status: z.enum(["ready", "checking", "declined", "pending", "late", "paid"]),
   draft: draftSchema,
@@ -198,6 +199,7 @@ export function guardedStep(
   attempt: Attempt | null,
   now = Date.now(),
 ): BookingStep {
+  if (attempt?.held && attempt.status === "ready") return "review";
   if (attempt?.status === "paid") return "confirmation";
   if (paymentLocked(attempt)) return "payment";
   if (requested === "confirmation") return "account";

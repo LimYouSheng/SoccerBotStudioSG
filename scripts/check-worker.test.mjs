@@ -64,6 +64,11 @@ test("rejects provider redirects alternate hosts and unreserved dispatch", () =>
     ['redirect: "manual"', 'redirect: "follow"'],
     ["https://api.resend.com/emails", "https://other.invalid/emails"],
     [
+      "https://api.sandbox.hit-pay.com/v1/payment-requests",
+      "https://api.hit-pay.com/v1/payment-requests",
+    ],
+    ["await reserve();", "await Promise.resolve();"],
+    [
       "https://challenges.cloudflare.com/turnstile/v0/siteverify",
       "https://other.invalid/siteverify",
     ],

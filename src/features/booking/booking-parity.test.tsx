@@ -15,6 +15,7 @@ import type {
   CalendarAvailability,
 } from "@/services/contracts";
 import { BookingProvider, useBooking } from "./provider";
+import { DetailsStep } from "./details-step";
 import { TimeStep } from "./time-step";
 import { Summary } from "./summary";
 import { BookingPage } from "./booking-page";
@@ -132,7 +133,18 @@ function Seed() {
   return (
     <button
       onClick={() =>
-        update({ mode: "guest", nativeServiceId: "12", slots: [slot] })
+        update({
+          mode: "guest",
+          nativeServiceId: "12",
+          slots: [slot],
+          contact: {
+            name: "Test Customer",
+            email: "test@example.com",
+            phone: "+65 8123 4567",
+            contactMethod: "email",
+            academy: "Test Academy",
+          },
+        })
       }
     >
       Choose test session
@@ -172,6 +184,7 @@ test("live calendar disables empty and unknown dates and a failed fresh continua
       <Seed />
       <TimeStep />
       <Summary basket />
+      <DetailsStep />
     </BookingProvider>,
   );
   await act(async () => {});
@@ -188,11 +201,19 @@ test("live calendar disables empty and unknown dates and a failed fresh continua
   expect(
     within(region).getByRole("button", { name: dateLabel("2027-01-07") }),
   ).toBeDisabled();
-  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-  expect(await screen.findByRole("alert")).toHaveTextContent(
-    "could not be confirmed",
+  expect(screen.getByRole("link", { name: "Continue" })).toHaveAttribute(
+    "href",
+    "/book/details",
   );
-  expect(push).not.toHaveBeenCalled();
+  expect(availability.mock.calls.some(([input]) => input.fresh === true)).toBe(
+    false,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Review booking" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "no longer available",
+  );
+  expect(push).toHaveBeenCalledWith("/book/time/");
+  expect(screen.getByLabelText(/Full name/)).toHaveValue("Test Customer");
   expect(
     screen.getByRole("button", {
       name: `Remove ${slot.date} at ${slot.start}`,
@@ -406,6 +427,7 @@ test("preloaded browser slots survive date and player changes and Continue refre
       <Players />
       <TimeStep />
       <Summary basket />
+      <DetailsStep />
     </BookingProvider>,
   );
   await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(4));
@@ -430,14 +452,22 @@ test("preloaded browser slots survive date and player changes and Continue refre
   await act(async () => {});
   expect(availability).not.toHaveBeenCalled();
   expect(publicCalendar).toHaveBeenCalledTimes(4);
-  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+  expect(screen.getByRole("link", { name: "Continue" })).toHaveAttribute(
+    "href",
+    "/book/details",
+  );
+  expect(availability.mock.calls.some(([input]) => input.fresh === true)).toBe(
+    false,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Review booking" }));
   expect(await screen.findByRole("alert")).toHaveTextContent(
-    "could not be confirmed",
+    "no longer available",
   );
   expect(availability.mock.calls.some(([input]) => input.fresh === true)).toBe(
     true,
   );
-  expect(push).not.toHaveBeenCalled();
+  expect(push).toHaveBeenCalledWith("/book/time/");
+  expect(screen.getByLabelText(/Full name/)).toHaveValue("Test Customer");
   expect(
     screen.getByRole("button", {
       name: `Remove ${slot.date} at ${slot.start}`,
@@ -490,7 +520,7 @@ test("browser slot cache expires after five minutes", async () => {
   expect(screen.getByRole("status")).toHaveTextContent("loading");
 });
 
-test("Details waits for the complete fresh selection check without another display read after success", async () => {
+test("Details accepts input before checking the complete selection on submission", async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2027-01-01T00:00:00Z"));
   let finish!: (slots: Array<typeof slot & { available: boolean }>) => void;
@@ -531,37 +561,55 @@ test("Details waits for the complete fresh selection check without another displ
     operations: {
       ...demoBookingService.operations,
       availability: "live" as const,
+      checkout: "live" as const,
+      pay: "live" as const,
     },
     publicCalendar,
     availability,
+    checkout: vi.fn(
+      async ({ draft }: Parameters<typeof demoBookingService.checkout>[0]) => ({
+        id: "synthetic-held-attempt",
+        draft,
+        status: "ready" as const,
+        outcome: "pending" as const,
+        checkUntil: 0,
+        booking: null,
+      }),
+    ),
+    pay: vi.fn(
+      async ({ attempt }: Parameters<typeof demoBookingService.pay>[0]) => ({
+        ...attempt,
+        held: true as const,
+      }),
+    ),
   };
   const tree = (step: "time" | "details") => (
     <BookingProvider bookingService={service}>
       <Seed />
-      <BookingPage step={step} />
+      {step === "details" ? <DetailsStep /> : <BookingPage step={step} />}
     </BookingProvider>
   );
   const view = render(tree("time"));
   await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(4));
   fireEvent.click(screen.getByRole("button", { name: "Choose test session" }));
-  view.rerender(tree("details"));
-  expect(
-    screen.queryByRole("heading", { name: "Your details" }),
-  ).not.toBeInTheDocument();
-  view.rerender(tree("time"));
-  fireEvent.click(screen.getByRole("button", { name: "Continue" }));
-  expect(availability).toHaveBeenCalledTimes(1);
-  expect(push).not.toHaveBeenCalled();
-  expect(
-    screen.queryByRole("heading", { name: "Your details" }),
-  ).not.toBeInTheDocument();
-  await act(async () => finish([{ ...slot, available: true }]));
-  expect(push).toHaveBeenCalledWith("/book/details/");
+  expect(screen.getByRole("link", { name: "Continue" })).toHaveAttribute(
+    "href",
+    "/book/details",
+  );
+  expect(availability).not.toHaveBeenCalled();
   view.rerender(tree("details"));
   expect(
     screen.getByRole("heading", { name: "Your details" }),
   ).toBeInTheDocument();
-  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: "Review booking" }));
+  expect(availability).toHaveBeenCalledTimes(1);
+  expect(push).not.toHaveBeenCalled();
+  expect(
+    screen.getByRole("button", { name: "Checking availability…" }),
+  ).toBeDisabled();
+  await act(async () => finish([{ ...slot, available: true }]));
+  expect(push).toHaveBeenCalledWith("/book/review/");
+  expect(screen.getByLabelText(/Full name/)).toHaveValue("Test Customer");
   expect(availability).toHaveBeenCalledTimes(1);
   expect(publicCalendar).toHaveBeenCalledTimes(4);
 });

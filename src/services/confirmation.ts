@@ -2,7 +2,10 @@ import { receiptSchema } from "@/domain/native-checkout";
 import type { Booking } from "@/domain/booking";
 import { LOCATION } from "@/domain/catalog";
 import { MAX_PLAYERS } from "@/domain/booking-policy";
-import { isNativeCheckoutUrl } from "@/domain/native-checkout";
+import {
+  isNativeCheckoutUrl,
+  isHitpayCheckoutUrl,
+} from "@/domain/native-checkout";
 import { z } from "zod";
 import type { ProtectedCheckoutService } from "./contracts";
 const idSchema = z.string().uuid();
@@ -160,7 +163,8 @@ export const protectedCheckoutService: ProtectedCheckoutService = {
       if (
         mode === "synthetic"
           ? context.checkout.url !== `/__experiment/checkout/${attemptId}`
-          : !isNativeCheckoutUrl(context.checkout.url) ||
+          : (!isNativeCheckoutUrl(context.checkout.url) &&
+              !isHitpayCheckoutUrl(context.checkout.url)) ||
             context.checkout.expiresAtMs === undefined ||
             context.checkout.expiresAtMs <= Date.now() ||
             context.checkout.expiresAtMs > context.checking.deadlineMs

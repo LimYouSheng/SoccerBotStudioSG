@@ -50,7 +50,8 @@ export function Arrival() {
   );
 }
 export function ReviewStep() {
-  const { draft, update, checkout, now, action, cancel } = useBooking(),
+  const { draft, attempt, update, checkout, now, action, cancel } =
+      useBooking(),
     router = useRouter();
   const [policy, setPolicy] = useState(false);
   const mounted = useRef(false);
@@ -71,9 +72,11 @@ export function ReviewStep() {
         <div className="review-block">
           <div className="review-head">
             <h2>Your sessions</h2>
-            <Link className="text-link" href="/book/session/">
-              Edit players
-            </Link>
+            {!attempt?.held && (
+              <Link className="text-link" href="/book/session/">
+                Edit players
+              </Link>
+            )}
           </div>
           <p>
             <strong>
@@ -88,18 +91,22 @@ export function ReviewStep() {
         <div className="review-block">
           <div className="review-head">
             <h2>Dates &amp; times</h2>
-            <Link className="text-link" href="/book/time/">
-              Edit selections
-            </Link>
+            {!attempt?.held && (
+              <Link className="text-link" href="/book/time/">
+                Edit selections
+              </Link>
+            )}
           </div>
           <SessionList slots={draft.slots} now={now} />
         </div>
         <div className="review-block">
           <div className="review-head">
             <h2>Booking contact</h2>
-            <Link className="text-link" href="/book/details/">
-              Edit details
-            </Link>
+            {!attempt?.held && (
+              <Link className="text-link" href="/book/details/">
+                Edit details
+              </Link>
+            )}
           </div>
           <ClientDetails contact={draft.contact} />
         </div>
@@ -161,8 +168,10 @@ export function ReviewStep() {
               the shared studio. Start times are 50 minutes apart.
             </p>
             <p>
-              Selecting a time does not reserve it. Availability is checked
-              again before payment. Follow the instructor’s safety guidance.
+              {attempt?.held
+                ? "Your selected sessions are temporarily held. Payment uses this existing reservation; it does not check the slots as available again. If the hold expires, payment cannot proceed."
+                : "Selecting a time does not reserve it. Availability is checked before the reservation is created."}{" "}
+              Follow the instructor’s safety guidance.
             </p>
             <p>
               Contact the studio for changes, cancellations and applicable

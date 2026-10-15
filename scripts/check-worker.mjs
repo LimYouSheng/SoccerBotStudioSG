@@ -19,9 +19,10 @@ export function checkWorker(root) {
     );
     if (name === "provider-transport.ts") {
       if (
-        (text.match(/\bfetch\(/g) || []).length !== 2 ||
-        (text.match(/redirect: "manual"/g) || []).length !== 2 ||
+        (text.match(/\bfetch\(/g) || []).length !== 3 ||
+        (text.match(/redirect: "manual"/g) || []).length !== 3 ||
         !text.includes("await dispatch.reserve()") ||
+        !text.includes("await reserve();") ||
         !text.includes("signal: controller.signal")
       )
         errors.push("Provider transport reservation/redirect boundary changed");
@@ -32,6 +33,7 @@ export function checkWorker(root) {
           [
             "https://challenges.cloudflare.com/turnstile/v0/siteverify",
             "https://api.resend.com/emails",
+            "https://api.sandbox.hit-pay.com/v1/payment-requests",
             "https://user-api.simplybook.me/login",
             "https://user-api.simplybook.me/",
             "https://user-api-v2.simplybook.me/admin/invoices/",
@@ -116,6 +118,9 @@ export function checkWorker(root) {
     config.vars.PROVIDER_ACCESS !== "disabled" ||
     config.vars.PROVIDER_CALL_CEILING !== "80" ||
     config.vars.IDENTITY_DELIVERY !== "disabled" ||
+    config.vars.HITPAY_CHECKOUT !== "disabled" ||
+    config.vars.HITPAY_RECOVERY !== "disabled" ||
+    config.vars.HITPAY_WEBHOOK !== "disabled" ||
     config.vars.CAMPAIGN_ID !== "developer-20261008" ||
     config.vars.CAMPAIGN_END_MS !== "0"
   )

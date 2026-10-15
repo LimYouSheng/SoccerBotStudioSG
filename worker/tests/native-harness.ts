@@ -406,6 +406,22 @@ const harness = {
             SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret",
           }))
             Reflect.set(admittedEnv, key, value);
+          if (input.scenario === "hitpay-hold") {
+            for (const [key, value] of Object.entries({
+              CHECKOUT_PAYMENT_ROUTE: "hitpay",
+              HITPAY_CHECKOUT: "enabled",
+              HITPAY_RECOVERY: "enabled",
+              HITPAY_WEBHOOK: "enabled",
+              HITPAY_CONTRACT_ACCEPTED: "sandbox-reviewed",
+              HITPAY_SANDBOX_API_KEY: "synthetic-key",
+              HITPAY_WEBHOOK_SALT: "synthetic-salt",
+              HITPAY_BUSINESS_ID: "00000000-0000-4000-8000-000000000003",
+              HITPAY_MERCHANT: "soccerbot",
+              SIMPLYBOOK_EXTERNAL_PAYMENT: "sandbox-reviewed",
+              SIMPLYBOOK_EXTERNAL_PROCESSOR: "manual",
+            }))
+              Reflect.set(admittedEnv, key, value);
+          }
           const customerRequest = new Request("https://soccerbot.test/", {
             headers: { cookie: input.cookie },
           });
@@ -462,6 +478,7 @@ const harness = {
             break;
           }
           result = await executeNativeCheckout({
+            holding: input.scenario === "hitpay-hold",
             request: new Request("https://soccerbot.test/", {
               headers: { cookie: input.cookie },
             }),

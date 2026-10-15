@@ -37,11 +37,15 @@ const availabilityInput = z.object({
   fresh: z.boolean().optional(),
 });
 const checkoutInput = z.object({
+  holding: z.boolean().optional(),
   draft: draftSchema,
   previous: attemptSchema.nullable(),
 });
 const attemptInput = z.object({ attempt: attemptSchema });
-const payInput = attemptInput.extend({ outcome: outcomeSchema });
+const payInput = attemptInput.extend({
+  outcome: outcomeSchema,
+  holding: z.boolean().optional(),
+});
 const resolveInput = attemptInput.extend({
   now: z.number().finite().nonnegative().optional(),
 });
@@ -283,11 +287,17 @@ export function defineBookingService(adapter: BookingService): BookingService {
         supported("pay");
         const request = decode(payInput, input, true);
         const previous = structuredClone(request.attempt);
-        return transitioned(
-          "pay",
-          previous,
-          await adapter.pay({ ...request, signal: input.signal }),
-        );
+        const result = await adapter.pay({ ...request, signal: input.signal });
+        if (request.holding && adapter.mode === "live") {
+          const held = resultAttempt(result, previous.draft, previous.id);
+          if (!(
+            (held.status === "ready" && held.held) ||
+            held.status === "checking"
+          ))
+            throw invalidResponse();
+          return held;
+        }
+        return transitioned("pay", previous, result);
       });
     },
     check(input) {
@@ -391,7 +401,10 @@ export const liveBookingService: BookingService = defineBookingService({
     });
     return {
       id: current.attemptId,
-      status: current.state === "prepared" ? "ready" : "checking",
+      status: ["prepared", "held"].includes(current.state)
+        ? "ready"
+        : "checking",
+      ...(current.state === "held" ? { held: true as const } : {}),
       outcome: "pending",
       checkUntil: 0,
       booking: null,
@@ -402,7 +415,7 @@ export const liveBookingService: BookingService = defineBookingService({
           slots[0].native.productServiceId ?? slots[0].native.serviceId,
         contact: current.contact,
         players: current.sessions[0].players,
-        accepted: true,
+        accepted: current.state !== "held",
         slots,
       },
     };
@@ -475,11 +488,11 @@ export const liveBookingService: BookingService = defineBookingService({
       throw invalidResponse();
     return nativeDisplaySlots(date, data.offers);
   },
-  async checkout({ draft, previous, signal }) {
+  async checkout({ draft, previous, signal, holding }) {
     if (draft.slots.some((slot) => !slot.native)) return unavailable();
     if (
       previous ||
-      !draft.accepted ||
+      (!draft.accepted && !holding) ||
       draft.slots.some(
         (slot) =>
           !slot.native ||
@@ -497,6 +510,7 @@ export const liveBookingService: BookingService = defineBookingService({
       key,
       contact: approved.contact,
       accepted: approved.accepted,
+      ...(holding ? { holding: true } : {}),
       sessions: approved.slots.map((slot) => ({
         serviceId: slot.native?.serviceId,
         instructorId: slot.instructor,
@@ -522,7 +536,7 @@ export const liveBookingService: BookingService = defineBookingService({
       booking: null,
     };
   },
-  async pay({ attempt, signal }) {
+  async pay({ attempt, signal, holding }) {
     if (attempt.draft.slots.some((slot) => !slot.native)) return unavailable();
     nativeAttemptId.parse(attempt.id);
     if (
@@ -538,9 +552,12 @@ export const liveBookingService: BookingService = defineBookingService({
       })
       .parse(
         await nativeRequest(
-          `/api/booking/native/${attempt.id}`,
+          attempt.held
+            ? `/api/booking/hitpay/${attempt.id}`
+            : `/api/booking/native/${attempt.id}${holding ? "?hold=1" : ""}`,
           "POST",
           signal,
+          attempt.held ? { accepted: attempt.draft.accepted } : undefined,
         ),
       );
     if (result.attemptId !== attempt.id) throw invalidResponse();
@@ -552,6 +569,8 @@ export const liveBookingService: BookingService = defineBookingService({
         "conflict",
         "This selection has changed. Return to your booking and restart checkout.",
       );
+    if (holding && result.state === "associated")
+      return { ...attempt, held: true, status: "ready" };
     // A response can never mark the browser paid. All ambiguous writes remain
     // under this attempt and the protected confirmation/recovery owner.
     return {

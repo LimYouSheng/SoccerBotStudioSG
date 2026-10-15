@@ -3250,3 +3250,92 @@ test("native calendar scopes range reads to granted dates and retains fresh cont
     reply = undefined;
   }
 });
+
+test("Review booking creates one HitPay holding appointment without payment or post-reservation availability", async () => {
+  const data = await prepared(false, true, true);
+  await grantNative(data);
+  const wall = new Date(
+    data.scope.intent.sessions[0].startMs + 28800000,
+  ).toISOString();
+  data.invoice.due_datetime = new Date(Date.now() + 600000)
+    .toISOString()
+    .replace(/\.\d{3}Z$/, "Z");
+  const before = calls.length;
+  reply = nativeProviderReply(data, wall);
+  try {
+    const result = await call("finite-checkout", {
+      ...data,
+      scenario: "hitpay-hold",
+    });
+    assert.equal(result.status, 200, JSON.stringify(result));
+    assert.equal(result.result.state, "associated", JSON.stringify(result));
+    assert.equal(result.result.paymentAvailable, false);
+    const sent = calls.slice(before);
+    const index = sent.findIndex((c) => c.body?.method === "book");
+    assert.ok(index >= 0);
+    assert.equal(sent.filter((c) => c.body?.method === "book").length, 1);
+    assert.equal(
+      sent.some(
+        (c) => c.url.includes("hit-pay.com") || c.url.endsWith("/payment-link"),
+      ),
+      false,
+    );
+    assert.equal(
+      sent
+        .slice(index + 1)
+        .some((c) =>
+          ["getStartTimeMatrix", "getAvailableUnits"].includes(c.body?.method),
+        ),
+      false,
+    );
+    assert.ok(
+      await db
+        .prepare("SELECT 1 FROM hitpay_holds WHERE attempt_id=?")
+        .bind(data.scope.attemptId)
+        .first(),
+    );
+    assert.equal(
+      await db
+        .prepare("SELECT 1 FROM hitpay_payments WHERE attempt_id=?")
+        .bind(data.scope.attemptId)
+        .first(),
+      null,
+    );
+    assert.equal(
+      (await call("finite-checkout", { ...data, scenario: "hitpay-hold" }))
+        .reserved,
+      0,
+    );
+    const date = wall.slice(0, 10);
+    await db
+      .prepare(
+        "UPDATE native_checkout_grants SET availability_json=? WHERE attempt_id=?",
+      )
+      .bind(
+        JSON.stringify({
+          [date]: {
+            date,
+            observedAtMs: Date.now(),
+            offers: [
+              {
+                serviceId: "12",
+                serviceName: "Synthetic Session",
+                instructorId: "14",
+                instructorName: "Synthetic Trainer",
+                startMs: data.scope.intent.sessions[0].startMs,
+                priceMinor: 8800,
+                currency: "SGD",
+              },
+            ],
+          },
+        }),
+        data.scope.attemptId,
+      )
+      .run();
+    const restored = await call("customer-current", data);
+    assert.equal(restored.status, 200, JSON.stringify(restored));
+    assert.equal(restored.result.state, "held");
+  } finally {
+    reply = undefined;
+  }
+});

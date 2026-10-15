@@ -118,3 +118,43 @@ it("accepts only the backend-issued native path for the matching protected attem
   );
   await expect(read("live")).rejects.toThrow();
 });
+
+it("accepts only a bounded protected HitPay sandbox checkout URL", async () => {
+  const url = `https://securecheckout.sandbox.hit-pay.com/payment-request/@soccerbot/${id}/checkout`;
+  const expiresAtMs = Date.now() + 60000;
+  const reply = (
+    destination: string,
+    expiry: number | undefined = expiresAtMs,
+  ) =>
+    Response.json({
+      ...context,
+      mode: "live",
+      checking: { ...context.checking, deadlineMs: Date.now() + 120000 },
+      checkout: { state: "available", url: destination, expiresAtMs: expiry },
+    });
+  const fetch = vi.fn().mockResolvedValue(reply(url));
+  vi.stubGlobal("fetch", fetch);
+  expect((await read("live")).checkout).toEqual({
+    state: "available",
+    url,
+    expiresAtMs,
+  });
+  for (const invalid of [
+    url.replace("https:", "http:"),
+    url.replace(".sandbox", ""),
+    url.replace("hit-pay.com", "hit-pay.com.evil.test"),
+    url.replace("securecheckout.", "attacker@securecheckout."),
+    url + "?redirect=evil",
+    url + "#paid",
+    url + "/",
+    url.replace("@soccerbot", "%40soccerbot"),
+    url.replace(id, "invalid"),
+  ]) {
+    fetch.mockResolvedValue(reply(invalid));
+    await expect(read("live")).rejects.toThrow();
+  }
+  for (const expiry of [0, Date.now() - 1, Date.now() + 180000]) {
+    fetch.mockResolvedValue(reply(url, expiry));
+    await expect(read("live")).rejects.toThrow();
+  }
+});

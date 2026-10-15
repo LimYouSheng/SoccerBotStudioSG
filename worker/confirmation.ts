@@ -1,4 +1,8 @@
 import {
+  storedHitpayCheckout,
+  hitpayConfirmationGuard,
+} from "./hitpay-journal";
+import {
   START_INTERVAL_MINUTES,
   SESSION_MINUTES,
 } from "../src/domain/booking-policy";
@@ -41,7 +45,10 @@ export async function confirmation(
     report?.({ deadlineMs: row.deadline_ms, nextCheckMs: now, remaining: 0 });
     // The deadline ends checking, not the validity of fresh authoritative proof.
     // Preserve the shared booking/money/paid decision without reopening polls.
-    return decideStoredConfirmation(row, access, now, p);
+    return (
+      (await hitpayConfirmationGuard(env, id)) ??
+      decideStoredConfirmation(row, access, now, p)
+    );
   }
   const quota = await env.STATE.prepare(
     "UPDATE attempts SET confirmation_next_ms=?,confirmation_checks=confirmation_checks+1 WHERE id=? AND owner_id=? AND confirmation_next_ms<=? AND confirmation_checks<120 RETURNING confirmation_next_ms,confirmation_checks",
@@ -72,7 +79,21 @@ export async function confirmation(
     nextCheckMs: quota.confirmation_next_ms,
     remaining: 120 - quota.confirmation_checks,
   });
-  return decideStoredConfirmation(row, access, now, p);
+  const guard = await hitpayConfirmationGuard(env, id);
+  if (guard) return guard;
+  const decision = decideStoredConfirmation(row, access, now, p);
+  if (decision.reason === "stale_observation") {
+    // A completed payment is not permanently fresh booking evidence. Reuse the
+    // original bounded financial claim; never reset its tries or expiry.
+    const queued = await env.STATE.prepare(
+      "UPDATE hitpay_payments SET state='due',reason='booking_refresh_pending',ready_ms=? WHERE attempt_id=? AND state='complete' AND paid_ms IS NOT NULL AND external_state='observed' AND tries<12 AND recovery_end_ms>? RETURNING attempt_id",
+    )
+      .bind(now, id, now)
+      .first();
+    if (queued)
+      return { status: "pending", reason: "payment_received_booking_pending" };
+  }
+  return decision;
 }
 // Shared decision mapping. Caller supplies independently established authority:
 // authenticated customer access, or a current bounded internal recovery claim.
@@ -178,11 +199,13 @@ export async function checkoutContext(
     }>();
   if (!row) throw new ApiError(404, "attempt_unavailable");
   const intent = intentSchema.parse(JSON.parse(row.intent_json));
+  const hitpayCheckout = await storedHitpayCheckout(env, id, now);
   return {
     attemptId: id,
     mode: "live" as const,
     checkout:
-      row.association_json &&
+      hitpayCheckout ??
+      (row.association_json &&
       row.deadline_ms > now &&
       String(env.PROVIDER_ACCESS) === "trusted-reads"
         ? await storedNativeCheckout(
@@ -191,7 +214,7 @@ export async function checkoutContext(
             JSON.parse(row.association_json),
             now,
           )
-        : { state: "unavailable" as const },
+        : { state: "unavailable" as const }),
     summary: {
       players: intent.sessions[0].players,
       totalMinor: intent.totalMinor,
