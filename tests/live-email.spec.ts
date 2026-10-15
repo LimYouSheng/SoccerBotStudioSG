@@ -305,101 +305,113 @@ test("remembered live account edits and rereads contact while native booking sta
   expect(evidence.unexpected).toEqual([]);
 });
 
+async function mechanismTransport(
+  page: Page,
+  mechanism: Awaited<ReturnType<typeof createBookingMechanism>>,
+) {
+  let attemptId = "";
+  const calls: { path: string; method: string; body: unknown }[] = [];
+  const unexpected: string[] = [];
+  await page.route("**/*", async (route) => {
+    const request = route.request(),
+      url = new URL(request.url());
+    if (url.href === "https://soccerbotstudiosg.simplybook.asia/v2/") {
+      await route.fulfill({
+        contentType: "text/html",
+        body: "<!doctype html><title>Synthetic initialization</title>",
+      });
+      return;
+    }
+    if (url.href === mechanism.checkoutUrl) {
+      await route.fulfill({
+        contentType: "text/html",
+        body: "<!doctype html><h1>Synthetic HitPay checkout</h1>",
+      });
+      return;
+    }
+    if (url.origin !== "http://127.0.0.1:4173") {
+      unexpected.push(url.origin);
+      await route.abort();
+      return;
+    }
+    if (!url.pathname.startsWith("/api/")) {
+      await route.continue();
+      return;
+    }
+    const body: unknown = request.postData() ? request.postDataJSON() : null;
+    calls.push({ path: url.pathname, method: request.method(), body });
+    // Loopback transport adapter only: do not fabricate application responses.
+    // Secure __Host cookies cannot be used by the HTTP static preview origin.
+    const headers = new Headers(await request.allHeaders());
+    headers.delete("host");
+    headers.delete("content-length");
+    if (headers.get("origin") === url.origin)
+      headers.set("origin", mechanism.origin);
+    // WebKit interception omits Cookie from request headers. Read the actual
+    // browser jar; never invent an access token or bypass server authentication.
+    const cookies = await page.context().cookies(url.origin);
+    headers.set(
+      "cookie",
+      cookies
+        .filter((cookie) => cookie.name === "soccerbot-mechanism-access")
+        .map((cookie) => `__Host-soccerbot-access=${cookie.value}`)
+        .join("; "),
+    );
+    const response = await mechanism.mf.dispatchFetch(
+      mechanism.origin + url.pathname + url.search,
+      {
+        method: request.method(),
+        headers,
+        body: request.postData() || undefined,
+      },
+    );
+    const responseHeaders = Object.fromEntries(response.headers);
+    if (responseHeaders["set-cookie"]) {
+      responseHeaders["set-cookie"] = responseHeaders["set-cookie"]
+        .replace("__Host-soccerbot-access=", "soccerbot-mechanism-access=")
+        .replace("; Secure", "");
+      // WebKit does not persist Set-Cookie from this intercepted response.
+      // Carry only the actual server-issued capability into the loopback jar.
+      const [pair, ...attributes] = responseHeaders["set-cookie"].split(";");
+      const separator = pair.indexOf("=");
+      const age = attributes.find((value) =>
+        value.trim().startsWith("Max-Age="),
+      );
+      expect(age).toBeDefined();
+      await page.context().addCookies([
+        {
+          name: pair.slice(0, separator),
+          value: pair.slice(separator + 1),
+          url: url.origin,
+          httpOnly: true,
+          secure: false,
+          sameSite: "Strict",
+          expires:
+            Math.floor(Date.now() / 1000) +
+            Number(age!.trim().slice("Max-Age=".length)),
+        },
+      ]);
+    }
+    const responseBody = await response.text();
+    if (url.pathname === "/api/booking/prepare" && response.status === 201)
+      attemptId = JSON.parse(responseBody).attemptId;
+    await route.fulfill({
+      status: response.status,
+      headers: responseHeaders,
+      body: responseBody,
+    });
+  });
+  return { calls, unexpected, attemptId: () => attemptId };
+}
+
 test("native guest journey preserves players contact and one checkout across refresh", async ({
   page,
 }) => {
   const mechanism = await createBookingMechanism();
   try {
     const { date, startMs, checkoutUrl } = mechanism;
-    let attemptId = "";
-    const calls: { path: string; method: string; body: unknown }[] = [];
-    const unexpected: string[] = [];
-    await page.route("**/*", async (route) => {
-      const request = route.request(),
-        url = new URL(request.url());
-      if (url.href === "https://soccerbotstudiosg.simplybook.asia/v2/") {
-        await route.fulfill({
-          contentType: "text/html",
-          body: "<!doctype html><title>Synthetic initialization</title>",
-        });
-        return;
-      }
-      if (url.href === checkoutUrl) {
-        await route.fulfill({
-          contentType: "text/html",
-          body: "<!doctype html><h1>Synthetic HitPay checkout</h1>",
-        });
-        return;
-      }
-      if (url.origin !== "http://127.0.0.1:4173") {
-        unexpected.push(url.origin);
-        await route.abort();
-        return;
-      }
-      if (!url.pathname.startsWith("/api/")) {
-        await route.continue();
-        return;
-      }
-      const body: unknown = request.postData() ? request.postDataJSON() : null;
-      calls.push({ path: url.pathname, method: request.method(), body });
-      // Loopback transport adapter only: do not fabricate application responses.
-      // Secure __Host cookies cannot be used by the HTTP static preview origin.
-      const headers = new Headers(await request.allHeaders());
-      headers.delete("host");
-      headers.delete("content-length");
-      if (headers.get("origin") === url.origin)
-        headers.set("origin", mechanism.origin);
-      headers.set(
-        "cookie",
-        (headers.get("cookie") || "").replaceAll(
-          "soccerbot-mechanism-access=",
-          "__Host-soccerbot-access=",
-        ),
-      );
-      const response = await mechanism.mf.dispatchFetch(
-        mechanism.origin + url.pathname + url.search,
-        {
-          method: request.method(),
-          headers,
-          body: request.postData() || undefined,
-        },
-      );
-      const responseHeaders = Object.fromEntries(response.headers);
-      if (responseHeaders["set-cookie"]) {
-        responseHeaders["set-cookie"] = responseHeaders["set-cookie"]
-          .replace("__Host-soccerbot-access=", "soccerbot-mechanism-access=")
-          .replace("; Secure", "");
-        // WebKit does not persist Set-Cookie from this intercepted response.
-        // Carry only the actual server-issued capability into the loopback jar.
-        const [pair, ...attributes] = responseHeaders["set-cookie"].split(";");
-        const separator = pair.indexOf("=");
-        const age = attributes.find((value) =>
-          value.trim().startsWith("Max-Age="),
-        );
-        expect(age).toBeDefined();
-        await page.context().addCookies([
-          {
-            name: pair.slice(0, separator),
-            value: pair.slice(separator + 1),
-            url: url.origin,
-            httpOnly: true,
-            secure: false,
-            sameSite: "Strict",
-            expires:
-              Math.floor(Date.now() / 1000) +
-              Number(age!.trim().slice("Max-Age=".length)),
-          },
-        ]);
-      }
-      const responseBody = await response.text();
-      if (url.pathname === "/api/booking/prepare" && response.status === 201)
-        attemptId = JSON.parse(responseBody).attemptId;
-      await route.fulfill({
-        status: response.status,
-        headers: responseHeaders,
-        body: responseBody,
-      });
-    });
+    const transport = await mechanismTransport(page, mechanism);
+    const { calls, unexpected } = transport;
     const warmedMonths = new Set<string>();
     const calendarReady = page.waitForResponse((response) => {
       const path = new URL(response.url()).pathname;
@@ -502,10 +514,14 @@ test("native guest journey preserves players contact and one checkout across ref
       calls.filter((c) => c.path.startsWith("/api/booking/availability/")),
     ).toHaveLength(1);
     expect(
-      calls.filter((c) => c.path === `/api/booking/native/${attemptId}`),
+      calls.filter(
+        (c) => c.path === `/api/booking/native/${transport.attemptId()}`,
+      ),
     ).toHaveLength(1);
     expect(
-      calls.filter((c) => c.path === `/api/booking/hitpay/${attemptId}`),
+      calls.filter(
+        (c) => c.path === `/api/booking/hitpay/${transport.attemptId()}`,
+      ),
     ).toHaveLength(0);
     await page.reload();
     await expect(
@@ -545,7 +561,9 @@ test("native guest journey preserves players contact and one checkout across ref
         },
       ],
     });
-    await page.goto(`http://127.0.0.1:4173/confirmation/?attempt=${attemptId}`);
+    await page.goto(
+      `http://127.0.0.1:4173/confirmation/?attempt=${transport.attemptId()}`,
+    );
     await page.reload();
     await expect(
       page.getByRole("link", { name: "Open checkout", exact: true }),
@@ -553,7 +571,8 @@ test("native guest journey preserves players contact and one checkout across ref
     expect(
       calls.filter(
         (c) =>
-          c.path === `/api/booking/hitpay/${attemptId}` && c.method === "POST",
+          c.path === `/api/booking/hitpay/${transport.attemptId()}` &&
+          c.method === "POST",
       ),
     ).toHaveLength(1);
     expect(
@@ -565,7 +584,8 @@ test("native guest journey preserves players contact and one checkout across ref
     expect(
       calls.filter(
         (c) =>
-          c.path === `/api/booking/native/${attemptId}` && c.method === "POST",
+          c.path === `/api/booking/native/${transport.attemptId()}` &&
+          c.method === "POST",
       ),
     ).toHaveLength(1);
     expect(
@@ -574,15 +594,6 @@ test("native guest journey preserves players contact and one checkout across ref
       ),
     ).toHaveLength(0);
     expect(unexpected).toEqual([]);
-    expect((await mechanism.completePayment()).status).toBe(202);
-    await mechanism.recover();
-    await page.reload();
-    await expect(
-      page.getByRole("heading", { name: "Booking confirmed", exact: true }),
-    ).toBeVisible();
-    expect(
-      mechanism.calls.filter((c) => c.url.endsWith("/accept-payment")),
-    ).toHaveLength(1);
     const bookingIndex = mechanism.calls.findIndex(
       (c) => c.body?.method === "book",
     );
@@ -606,7 +617,112 @@ test("native guest journey preserves players contact and one checkout across ref
     ).toHaveLength(0);
     expect(mechanism.unexpected).toEqual([]);
   } finally {
-    await page.unrouteAll({ behavior: "wait" });
-    await mechanism.close();
+    try {
+      if (!page.isClosed()) await page.unrouteAll({ behavior: "wait" });
+    } finally {
+      await mechanism.close();
+    }
+  }
+});
+
+test("real payment recovery confirms the browser return from verified provider state", async ({
+  page,
+}) => {
+  const mechanism = await createBookingMechanism();
+  try {
+    await mechanismTransport(page, mechanism);
+    // Setup uses the same public routes, auth and coordinator as the browser.
+    const access = await mechanism.mf.dispatchFetch(
+      mechanism.origin + "/api/access",
+      { method: "POST", headers: { origin: mechanism.origin } },
+    );
+    expect(access.status).toBe(201);
+    const cookie = access.headers.get("set-cookie")!.split(";")[0];
+    await page.context().addCookies([
+      {
+        name: "soccerbot-mechanism-access",
+        value: cookie.slice(cookie.indexOf("=") + 1),
+        url: "http://127.0.0.1:4173",
+        httpOnly: true,
+        sameSite: "Strict",
+        secure: false,
+      },
+    ]);
+    const headers = {
+      origin: mechanism.origin,
+      cookie,
+      "content-type": "application/json",
+    };
+    const prepared = await mechanism.mf.dispatchFetch(
+      mechanism.origin + "/api/booking/prepare",
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          key: crypto.randomUUID(),
+          holding: true,
+          accepted: false,
+          contact: {
+            name: "Synthetic Guest",
+            email: "synthetic@example.test",
+            phone: "+6591234567",
+            contactMethod: "email",
+            academy: "",
+          },
+          sessions: [
+            {
+              serviceId: "2",
+              instructorId: "14",
+              startMs: mechanism.startMs,
+              players: 2,
+              totalMinor: 8800,
+            },
+          ],
+        }),
+      },
+    );
+    expect(prepared.status).toBe(201);
+    const { attemptId } = (await prepared.json()) as { attemptId: string };
+    const held = await mechanism.mf.dispatchFetch(
+      mechanism.origin + `/api/booking/native/${attemptId}?hold=1`,
+      { method: "POST", headers },
+    );
+    expect(await held.json()).toMatchObject({
+      state: "associated",
+      paymentAvailable: false,
+    });
+    const checkout = await mechanism.mf.dispatchFetch(
+      mechanism.origin + `/api/booking/hitpay/${attemptId}`,
+      { method: "POST", headers, body: JSON.stringify({ accepted: true }) },
+    );
+    expect(await checkout.json()).toMatchObject({
+      state: "associated",
+      paymentAvailable: true,
+    });
+    expect((await mechanism.completePayment()).status).toBe(202);
+    await mechanism.recover();
+    const confirmation = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname ===
+          `/api/attempts/${attemptId}/confirmation` &&
+        response.status() === 200,
+    );
+    await page.goto(`/confirmation/?attempt=${attemptId}`);
+    expect(await (await confirmation).json()).toMatchObject({
+      status: "confirmed",
+    });
+    await expect(
+      page.getByRole("heading", { name: "Booking confirmed", exact: true }),
+    ).toBeVisible();
+    expect(
+      mechanism.calls.filter((call) => call.url.endsWith("/accept-payment")),
+    ).toHaveLength(1);
+    expect(mechanism.unexpected).toEqual([]);
+  } finally {
+    try {
+      if (!page.isClosed()) await page.unrouteAll({ behavior: "wait" });
+    } finally {
+      await mechanism.close();
+    }
   }
 });
