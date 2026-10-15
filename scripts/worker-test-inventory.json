@@ -168,7 +168,7 @@
   "stale token completion is fenced before any dependent provider read",
   "provider dispatch reservation exists before transport and caps active requests",
   "provider read burst after eviction cannot exceed four rolling starts",
-  "uncertain provider transport retains its durable reservation without replay",
+  "failed provider authentication releases concurrency without replay or budget refund",
   "historical read normalization preserves string flags exact money and occupied end without manufacturing intent",
   "historical normalization leaves unknown flags states and imprecise amounts unresolved",
   "historical paid invoice retains cancelled booking independently and invoice renumbering is not identity",
