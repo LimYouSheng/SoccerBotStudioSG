@@ -225,11 +225,38 @@ export async function providerRequest(
   token: string | undefined,
   dispatch: {
     reserve: () => Promise<string>;
-    finish: (id: string, cooldown: number) => void;
+    finish: (
+      id: string,
+      cooldown: number,
+      reason?: "read_transport_ended",
+    ) => void;
   },
   native?: NativeRequest,
   signal?: AbortSignal,
 ): Promise<unknown> {
+  // Explicit operation semantics, never HTTP method: payment-link GET can mutate.
+  const readOnly =
+    [
+      "public-auth",
+      "admin-auth",
+      "identity",
+      "tariff",
+      "historical-booking",
+      "historical-invoice",
+    ].includes(operation) ||
+    (native !== undefined &&
+      [
+        "webhook-subscriptions",
+        "working-hours",
+        "availability-range",
+        "catalogue-services",
+        "catalogue-instructors",
+        "eligible-instructors",
+        "required-fields",
+        "availability",
+        "booking-read",
+        "invoice-read",
+      ].includes(native.kind));
   const rpcId = crypto.randomUUID();
   let url: string, method: string, body: string | undefined;
   let rpc = operation === "public-auth";
@@ -441,7 +468,7 @@ export async function providerRequest(
   }
   signal?.throwIfAborted();
   const id = await dispatch.reserve();
-  // Reservation is durable before fetch; uncertain transport keeps the slot held.
+  // Reservation precedes dispatch; uncertain writes keep their slot held.
   const controller = new AbortController();
   const abort = () => controller.abort();
   signal?.addEventListener("abort", abort, { once: true });
@@ -570,7 +597,12 @@ export async function providerRequest(
     } finally {
       clearTimeout(timer);
       signal?.removeEventListener("abort", abort);
-      if (complete) dispatch.finish(id, cooldown);
+      if (complete || readOnly)
+        dispatch.finish(
+          id,
+          cooldown,
+          complete ? undefined : "read_transport_ended",
+        );
     }
   });
 }

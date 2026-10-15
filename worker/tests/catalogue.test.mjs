@@ -518,6 +518,140 @@ test("catalogue transport uses documented named calls and remains denied in clos
   }
 });
 
+test("failed read transport releases its slot while uncertain native writes retain theirs", async () => {
+  const original = globalThis.fetch;
+  const secrets = {
+    company: "synthetic",
+    login: "synthetic",
+    publicKey: "synthetic",
+    adminKey: "synthetic",
+  };
+  const safe = [
+    ...[
+      "public-auth",
+      "admin-auth",
+      "identity",
+      "tariff",
+      "historical-booking",
+      "historical-invoice",
+    ].map((operation) => [operation, undefined]),
+    ...[
+      { kind: "catalogue-services" },
+      { kind: "catalogue-instructors" },
+      { kind: "booking-read", bookingId: "701", signature: "a".repeat(32) },
+      { kind: "invoice-read", invoiceId: "901" },
+      { kind: "webhook-subscriptions" },
+      { kind: "required-fields", serviceId: "12" },
+      {
+        kind: "availability",
+        serviceId: "12",
+        instructorId: "14",
+        date: "2026-10-16",
+      },
+      {
+        kind: "availability-range",
+        serviceId: "12",
+        instructorId: "14",
+        from: "2026-10-16",
+        to: "2026-10-17",
+      },
+      {
+        kind: "working-hours",
+        serviceId: "12",
+        instructorId: "14",
+        from: "2026-10-16",
+        to: "2026-10-17",
+      },
+      {
+        kind: "eligible-instructors",
+        serviceId: "12",
+        date: "2026-10-16",
+        time: "09:00:00",
+      },
+    ].map((native) => ["native", native]),
+  ];
+  const unsafe = [
+    { kind: "batch-create" },
+    { kind: "batch-close", batchId: "701", signature: "a".repeat(32) },
+    {
+      kind: "book",
+      serviceId: "12",
+      instructorId: "14",
+      date: "2026-10-16",
+      time: "09:00:00",
+      client: {
+        name: "Synthetic",
+        email: "customer@example.invalid",
+        phone: "+6581234567",
+      },
+      additional: { handle_invoice: true },
+    },
+    { kind: "payment-link", invoiceId: "901" },
+    {
+      kind: "booking-cancel",
+      bookingId: "701",
+      signature: "a".repeat(32),
+      evidenceObservedAtMs: Date.now(),
+    },
+    {
+      kind: "webhook-create",
+      origin: "https://soccerbot-dev.limyousheng-94.workers.dev",
+      event: "new_invoice",
+    },
+    { kind: "webhook-delete", subscriptionId: "1" },
+  ].map((native) => ["native", native]);
+  try {
+    for (const partialBody of [false, true])
+      for (const [expected, operations] of [
+        [true, safe],
+        [false, unsafe],
+      ])
+        for (const [operation, native] of operations) {
+          let dispatched = 0,
+            reserved = 0;
+          const finished = [];
+          globalThis.fetch = async () => {
+            dispatched++;
+            if (!partialBody)
+              throw new DOMException(
+                "Synthetic aborted transport",
+                "AbortError",
+              );
+            return new Response(
+              new ReadableStream({
+                start(controller) {
+                  controller.error(new Error("Synthetic interrupted body"));
+                },
+              }),
+              { headers: { "Content-Type": "application/json" } },
+            );
+          };
+          await assert.rejects(
+            providerRequest(
+              operation,
+              secrets,
+              "synthetic-token",
+              {
+                reserve: async () => String(++reserved),
+                finish: (...args) => finished.push(args),
+              },
+              native,
+            ),
+            /provider_transport_uncertain/,
+          );
+          assert.equal(reserved, 1);
+          assert.equal(dispatched, 1);
+          assert.deepEqual(
+            finished,
+            expected ? [["1", 60000, "read_transport_ended"]] : [],
+            JSON.stringify({ operation, native, partialBody }),
+          );
+        }
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
 test("provider session refuses credential account changes before cached identity reuse", async () => {
   const config = ts.parseConfigFileTextToJson(
     "wrangler.jsonc",

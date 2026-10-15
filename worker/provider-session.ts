@@ -14,7 +14,11 @@ import {
 export type ProviderControl = {
   liveCustomer?: boolean;
   reserve: () => Promise<string>;
-  finish: (id: string, cooldown: number) => void;
+  finish: (
+    id: string,
+    cooldown: number,
+    reason?: "read_transport_ended",
+  ) => void;
   claim: (family: ProviderFamily) => { generation: number; claim: string };
   complete: (
     family: ProviderFamily,

@@ -58,6 +58,9 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     ctx.storage.sql.exec(
       "CREATE TABLE IF NOT EXISTS admissions (id TEXT PRIMARY KEY, campaign TEXT NOT NULL, started_ms INTEGER NOT NULL, finished INTEGER NOT NULL DEFAULT 0)",
     );
+    ctx.storage.sql.exec(
+      "CREATE TABLE IF NOT EXISTS admission_releases (id TEXT PRIMARY KEY, campaign TEXT NOT NULL, started_ms INTEGER NOT NULL, reason TEXT NOT NULL CHECK(reason IN ('read_transport_ended','reviewed_historical_read_timeout')), recorded_ms INTEGER NOT NULL, evidence TEXT)",
+    );
     // Keep pacing/rate reads independent of retained admission history. The
     // partial index contains only reservations that still hold concurrency.
     ctx.storage.sql.exec(
@@ -156,7 +159,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           await measure("storage", () => this.ctx.storage.sync());
           return admitted.id;
         }),
-      finish: (id, cooldown) => this.finish(id, cooldown),
+      finish: (id, cooldown, reason) => this.finish(id, cooldown, reason),
       claim: (family) => {
         const row = this.sql
           .exec<{
@@ -1019,10 +1022,18 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       recoveryReserve: 16,
     };
   }
-  finish(id: string, cooldownMs = 0) {
+  finish(id: string, cooldownMs = 0, reason?: "read_transport_ended") {
     if (!Number.isInteger(cooldownMs) || cooldownMs < 0 || cooldownMs > 3600000)
       throw new Error("Invalid cooldown");
+    if (reason !== undefined) z.literal("read_transport_ended").parse(reason);
     this.ctx.storage.transactionSync(() => {
+      if (reason)
+        this.sql.exec(
+          "INSERT INTO admission_releases(id,campaign,started_ms,reason,recorded_ms) SELECT id,campaign,started_ms,?,? FROM admissions WHERE id=? AND finished=0 ON CONFLICT(id) DO NOTHING",
+          reason,
+          Date.now(),
+          id,
+        );
       this.sql.exec(
         "UPDATE admissions SET finished=1 WHERE id=? AND finished=0",
         id,

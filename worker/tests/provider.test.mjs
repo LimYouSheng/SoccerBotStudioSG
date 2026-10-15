@@ -1365,7 +1365,7 @@ test("discovery rejects malformed duplicate paginated and oversized metadata wit
     /private@|unknown-secret|must-not-escape/,
   );
 });
-test("discovery unknown dispatch remains counted across eviction and cannot replay", async () => {
+test("discovery failed read releases concurrency but remains counted across eviction and cannot replay", async () => {
   const f = await discoveryFixture({ respond: () => new Promise(() => {}) });
   try {
     const token = await f.grant(Date.now() + 180000, discoveryOperation);
@@ -1373,7 +1373,7 @@ test("discovery unknown dispatch remains counted across eviction and cannot repl
     assert.equal(result.body.state, "blocked");
     assert.equal(result.body.result.reason, "provider_transport_uncertain");
     assert.equal(result.body.result.accounting.used, 9);
-    assert.equal(result.body.result.accounting.active, 1);
+    assert.equal(result.body.result.accounting.active, 0);
     await f.mf.unsafeEvictDurableObject(
       "provider-test",
       "SoccerBotAccountCoordinator",
@@ -1381,7 +1381,7 @@ test("discovery unknown dispatch remains counted across eviction and cannot repl
     );
     const retained = await f.call(token, "GET", discoveryOperation);
     assert.equal(retained.body.accounting.used, 9);
-    assert.equal(retained.body.accounting.active, 1);
+    assert.equal(retained.body.accounting.active, 0);
     await f.call(token, "POST", discoveryOperation);
     const other = await f.grant(Date.now() + 60000, discoveryOperation);
     assert.equal(
@@ -1389,6 +1389,9 @@ test("discovery unknown dispatch remains counted across eviction and cannot repl
       "discovery_accounting_changed",
     );
     assert.equal(f.calls.length, 1);
+    const releases = await f.sql("SELECT reason FROM admission_releases");
+    assert.deepEqual(releases, [{ reason: "read_transport_ended" }]);
+    assert.equal((await f.sql("SELECT count(*) n FROM admissions"))[0].n, 1);
   } finally {
     await f.mf.dispose();
   }
