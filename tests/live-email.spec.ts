@@ -708,6 +708,10 @@ test("real payment recovery confirms the browser return from verified provider s
         response.status() === 200,
     );
     await page.goto(`/confirmation/?attempt=${attemptId}`);
+    await page
+      .getByRole("dialog", { name: "Get the SoccerBot Player App" })
+      .getByRole("button", { name: "Not now", exact: true })
+      .click();
     expect(await (await confirmation).json()).toMatchObject({
       status: "confirmed",
     });
