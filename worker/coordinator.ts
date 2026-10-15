@@ -1,3 +1,4 @@
+import { ongoingReadbackDue } from "./ongoing-readback";
 import { authorizeCustomerCheckout } from "./customer-authority";
 import {
   publicCalendar,
@@ -713,6 +714,31 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     );
     return rpcOutcome(() => pending);
   }
+  async ongoingRecovery(attemptId: string, correlationId: string) {
+    const run = this.nativeAvailabilityQueue.then(async () => {
+      const due = await ongoingReadbackDue(this.env, Date.now(), attemptId);
+      if (!due) return { outcomes: [], reads: 0 };
+      const used = this.providerAccounting().used;
+      return this.nativeRecovery(
+        {
+          attemptId,
+          startingUsed: used,
+          maximumUsed: used + 30,
+          expiresMs: Date.now() + 90000,
+          invocationId:
+            crypto.randomUUID().replaceAll("-", "") +
+            crypto.randomUUID().replaceAll("-", ""),
+          ongoing: true,
+        },
+        correlationId,
+      );
+    });
+    this.nativeAvailabilityQueue = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }
   async nativeRecovery(
     scope: {
       attemptId: string;
@@ -720,6 +746,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       maximumUsed: number;
       expiresMs: number;
       invocationId: string;
+      ongoing?: boolean;
       useRecoveryReserve?: boolean;
       residual?: ResidualAuthority;
     },
@@ -729,22 +756,31 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       const p = policy(this.env),
         initial = this.providerAccounting(),
         now = Date.now();
+      const ongoing = scope.ongoing === true;
+      if (
+        ongoing &&
+        (scope.residual ||
+          scope.useRecoveryReserve ||
+          !(await ongoingReadbackDue(this.env, now, scope.attemptId)))
+      )
+        return { outcomes: [], reads: 0 };
       z.string().uuid().parse(scope.attemptId);
       z.string()
         .regex(/^[a-f0-9]{64}$/)
         .parse(scope.invocationId);
       if (
         p.PROVIDER_ACCESS !== "trusted-reads" ||
-        now >= p.CAMPAIGN_END_MS ||
+        (!ongoing && now >= p.CAMPAIGN_END_MS) ||
         !Number.isSafeInteger(scope.expiresMs) ||
         scope.expiresMs <= now ||
         scope.expiresMs > now + 180000 ||
         !Number.isSafeInteger(scope.startingUsed) ||
         !Number.isSafeInteger(scope.maximumUsed) ||
         scope.startingUsed < 0 ||
-        scope.maximumUsed >
-          p.PROVIDER_CALL_CEILING -
-            (scope.useRecoveryReserve === true ? 0 : 16) ||
+        (!ongoing &&
+          scope.maximumUsed >
+            p.PROVIDER_CALL_CEILING -
+              (scope.useRecoveryReserve === true ? 0 : 16)) ||
         (scope.useRecoveryReserve === true &&
           scope.maximumUsed - scope.startingUsed > 16) ||
         scope.maximumUsed - scope.startingUsed > 30 ||
@@ -754,7 +790,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         (scope.residual?.mode === "inspect" &&
           (scope.useRecoveryReserve === true ||
             scope.maximumUsed - scope.startingUsed !== 6)) ||
-        initial.active !== 0
+        (ongoing ? initial.active >= 2 : initial.active !== 0)
       )
         throw new ApiError(503, "recovery_window_unavailable");
       const row = await this.env.STATE.withSession("first-primary")
@@ -787,7 +823,10 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         : intent.sessions.length + 5;
       if (initial.used + maximumCalls > scope.maximumUsed)
         throw new ApiError(503, "recovery_window_unavailable");
-      const control = this.providerControl(scope.useRecoveryReserve === true);
+      const control = this.providerControl(
+        scope.useRecoveryReserve === true,
+        ongoing,
+      );
       let count = 0,
         last = 0;
       const bounded = {
@@ -802,7 +841,10 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
           if (
             Date.now() + 15000 >=
-              Math.min(scope.expiresMs, p.CAMPAIGN_END_MS) ||
+              Math.min(
+                scope.expiresMs,
+                ongoing ? scope.expiresMs : p.CAMPAIGN_END_MS,
+              ) ||
             count >= maximumCalls ||
             this.providerAccounting().used >= scope.maximumUsed
           )
@@ -863,7 +905,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           },
         });
       }
-      await this.provider.identity(this.env, bounded);
+      if (!ongoing) await this.provider.identity(this.env, bounded);
       const company = providerSecrets(this.env).company;
       if (!refs) {
         const controller = new AbortController();
@@ -908,6 +950,18 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         phase: "background",
         invocationId: scope.invocationId,
         grantExpiresMs: scope.expiresMs,
+        ongoing,
+        // Claim the durable try before setup; stop new dispatches after timeout.
+        prepare: ongoing
+          ? (signal) =>
+              this.provider.identity(this.env, {
+                ...bounded,
+                reserve: () => {
+                  signal.throwIfAborted();
+                  return bounded.reserve();
+                },
+              })
+          : undefined,
         exchange: (operation, signal) =>
           this.provider.nativeRead(this.env, bounded, operation, signal),
         signature: async (bookingId) => {

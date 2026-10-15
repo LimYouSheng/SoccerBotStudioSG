@@ -1,5 +1,9 @@
 # SoccerBotStudioSG engineering
 
+## Ongoing email and owner sandbox test — 15 October 2026
+
+YS authorizes ongoing developer-site email/Remember me and confirms native sandbox configuration. Enable through exact-source GitHub CI/deployment; preserve finite proof history and all existing authentication protections. Owner operates browsers/bookings/payment. Webhook ingress currently captures authenticated structure only, all live capture windows are closed, and YS now requests automatic paid-state readback in this release. Explicit LIVE_READBACK and the live-only minute cron reconcile one known ongoing checkout per tick through existing recovery/confirmation owners; finite experiments remain closed. Provider and physical paid-state acceptance remain pending. Canonical owners below separate email delivery, native checkout, paid readback and callbacks.
+
 ## Admission query indexes and Turnstile spacing — 14 October 2026
 
 Owner requests Durable Object row-read optimization and centred, spaced Turnstile presentation. Preserve admission history, budgets, pacing, four-start rolling limit and two-request concurrency. Constructor adds idempotent started_ms and unfinished-only indexes to existing SQLite admissions. A workerd regression upgrades10,002 retained rows, measures every query at at most2 rows read and checks budget/reservation preservation across two restarts. Turnstile verification and email remembering are unchanged. Complete exact-source CI/GitHub delivery; live SQL inspection currently returns Cloudflare500, so live row-read acceptance remains pending.

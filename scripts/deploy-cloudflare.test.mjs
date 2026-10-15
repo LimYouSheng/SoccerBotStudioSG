@@ -37,11 +37,14 @@ function fixture() {
   write("developer-release/wrangler.json", config);
   write("developer-release/wrangler-live.json", {
     ...config,
+    triggers: { crons: ["* * * * *"] },
     vars: {
       ...config.vars,
       PROVIDER_ACCESS: "trusted-reads",
       LIVE_CUSTOMER_ACCESS: "enabled",
       PREMIUM_SERVICE_ID: "3",
+      IDENTITY_DELIVERY: "ongoing",
+      LIVE_READBACK: "enabled",
     },
   });
   write("developer-release/manifest.json", {

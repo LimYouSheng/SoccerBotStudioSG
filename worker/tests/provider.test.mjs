@@ -1607,6 +1607,34 @@ async function scheduledAttempt(f, options = {}) {
     .run();
   return { id, key, token };
 }
+async function ongoingAttempt(f, options = {}) {
+  const a = await scheduledAttempt(f, options);
+  const row = await f.db
+    .prepare("SELECT * FROM attempts WHERE id=?")
+    .bind(a.id)
+    .first();
+  await f.db
+    .prepare("INSERT INTO guest_access VALUES(?,?,?,?,NULL)")
+    .bind(a.key, row.owner_id, Date.now() - 600000, Date.now() - 1000)
+    .run();
+  await f.db
+    .prepare(
+      "INSERT INTO native_checkout_grants(attempt_id,capability_hash,intent_hash,source_revision,contract_json,not_before_ms,expires_ms,starting_used,maximum_used,state,ongoing) VALUES(?,?,?,?,?, ?,?,0,30,'complete',?)",
+    )
+    .bind(
+      a.id,
+      a.key,
+      row.intent_hash,
+      "a".repeat(40),
+      "{}",
+      Date.now() - 600000,
+      Date.now() + 600000,
+      options.finite ? 0 : 1,
+    )
+    .run();
+  return a;
+}
+
 function nativeReadResponse(_request, body) {
   if (body?.method === "getBookingDetails")
     return Response.json({
@@ -1620,6 +1648,232 @@ function nativeReadResponse(_request, body) {
 async function tick(f) {
   return (await f.mf.getWorker()).scheduled({ cron: "* * * * *" });
 }
+
+test("ongoing readback confirms known checkout after campaign closure and deduplicates scheduled events", async () => {
+  const f = await fixture({
+    full: true,
+    end: 0,
+    respond: nativeReadResponse,
+    secrets: {
+      SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret",
+      LIVE_CUSTOMER_ACCESS: "enabled",
+      SOURCE_REVISION: "a".repeat(40),
+      LIVE_READBACK: "enabled",
+    },
+  });
+  try {
+    const a = await ongoingAttempt(f);
+    await Promise.all([tick(f), tick(f)]);
+    assert.equal(f.calls.length, 6);
+    const row = await f.db
+      .prepare("SELECT state,tries FROM recovery_work WHERE attempt_id=?")
+      .bind(a.id)
+      .first();
+    assert.deepEqual(row, { state: "complete", tries: 1 });
+    const attempt = await f.db
+      .prepare("SELECT observation_json FROM attempts WHERE id=?")
+      .bind(a.id)
+      .first();
+    assert.equal(JSON.parse(attempt.observation_json).invoice.status, "paid");
+    await tick(f);
+    assert.equal(f.calls.length, 6);
+    assert.equal(
+      (
+        await f.mf.dispatchFetch(
+          origin + "/api/attempts/" + a.id + "/confirmation",
+        )
+      ).status,
+      401,
+    );
+  } finally {
+    await f.mf.dispose();
+  }
+});
+
+test("ongoing readback excludes finite unassociated expired and exhausted attempts", async () => {
+  const f = await fixture({
+    full: true,
+    end: 0,
+    respond: nativeReadResponse,
+    secrets: {
+      SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret",
+      LIVE_CUSTOMER_ACCESS: "enabled",
+      SOURCE_REVISION: "a".repeat(40),
+      LIVE_READBACK: "enabled",
+    },
+  });
+  try {
+    await ongoingAttempt(f, { finite: true });
+    await ongoingAttempt(f, { unassociated: true });
+    await ongoingAttempt(f, { deadline: Date.now() - 1 });
+    const exhausted = await ongoingAttempt(f);
+    await f.db
+      .prepare("UPDATE recovery_work SET tries=5 WHERE attempt_id=?")
+      .bind(exhausted.id)
+      .run();
+    const recent = await ongoingAttempt(f);
+    await f.db
+      .prepare(
+        "UPDATE recovery_work SET tries=1,updated_ms=? WHERE attempt_id=?",
+      )
+      .bind(Date.now(), recent.id)
+      .run();
+    await tick(f);
+    assert.equal(f.calls.length, 0);
+    assert.equal(
+      (
+        await f.db
+          .prepare(
+            "SELECT COUNT(*) n FROM attempts WHERE observation_json IS NOT NULL",
+          )
+          .first()
+      ).n,
+      0,
+    );
+  } finally {
+    await f.mf.dispose();
+  }
+});
+
+test("ongoing readback is disabled without explicit release flag", async () => {
+  const f = await fixture({
+    full: true,
+    end: 0,
+    respond: nativeReadResponse,
+    secrets: {
+      SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret",
+      LIVE_CUSTOMER_ACCESS: "enabled",
+      SOURCE_REVISION: "a".repeat(40),
+    },
+  });
+  try {
+    await ongoingAttempt(f);
+    await tick(f);
+    assert.equal(f.calls.length, 0);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+
+test("ongoing readback retains unpaid evidence and stops after five bounded tries", async () => {
+  const methods = [];
+  const f = await fixture({
+    full: true,
+    end: 0,
+    secrets: {
+      SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret",
+      LIVE_CUSTOMER_ACCESS: "enabled",
+      LIVE_READBACK: "enabled",
+      SOURCE_REVISION: "a".repeat(40),
+    },
+    respond: (request, body) => {
+      if (body?.method) methods.push(body.method);
+      if (body?.method === "getBookingDetails")
+        return Response.json({
+          jsonrpc: "2.0",
+          id: body.id,
+          result: nativeResponses.bookingBefore,
+        });
+      if (new URL(request.url).pathname === "/admin/invoices/901")
+        return Response.json(nativeResponses.invoiceBefore);
+    },
+  });
+  try {
+    const a = await ongoingAttempt(f);
+    for (let n = 1; n <= 5; n++) {
+      await tick(f);
+      const row = await f.db
+        .prepare("SELECT state,tries FROM recovery_work WHERE attempt_id=?")
+        .bind(a.id)
+        .first();
+      assert.equal(row.tries, n);
+      assert.equal(row.state, n === 5 ? "manual_review" : "due");
+      const count = f.calls.length;
+      await tick(f);
+      assert.equal(f.calls.length, count);
+      if (n < 5)
+        await f.db
+          .prepare(
+            "UPDATE recovery_work SET ready_ms=0,updated_ms=? WHERE attempt_id=?",
+          )
+          .bind(Date.now() - 90001, a.id)
+          .run();
+    }
+    const row = await f.db
+      .prepare("SELECT observation_json FROM attempts WHERE id=?")
+      .bind(a.id)
+      .first();
+    assert.notEqual(JSON.parse(row.observation_json).invoice.status, "paid");
+    assert.ok(f.calls.length <= 30);
+    assert.ok(
+      methods.every((method) => !["book", "cancelBooking"].includes(method)),
+    );
+  } finally {
+    await f.mf.dispose();
+  }
+});
+
+test("ongoing readback accounts failed provider setup without duplicate automatic dispatch", async () => {
+  const f = await fixture({
+    full: true,
+    end: 0,
+    secrets: {
+      LIVE_CUSTOMER_ACCESS: "enabled",
+      LIVE_READBACK: "enabled",
+      SOURCE_REVISION: "a".repeat(40),
+      SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret",
+    },
+    respond: () => new Response("unavailable", { status: 503 }),
+  });
+  try {
+    const a = await ongoingAttempt(f);
+    await Promise.all([tick(f), tick(f)]);
+    assert.equal(f.calls.length, 1);
+    const row = await f.db
+      .prepare("SELECT state,tries FROM recovery_work WHERE attempt_id=?")
+      .bind(a.id)
+      .first();
+    assert.equal(row.tries, 1);
+    assert.equal(row.state, "due");
+    await tick(f);
+    assert.equal(f.calls.length, 1);
+  } finally {
+    await f.mf.dispose();
+  }
+});
+
+test("ongoing readback gives cold setup a separate bounded window before evidence reads", async () => {
+  const f = await fixture({
+    full: true,
+    end: 0,
+    secrets: {
+      LIVE_CUSTOMER_ACCESS: "enabled",
+      LIVE_READBACK: "enabled",
+      SOURCE_REVISION: "a".repeat(40),
+      SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret",
+    },
+    respond: async (request, body) => {
+      // Deliberately cross the evidence-only five-second window during setup.
+      if (new URL(request.url).pathname === "/login")
+        await new Promise((resolve) => setTimeout(resolve, 5100));
+      return nativeReadResponse(request, body);
+    },
+  });
+  try {
+    const a = await ongoingAttempt(f);
+    await tick(f);
+    assert.deepEqual(
+      await f.db
+        .prepare("SELECT state,tries FROM recovery_work WHERE attempt_id=?")
+        .bind(a.id)
+        .first(),
+      { state: "complete", tries: 1 },
+    );
+    assert.equal(f.calls.length, 6);
+  } finally {
+    await f.mf.dispose();
+  }
+});
 
 test("scheduled native recovery confirms from authoritative reads without browser and consumes one window", async () => {
   const f = await fixture({

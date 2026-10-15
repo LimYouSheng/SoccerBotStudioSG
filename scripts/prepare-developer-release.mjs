@@ -91,11 +91,14 @@ writeFileSync(
   JSON.stringify(
     {
       ...config,
+      triggers: { crons: ["* * * * *"] },
       vars: {
         ...config.vars,
         PROVIDER_ACCESS: "trusted-reads",
         LIVE_CUSTOMER_ACCESS: "enabled",
         PREMIUM_SERVICE_ID: "3",
+        IDENTITY_DELIVERY: "ongoing",
+        LIVE_READBACK: "enabled",
       },
     },
     null,
@@ -114,8 +117,8 @@ const manifest = {
   identityDelivery: "disabled",
   providerAccess: "disabled",
   campaignEndMs: 0,
-  pendingRemoteMigrations: [],
-  priorWorkerVersion: "a42014f2-3171-401c-ba78-9ce1d3cf0d46",
+  pendingRemoteMigrations: ["0027_ongoing_identity_delivery.sql"],
+  priorWorkerVersion: "fdd603d2-ce9f-4c89-b1be-e20b6be1e1c8",
   acceptance:
     profile.name === "live-email"
       ? "synthetic live-email frontend; delivery closed; no provider or mailbox acceptance"

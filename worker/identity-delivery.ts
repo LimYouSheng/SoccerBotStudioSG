@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { authenticate } from "./access";
 import { verifyBindings } from "./bindings";
-import { ApiError } from "./policy";
+import { ApiError, liveCustomerAccess } from "./policy";
 import {
   keyedHash,
   requestIdentityChallenge,
@@ -33,6 +33,16 @@ function secret(env: Env, name: string) {
 }
 async function windowFor(env: Env, now: number, reserve = false) {
   const mode: unknown = Reflect.get(env, "IDENTITY_DELIVERY");
+  if (mode === "ongoing") {
+    if (env.ENVIRONMENT !== "developer" || !liveCustomerAccess(env))
+      throw unavailable();
+    return {
+      singleton: 0,
+      origin: env.APP_ORIGIN,
+      sender: "SoccerBotStudioSG Dev <noreply@auth.app404.ai>",
+      recipient: null,
+    };
+  }
   if (mode !== "finite-test") throw unavailable();
   const parsed = windowSchema.safeParse(
     await env.STATE.withSession("first-primary")
@@ -57,6 +67,11 @@ async function windowFor(env: Env, now: number, reserve = false) {
 // Once provisioned, the proof lifetime also bounds identity reads/restoration.
 // This is developer test authority, separate from the immutable 90-day expiry.
 export async function assertIdentityProofOpen(env: Env) {
+  const mode: unknown = Reflect.get(env, "IDENTITY_DELIVERY");
+  if (mode === "ongoing") {
+    await windowFor(env, Date.now());
+    return;
+  }
   const proof = await env.STATE.withSession("first-primary")
     .prepare("SELECT singleton FROM identity_delivery_window WHERE singleton=3")
     .first();
@@ -114,7 +129,10 @@ export async function identityDelivery(
   const email = z
     .object({ email: z.string().trim().toLowerCase().pipe(z.email()) })
     .safeParse(raw);
-  if (!email.success || email.data.email !== window.recipient)
+  if (
+    !email.success ||
+    (window.recipient !== null && email.data.email !== window.recipient)
+  )
     throw new ApiError(400, "verification_unavailable");
   if (new URL(request.url).pathname === "/api/identity/verify") {
     const result = await verifyIdentityChallenge(
@@ -148,7 +166,9 @@ export async function identityDelivery(
       throw unavailable();
     try {
       await env.STATE.prepare(
-        "INSERT INTO identity_delivery_dispatches(id,kind,access_hash,source_hash,created_ms,state) VALUES(?,?,?,?,?,'reserved')",
+        window.singleton === 0
+          ? "INSERT INTO identity_delivery_dispatches(id,kind,access_hash,source_hash,created_ms,state,ongoing) VALUES(?,?,?,?,?,'reserved',1)"
+          : "INSERT INTO identity_delivery_dispatches(id,kind,access_hash,source_hash,created_ms,state) VALUES(?,?,?,?,?,'reserved')",
       )
         .bind(id, kind, access.capability_hash, sourceHash, Date.now())
         .run();
@@ -204,12 +224,13 @@ export async function identityDelivery(
       };
     },
     send: async (message, signal) => {
-      if (message.email !== window.recipient) throw unavailable();
+      if (window.recipient !== null && message.email !== window.recipient)
+        throw unavailable();
       const body = await dispatch(
         "email",
         message.idempotencyKey,
         {
-          recipient: window.recipient,
+          recipient: message.email,
           sender: window.sender,
           code: message.code,
           idempotencyKey: message.idempotencyKey,

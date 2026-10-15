@@ -865,3 +865,179 @@ test("identity proof closure storage failure rolls back the close and all revoca
   );
   assert.equal(calls.length, 2);
 });
+
+async function ongoingDelivery() {
+  await proofHistory();
+  await openProof({ start: Date.now() - 6000000, end: Date.now() - 3000000 });
+  await db.exec(
+    "UPDATE identity_delivery_window SET state='closed' WHERE singleton=3",
+  );
+  const historical = (
+    await db
+      .prepare("SELECT * FROM identity_delivery_dispatches ORDER BY id")
+      .all()
+  ).results;
+  const windows = (
+    await db
+      .prepare("SELECT * FROM identity_delivery_window ORDER BY singleton")
+      .all()
+  ).results;
+  await db.exec(
+    readFileSync("migrations/0027_ongoing_identity_delivery.sql", "utf8")
+      .replace(/^--.*$/gm, "")
+      .replace(/\n/g, " "),
+  );
+  assert.deepEqual(
+    (
+      await db
+        .prepare("SELECT * FROM identity_delivery_dispatches ORDER BY id")
+        .all()
+    ).results,
+    historical.map((row) => ({ ...row, ongoing: 0 })),
+  );
+  assert.deepEqual(
+    (
+      await db
+        .prepare("SELECT * FROM identity_delivery_window ORDER BY singleton")
+        .all()
+    ).results,
+    windows,
+  );
+  Object.assign(bindings, {
+    IDENTITY_DELIVERY: "ongoing",
+    LIVE_CUSTOMER_ACCESS: "enabled",
+    PROVIDER_ACCESS: "trusted-reads",
+  });
+  await mf.dispose();
+  await start();
+}
+test("ongoing delivery preserves closed proofs and restores consented identity after restart without another email", async () => {
+  await ongoingDelivery();
+  const cookie = await guest(),
+    recipient = "customer@example.invalid";
+  const response = await challenge(cookie, { email: recipient });
+  assert.equal(response.status, 200);
+  const c = await response.json();
+  const sent = calls.findLast(
+    (call) => call.url === "https://api.resend.com/emails",
+  );
+  assert.deepEqual(sent.body.to, [recipient]);
+  const code = sent.body.text.match(/code is (\d{6})/)[1];
+  const verified = await request(
+    cookie,
+    { email: recipient, challengeId: c.challengeId, code, remember: true },
+    "verify",
+  );
+  assert.equal(verified.status, 200);
+  const remember = verified.headers.get("set-cookie");
+  assert.match(remember, /Secure; HttpOnly; SameSite=Strict/);
+  const family = await db
+    .prepare("SELECT verified_ms,expires_ms FROM remembered_identity")
+    .first();
+  assert.equal(family.expires_ms - family.verified_ms, 90 * 86400000);
+  await mf.dispose();
+  await start();
+  const newGuest = await guest();
+  const restored = await mf.dispatchFetch(origin + "/api/identity/restore", {
+    method: "POST",
+    headers: { origin, cookie: newGuest + "; " + remember.split(";")[0] },
+  });
+  assert.equal(restored.status, 200);
+  assert.equal((await restored.json()).email, recipient);
+  assert.equal(calls.length, 2);
+  bindings.IDENTITY_DELIVERY = "disabled";
+  await mf.dispose();
+  await start();
+  assert.equal((await challenge(newGuest)).status, 503);
+  assert.equal(
+    (
+      await mf.dispatchFetch(origin + "/api/identity/restore", {
+        method: "POST",
+        headers: { origin, cookie: newGuest + "; " + remember.split(";")[0] },
+      })
+    ).status,
+    503,
+  );
+  assert.equal(calls.length, 2);
+});
+test("ongoing delivery charges unknown sends against durable hourly capacity across restart and preserves history", async () => {
+  await ongoingDelivery();
+  const at = Date.now();
+  for (let i = 0; i < 60; i++)
+    await db
+      .prepare(
+        "INSERT INTO identity_delivery_dispatches(id,kind,access_hash,source_hash,created_ms,state,ongoing) VALUES(?,'email','synthetic','synthetic',?,'unknown',1)",
+      )
+      .bind(`ongoing-${i}`, at)
+      .run();
+  await assert.rejects(
+    db
+      .prepare(
+        "INSERT INTO identity_delivery_dispatches(id,kind,access_hash,source_hash,created_ms,state,ongoing) VALUES('over','email','synthetic','synthetic',?,'reserved',1)",
+      )
+      .bind(at)
+      .run(),
+    /identity_delivery_limited/,
+  );
+  await assert.rejects(
+    db.exec(
+      "UPDATE identity_delivery_dispatches SET ongoing=0 WHERE id='ongoing-0'",
+    ),
+  );
+  await assert.rejects(
+    db.exec("DELETE FROM identity_delivery_dispatches WHERE id='ongoing-0'"),
+    /identity_dispatch_preserve/,
+  );
+  await mf.dispose();
+  await start();
+  const c = await (await challenge(await guest())).json();
+  assert.equal(calls.length, 1);
+  assert.equal(
+    (
+      await db
+        .prepare("SELECT state FROM identity_challenges WHERE id=?")
+        .bind(c.challengeId)
+        .first()
+    ).state,
+    "unknown",
+  );
+  // A later rolling window admits new work without deleting old charged rows.
+  await db
+    .prepare(
+      "INSERT INTO identity_delivery_dispatches(id,kind,access_hash,source_hash,created_ms,state,ongoing) VALUES('later','email','synthetic','synthetic',?,'unknown',1)",
+    )
+    .bind(at + 3600001)
+    .run();
+  assert.equal(
+    (
+      await db
+        .prepare(
+          "SELECT count(*) n FROM identity_delivery_dispatches WHERE ongoing=1 AND kind='email'",
+        )
+        .first()
+    ).n,
+    61,
+  );
+});
+test("ongoing delivery retains bot replay source limits and requires live developer authority", async () => {
+  await ongoingDelivery();
+  const token = crypto.randomUUID();
+  botResult = () => Response.json({ success: false });
+  assert.equal(
+    (await challenge(await guest(), { botToken: token })).status,
+    400,
+  );
+  assert.equal(
+    (await challenge(await guest(), { botToken: token })).status,
+    429,
+  );
+  await challenge(await guest());
+  await challenge(await guest());
+  assert.equal((await challenge(await guest())).status, 429);
+  assert.equal(calls.length, 3);
+  bindings.LIVE_CUSTOMER_ACCESS = "disabled";
+  await mf.dispose();
+  await start();
+  assert.equal((await challenge(await guest())).status, 503);
+  assert.equal(calls.length, 3);
+});
