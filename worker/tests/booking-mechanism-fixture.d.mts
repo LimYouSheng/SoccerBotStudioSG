@@ -1,0 +1,17 @@
+import type { Miniflare } from "miniflare";
+export function createBookingMechanism(): Promise<{
+  mf: Miniflare;
+  origin: string;
+  date: string;
+  startMs: number;
+  checkoutUrl: string;
+  calls: {
+    url: string;
+    method: string;
+    body: Record<string, unknown> | null;
+  }[];
+  unexpected: string[];
+  completePayment(): Promise<{ status: number }>;
+  recover(): Promise<unknown>;
+  close(): Promise<void>;
+}>;

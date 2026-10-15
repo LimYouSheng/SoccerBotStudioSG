@@ -1,3 +1,4 @@
+import { createBookingMechanism } from "../worker/tests/booking-mechanism-fixture.mjs";
 import { expect, test, type Page } from "@playwright/test";
 
 // CI-only synthetic transports. No widget script, email or provider is contacted.
@@ -307,330 +308,269 @@ test("remembered live account edits and rereads contact while native booking sta
 test("native guest journey preserves players contact and one checkout across refresh", async ({
   page,
 }) => {
-  const date = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Singapore",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(Date.now() + 3 * 86400000));
-  const startMs = Date.parse(`${date}T08:10:00+08:00`);
-  const attemptId = "20000000-0000-4000-8000-000000000001";
-  const checkoutUrl =
-    "https://securecheckout.sandbox.hit-pay.com/payment-request/@soccerbot/20000000-0000-4000-8000-000000000002/checkout";
-  const offer = {
-    serviceId: "12",
-    serviceName: "Native Session",
-    instructorId: "14",
-    instructorName: "Native Trainer",
-    startMs,
-    priceMinor: 8800,
-    currency: "SGD",
-  };
-  const calls: { path: string; method: string; body: unknown }[] = [];
-  const unexpected: string[] = [];
-  let prepared: { contact: unknown; sessions: { players: number }[] } | null =
-    null;
-  let committed = false;
-  let paymentStarted = false;
-  await page.route("**/*", async (route) => {
-    const request = route.request(),
-      url = new URL(request.url());
-    if (url.href === "https://soccerbotstudiosg.simplybook.asia/v2/") {
-      // Synthetic frame only: preserve the no-provider-network browser gate.
-      await route.fulfill({
-        contentType: "text/html",
-        body: "<!doctype html><title>Synthetic initialization</title>",
-      });
-      return;
-    }
-    if (url.href === checkoutUrl) {
-      await route.fulfill({
-        contentType: "text/html",
-        body: "<!doctype html><h1>Synthetic HitPay checkout</h1>",
-      });
-      return;
-    }
-    if (url.origin !== "http://127.0.0.1:4173") {
-      unexpected.push(url.origin);
-      await route.abort();
-      return;
-    }
-    if (!url.pathname.startsWith("/api/")) {
-      await route.continue();
-      return;
-    }
-    const body: unknown = request.postData() ? request.postDataJSON() : null;
-    calls.push({ path: url.pathname, method: request.method(), body });
-    let status = 200,
-      result: unknown;
-    if (url.pathname === "/api/access") {
-      status = 201;
-      result = {};
-    } else if (
-      ["/api/identity", "/api/identity/restore"].includes(url.pathname)
-    )
-      result = null;
-    else if (url.pathname === "/api/booking/current")
-      result = prepared
-        ? {
-            state: paymentStarted
-              ? "checking"
-              : committed
-                ? "held"
-                : "prepared",
-            attemptId,
-            contact: prepared.contact,
-            sessions: [{ ...offer, players: prepared.sessions[0].players }],
-          }
-        : { state: "empty" };
-    else if (url.pathname === "/api/catalogue")
-      result = {
-        environment: "developer",
-        observedAtMs: Date.now(),
-        complete: true,
-        services: [
-          {
-            id: "12",
-            name: "Native Session",
-            active: true,
-            durationMinutes: 40,
-            recurring: false,
-            priceMinor: 8800,
-            currency: "SGD",
-            instructorIds: ["14"],
-          },
-        ],
-        instructors: [{ id: "14", name: "Native Trainer", active: true }],
-      };
-    else if (url.pathname.startsWith("/api/calendar/")) {
-      const month = url.pathname.split("/").at(-1);
-      result = {
-        month,
-        serviceId: "12",
-        observedAtMs: Date.now(),
-        dates: date.startsWith(month + "-")
-          ? [{ date, available: true, offers: [offer] }]
-          : [],
-      };
-    } else if (url.pathname.startsWith("/api/booking/calendar/12/")) {
-      const month = url.pathname.split("/").at(-1);
-      result = {
-        month,
-        observedAtMs: Date.now(),
-        dates: date.startsWith(month + "-")
-          ? [{ date, observedAtMs: Date.now(), offers: [offer] }]
-          : [],
-      };
-    } else if (url.pathname.startsWith("/api/booking/availability/12/")) {
-      const requested = url.pathname.split("/").at(-1);
-      result = {
-        date: requested,
-        observedAtMs: Date.now(),
-        offers: requested === date ? [offer] : [],
-      };
-    } else if (
-      url.pathname === "/api/booking/prepare" &&
-      request.method() === "POST"
-    ) {
-      prepared = body as typeof prepared;
-      result = { attemptId, state: "prepared" };
-    } else if (
-      url.pathname === `/api/booking/native/${attemptId}` &&
-      request.method() === "POST"
-    ) {
-      expect(url.searchParams.get("hold")).toBe("1");
-      committed = true;
-      result = { attemptId, state: "associated", paymentAvailable: false };
-    } else if (
-      url.pathname === `/api/booking/hitpay/${attemptId}` &&
-      request.method() === "POST"
-    ) {
-      expect(committed).toBe(true);
-      expect(body).toEqual({ accepted: true });
-      paymentStarted = true;
-      result = { attemptId, state: "associated", paymentAvailable: true };
-    } else if (url.pathname === `/api/attempts/${attemptId}/checkout`)
-      result = {
-        attemptId,
-        mode: "live",
-        checkout: {
-          state: "available",
-          url: checkoutUrl,
-          expiresAtMs: Date.now() + 300000,
+  const mechanism = await createBookingMechanism();
+  try {
+    const { date, startMs, checkoutUrl } = mechanism;
+    let attemptId = "";
+    const calls: { path: string; method: string; body: unknown }[] = [];
+    const unexpected: string[] = [];
+    await page.route("**/*", async (route) => {
+      const request = route.request(),
+        url = new URL(request.url());
+      if (url.href === "https://soccerbotstudiosg.simplybook.asia/v2/") {
+        await route.fulfill({
+          contentType: "text/html",
+          body: "<!doctype html><title>Synthetic initialization</title>",
+        });
+        return;
+      }
+      if (url.href === checkoutUrl) {
+        await route.fulfill({
+          contentType: "text/html",
+          body: "<!doctype html><h1>Synthetic HitPay checkout</h1>",
+        });
+        return;
+      }
+      if (url.origin !== "http://127.0.0.1:4173") {
+        unexpected.push(url.origin);
+        await route.abort();
+        return;
+      }
+      if (!url.pathname.startsWith("/api/")) {
+        await route.continue();
+        return;
+      }
+      const body: unknown = request.postData() ? request.postDataJSON() : null;
+      calls.push({ path: url.pathname, method: request.method(), body });
+      // Loopback transport adapter only: do not fabricate application responses.
+      // Secure __Host cookies cannot be used by the HTTP static preview origin.
+      const headers = new Headers(await request.allHeaders());
+      headers.delete("host");
+      headers.delete("content-length");
+      if (headers.get("origin") === url.origin)
+        headers.set("origin", mechanism.origin);
+      headers.set(
+        "cookie",
+        (headers.get("cookie") || "").replaceAll(
+          "soccerbot-mechanism-access=",
+          "__Host-soccerbot-access=",
+        ),
+      );
+      const response = await mechanism.mf.dispatchFetch(
+        mechanism.origin + url.pathname + url.search,
+        {
+          method: request.method(),
+          headers,
+          body: request.postData() || undefined,
         },
-        summary: {
+      );
+      const responseHeaders = Object.fromEntries(response.headers);
+      if (responseHeaders["set-cookie"])
+        responseHeaders["set-cookie"] = responseHeaders["set-cookie"]
+          .replace("__Host-soccerbot-access=", "soccerbot-mechanism-access=")
+          .replace("; Secure", "");
+      const responseBody = await response.text();
+      if (url.pathname === "/api/booking/prepare" && response.status === 201)
+        attemptId = JSON.parse(responseBody).attemptId;
+      await route.fulfill({
+        status: response.status,
+        headers: responseHeaders,
+        body: responseBody,
+      });
+    });
+    await page.goto("/");
+    await page
+      .getByRole("dialog", { name: "Get the SoccerBot Player App" })
+      .getByRole("button", { name: "Not now", exact: true })
+      .click();
+    await expect
+      .poll(
+        () => calls.filter((c) => c.path.startsWith("/api/calendar/")).length,
+      )
+      .toBe(4);
+    await expect
+      .poll(() => calls.filter((c) => c.path === "/api/catalogue").length)
+      .toBe(1);
+    expect(calls.filter((c) => c.path === "/api/access")).toHaveLength(0);
+    await page.getByRole("link", { name: "Book now", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Continue as guest", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/book\/session\/$/);
+    await page
+      .getByRole("button", { name: "Add one player", exact: true })
+      .click();
+    await page
+      .getByRole("link", { name: "See available times", exact: true })
+      .click();
+    const today = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Singapore",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+    const monthOffset =
+      (+date.slice(0, 4) - +today.slice(0, 4)) * 12 +
+      +date.slice(5, 7) -
+      +today.slice(5, 7);
+    await page
+      .getByLabel("Calendar month", { exact: true })
+      .selectOption(String(monthOffset));
+    const label = new Intl.DateTimeFormat("en-SG", {
+      timeZone: "Asia/Singapore",
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }).format(new Date(`${date}T04:00:00Z`));
+    await page.getByRole("button", { name: label, exact: true }).click();
+    await page
+      .getByRole("group", { name: "Session times" })
+      .getByRole("button", { name: /08:10–08:50/ })
+      .click();
+    expect(
+      calls.filter((c) => c.path.startsWith("/api/calendar/")),
+    ).toHaveLength(4);
+    expect(calls.filter((c) => c.path === "/api/catalogue")).toHaveLength(1);
+    expect(
+      calls.filter((c) => c.path.startsWith("/api/booking/availability/")),
+    ).toHaveLength(0);
+    await page.getByRole("link", { name: "Continue", exact: true }).click();
+    await expect(
+      page.getByRole("heading", { name: "Your details", exact: true }),
+    ).toBeVisible();
+    expect(
+      calls.filter((c) => c.path.startsWith("/api/booking/availability/")),
+    ).toHaveLength(0);
+    await page
+      .getByLabel("Full name", { exact: false })
+      .fill("Synthetic Guest");
+    await page
+      .getByLabel("Email address", { exact: false })
+      .fill("synthetic@example.test");
+    await page
+      .getByLabel("Mobile number", { exact: false })
+      .fill("+6591234567");
+    await page
+      .getByLabel("Preferred contact method", { exact: false })
+      .selectOption("email");
+    await page
+      .getByLabel("Academy / school / organisation", { exact: false })
+      .fill("Synthetic School");
+    await page
+      .getByRole("button", { name: "Review booking", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Review booking", exact: true }),
+    ).toBeVisible();
+    expect(
+      calls.filter((c) => c.path.startsWith("/api/booking/availability/")),
+    ).toHaveLength(1);
+    expect(
+      calls.filter((c) => c.path === `/api/booking/native/${attemptId}`),
+    ).toHaveLength(1);
+    expect(
+      calls.filter((c) => c.path === `/api/booking/hitpay/${attemptId}`),
+    ).toHaveLength(0);
+    await page.reload();
+    await expect(
+      page.getByRole("heading", { name: "Review booking", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Synthetic Guest", { exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole("checkbox", { name: /I’ve reviewed all selected/ })
+      .check();
+    await page
+      .getByRole("button", { name: "Continue to payment", exact: true })
+      .click();
+    await expect(page).toHaveURL(checkoutUrl);
+    await expect(
+      page.getByRole("heading", { name: "Synthetic HitPay checkout" }),
+    ).toBeVisible();
+    expect(
+      calls.filter((c) => c.path === "/api/booking/prepare")[0].body,
+    ).toMatchObject({
+      accepted: false,
+      holding: true,
+      contact: {
+        name: "Synthetic Guest",
+        email: "synthetic@example.test",
+        phone: "+6591234567",
+        academy: "Synthetic School",
+      },
+      sessions: [
+        {
+          serviceId: "2",
+          instructorId: "14",
+          startMs,
           players: 2,
           totalMinor: 8800,
-          currency: "SGD",
-          sessions: [{ startMs, players: 2 }],
         },
-        checking: {
-          deadlineMs: Date.now() + 600000,
-          nextCheckMs: Date.now(),
-          pollAfterMs: 30000,
-        },
-      };
-    else if (url.pathname === `/api/attempts/${attemptId}/confirmation`)
-      result = { status: "pending", reason: "payment_pending" };
-    else {
-      status = 503;
-      result = { error: "unavailable" };
-    }
-    await route.fulfill({ status, json: result });
-  });
-  await page.goto("/");
-  await page
-    .getByRole("dialog", { name: "Get the SoccerBot Player App" })
-    .getByRole("button", { name: "Not now", exact: true })
-    .click();
-  await expect
-    .poll(() => calls.filter((c) => c.path.startsWith("/api/calendar/")).length)
-    .toBe(4);
-  await expect
-    .poll(() => calls.filter((c) => c.path === "/api/catalogue").length)
-    .toBe(1);
-  expect(calls.filter((c) => c.path === "/api/access")).toHaveLength(0);
-  await page.getByRole("link", { name: "Book now", exact: true }).click();
-  await page
-    .getByRole("button", { name: "Continue as guest", exact: true })
-    .click();
-  await expect(page).toHaveURL(/\/book\/session\/$/);
-  await page
-    .getByRole("button", { name: "Add one player", exact: true })
-    .click();
-  await page
-    .getByRole("link", { name: "See available times", exact: true })
-    .click();
-  const today = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Singapore",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-  const monthOffset =
-    (+date.slice(0, 4) - +today.slice(0, 4)) * 12 +
-    +date.slice(5, 7) -
-    +today.slice(5, 7);
-  await page
-    .getByLabel("Calendar month", { exact: true })
-    .selectOption(String(monthOffset));
-  const label = new Intl.DateTimeFormat("en-SG", {
-    timeZone: "Asia/Singapore",
-    weekday: "short",
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(new Date(`${date}T04:00:00Z`));
-  await page.getByRole("button", { name: label, exact: true }).click();
-  await page
-    .getByRole("group", { name: "Session times" })
-    .getByRole("button", { name: /08:10–08:50/ })
-    .click();
-  expect(calls.filter((c) => c.path.startsWith("/api/calendar/"))).toHaveLength(
-    4,
-  );
-  expect(calls.filter((c) => c.path === "/api/catalogue")).toHaveLength(1);
-  expect(
-    calls.filter((c) => c.path.startsWith("/api/booking/availability/")),
-  ).toHaveLength(0);
-  await page.getByRole("link", { name: "Continue", exact: true }).click();
-  await expect(
-    page.getByRole("heading", { name: "Your details", exact: true }),
-  ).toBeVisible();
-  expect(
-    calls.filter((c) => c.path.startsWith("/api/booking/availability/")),
-  ).toHaveLength(0);
-  await page.getByLabel("Full name", { exact: false }).fill("Synthetic Guest");
-  await page
-    .getByLabel("Email address", { exact: false })
-    .fill("synthetic@example.test");
-  await page.getByLabel("Mobile number", { exact: false }).fill("+6591234567");
-  await page
-    .getByLabel("Preferred contact method", { exact: false })
-    .selectOption("email");
-  await page
-    .getByLabel("Academy / school / organisation", { exact: false })
-    .fill("Synthetic School");
-  await page
-    .getByRole("button", { name: "Review booking", exact: true })
-    .click();
-  await expect(
-    page.getByRole("heading", { name: "Review booking", exact: true }),
-  ).toBeVisible();
-  expect(
-    calls.filter((c) => c.path.startsWith("/api/booking/availability/")),
-  ).toHaveLength(1);
-  expect(
-    calls.filter((c) => c.path === `/api/booking/native/${attemptId}`),
-  ).toHaveLength(1);
-  expect(
-    calls.filter((c) => c.path === `/api/booking/hitpay/${attemptId}`),
-  ).toHaveLength(0);
-  await page.reload();
-  await expect(
-    page.getByRole("heading", { name: "Review booking", exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByText("Synthetic Guest", { exact: true }),
-  ).toBeVisible();
-  await page
-    .getByRole("checkbox", { name: /I’ve reviewed all selected/ })
-    .check();
-  await page
-    .getByRole("button", { name: "Continue to payment", exact: true })
-    .click();
-  await expect(page).toHaveURL(checkoutUrl);
-  await expect(
-    page.getByRole("heading", { name: "Synthetic HitPay checkout" }),
-  ).toBeVisible();
-  expect(
-    calls.filter((c) => c.path === "/api/booking/prepare")[0].body,
-  ).toMatchObject({
-    accepted: false,
-    holding: true,
-    contact: {
-      name: "Synthetic Guest",
-      email: "synthetic@example.test",
-      phone: "+6591234567",
-      academy: "Synthetic School",
-    },
-    sessions: [
-      {
-        serviceId: "12",
-        instructorId: "14",
-        startMs,
-        players: 2,
-        totalMinor: 8800,
-      },
-    ],
-  });
-  await page.goto(`http://127.0.0.1:4173/confirmation/?attempt=${attemptId}`);
-  await page.reload();
-  await expect(
-    page.getByRole("link", { name: "Open checkout", exact: true }),
-  ).toHaveCount(0);
-  expect(
-    calls.filter(
-      (c) =>
-        c.path === `/api/booking/hitpay/${attemptId}` && c.method === "POST",
-    ),
-  ).toHaveLength(1);
-  expect(
-    calls.filter((c) => c.path.startsWith("/api/booking/availability/")),
-  ).toHaveLength(1);
-  await expect(
-    page.getByRole("heading", { name: "Booking confirmed", exact: true }),
-  ).toHaveCount(0);
-  expect(
-    calls.filter(
-      (c) =>
-        c.path === `/api/booking/native/${attemptId}` && c.method === "POST",
-    ),
-  ).toHaveLength(1);
-  expect(
-    calls.filter(
-      (c) => c.path === "/api/identity/contact" && c.method === "POST",
-    ),
-  ).toHaveLength(0);
-  expect(unexpected).toEqual([]);
+      ],
+    });
+    await page.goto(`http://127.0.0.1:4173/confirmation/?attempt=${attemptId}`);
+    await page.reload();
+    await expect(
+      page.getByRole("link", { name: "Open checkout", exact: true }),
+    ).toHaveCount(0);
+    expect(
+      calls.filter(
+        (c) =>
+          c.path === `/api/booking/hitpay/${attemptId}` && c.method === "POST",
+      ),
+    ).toHaveLength(1);
+    expect(
+      calls.filter((c) => c.path.startsWith("/api/booking/availability/")),
+    ).toHaveLength(1);
+    await expect(
+      page.getByRole("heading", { name: "Booking confirmed", exact: true }),
+    ).toHaveCount(0);
+    expect(
+      calls.filter(
+        (c) =>
+          c.path === `/api/booking/native/${attemptId}` && c.method === "POST",
+      ),
+    ).toHaveLength(1);
+    expect(
+      calls.filter(
+        (c) => c.path === "/api/identity/contact" && c.method === "POST",
+      ),
+    ).toHaveLength(0);
+    expect(unexpected).toEqual([]);
+    expect((await mechanism.completePayment()).status).toBe(202);
+    await mechanism.recover();
+    await page.reload();
+    await expect(
+      page.getByRole("heading", { name: "Booking confirmed", exact: true }),
+    ).toBeVisible();
+    expect(
+      mechanism.calls.filter((c) => c.url.endsWith("/accept-payment")),
+    ).toHaveLength(1);
+    const bookingIndex = mechanism.calls.findIndex(
+      (c) => c.body?.method === "book",
+    );
+    expect(bookingIndex).toBeGreaterThanOrEqual(0);
+    expect(
+      mechanism.calls.filter((c) => c.body?.method === "book"),
+    ).toHaveLength(1);
+    expect(
+      mechanism.calls.filter(
+        (c) => c.url.includes("hit-pay.com") && c.method === "POST",
+      ),
+    ).toHaveLength(1);
+    expect(
+      mechanism.calls
+        .slice(bookingIndex + 1)
+        .filter((c) =>
+          ["getStartTimeMatrix", "getAvailableUnits"].includes(
+            String(c.body?.method),
+          ),
+        ),
+    ).toHaveLength(0);
+    expect(mechanism.unexpected).toEqual([]);
+  } finally {
+    await mechanism.close();
+  }
 });

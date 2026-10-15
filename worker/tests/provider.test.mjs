@@ -75,7 +75,7 @@ async function fixture({
       outboundService: async (request) => {
         const url = new URL(request.url);
         const body = request.method === "POST" ? await request.json() : null;
-        calls.push({ url: request.url, method: request.method });
+        calls.push({ url: request.url, method: request.method, body });
         assert.ok(
           ["user-api.simplybook.me", "user-api-v2.simplybook.me"].includes(
             url.hostname,
@@ -3979,8 +3979,159 @@ test("ongoing checkout admits the priced weekend service with the customer lead-
       .first();
     assert.equal(JSON.parse(grant.contract_json).bookingLeadMinutes, 150);
     assert.equal(JSON.parse(grant.contract_json).premiumServiceId, "3");
+    assert.ok(
+      f.calls.some((call) => call.body?.method === "getStartTimeMatrix"),
+    );
     assert.ok(f.calls.every((call) => call.body?.method !== "book"));
   } finally {
     await f.mf.dispose();
+  }
+});
+
+test("held checkout crosses authenticated HTTP routes and durable coordination without rechecking its reserved slot", async () => {
+  const { createBookingMechanism } =
+    await import("./booking-mechanism-fixture.mjs");
+  const f = await createBookingMechanism();
+  try {
+    const catalogue = await f.mf.dispatchFetch(f.origin + "/api/catalogue");
+    assert.equal(catalogue.status, 200, await catalogue.text());
+    const calendar = await f.mf.dispatchFetch(
+      f.origin + "/api/calendar/" + f.date.slice(0, 7),
+    );
+    const dates = await calendar.json();
+    assert.equal(calendar.status, 200, JSON.stringify(dates));
+    assert.ok(dates.dates.some((d) => d.date === f.date && d.available));
+    const guest = await f.mf.dispatchFetch(f.origin + "/api/access", {
+      method: "POST",
+      headers: { origin: f.origin },
+    });
+    assert.equal(guest.status, 201);
+    const cookie = guest.headers.get("set-cookie").split(";")[0];
+    const headers = {
+      origin: f.origin,
+      cookie,
+      "content-type": "application/json",
+    };
+    const prepared = await f.mf.dispatchFetch(
+      f.origin + "/api/booking/prepare",
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          key: crypto.randomUUID(),
+          accepted: false,
+          holding: true,
+          contact: {
+            name: "Synthetic Guest",
+            email: "synthetic@example.test",
+            phone: "+6591234567",
+            contactMethod: "email",
+            academy: "Synthetic School",
+          },
+          sessions: [
+            {
+              serviceId: "2",
+              instructorId: "14",
+              startMs: f.startMs,
+              players: 2,
+              totalMinor: 8800,
+            },
+          ],
+        }),
+      },
+    );
+    const preparation = await prepared.json();
+    assert.equal(prepared.status, 201, JSON.stringify(preparation));
+    const id = preparation.attemptId;
+    const hold = () =>
+      f.mf.dispatchFetch(f.origin + `/api/booking/native/${id}?hold=1`, {
+        method: "POST",
+        headers,
+      });
+    const first = await hold();
+    const result = await first.json();
+    assert.equal(first.status, 200, JSON.stringify(result));
+    assert.equal(
+      result.state,
+      "associated",
+      JSON.stringify(
+        await f.db
+          .prepare(
+            "SELECT result_json FROM native_checkout_grants WHERE attempt_id=?",
+          )
+          .bind(id)
+          .first(),
+      ),
+    );
+    assert.equal(result.paymentAvailable, false);
+    const retry = await hold();
+    assert.equal(retry.status, 200, await retry.text());
+    const current = await f.mf.dispatchFetch(
+      f.origin + "/api/booking/current",
+      { headers },
+    );
+    assert.equal((await current.json()).state, "held");
+    const pay = await f.mf.dispatchFetch(
+      f.origin + `/api/booking/hitpay/${id}`,
+      { method: "POST", headers, body: JSON.stringify({ accepted: true }) },
+    );
+    const paid = await pay.json();
+    assert.equal(pay.status, 200, JSON.stringify(paid));
+    assert.equal(paid.paymentAvailable, true);
+    const context = await f.mf.dispatchFetch(
+      f.origin + `/api/attempts/${id}/checkout`,
+      { headers },
+    );
+    assert.equal((await context.json()).checkout.url, f.checkoutUrl);
+    const invalidWebhook = await f.mf.dispatchFetch(
+      f.origin + "/api/webhooks/hitpay",
+      {
+        method: "POST",
+        body: "{}",
+        headers: {
+          "content-type": "application/json",
+          "Hitpay-Signature": "0".repeat(64),
+        },
+      },
+    );
+    assert.equal(invalidWebhook.status, 401);
+    assert.equal(
+      f.calls.filter((c) => c.url.endsWith("/accept-payment")).length,
+      0,
+    );
+    assert.equal((await f.completePayment()).status, 202);
+    await (await f.mf.getWorker()).scheduled();
+    const confirmation = await f.mf.dispatchFetch(
+      f.origin + `/api/attempts/${id}/confirmation`,
+      { headers },
+    );
+    const confirmed = await confirmation.json();
+    assert.equal(confirmed.status, "confirmed", JSON.stringify(confirmed));
+    assert.equal((await f.completePayment()).status, 202);
+    await (await f.mf.getWorker()).scheduled();
+    assert.equal(
+      f.calls.filter((c) => c.url.endsWith("/accept-payment")).length,
+      1,
+    );
+    const bookingIndex = f.calls.findIndex((c) => c.body?.method === "book");
+    assert.ok(bookingIndex >= 0);
+    assert.equal(f.calls.filter((c) => c.body?.method === "book").length, 1);
+    assert.equal(
+      f.calls.filter(
+        (c) => c.url.includes("hit-pay.com") && c.method === "POST",
+      ).length,
+      1,
+    );
+    assert.equal(
+      f.calls
+        .slice(bookingIndex + 1)
+        .some((c) =>
+          ["getStartTimeMatrix", "getAvailableUnits"].includes(c.body?.method),
+        ),
+      false,
+    );
+    assert.deepEqual(f.unexpected, []);
+  } finally {
+    await f.close();
   }
 });

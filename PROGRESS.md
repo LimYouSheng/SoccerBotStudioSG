@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## Test reliability audit — 16 October 2026
+
+Reviewed the inventory of50 test files (24 frontend/unit,10 Worker,3 browser,13 tooling/installer) for clock dependence, fixture coupling, weak assertions, isolation and mocked boundaries. PR34 fixes the weekday clock failure. Additional repairs make HitPay payment/expiry setup explicit instead of title-dependent, correct overstated case names, add a separate already-paid-invoice no-write regression, and record synthetic provider request bodies so the no-book assertion actually observes RPC methods. Keep independent exact prices, IDs and policy fixtures; they are useful oracles, not values to derive from production code. The owner also requests mechanism-level coverage: the browser journey now uses the production Worker with only provider transport simulated; a shared HTTP test covers holding through signed webhook, scheduled recovery and confirmation. Final non-browser verification and exact-source CI are pending. Browser/provider acceptance remains separate; no booking, payment, merge or deployment is authorized by this audit.
+
 ## Deterministic booking test clock — 16 October 2026
 
 PR33 merged6a88134; main run38816624792 frontend failed two real-clock tomorrow fixtures at Singapore midnight (expected8800, correct Saturday price10800). Pin the test Date clock to a known weekday without changing product pricing or receipt assertions. Focused28 tests pass. Next: complete177-unit/static verification and publish a follow-up PR with all CI gates. No booking/payment or deployment has been performed; the hold-query fix remains awaiting successful main deployment.
