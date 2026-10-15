@@ -164,7 +164,7 @@ export function BookingProvider({
   }, [service]);
   const availability = useBookingAvailability(
     service,
-    value.attempt
+    value.attempt || calendarPaused || (service.mode === "live" && !date)
       ? []
       : [
           ...(date ? [date] : []),
@@ -478,8 +478,22 @@ export function BookingProvider({
               setSelectionNotice(null);
               return "available";
             }
+            const retained = current.draft.slots.filter((slot) =>
+              offers.some(
+                (offer) =>
+                  slotKey(offer) === slotKey(slot) &&
+                  offer.available &&
+                  offer.instructor === slot.instructor &&
+                  offer.native?.serviceId === slot.native?.serviceId &&
+                  sessionPrice(offer) === sessionPrice(slot),
+              ),
+            );
+            commit({
+              ...current,
+              draft: { ...current.draft, slots: retained, accepted: false },
+            });
             setSelectionNotice(
-              "One or more chosen dates and times are no longer available or have changed. Please choose another time. Your entered details have been kept.",
+              "Unavailable or changed sessions were removed. Please choose another time. Your entered details have been kept.",
             );
             return "unavailable";
           } catch {

@@ -313,7 +313,7 @@
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",
-    "title": "live calendar disables empty and unknown dates and a failed fresh continuation preserves the basket and refreshes calendar"
+    "title": "live calendar removes unavailable selections after fresh review and retains contact details"
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",

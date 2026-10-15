@@ -1,5 +1,9 @@
 # SoccerBotStudioSG engineering
 
+## Review booking repair — 15 October 2026
+
+Owner HAR shows fresh availability200 and prepare201 without a native booking request; D1 confirms zero HitPay holds/payments. Preserve Details throughout reserve, remove freshly disproved selections while preserving contact, and suppress passive Details availability reads/duplicate price loaders. Do not treat provider_auth_failed and subsequent provider_refresh_busy as proof of unavailable slots or a resolved provider-auth defect. No provider booking/payment test by Codex; owner has two remaining bookings. PR31 is merged/deployed at1971d26; sandbox flags were separately enabled with owner-installed endpoint salt. Committed gates remain closed, so a later deployment needs explicit verified reactivation before the owner trial. Publish this repair through exact-source CI; specific new-PR merge approval remains required.
+
 ## Direct HitPay sandbox source work — 15 October 2026
 
 Owner explicitly replaces new native hosted checkout with proposed direct hosted HitPay sandbox payments; this supersedes historical native-only restrictions for this feature. Source implementation, non-browser checks and a draft PR are authorized. Merge requires specific approval; deployment, webhook registration and owner-operated payment testing remain separate reviewed steps. Keep all new checkout/recovery/webhook gates closed in committed configuration. Preserve existing native attempts, protected confirmation/export, one immutable payment route, unknown-write evidence and accounting. Move the fresh customer selection check after Details, preserve contact fields on calendar return, and invalidate affected display cache on conflicts. The proposed 15-minute shared cache warm-up is not part of this implementation.

@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Owner HAR: Review booking interrupted — 15 October 2026
+
+PR31 merged as1971d26; GitHub main run38747070570 passed verification and deployment. Owner registered completed/failed HitPay webhook and replaced placeholder salt; sandbox activation was separately read back. Owner then reported duplicate loading, stale unavailable selections and failure before any SimplyBook session. Sanitized HAR:14:24UTC fresh availability200 followed by prepare201, no native booking POST; later fresh availability also200, then passive reads503/provider_auth_failed and provider_refresh_busy. Read-only D1 inspection confirms zero HitPay holds/payments. Do not retain HAR credentials/customer fields in the repository.
+
+Route guarding could unmount Details after the prepared checkpoint and cancel the pending holding request. Repair keeps Details through reserve, suppresses passive Details reads and duplicate price loading, removes freshly disproved selections and retains contact. Provider authentication failure is independently observed; its underlying cause remains unresolved. Regression uses a deferred holding reply to assert the request stays un-aborted and Details stays mounted; existing unavailable-selection assertions now require removal. No browser or provider booking/payment was executed by Codex. Exact-source verification and owner physical acceptance are separate gates.
+
 ## Preserve hosted navigation until document unload — 15 October 2026
 
 PR31 run38742439558 passed frontend/backend gates and the desktop live checkout journey. Phone/tablet WebKit exposed a second race: setting checkout success after location.assign lets the route guard issue an internal payment navigation before the external document commits. Preserve review for both loading and successful live checkout handoff; explicit fallback navigation and failure/cancellation recovery remain unchanged. The held-flow component regression now asserts no internal payment replacement after the external assignment. Retain both failed CI runs; no browser assertions, retries or deadlines changed. Owner approves PR31 merge after required CI passes, followed by deployment and sandbox activation once the placeholder signing salt is replaced.

@@ -25,6 +25,7 @@ export function DetailsStep({
       validateSelection,
       reserve,
       action,
+      selectionNotice,
       cancel,
     } = useBooking(),
     router = useRouter(),
@@ -206,6 +207,7 @@ export function DetailsStep({
                     ? await validateSelection()
                     : "available";
                 if (!mounted.current || result === "cancelled") return;
+                if (result === "error") return;
                 if (result !== "available") {
                   router.push("/book/time/");
                   return;
@@ -283,6 +285,9 @@ export function DetailsStep({
           </>
         )}
         {saveMessage && <p role="status">{saveMessage}</p>}
+        {!profileOnly && selectionNotice && (
+          <p role="status">{selectionNotice}</p>
+        )}
         {action.error && <p role="alert">{action.error}</p>}
         {!profileOnly && (
           <div className="actions">
