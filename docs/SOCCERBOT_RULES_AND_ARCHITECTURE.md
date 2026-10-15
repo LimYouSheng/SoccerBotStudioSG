@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Holding request ingress — 15 October 2026
+
+Hold creation uses the existing authenticated native booking route with the exact hold=1 query. Its HTTP allowlist must agree with the downstream route; this narrow allowance grants no booking authority by itself. Preserve all other query rejection and provider/write safeguards.
+
 ## Review booking repair boundary — 15 October 2026
 
 Keep the Details operation mounted until preparation and holding complete. Persisted prepared state is recovery evidence, not permission to navigate away during its active write. Confirmed unavailable/changed selections are pruned before calendar return; contact data survives. Failed provider reads preserve selection and remain errors. Details does not perform passive availability polling or show a second loader beside the price. Existing authoritative booking/write and held-booking/payment checks remain unchanged.

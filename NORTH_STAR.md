@@ -1,5 +1,9 @@
 # North Star: dependable customer booking and quick rebooking
 
+## Unblock holding HTTP request — 15 October 2026
+
+Repair the global query guard that rejects the implemented hold=1 request before provider dispatch. Finish Worker-entry regression and exact-source CI before another owner trial. The completed frontend repair remains deployed; provider payment and physical acceptance remain pending.
+
 ## Review booking owner-test repair — 15 October 2026
 
 Restore the observed Details → holding → Review transition and unavailable-selection calendar return before another owner trial. PR31 is merged/deployed; direct HitPay sandbox flags were separately activated. Current frontend repair requires exact-source CI, specific merge approval and deployment/readback. Continue to payment still uses the existing hold without a slot-availability query. Provider payment/finalisation/no-return recovery and physical acceptance remain pending.

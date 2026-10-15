@@ -110,11 +110,14 @@ export default {
         if (
           url.search &&
           !(
-            request.method === "GET" &&
-            /^\/api\/booking\/availability\/[1-9]\d{0,14}\/\d{4}-\d{2}-\d{2}$/.test(
-              url.pathname,
-            ) &&
-            url.search === "?refresh=1"
+            (request.method === "GET" &&
+              /^\/api\/booking\/availability\/[1-9]\d{0,14}\/\d{4}-\d{2}-\d{2}$/.test(
+                url.pathname,
+              ) &&
+              url.search === "?refresh=1") ||
+            (request.method === "POST" &&
+              /^\/api\/booking\/native\/[a-f0-9-]{36}$/.test(url.pathname) &&
+              url.search === "?hold=1")
           )
         )
           throw new ApiError(400, "unexpected_parameters");

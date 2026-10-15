@@ -321,7 +321,7 @@
   "synthetic fixture awaits evidence without a stale pending snapshot and reuses its attempt",
   "readiness reports effective expiry served identity and bounded nonce without provider calls",
   "single statement discovery closure returns expiry then independent D1 read preserves evidence",
-  "fresh availability query reaches authentication and rejects arbitrary query parameters",
+  "fresh availability and holding queries reach authentication and reject arbitrary parameters",
   "receipt export rechecks ownership paid evidence and revocation without provider calls",
   "webhook capture defaults closed and requires exact source account environment and origin",
   "webhook HMAC verifies exact raw bytes before retaining only bounded structure",

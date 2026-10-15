@@ -1,5 +1,9 @@
 # SoccerBotStudio — Service Contracts
 
+## Holding request HTTP boundary — 15 October 2026
+
+The global query allowlist permits exactly POST /api/booking/native/{attemptId}?hold=1 using the existing native-route ID grammar. Authentication, origin and account/attempt/payment-route checks still follow. GET hold, duplicate hold, alternate values/encoding, extra parameters and hold on other routes remain400 unexpected_parameters. Existing GET availability?refresh=1 allowance is unchanged. The public Worker entry point must be exercised in addition to direct handler and mocked browser tests.
+
 ## Review booking continuation and failed selection — 15 October 2026
 
 Details remains mounted for the complete reserve operation, including the prepared-attempt checkpoint before the native holding write. Route guarding must not redirect that intermediate state and abort the operation. Passive per-date availability reads are restricted to calendar browsing; Details performs its explicit fresh submission check only. Price summary loading belongs to the calendar basket. A successful fresh response removes only selected slots whose identity, instructor, service, price or availability no longer matches, resets consent, preserves contact fields and returns to Time with a notice. A transport/authentication error keeps the selection and Details, displays the failure and cannot authorize a hold. Both failed checks invalidate affected display cache through the existing invalidation owner; no provider retry or token lifetime extension is added.
