@@ -395,18 +395,16 @@ async function mechanismTransport(
     const responseBody = await response.text();
     if (url.pathname === "/api/booking/prepare" && response.status === 201)
       attemptId = JSON.parse(responseBody).attemptId;
-    // A reload or hosted handoff can cancel a background calendar request.
-    // Its provider work still completes; there is no browser recipient left.
-    if (!request.failure()) {
-      try {
-        await route.fulfill({
-          status: response.status,
-          headers: responseHeaders,
-          body: responseBody,
-        });
-      } catch (error) {
-        if (!request.failure() && !page.isClosed()) throw error;
-      }
+    // Always settle the intercepted route, even when navigation canceled it.
+    // Returning without a route action leaves Playwright cleanup waiting.
+    try {
+      await route.fulfill({
+        status: response.status,
+        headers: responseHeaders,
+        body: responseBody,
+      });
+    } catch (error) {
+      if (!request.failure() && !page.isClosed()) throw error;
     }
   });
   return { calls, unexpected, attemptId: () => attemptId };
