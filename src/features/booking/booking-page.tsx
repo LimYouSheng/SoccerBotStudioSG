@@ -45,7 +45,7 @@ export function BookingPage({ step }: { step: BookingStep }) {
     bookingService.mode === "live" &&
     step === "review" &&
     !!attempt &&
-    action.status === "loading" &&
+    (action.status === "loading" || action.status === "success") &&
     action.operation === "checkout";
   const actual = handingOff
       ? step

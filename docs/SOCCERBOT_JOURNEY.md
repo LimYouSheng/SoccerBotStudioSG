@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## Preserve hosted navigation until document unload — 15 October 2026
+
+PR31 run38742439558 passed frontend/backend gates and the desktop live checkout journey. Phone/tablet WebKit exposed a second race: setting checkout success after location.assign lets the route guard issue an internal payment navigation before the external document commits. Preserve review for both loading and successful live checkout handoff; explicit fallback navigation and failure/cancellation recovery remain unchanged. The held-flow component regression now asserts no internal payment replacement after the external assignment. Retain both failed CI runs; no browser assertions, retries or deadlines changed. Owner approves PR31 merge after required CI passes, followed by deployment and sandbox activation once the placeholder signing salt is replaced.
+
 ## HitPay browser handoff correction and activation request — 15 October 2026
 
 PR31 run38740776215 passed frontend and Worker checks but the live-email journey failed on all three browser projects: the route guard changed review to /book/payment/ while protected HitPay context was still loading, unmounting review and cancelling its request. Keep review mounted during the active live checkout handoff; cancellation/unknown outcomes retain existing recovery behavior. The held-flow component regression now includes BookingPage, and all four focused tests plus types/lint pass. Browser assertions and deadlines are unchanged; fresh CI is required.

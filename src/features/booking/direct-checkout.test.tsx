@@ -53,6 +53,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.useRealTimers();
   navigation.push.mockReset();
+  navigation.replace.mockReset();
 });
 async function directCase(scenario: string) {
   vi.useFakeTimers({ toFake: ["Date"] });
@@ -241,4 +242,5 @@ it("holds once before review and starts payment without preparing or checking av
   expect(pay.mock.calls[1][0].holding).toBe(false);
   expect(availability).toHaveBeenCalledTimes(readsAtHold);
   expect(assign).toHaveBeenCalledWith(url);
+  expect(navigation.replace).not.toHaveBeenCalledWith("/book/payment/");
 });
