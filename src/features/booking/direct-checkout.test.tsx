@@ -1,17 +1,19 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { BookingProvider, useBooking } from "./provider";
+import { BookingPage } from "./booking-page";
 import { ReviewStep } from "./review-step";
 import type { BookingService } from "@/services/contracts";
 import { liveBookingService } from "@/services/booking";
 import { blankDraft, type Attempt } from "@/domain/booking";
 
-const navigation = vi.hoisted(() => ({ push: vi.fn() }));
+const navigation = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => navigation }));
 const id = "00000000-0000-4000-8000-000000000001";
 const url = `https://securecheckout.sandbox.hit-pay.com/payment-request/@soccerbot/${id}/checkout`;
 const draft = {
   ...blankDraft(),
+  mode: "guest" as const,
   accepted: true,
   contact: {
     name: "Test",
@@ -213,7 +215,7 @@ it("holds once before review and starts payment without preparing or checking av
       }}
     >
       <Hold />
-      <ReviewStep />
+      <BookingPage step="review" />
     </BookingProvider>,
   );
   fireEvent.click(screen.getByText("Fill details"));

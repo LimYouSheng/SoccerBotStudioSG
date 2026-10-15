@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## HitPay browser handoff correction and activation request — 15 October 2026
+
+PR31 run38740776215 passed frontend and Worker checks but the live-email journey failed on all three browser projects: the route guard changed review to /book/payment/ while protected HitPay context was still loading, unmounting review and cancelling its request. Keep review mounted during the active live checkout handoff; cancellation/unknown outcomes retain existing recovery behavior. The held-flow component regression now includes BookingPage, and all four focused tests plus types/lint pass. Browser assertions and deadlines are unchanged; fresh CI is required.
+
+Owner requests sandbox activation after deployment and confirms merchant handle app404. Read-only deployed settings still show source49eed77; both HitPay secret names exist, but owner explicitly identifies webhook salt as a placeholder. No flags changed: handler deployment and real endpoint signing salt must precede activation. PR merge still requires specific approval. No payment, booking or webhook registration occurred.
+
 ## Direct HitPay final local verification — 15 October 2026
 
 Final non-browser application verification passed177 unit tests plus source/tooling/lint/types and the production export. Final Worker verification passed333 tests with zero failures/skips and zero provider requests. The earlier runtime inventory receipt failure was an inventory-generation error: the frontend collector does not enumerate Node .mjs tests. Corrected the Worker inventory from literal test declarations in runner order; rerun matches all333 identities. No production behavior or test assertion was relaxed. Updated held-review browser fixture passed static types/lint/source checks; no assistant browser run. Draft PR and exact-source CI are next. No deployment, live migration, webhook registration or provider write occurred.

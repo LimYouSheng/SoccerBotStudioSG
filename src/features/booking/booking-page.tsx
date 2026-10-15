@@ -31,13 +31,27 @@ const screens = {
   confirmation: ConfirmationStep,
 };
 export function BookingPage({ step }: { step: BookingStep }) {
-  const { ready, draft, attempt, now, bookingService, selectionConfirmed } =
-      useBooking(),
+  const {
+      ready,
+      draft,
+      attempt,
+      now,
+      bookingService,
+      selectionConfirmed,
+      action,
+    } = useBooking(),
     router = useRouter();
-  const actual =
-      bookingService.mode === "live" &&
-      bookingService.operations.availability === "unavailable" &&
-      step !== "account"
+  const handingOff =
+    bookingService.mode === "live" &&
+    step === "review" &&
+    !!attempt &&
+    action.status === "loading" &&
+    action.operation === "checkout";
+  const actual = handingOff
+      ? step
+      : bookingService.mode === "live" &&
+          bookingService.operations.availability === "unavailable" &&
+          step !== "account"
         ? "session"
         : bookingService.mode === "live" &&
             !attempt &&
