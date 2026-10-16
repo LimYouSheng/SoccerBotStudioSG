@@ -1,5 +1,13 @@
 # SoccerBotStudio — Journey
 
+## 16 October 2026 — acceptance preparation and inactive legacy work
+
+Owner confirms HitPay works locally, old records are noncritical test history, new-account settings complete, webhook unchanged and the new environment shell saved. They request verification and readiness for the first owner acceptance. Preserve old rows rather than delete payment history or reset SimplyBook. Fresh exact deployed scheduler predicates returned zero eligible HitPay recoveries and zero eligible native recoveries; the two old payment rows remain complete/verified and manual_review/association_mismatch. No retirement mutation is necessary to clear the current queue. Old test application receipts are outside the new-account acceptance scope, not falsely marked continuous or resolved.
+
+Fresh managed revision7 reports running/current, policy enforced and configured inputs ready. Attached helper contents remain historical; do not run their automatic smoke. Existing exact application checks used the pinned direct runtime. Refreshed main and Cloudflare source remain be9982b3 with expected HitPay sandbox configuration, ongoing identity/live readback and secret binding names. A bounded direct Worker health GET returned403; catalogue was not dispatched. This is executor reachability evidence, not proof of owner-site failure. No repeated HitPay probe or credential replacement.
+
+Prepared one-attempt owner-only success packet in Service Contracts, preserving hold/invoice identity, unpaid-before-payment check, sandbox merchant/amount, no duplicate effects, signed callback/reconciliation and protected receipt evidence. Publish a draft candidate for final-source CI. Specific merge, deployment and final accessible-path readiness remain separate; no booking/payment/browser trial has occurred.
+
 ## Environment readiness and owner confirmations — 16 October 2026
 
 Owner reports latest environment changes installed, confirms migration checklist item3 complete (new-account signing/settings/schedules), and confirms item4 webhook configuration remains unchanged. Record these as owner confirmations, separate from independently observed provider evidence. No SimplyBook reset or HitPay reconfiguration is required by the company migration.

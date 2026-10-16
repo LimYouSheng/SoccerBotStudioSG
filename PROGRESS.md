@@ -1,5 +1,13 @@
 # SoccerBotStudioSG current progress
 
+## First new-account acceptance preparation — 16 October 2026
+
+Owner requests verification and readiness for one first acceptance test, confirms local HitPay connectivity, treats old test records as noncritical, confirms new-account checklist settings complete and webhook unchanged. Keep old rows intact; original-scope application receipt continuity is outside this new-account acceptance scope. Fresh read-only D1 queries using the deployed scheduler predicates return zero eligible HitPay and zero eligible native recoveries. Old records need no mutation to clear the current queue; this does not resolve their financial history.
+
+Managed revision7 reports current readiness, enforced policy and all configured inputs ready. Saved environment changes are owner-confirmed; installed local helper bytes remain historical and are not executed. The already tested direct Node/npm worktree supports this release without the browser-launching helper. Cloudflare settings and SOURCE_REVISION remain as previously verified at be9982b3. Codex's direct Worker health GET returned403 before catalogue dispatch; no conclusion about owner browser reachability follows. Do not repeat HitPay probes or change credentials merely for Codex connectivity.
+
+Publish the locally verified optimization as a draft PR and obtain final-source CI; no specific merge or deployment is authorized. Service Contracts contains the one-attempt owner procedure and stop conditions. Do not start the owner booking until the chosen release is verified deployed and live readiness checked through an accessible path. First-try success is a goal, not guaranteed provider acceptance.
+
 ## Environment readiness and owner confirmations — 16 October 2026
 
 Owner reports latest environment changes installed, confirms migration checklist item3 complete (new-account signing/settings/schedules), and confirms item4 webhook configuration remains unchanged. Record these as owner confirmations, separate from independently observed provider evidence. No SimplyBook reset or HitPay reconfiguration is required by the company migration.
