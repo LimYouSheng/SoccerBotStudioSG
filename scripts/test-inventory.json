@@ -305,6 +305,10 @@
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",
+    "title": "failed preparation releases cached calendar without removing the selection or refetching"
+  },
+  {
+    "file": "src/features/booking/booking-parity.test.tsx",
     "title": "fresh calendar receipts render before the minute clock ticks and expire at their own deadline"
   },
   {

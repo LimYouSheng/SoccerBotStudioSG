@@ -231,6 +231,7 @@ export function BookingProvider({
   );
   const cancel = useCallback(() => {
     continuation.current?.abort();
+    if (mounted.current && !latest.current.attempt) pauseCalendar(false);
     const request = active.current;
     if (!request) return;
     active.current = null;
@@ -414,6 +415,7 @@ export function BookingProvider({
         return false;
       } finally {
         if (active.current === request) active.current = null;
+        if (mounted.current && !latest.current.attempt) pauseCalendar(false);
       }
     },
     [service, commit, setAction, identityService],
@@ -493,6 +495,12 @@ export function BookingProvider({
               latest.current.revision !== revision
             )
               return "cancelled";
+            for (const date of dates) {
+              const dayOffers = offers.filter(
+                (offer) => offer.date === date && offer.available,
+              );
+              calendar.reconcile(date, dayOffers.length > 0, dayOffers);
+            }
             if (succeeded) {
               confirmSelection({ owner: service, key: selectionKey });
               setSelectionNotice(null);
@@ -531,8 +539,6 @@ export function BookingProvider({
             continuation.current = null;
             if (mounted.current && !controller.signal.aborted) {
               if (!succeeded) {
-                invalidateAvailability();
-                calendar.retry();
                 pauseCalendar(false);
               }
             }

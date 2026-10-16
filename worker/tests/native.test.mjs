@@ -3339,3 +3339,140 @@ test("Review booking creates one HitPay holding appointment without payment or p
     reply = undefined;
   }
 });
+
+test("HitPay hold rejection retains redacted creation flags and invoice joins before normalization without replay", async () => {
+  for (const confirmed of [false, 0, "0", "private-marker"]) {
+    const data = await prepared(false, true, true);
+    await grantNative(data);
+    data.creation.bookings[0].is_confirmed = confirmed;
+    data.creation.bookings[0].status = "unconfirmed";
+    data.creation.bookings[0].contact = "private-marker";
+    data.creation.invoice.due_datetime = "2026-10-16 12:30:00";
+    data.creation.invoice.contact = "private-marker";
+    data.creation.invoice.lines[0].bookings[0].hash = "private-marker";
+    const before = calls.length;
+    const wall = new Date(
+      data.scope.intent.sessions[0].startMs + 28800000,
+    ).toISOString();
+    reply = nativeProviderReply(data, wall);
+    try {
+      const result = await call("finite-checkout", {
+        ...data,
+        scenario: "hitpay-hold",
+      });
+      assert.equal(result.result.state, "recovery_required");
+      const row = await db
+        .prepare(
+          "SELECT result_json FROM native_checkout_grants WHERE attempt_id=?",
+        )
+        .bind(data.scope.attemptId)
+        .first();
+      const saved = JSON.parse(row.result_json);
+      assert.equal(
+        saved.diagnostic.validation.field,
+        "creation.booking.is_confirmed",
+      );
+      assert.equal(saved.holdEvidence.length, 1);
+      const snapshot = saved.holdEvidence[0];
+      assert.equal(snapshot.operation, "book");
+      assert.equal(snapshot.bookings[0].status, "unconfirmed");
+      assert.deepEqual(snapshot.bookings[0].isConfirmed, {
+        kind: typeof confirmed,
+        value: confirmed === "private-marker" ? null : false,
+      });
+      assert.equal(snapshot.invoice.id, "901");
+      assert.deepEqual(snapshot.invoice.lines[0].bookingIds, ["701"]);
+      assert.equal(snapshot.invoice.dueDatetime.value, "2026-10-16 12:30:00");
+      assert.equal(snapshot.invoice.paymentReceived.value, false);
+      assert.match(snapshot.correlationId, /^[a-f0-9-]{36}$/);
+      assert.ok(Number.isSafeInteger(snapshot.observedAtMs));
+      assert.doesNotMatch(
+        row.result_json,
+        /private-marker|synthetic-booking-hash|guest@example|contact|client_hash/,
+      );
+      assert.doesNotMatch(
+        JSON.stringify(result.result),
+        /holdEvidence|isConfirmed|correlationId/,
+      );
+      const count = calls.length;
+      assert.equal(
+        (await call("finite-checkout", { ...data, scenario: "hitpay-hold" }))
+          .reserved,
+        0,
+      );
+      assert.equal(calls.length, count);
+      assert.equal(
+        calls.slice(before).filter((c) => c.body?.method === "book").length,
+        1,
+      );
+      assert.equal(
+        calls.slice(before).some((c) => c.url.includes("hit-pay.com")),
+        false,
+      );
+    } finally {
+      reply = undefined;
+    }
+  }
+});
+
+test("HitPay hold readback evidence is durable before the next provider read and survives invoice rejection", async () => {
+  const data = await prepared(false, true, true);
+  await grantNative(data);
+  data.invoice.status = "pending";
+  data.invoice.due_datetime = "2026-10-16 12:30:00";
+  data.invoice.client = { name: "private-marker", email: "private-marker" };
+  const wall = new Date(
+    data.scope.intent.sessions[0].startMs + 28800000,
+  ).toISOString();
+  const provider = nativeProviderReply(data, wall);
+  let witnessed = false;
+  reply = async (request, body) => {
+    if (request.url.endsWith("/admin/invoices/901")) {
+      const row = await db
+        .prepare(
+          "SELECT result_json FROM native_checkout_grants WHERE attempt_id=?",
+        )
+        .bind(data.scope.attemptId)
+        .first();
+      assert.deepEqual(
+        JSON.parse(row.result_json).holdEvidence.map((e) => e.operation),
+        ["book", "booking-read"],
+      );
+      witnessed = true;
+    }
+    return provider(request, body);
+  };
+  try {
+    const result = await call("finite-checkout", {
+      ...data,
+      scenario: "hitpay-hold",
+    });
+    assert.equal(witnessed, true);
+    assert.equal(result.result.state, "recovery_required");
+    const row = await db
+      .prepare(
+        "SELECT result_json FROM native_checkout_grants WHERE attempt_id=?",
+      )
+      .bind(data.scope.attemptId)
+      .first();
+    const evidence = JSON.parse(row.result_json).holdEvidence;
+    assert.deepEqual(
+      evidence.map((e) => e.operation),
+      ["book", "booking-read", "invoice-read"],
+    );
+    assert.equal(evidence[1].bookings[0].invoiceId, "901");
+    assert.equal(evidence[2].invoice.status, "pending");
+    assert.equal(
+      evidence[2].invoice.dueDatetime.value,
+      data.invoice.due_datetime,
+    );
+    assert.deepEqual(evidence[2].invoice.lines[0].bookingIds, ["701"]);
+    assert.equal(evidence[2].invoice.lines[0].bookings[0].id, "701");
+    assert.doesNotMatch(
+      row.result_json,
+      /private-marker|guest@example|synthetic-booking-hash/,
+    );
+  } finally {
+    reply = undefined;
+  }
+});
