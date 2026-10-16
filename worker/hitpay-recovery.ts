@@ -246,7 +246,7 @@ export async function recoverHitpay(
       result = "manual_review";
       reason = "recovery_exhausted";
     }
-    // Commit the terminal decision and any pending-receipt wake-up together.
+    // Commit the terminal decision and the pending-receipt wake-up together.
     // If storage fails, the retained claim lease remains reclaimable by cron.
     await env.STATE.batch([
       env.STATE.prepare(
