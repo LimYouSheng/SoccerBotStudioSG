@@ -1,5 +1,13 @@
 # SoccerBotStudio — Service Contracts
 
+## Environment readiness and owner confirmations — 16 October 2026
+
+Owner reports latest environment changes installed, confirms migration checklist item3 complete (new-account signing/settings/schedules), and confirms item4 webhook configuration remains unchanged. Record these as owner confirmations, separate from independently observed provider evidence. No SimplyBook reset or HitPay reconfiguration is required by the company migration.
+
+Fresh managed status now reports spec/observed revision5, current observations, running/connected, network policy enforced, and all configured secret/runtime bindings ready. Supported per-command HTTPS probe returned200. The same attached executor still has the6October install.sh, start-skill.md and container.py; the latter calls smoke after prepare. Therefore runtime configuration readiness is established but replacement helper installation is not. The status tool does not expose the latest editable Install/Start text; do not conclude that the owner failed to save it or run these old browser-launching helpers.
+
+One new bounded HitPay exact-reference lookup after readiness changed still returned403 and stopped. This does not establish a merchant/key/webhook change and is not a reason to replace credentials. Keep existing merchant/salt/webhook settings. Legacy SimplyBook records and original-account credentials must remain preserved; the issue is supported original-scope recovery/receipt access, not resetting the old account. Existing application routing still lacks that path. No remote settings, records, bookings, payments or deployments were changed.
+
 ## Booking-check review and legacy continuity requirements — 16 October 2026
 
 The current request sequence is Details reserve → server prepare/authorizeCustomerCheckout with a fresh selected-day read → native hold orchestration with full-cart preflight and a fresh check before each write → exact booking/invoice readback. Continue to payment uses the retained hold and validates its existing bookings/invoice without slot availability or booking recreation. The removed browser-selected-day request must stay removed. Catalogue and identity reads inside preparation, preflight and write validation serve different authority boundaries; no shared display receipt substitutes for them. Identity already reuses its bounded instance receipt and never outlives either token. This review does not establish a safe further reduction of those calls.
