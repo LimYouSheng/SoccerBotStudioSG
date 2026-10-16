@@ -37,7 +37,7 @@ export function BookingPage({ step }: { step: BookingStep }) {
       attempt,
       now,
       bookingService,
-      selectionConfirmed,
+      setCalendarBrowsing,
       action,
     } = useBooking(),
     router = useRouter();
@@ -64,14 +64,17 @@ export function BookingPage({ step }: { step: BookingStep }) {
             : bookingService.mode === "live" &&
                 !attempt &&
                 draft.mode &&
-                ["review", "payment"].includes(step) &&
-                !selectionConfirmed
+                ["review", "payment"].includes(step)
               ? "time"
               : guardedStep(step, draft, attempt, now),
     current = progress.findIndex(([id]) => id === step);
   useEffect(() => {
     if (ready && actual !== step) router.replace(`/book/${actual}/`);
   }, [actual, step, ready, router]);
+  useEffect(() => {
+    setCalendarBrowsing(["account", "session", "time"].includes(actual));
+    return () => setCalendarBrowsing(true);
+  }, [actual, setCalendarBrowsing]);
   if (!ready || actual !== step) return <BrandLoading overlay={false} />;
   const Screen = screens[step];
   if (step === "payment" || step === "confirmation") return <Screen />;

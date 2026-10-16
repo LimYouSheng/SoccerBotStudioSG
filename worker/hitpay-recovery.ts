@@ -1,6 +1,7 @@
 import { ApiError, digest, policy } from "./policy";
 import {
   hitpayRecoveryEnabled,
+  hitpayFailureReason,
   hitpaySetting,
   paymentScopeSchema,
   assertPaymentScope,
@@ -224,10 +225,7 @@ export async function recoverHitpay(
     result = "complete";
     reason = "verified";
   } catch (error) {
-    reason =
-      error instanceof ApiError
-        ? error.code
-        : "hitpay_verification_unavailable";
+    reason = hitpayFailureReason(error);
     if (
       error instanceof ApiError &&
       error.status === 409 &&

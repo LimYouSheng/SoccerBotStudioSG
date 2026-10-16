@@ -2,7 +2,7 @@
 import { protectedCheckoutService } from "@/services/confirmation";
 import { isHitpayCheckoutUrl } from "@/domain/native-checkout";
 import { todaySG } from "@/domain/dates";
-import { slotKey, sessionPrice } from "@/domain/booking";
+import { slotKey } from "@/domain/booking";
 import { useCalendarAvailability } from "./calendar-availability";
 import {
   createContext,
@@ -29,7 +29,6 @@ import {
   BookingServiceError,
   type BookingService,
   type BookingOperation,
-  type AvailableSlot,
 } from "@/services/contracts";
 import {
   loadBooking,
@@ -51,11 +50,8 @@ interface BookingContextValue extends StoredBooking {
   showDate: (date: string | null) => void;
   calendar: ReturnType<typeof useCalendarAvailability>;
   showMonth: (month: string) => void;
-  validateSelection: () => Promise<
-    "available" | "unavailable" | "error" | "cancelled"
-  >;
+  setCalendarBrowsing: (active: boolean) => void;
   selectionNotice: string | null;
-  selectionConfirmed: boolean;
   ready: boolean;
   now: number;
   revision: number;
@@ -122,7 +118,6 @@ export function BookingProvider({
     controller: AbortController;
     operation: Action;
   } | null>(null);
-  const continuation = useRef<AbortController | null>(null);
   const mounted = useRef(false);
   const [availabilityRevision, invalidateAvailability] = useReducer(
     (revision: number) => revision + 1,
@@ -130,6 +125,7 @@ export function BookingProvider({
   );
   const [calendarMonth, showMonth] = useState(() => todaySG().slice(0, 7));
   const [calendarPaused, pauseCalendar] = useState(false);
+  const [calendarBrowsing, setCalendarBrowsing] = useState(true);
   const [date, showDate] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const sessionKey = useCallback(
@@ -139,17 +135,6 @@ export function BookingProvider({
         : "guest",
     [value.draft.mode, identityService],
   );
-  const [confirmedSelection, confirmSelection] = useState<{
-    owner: BookingService;
-    key: string;
-  } | null>(null);
-  const selectionKey = JSON.stringify([
-    service.mode,
-    sessionKey(),
-    value.draft.nativeServiceId,
-    value.draft.players,
-    value.draft.slots,
-  ]);
   const calendar = useCalendarAvailability(
     service,
     value.ready && value.draft.mode ? value.draft.nativeServiceId : undefined,
@@ -158,7 +143,7 @@ export function BookingProvider({
       service.publicCalendar ? "public" : sessionKey(),
       availabilityRevision,
     ]),
-    !value.ready || calendarPaused || !!value.attempt,
+    !value.ready || !calendarBrowsing || calendarPaused || !!value.attempt,
   );
   useEffect(() => {
     if (
@@ -175,7 +160,10 @@ export function BookingProvider({
   }, [service]);
   const availability = useBookingAvailability(
     service,
-    value.attempt || calendarPaused || (service.mode === "live" && !date)
+    value.attempt ||
+      !calendarBrowsing ||
+      calendarPaused ||
+      (service.mode === "live" && !date)
       ? []
       : [
           ...(date ? [date] : []),
@@ -231,7 +219,6 @@ export function BookingProvider({
     [service],
   );
   const cancel = useCallback(() => {
-    continuation.current?.abort();
     if (mounted.current && !latest.current.attempt) pauseCalendar(false);
     const request = active.current;
     if (!request) return;
@@ -306,6 +293,8 @@ export function BookingProvider({
       const request = { controller: new AbortController(), operation };
       active.current = request; // Synchronous guard also catches same-turn double clicks.
       setAction({ status: "loading", operation });
+      if (operation === "reserve" || operation === "checkout")
+        pauseCalendar(true);
       const identity = () =>
         current.draft.mode === "member" ? identityService.current() : null;
       const session = identity();
@@ -428,7 +417,6 @@ export function BookingProvider({
               ),
             },
           });
-          confirmSelection(null);
           pauseCalendar(false);
           setSelectionNotice(known.message);
         } else if (known.code === "conflict") invalidateAvailability();
@@ -474,107 +462,8 @@ export function BookingProvider({
         showDate,
         calendar,
         selectionNotice,
-        selectionConfirmed:
-          confirmedSelection?.owner === service &&
-          confirmedSelection.key === selectionKey,
         showMonth,
-        async validateSelection() {
-          if (continuation.current) return "cancelled";
-          const current = latest.current;
-          const revision = current.revision;
-          const identity = sessionKey();
-          confirmSelection(null);
-          pauseCalendar(true);
-          const controller = new AbortController();
-          continuation.current = controller;
-          let succeeded = false;
-          try {
-            const dates = [
-              ...new Set(current.draft.slots.map((slot) => slot.date)),
-            ];
-            const offers: AvailableSlot[] = [];
-            for (const date of dates)
-              offers.push(
-                ...(await service.availability({
-                  date,
-                  players: current.draft.players,
-                  serviceId: current.draft.nativeServiceId,
-                  fresh: true,
-                  signal: controller.signal,
-                })),
-              );
-            succeeded =
-              !controller.signal.aborted &&
-              mounted.current &&
-              sessionKey() === identity &&
-              latest.current.revision === revision &&
-              dates.length > 0 &&
-              current.draft.slots.every((slot) =>
-                offers.some(
-                  (offer) =>
-                    slotKey(offer) === slotKey(slot) &&
-                    offer.available &&
-                    offer.instructor === slot.instructor &&
-                    offer.native?.serviceId === slot.native?.serviceId &&
-                    sessionPrice(offer) === sessionPrice(slot),
-                ),
-              );
-            if (
-              controller.signal.aborted ||
-              !mounted.current ||
-              sessionKey() !== identity ||
-              latest.current.revision !== revision
-            )
-              return "cancelled";
-            for (const date of dates) {
-              const dayOffers = offers.filter(
-                (offer) => offer.date === date && offer.available,
-              );
-              calendar.reconcile(date, dayOffers.length > 0, dayOffers);
-            }
-            if (succeeded) {
-              confirmSelection({ owner: service, key: selectionKey });
-              setSelectionNotice(null);
-              return "available";
-            }
-            const retained = current.draft.slots.filter((slot) =>
-              offers.some(
-                (offer) =>
-                  slotKey(offer) === slotKey(slot) &&
-                  offer.available &&
-                  offer.instructor === slot.instructor &&
-                  offer.native?.serviceId === slot.native?.serviceId &&
-                  sessionPrice(offer) === sessionPrice(slot),
-              ),
-            );
-            commit({
-              ...current,
-              draft: { ...current.draft, slots: retained, accepted: false },
-            });
-            setSelectionNotice(
-              "Unavailable or changed sessions were removed. Please choose another time. Your entered details have been kept.",
-            );
-            return "unavailable";
-          } catch {
-            if (
-              controller.signal.aborted ||
-              !mounted.current ||
-              latest.current.revision !== revision
-            )
-              return "cancelled";
-            setSelectionNotice(
-              "We couldn’t check availability. Your details have been kept. Please try again before continuing.",
-            );
-            return "error";
-          } finally {
-            continuation.current = null;
-            if (mounted.current && !controller.signal.aborted) {
-              if (!succeeded) {
-                pauseCalendar(false);
-              }
-            }
-          }
-        },
+        setCalendarBrowsing,
         update(change) {
           const current = latest.current;
           if (current.attempt?.held) {

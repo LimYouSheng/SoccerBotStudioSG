@@ -96,6 +96,28 @@ const requestSchema = z.object({
   url: z.string().max(2048),
   payments: z.array(payment).max(20).optional(),
 });
+// Field names only: never retain returned URLs, account IDs or payloads.
+export class HitpayAssociationError extends ApiError {
+  constructor(
+    readonly field:
+      | "request_id"
+      | "reference"
+      | "currency"
+      | "amount"
+      | "business"
+      | "checkout_url_format"
+      | "checkout_path",
+  ) {
+    super(409, "hitpay_association_mismatch");
+  }
+}
+export function hitpayFailureReason(error: unknown) {
+  return error instanceof HitpayAssociationError
+    ? "hitpay_mismatch_" + error.field
+    : error instanceof ApiError
+      ? error.code
+      : "hitpay_verification_unavailable";
+}
 export function verifyHitpayRequest(
   raw: unknown,
   scope: PaymentScope,
@@ -105,18 +127,23 @@ export function verifyHitpayRequest(
   const p = requestSchema.safeParse(raw);
   if (!p.success) throw new ApiError(409, "hitpay_representation_unverified");
   const value = p.data;
+  if (requestId !== undefined && value.id !== requestId)
+    throw new HitpayAssociationError("request_id");
+  if (value.reference_number !== reference)
+    throw new HitpayAssociationError("reference");
+  if (value.currency.toUpperCase() !== scope.currency)
+    throw new HitpayAssociationError("currency");
+  if (minorAmount(value.amount) !== scope.totalMinor)
+    throw new HitpayAssociationError("amount");
+  if (value.business_id !== undefined && value.business_id !== scope.businessId)
+    throw new HitpayAssociationError("business");
+  if (!isHitpayCheckoutUrl(value.url))
+    throw new HitpayAssociationError("checkout_url_format");
   if (
-    (requestId !== undefined && value.id !== requestId) ||
-    value.reference_number !== reference ||
-    value.currency.toUpperCase() !== scope.currency ||
-    minorAmount(value.amount) !== scope.totalMinor ||
-    (value.business_id !== undefined &&
-      value.business_id !== scope.businessId) ||
-    !isHitpayCheckoutUrl(value.url) ||
     new URL(value.url).pathname !==
-      `/payment-request/@${scope.merchant}/${value.id}/checkout`
+    `/payment-request/@${scope.merchant}/${value.id}/checkout`
   )
-    throw new ApiError(409, "hitpay_association_mismatch");
+    throw new HitpayAssociationError("checkout_path");
   let paymentId: string | null = null;
   if (value.status === "completed") {
     const successful = (value.payments || []).filter(

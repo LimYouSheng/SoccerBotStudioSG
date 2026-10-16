@@ -2,6 +2,7 @@ import { z } from "zod";
 import { ApiError, digest } from "./policy";
 import {
   assertHitpayCreation,
+  hitpayFailureReason,
   assertPaymentScope,
   hitpayConfiguration,
   hitpaySetting,
@@ -134,7 +135,17 @@ export async function prepareHitpay(
         throw new ApiError(409, "hitpay_checkout_expired");
     },
   );
-  const verified = verifyHitpayRequest(raw, paymentScope, reference);
+  let verified: ReturnType<typeof verifyHitpayRequest>;
+  try {
+    verified = verifyHitpayRequest(raw, paymentScope, reference);
+  } catch (error) {
+    await env.STATE.prepare(
+      "UPDATE hitpay_payments SET reason=? WHERE attempt_id=? AND request_id IS NULL AND generation=0",
+    )
+      .bind(hitpayFailureReason(error), scope.attemptId)
+      .run();
+    throw error;
+  }
   if (
     verified.status !== "pending" ||
     verified.expiresAtMs === null ||

@@ -294,3 +294,88 @@ it("live reservation response distinguishes a rejected selection from an uncerta
   ).rejects.toMatchObject({ code: "invalid_response" });
   expect(response).toHaveBeenCalledTimes(3);
 });
+
+it("HitPay HTTP conflict preserves the hold and shows payment failure without selection recovery", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-15T00:00:00Z"));
+  const calls: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      calls.push(path);
+      if (path === "/api/booking/prepare")
+        return Response.json(
+          { attemptId: id, state: "prepared" },
+          { status: 201 },
+        );
+      if (path === `/api/booking/native/${id}?hold=1`)
+        return Response.json({
+          attemptId: id,
+          state: "associated",
+          paymentAvailable: false,
+        });
+      if (path === `/api/booking/hitpay/${id}`)
+        return Response.json(
+          { error: "hitpay_association_mismatch" },
+          { status: 409 },
+        );
+      throw new Error("Unexpected test request: " + path);
+    }),
+  );
+  function Hold() {
+    const { update, reserve, attempt } = useBooking();
+    return (
+      <>
+        <button
+          onClick={() =>
+            update({ ...draft, nativeServiceId: "2", accepted: false })
+          }
+        >
+          Fill details
+        </button>
+        <button onClick={() => void reserve()}>Reserve</button>
+        <output data-testid="hold">
+          {attempt?.id}:{String(attempt?.held)}
+        </output>
+      </>
+    );
+  }
+  render(
+    <BookingProvider
+      bookingService={{
+        ...liveBookingService,
+        restore: undefined,
+        publicCalendar: undefined,
+        calendar: undefined,
+      }}
+    >
+      <Hold />
+      <ReviewStep />
+    </BookingProvider>,
+  );
+  fireEvent.click(screen.getByText("Fill details"));
+  await act(async () => fireEvent.click(screen.getByText("Reserve")));
+  fireEvent.click(screen.getByRole("checkbox"));
+  await act(async () =>
+    fireEvent.click(
+      screen.getByRole("button", { name: "Continue to payment" }),
+    ),
+  );
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "Payment checkout could not be verified",
+  );
+  expect(screen.getByTestId("hold")).toHaveTextContent(id + ":true");
+  expect(
+    screen.queryByRole("link", { name: "Review selections" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByText(/This selection has changed/),
+  ).not.toBeInTheDocument();
+  expect(calls).toEqual([
+    "/api/booking/prepare",
+    `/api/booking/native/${id}?hold=1`,
+    `/api/booking/hitpay/${id}`,
+  ]);
+  expect(navigation.push).not.toHaveBeenCalled();
+});
