@@ -1,5 +1,5 @@
 import { createBookingMechanism } from "../worker/tests/booking-mechanism-fixture.mjs";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type Route } from "@playwright/test";
 
 // CI-only synthetic transports. No widget script, email or provider is contacted.
 const sitekey = "0x4AAAAAAFSTbdgbJQsvM5vy";
@@ -312,7 +312,8 @@ async function mechanismTransport(
   let attemptId = "";
   const calls: { path: string; method: string; body: unknown }[] = [];
   const unexpected: string[] = [];
-  await page.route("**/*", async (route) => {
+  const pending = new Set<Promise<void>>();
+  const handle = async (route: Route) => {
     const request = route.request(),
       url = new URL(request.url());
     if (url.href === "https://soccerbotstudiosg.simplybook.asia/v2/") {
@@ -406,17 +407,32 @@ async function mechanismTransport(
     } catch (error) {
       if (!request.failure() && !page.isClosed()) throw error;
     }
+  };
+  await page.route("**/*", (route) => {
+    const work = handle(route);
+    pending.add(work);
+    return work.finally(() => pending.delete(work));
   });
-  return { calls, unexpected, attemptId: () => attemptId };
+  return {
+    calls,
+    unexpected,
+    attemptId: () => attemptId,
+    async drain() {
+      // Drain our provider/response work, not Playwright's unresolved internal
+      // handled promise for a route canceled by document navigation.
+      await page.unrouteAll();
+      await Promise.all([...pending]);
+    },
+  };
 }
 
 test("native guest journey preserves players contact and one checkout across refresh", async ({
   page,
 }) => {
   const mechanism = await createBookingMechanism();
+  const transport = await mechanismTransport(page, mechanism);
   try {
     const { date, startMs, checkoutUrl } = mechanism;
-    const transport = await mechanismTransport(page, mechanism);
     const { calls, unexpected } = transport;
     const warmedMonths = new Set<string>();
     const calendarReady = page.waitForResponse((response) => {
@@ -634,8 +650,7 @@ test("native guest journey preserves players contact and one checkout across ref
       await test.step("Stop browser traffic", async () => {
         if (!page.isClosed()) await page.goto("about:blank");
       });
-      await test.step("Drain mechanism routes", () =>
-        page.unrouteAll({ behavior: "wait" }));
+      await test.step("Drain mechanism routes", () => transport.drain());
     } finally {
       await test.step("Dispose isolated Worker", () => mechanism.close());
     }
@@ -646,8 +661,8 @@ test("real payment recovery confirms the browser return from verified provider s
   page,
 }) => {
   const mechanism = await createBookingMechanism();
+  const transport = await mechanismTransport(page, mechanism);
   try {
-    await mechanismTransport(page, mechanism);
     // Setup uses the same public routes, auth and coordinator as the browser.
     const access = await mechanism.mf.dispatchFetch(
       mechanism.origin + "/api/access",
@@ -746,8 +761,7 @@ test("real payment recovery confirms the browser return from verified provider s
       await test.step("Stop browser traffic", async () => {
         if (!page.isClosed()) await page.goto("about:blank");
       });
-      await test.step("Drain mechanism routes", () =>
-        page.unrouteAll({ behavior: "wait" }));
+      await test.step("Drain mechanism routes", () => transport.drain());
     } finally {
       await test.step("Dispose isolated Worker", () => mechanism.close());
     }
