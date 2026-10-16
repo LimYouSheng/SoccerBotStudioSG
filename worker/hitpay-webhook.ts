@@ -1,3 +1,4 @@
+import { reopenHitpayReview } from "./hitpay-journal";
 import { z } from "zod";
 import { ApiError } from "./policy";
 import { verifyBindings } from "./bindings";
@@ -123,12 +124,13 @@ export async function receiveHitpayWebhook(request: Request, env: Env) {
     (b) => b.toString(16).padStart(2, "0"),
   ).join("");
   const now = Date.now();
-  // Both statements commit together. Duplicate receipts never extend recovery,
+  // All statements commit together. Duplicate receipts never extend recovery,
   // reset a lease/retry count, replace paid evidence or store customer payloads.
   await env.STATE.batch([
     env.STATE.prepare(
       "INSERT INTO hitpay_receipts(digest,attempt_id,received_ms) VALUES(?,?,?) ON CONFLICT(digest) DO NOTHING",
     ).bind(digest, payment.attempt_id, now),
+    reopenHitpayReview(env.STATE, payment.attempt_id, now),
     env.STATE.prepare(
       "UPDATE hitpay_payments SET ready_ms=MIN(ready_ms,?) WHERE attempt_id=? AND state='due' AND EXISTS(SELECT 1 FROM hitpay_receipts WHERE digest=? AND attempt_id=?)",
     ).bind(now, payment.attempt_id, digest, payment.attempt_id),

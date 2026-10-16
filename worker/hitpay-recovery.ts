@@ -5,7 +5,12 @@ import {
   paymentScopeSchema,
   assertPaymentScope,
 } from "./hitpay-contract";
-import { claimHitpay, findHitpayRequest, paymentRow } from "./hitpay-journal";
+import {
+  claimHitpay,
+  findHitpayRequest,
+  paymentRow,
+  reopenHitpayReview,
+} from "./hitpay-journal";
 import { associationSchema, intentSchema, recordObservation } from "./journal";
 import { readNativeAttempt, storedNativeSignature } from "./native-adapter";
 import { ProviderSession, type ProviderControl } from "./provider-session";
@@ -236,7 +241,7 @@ export async function recoverHitpay(
   } finally {
     if (
       result === "due" &&
-      (row.tries >= 12 || Date.now() >= row.recovery_end_ms)
+      (row.tries >= row.retry_limit || Date.now() >= row.recovery_end_ms)
     ) {
       result = "manual_review";
       reason = "recovery_exhausted";
@@ -252,5 +257,8 @@ export async function recoverHitpay(
         row.generation,
       )
       .run();
+    // A webhook may have arrived while the claim was reading an older state.
+    // Reconcile that unseen receipt without losing the terminal decision first.
+    await reopenHitpayReview(env.STATE, id, Date.now()).run();
   }
 }

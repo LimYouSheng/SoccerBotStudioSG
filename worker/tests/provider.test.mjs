@@ -1619,9 +1619,10 @@ async function ongoingAttempt(f, options = {}) {
     .prepare("SELECT * FROM attempts WHERE id=?")
     .bind(a.id)
     .first();
+  const now = Date.now();
   await f.db
     .prepare("INSERT INTO guest_access VALUES(?,?,?,?,NULL)")
-    .bind(a.key, row.owner_id, Date.now() - 600000, Date.now() - 1000)
+    .bind(a.key, row.owner_id, now - 600000, now - 1000)
     .run();
   await f.db
     .prepare(
@@ -1633,8 +1634,8 @@ async function ongoingAttempt(f, options = {}) {
       row.intent_hash,
       "a".repeat(40),
       "{}",
-      Date.now() - 600000,
-      Date.now() + 600000,
+      now - 600000,
+      now + 600000,
       options.finite ? 0 : 1,
     )
     .run();

@@ -86,7 +86,7 @@ export async function confirmation(
     // A completed payment is not permanently fresh booking evidence. Reuse the
     // original bounded financial claim; never reset its tries or expiry.
     const queued = await env.STATE.prepare(
-      "UPDATE hitpay_payments SET state='due',reason='booking_refresh_pending',ready_ms=? WHERE attempt_id=? AND state='complete' AND paid_ms IS NOT NULL AND external_state='observed' AND tries<12 AND recovery_end_ms>? RETURNING attempt_id",
+      "UPDATE hitpay_payments SET state='due',reason='booking_refresh_pending',ready_ms=? WHERE attempt_id=? AND state='complete' AND paid_ms IS NOT NULL AND external_state='observed' AND tries<retry_limit AND recovery_end_ms>? RETURNING attempt_id",
     )
       .bind(now, id, now)
       .first();

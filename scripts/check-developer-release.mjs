@@ -22,6 +22,15 @@ assert.deepEqual(liveConfig, {
     PREMIUM_SERVICE_ID: "3",
     IDENTITY_DELIVERY: "ongoing",
     LIVE_READBACK: "enabled",
+    CHECKOUT_PAYMENT_ROUTE: "hitpay",
+    HITPAY_CHECKOUT: "enabled",
+    HITPAY_RECOVERY: "enabled",
+    HITPAY_WEBHOOK: "enabled",
+    HITPAY_MERCHANT: "app404",
+    HITPAY_BUSINESS_ID: "a2d2119d-79f1-41fa-9d65-6e311d06da35",
+    HITPAY_CONTRACT_ACCEPTED: "sandbox-reviewed",
+    SIMPLYBOOK_EXTERNAL_PAYMENT: "sandbox-reviewed",
+    SIMPLYBOOK_EXTERNAL_PROCESSOR: "manual",
   },
 });
 const files = exportInventory(directory);
@@ -154,6 +163,8 @@ try {
     "0027_ongoing_identity_delivery.sql",
     "0028_ongoing_native_readback.sql",
     "0029_direct_hitpay.sql",
+    "0030_hitpay_webhook_recovery.sql",
+    "0031_rejected_checkout_history.sql",
   ]);
   // Old-state compatibility remains tested locally, never re-applied remotely.
   for (const name of names.slice(5, 8)) await migrate(name);
@@ -410,6 +421,8 @@ try {
   await migrate("0027_ongoing_identity_delivery.sql");
   await migrate("0028_ongoing_native_readback.sql");
   await migrate("0029_direct_hitpay.sql");
+  await migrate("0030_hitpay_webhook_recovery.sql");
+  await migrate("0031_rejected_checkout_history.sql");
   assert.deepEqual(
     (
       await db

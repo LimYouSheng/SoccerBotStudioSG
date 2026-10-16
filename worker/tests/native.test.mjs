@@ -3476,3 +3476,82 @@ test("HitPay hold readback evidence is durable before the next provider read and
     reply = undefined;
   }
 });
+
+test("rejected ongoing preflight grants are archived without reopening finite or uncertain writes", async () => {
+  for (const mode of ["rejected", "uncertain", "finite"]) {
+    const data = await prepared(false, true, true);
+    await grantNative(data);
+    await db
+      .prepare(
+        "UPDATE native_checkout_grants SET state='blocked',ongoing=?,result_json=? WHERE attempt_id=?",
+      )
+      .bind(
+        mode === "finite" ? 0 : 1,
+        JSON.stringify({
+          state: "selection_unavailable",
+          paymentAvailable: false,
+          rejectedSessionIndex: 0,
+        }),
+        data.scope.attemptId,
+      )
+      .run();
+    if (mode === "uncertain")
+      await db
+        .prepare(
+          "INSERT INTO session_effects(attempt_id,step,outcome) VALUES(?,'booking:0','unknown')",
+        )
+        .bind(data.scope.attemptId)
+        .run();
+    const original = await db
+      .prepare("SELECT * FROM native_checkout_grants WHERE attempt_id=?")
+      .bind(data.scope.attemptId)
+      .first();
+    const before = calls.length;
+    const result = await call("archive-rejected", data);
+    assert.equal(result.status, 200);
+    assert.equal(calls.length, before);
+    const retained = await db
+      .prepare("SELECT * FROM native_checkout_grants WHERE attempt_id=?")
+      .bind(data.scope.attemptId)
+      .first();
+    const archived = await db
+      .prepare(
+        "SELECT * FROM rejected_native_checkout_grants WHERE attempt_id=?",
+      )
+      .bind(data.scope.attemptId)
+      .first();
+    if (mode === "rejected") {
+      assert.equal(retained, null);
+      assert.deepEqual(archived, original);
+      assert.equal(
+        (await call("customer-current", data)).result.state,
+        "empty",
+      );
+      // A new grant may bind a different attempt without mutating old history.
+      const owner = (
+        await db
+          .prepare("SELECT owner_id FROM attempts WHERE id=?")
+          .bind(data.scope.attemptId)
+          .first()
+      ).owner_id;
+      const next = await call("prepare", { ...data, owner });
+      assert.notEqual(next.result.id, data.scope.attemptId);
+      await grantNative({
+        ...data,
+        scope: { ...data.scope, attemptId: next.result.id },
+      });
+      assert.deepEqual(
+        await db
+          .prepare(
+            "SELECT * FROM rejected_native_checkout_grants WHERE attempt_id=?",
+          )
+          .bind(data.scope.attemptId)
+          .first(),
+        original,
+      );
+    } else {
+      assert.deepEqual(retained, original);
+      assert.equal(archived, null);
+    }
+  }
+});

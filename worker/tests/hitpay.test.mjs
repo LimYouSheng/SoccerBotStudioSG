@@ -176,7 +176,7 @@ beforeEach(async () => {
     .bind(attemptId)
     .run();
 });
-async function seedPayment({ expired = false } = {}) {
+async function seedPayment({ expired = false, recoveryExpired = false } = {}) {
   await db
     .prepare(
       "INSERT INTO hitpay_payments(attempt_id,scope_json,reference,request_id,expires_ms,created_ms,recovery_end_ms,state,reason,ready_ms) VALUES(?,?,?,?,?,?,?,'due','payment_pending',?)",
@@ -188,7 +188,7 @@ async function seedPayment({ expired = false } = {}) {
       requestId,
       expired ? Date.now() - 1 : Date.now() + 60000,
       Date.now(),
-      Date.now() + 86400000,
+      recoveryExpired ? Date.now() - 1 : Date.now() + 86400000,
       Date.now() + 60000,
     )
     .run();
@@ -824,4 +824,119 @@ test("HitPay preexisting invoice payment requires review without another externa
   assert.equal((await row()).state, "manual_review");
   assert.equal((await row()).reason, "invoice_already_paid_review");
   assert.equal(provider.writes(), 0);
+});
+
+test("HitPay novel webhooks reopen recoverable manual review within a bounded unchanged deadline", async () => {
+  await seedPayment();
+  const initial = await row();
+  await db
+    .prepare(
+      "UPDATE hitpay_payments SET state='manual_review',reason='recovery_exhausted',tries=12 WHERE attempt_id=?",
+    )
+    .bind(attemptId)
+    .run();
+  assert.equal((await send()).status, 202);
+  let saved = await row();
+  assert.equal(saved.state, "due");
+  assert.equal(saved.tries, 12);
+  assert.equal(saved.retry_limit, 13);
+  assert.equal(saved.recovery_end_ms, initial.recovery_end_ms);
+  // The same receipt cannot reopen a later terminal decision.
+  await db
+    .prepare(
+      "UPDATE hitpay_payments SET state='manual_review',reason='recovery_exhausted',tries=13 WHERE attempt_id=?",
+    )
+    .bind(attemptId)
+    .run();
+  await send();
+  assert.equal((await row()).state, "manual_review");
+  // A distinct authenticated event permits the next bounded read.
+  await send(
+    JSON.stringify({
+      id: requestId,
+      reference_number: "synthetic-reference",
+      status: "completed",
+    }),
+  );
+  assert.equal((await row()).retry_limit, 14);
+  const provider = providerFixture();
+  await recover();
+  saved = await row();
+  assert.equal(saved.state, "complete", saved.reason);
+  assert.equal(provider.writes(), 1);
+  assert.equal(provider.reads(), 1);
+  await send();
+  await recover();
+  assert.equal(provider.writes(), 1);
+  assert.equal((await row()).recovery_end_ms, initial.recovery_end_ms);
+});
+test("HitPay webhook reopening retains security decisions and exhausted retry limits", async () => {
+  await seedPayment();
+  for (const [reason, tries] of [
+    ["hitpay_association_mismatch", 1],
+    ["hitpay_paid_booking_invalid", 1],
+    ["hitpay_late_payment_review", 1],
+    ["recovery_exhausted", 16],
+  ]) {
+    await db
+      .prepare(
+        "UPDATE hitpay_payments SET state='manual_review',reason=?,tries=? WHERE attempt_id=?",
+      )
+      .bind(reason, tries, attemptId)
+      .run();
+    const before = await row();
+    await send(
+      JSON.stringify({
+        id: requestId,
+        reference_number: "synthetic-reference",
+        status: reason,
+      }),
+    );
+    assert.deepEqual(await row(), before);
+  }
+  assert.equal(outbound, 0);
+});
+
+test("HitPay webhook cannot extend an expired financial recovery deadline", async () => {
+  await seedPayment({ recoveryExpired: true });
+  await db
+    .prepare(
+      "UPDATE hitpay_payments SET state='manual_review',reason='recovery_exhausted' WHERE attempt_id=?",
+    )
+    .bind(attemptId)
+    .run();
+  const before = await row();
+  assert.equal((await send()).status, 202);
+  assert.deepEqual(await row(), before);
+  assert.equal(outbound, 0);
+});
+
+test("HitPay webhook arriving during a claim is reconciled after its older terminal read", async () => {
+  await seedPayment();
+  let entered, release;
+  const reading = new Promise((resolve) => {
+    entered = resolve;
+  });
+  handler = async () => {
+    entered();
+    return new Promise((resolve) => {
+      release = resolve;
+    });
+  };
+  const pending = recover();
+  await reading;
+  assert.equal((await row()).state, "claimed");
+  assert.equal((await send()).status, 202);
+  release(
+    Response.json({ ...paymentResponse(), status: "failed", payments: [] }),
+  );
+  await pending;
+  assert.equal((await row()).state, "due");
+  assert.equal((await row()).reason, "webhook_recheck_pending");
+  const provider = providerFixture();
+  await recover();
+  assert.equal((await row()).state, "complete", (await row()).reason);
+  assert.equal(provider.writes(), 1);
+  await send();
+  assert.equal((await row()).state, "complete");
 });

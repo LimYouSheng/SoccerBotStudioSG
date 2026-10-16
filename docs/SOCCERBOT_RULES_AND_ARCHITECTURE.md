@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Approved sandbox deployment and recoverable rejection — 16 October 2026
+
+The owner authorizes persistent HitPay sandbox configuration in the generated developer live release, superseding the earlier instruction to keep that live artifact's new payment gates disabled. The base closed artifact remains disabled. Live publication binds the sandbox merchant/account, contract acceptance, external processor and checkout/recovery/webhook enablement; post-deployment reads must verify these non-secret values and required secret binding presence. No secret values enter source or receipts.
+
+Confirmed preflight rejection may release customer selection only before any dispatch/effect. Archive the prior ongoing grant without deleting attempt history; uncertain writes and finite grants never roll over. Apply affected-session changes locally and preserve details. Authenticated novel HitPay receipts may schedule bounded rechecks of recoverable manual review within the original financial deadline; never reset money evidence, unknown writes or security decisions. Cancellation and late payment cannot recreate capacity or trigger automatic refunds.
+
 ## Holding request ingress — 15 October 2026
 
 Hold creation uses the existing authenticated native booking route with the exact hold=1 query. Its HTTP allowlist must agree with the downstream route; this narrow allowance grants no booking authority by itself. Preserve all other query rejection and provider/write safeguards.

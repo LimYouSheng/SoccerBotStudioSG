@@ -53,19 +53,21 @@ export function BookingPage({ step }: { step: BookingStep }) {
     action.operation === "reserve" &&
     action.status === "loading";
   const actual =
-      handingOff || reserving
-        ? step
-        : bookingService.mode === "live" &&
-            bookingService.operations.availability === "unavailable" &&
-            step !== "account"
-          ? "session"
+      step === "details" && action.returnToCalendar
+        ? "time"
+        : handingOff || reserving
+          ? step
           : bookingService.mode === "live" &&
-              !attempt &&
-              draft.mode &&
-              ["review", "payment"].includes(step) &&
-              !selectionConfirmed
-            ? "time"
-            : guardedStep(step, draft, attempt, now),
+              bookingService.operations.availability === "unavailable" &&
+              step !== "account"
+            ? "session"
+            : bookingService.mode === "live" &&
+                !attempt &&
+                draft.mode &&
+                ["review", "payment"].includes(step) &&
+                !selectionConfirmed
+              ? "time"
+              : guardedStep(step, draft, attempt, now),
     current = progress.findIndex(([id]) => id === step);
   useEffect(() => {
     if (ready && actual !== step) router.replace(`/book/${actual}/`);

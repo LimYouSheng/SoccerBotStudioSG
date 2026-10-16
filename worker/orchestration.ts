@@ -104,8 +104,10 @@ export async function orchestrateBooking(
     return { state: "prerequisites_unavailable", paymentAvailable: false };
   // Validate the whole selected cart before creating its first native booking.
   // This is not a reservation; each write still revalidates below.
+  let checkedSessionIndex = 0;
   try {
     for (const [sessionIndex] of intent.sessions.entries()) {
+      checkedSessionIndex = sessionIndex;
       const fresh = intentSchema.parse(
         await operations.revalidate(intent, { attemptId: id, sessionIndex }),
       );
@@ -114,6 +116,7 @@ export async function orchestrateBooking(
     }
   } catch (error) {
     return {
+      rejectedSessionIndex: checkedSessionIndex,
       state:
         error instanceof ApiError && error.code === "native_restart_required"
           ? "restart_required"

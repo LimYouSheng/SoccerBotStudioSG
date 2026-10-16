@@ -10,6 +10,7 @@ import { afterEach, expect, test, vi } from "vitest";
 import { NativeSessionInit } from "./native-session-init";
 import { useCalendarAvailability } from "./calendar-availability";
 import { demoBookingService } from "@/services/demo/booking";
+import { BookingServiceError } from "@/services/contracts";
 import type {
   BookingService,
   CalendarAvailability,
@@ -734,4 +735,125 @@ test("failed preparation releases cached calendar without removing the selection
   expect(availability.mock.calls[0]).toEqual([
     expect.objectContaining({ fresh: true }),
   ]);
+});
+
+test("reservation conflict removes its session locally and returns to calendar with contact preserved", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2027-01-04T22:30:00Z"));
+  const availability = vi.fn<BookingService["availability"]>(async () => [
+    { ...slot, available: true },
+  ]);
+  const publicCalendar = vi.fn(async ({ month }: { month: string }) => ({
+    month,
+    serviceId: "12",
+    observedAtMs: Date.now(),
+    dates:
+      month === "2027-01"
+        ? [
+            {
+              date: slot.date,
+              available: true,
+              offers: [
+                {
+                  serviceId: "12",
+                  serviceName: "Real session",
+                  instructorId: slot.instructor,
+                  instructorName: "Real trainer",
+                  startMs: Date.parse(`${slot.date}T09:00:00+08:00`),
+                  priceMinor: 8800,
+                  currency: "SGD" as const,
+                },
+              ],
+            },
+          ]
+        : [],
+  }));
+  const checkout = vi.fn<BookingService["checkout"]>(async ({ draft }) => ({
+    id: "00000000-0000-4000-8000-000000000001",
+    draft,
+    status: "ready",
+    outcome: "pending",
+    checkUntil: 0,
+    booking: null,
+  }));
+  const pay = vi.fn<BookingService["pay"]>(async () => {
+    throw new BookingServiceError(
+      "selection_unavailable",
+      "The selected session is no longer available. Your details have been kept.",
+      0,
+    );
+  });
+  const service: BookingService = {
+    ...demoBookingService,
+    mode: "live",
+    operations: {
+      ...demoBookingService.operations,
+      availability: "live",
+      checkout: "live",
+      pay: "live",
+    },
+    publicCalendar,
+    availability,
+    checkout,
+    pay,
+  };
+  function Probe() {
+    const state = useBooking();
+    return (
+      <>
+        <button
+          onClick={() => state.update({ slots: [{ ...slot, start: "09:50" }] })}
+        >
+          Choose replacement
+        </button>
+        <button onClick={() => state.showDate(slot.date)}>
+          Return to calendar
+        </button>
+        <output data-testid="cached-times">
+          {state.availability.result?.dates.includes(slot.date)
+            ? "visible"
+            : "loading"}
+        </output>
+        <output data-testid="selected-count">{state.draft.slots.length}</output>
+        <output data-testid="contact-name">{state.draft.contact.name}</output>
+        <output data-testid="notice">{state.selectionNotice}</output>
+      </>
+    );
+  }
+  const tree = (step: "time" | "details") => (
+    <BookingProvider bookingService={service}>
+      <Seed />
+      <BookingPage step={step} />
+      <Probe />
+    </BookingProvider>
+  );
+  const view = render(tree("time"));
+  await act(async () => {});
+  fireEvent.click(screen.getByText("Choose test session"));
+  await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(4));
+  view.rerender(tree("details"));
+  fireEvent.click(screen.getByRole("button", { name: "Review booking" }));
+  await waitFor(() => expect(pay).toHaveBeenCalledTimes(1));
+  await act(async () => {});
+  fireEvent.click(screen.getByText("Return to calendar"));
+  await waitFor(() =>
+    expect(screen.getByTestId("cached-times")).toHaveTextContent("visible"),
+  );
+  expect(screen.getByTestId("selected-count")).toHaveTextContent("0");
+  expect(screen.getByTestId("contact-name")).toHaveTextContent("Test Customer");
+  expect(replace).toHaveBeenCalledWith("/book/time/");
+  expect(screen.getByTestId("notice")).toHaveTextContent(
+    "The selected session is no longer available",
+  );
+  expect(publicCalendar).toHaveBeenCalledTimes(4);
+  expect(availability).toHaveBeenCalledTimes(1);
+  expect(availability.mock.calls[0]).toEqual([
+    expect.objectContaining({ fresh: true }),
+  ]);
+  fireEvent.click(screen.getByText("Choose replacement"));
+  view.rerender(tree("details"));
+  expect(screen.getByLabelText(/Full name/)).toHaveValue("Test Customer");
+  expect(screen.getByLabelText(/Email address/)).toHaveValue(
+    "test@example.com",
+  );
 });

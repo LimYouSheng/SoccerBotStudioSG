@@ -44,6 +44,7 @@ type ActionState = {
     "idle" | "loading" | "success" | "failure" | "unavailable" | "cancelled";
   operation?: Action;
   error?: string;
+  returnToCalendar?: boolean;
 };
 interface BookingContextValue extends StoredBooking {
   availability: ReturnType<typeof useBookingAvailability>;
@@ -401,7 +402,36 @@ export function BookingProvider({
                 "temporarily_unavailable",
                 "We couldn’t complete that request. Please try again.",
               );
-        if (known.code === "conflict") invalidateAvailability();
+        const selectionRejected =
+          operation === "reserve" &&
+          (known.code === "selection_unavailable" ||
+            known.code === "selection_changed");
+        if (selectionRejected) {
+          const rejected =
+            current.draft.slots[known.rejectedSessionIndex ?? -1];
+          const rejectedSlots = rejected ? [rejected] : current.draft.slots;
+          const rejectedKeys = new Set(rejectedSlots.map(slotKey));
+          for (const date of new Set(rejectedSlots.map((slot) => slot.date))) {
+            const remaining = (calendar.cachedDates[date] ?? []).filter(
+              (slot) => !rejectedKeys.has(slotKey(slot)),
+            );
+            calendar.reconcile(date, remaining.length > 0, remaining);
+          }
+          commit({
+            ...current,
+            attempt: null,
+            draft: {
+              ...current.draft,
+              accepted: false,
+              slots: current.draft.slots.filter(
+                (slot) => !rejectedKeys.has(slotKey(slot)),
+              ),
+            },
+          });
+          confirmSelection(null);
+          pauseCalendar(false);
+          setSelectionNotice(known.message);
+        } else if (known.code === "conflict") invalidateAvailability();
         setAction({
           status:
             known.code === "cancelled"
@@ -411,6 +441,7 @@ export function BookingProvider({
                 : "failure",
           operation,
           error: known.message,
+          returnToCalendar: selectionRejected,
         });
         return false;
       } finally {
@@ -418,7 +449,7 @@ export function BookingProvider({
         if (mounted.current && !latest.current.attempt) pauseCalendar(false);
       }
     },
-    [service, commit, setAction, identityService],
+    [service, commit, setAction, identityService, calendar],
   );
   useEffect(() => {
     if (service.mode !== "demo" || value.attempt?.status !== "checking") return;
@@ -567,6 +598,7 @@ export function BookingProvider({
           )
             return;
           cancel();
+          if (action.returnToCalendar) setAction({ status: "idle" });
           pauseCalendar(false);
           commit({
             ...current,
