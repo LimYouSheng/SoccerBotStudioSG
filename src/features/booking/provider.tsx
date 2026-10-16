@@ -36,7 +36,6 @@ import {
   type StoredBooking,
 } from "@/services/storage";
 import { useBookingAvailability } from "./availability";
-import { NativeSessionInit } from "./native-session-init";
 type Action = Exclude<BookingOperation, "availability"> | "reserve";
 type ActionState = {
   status:
@@ -517,9 +516,6 @@ export function BookingProvider({
         },
       }}
     >
-      <NativeSessionInit
-        enabled={value.ready && service.mode === "live" && !!value.draft.mode}
-      />
       {children}
     </Context.Provider>
   );
