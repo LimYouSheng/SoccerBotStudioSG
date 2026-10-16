@@ -19,6 +19,7 @@ export async function authorizeCustomerCheckout(
   const input = nativePrepareSchema.parse(value);
   const p = policy(env);
   const access = await authenticate(request, env, Date.now());
+  await archiveRejectedCustomerGrant(env, access.capability_hash);
   const existing = await env.STATE.withSession("first-primary")
     .prepare("SELECT 1 FROM native_checkout_grants WHERE capability_hash=?")
     .bind(access.capability_hash)
@@ -107,4 +108,22 @@ export async function authorizeCustomerCheckout(
       JSON.stringify(available),
     )
     .run();
+}
+
+export async function archiveRejectedCustomerGrant(
+  env: Env,
+  capabilityHash: string,
+) {
+  // The account coordinator serializes this rollover. Archive only a proven
+  // preflight rejection with no dispatch or effect; never renew uncertain writes.
+  const rejected =
+    "capability_hash=? AND ongoing=1 AND state='blocked' AND json_extract(result_json,'$.state') IN ('selection_unavailable','restart_required') AND EXISTS(SELECT 1 FROM attempts a WHERE a.id=native_checkout_grants.attempt_id AND a.state='prepared' AND a.association_json IS NULL) AND NOT EXISTS(SELECT 1 FROM dispatches d WHERE d.attempt_id=native_checkout_grants.attempt_id) AND NOT EXISTS(SELECT 1 FROM session_effects e WHERE e.attempt_id=native_checkout_grants.attempt_id)";
+  await env.STATE.batch([
+    env.STATE.prepare(
+      `INSERT INTO rejected_native_checkout_grants SELECT * FROM native_checkout_grants WHERE ${rejected}`,
+    ).bind(capabilityHash),
+    env.STATE.prepare(
+      `DELETE FROM native_checkout_grants WHERE ${rejected} AND EXISTS(SELECT 1 FROM rejected_native_checkout_grants h WHERE h.attempt_id=native_checkout_grants.attempt_id AND h.capability_hash=native_checkout_grants.capability_hash)`,
+    ).bind(capabilityHash),
+  ]);
 }

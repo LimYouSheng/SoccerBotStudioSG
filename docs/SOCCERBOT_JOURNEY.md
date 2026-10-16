@@ -1,5 +1,15 @@
 # SoccerBotStudio — Journey
 
+## Sandbox deployment and recovery correction — 16 October 2026
+
+Expanded local verification exposed an existing fixture calling Date.now separately for the start and end of an exactly20-minute grant. A millisecond boundary violates the unchanged database maximum. Capture one timestamp for both fixture endpoints; retain the first failed log and all assertions. Source changes during the first code pass correctly invalidated its receipt; rerun final verification against stable source.
+
+Owner requests durable sandbox settings, automatic calendar return for confirmed reservation conflicts, and webhook recovery from recoverable manual review. Main dd3c31b passed all three CI gates and deployed, but the generated live artifact inherited native/disabled payment defaults and omitted five sandbox settings. Live nine-setting restoration was independently verified with secrets preserved. Future live artifacts explicitly carry the approved developer HitPay route, flags, merchant app404, business ID, sandbox-reviewed contracts and manual external processor; deployment verifies actual non-secret settings and secret binding presence after activation. Closed base configuration remains closed.
+
+Preflight rejection now identifies the affected session before any booking effect. The client removes that session from its local calendar and selection, preserves contact and unaffected sessions, releases the prepared attempt and returns to date selection without another availability request. Generic failures and unknown writes retain their attempt and are not treated as sold out. Migration0031 archives ongoing rejected preflight grants only when the attempt remains prepared with no dispatch/effect/association; the next selection gets fresh authority while the prior grant and attempt history remain retained.
+
+Additive migration0030 adds a monotonic retry_limit, initially12 and capped16. A novel authenticated receipt can reopen provider failed/expired/canceled or recovery-exhausted manual review within the original24-hour deadline; duplicates cannot reopen it. Up to four extra checks retain original tries, deadline, payment evidence and unknown external-write state. Identity/money mismatches, invalid bookings and late-payment review remain operator-owned. Reopening only schedules authoritative provider reconciliation; no booking recreation, repeated uncertain write or automatic refund. Local non-browser and exact-source CI verification are required; no physical provider trial is claimed.
+
 ## Hold-state experiment evidence — 16 October 2026
 
 CI38836809759 passed frontend verification and all337 runtime tests in both Worker jobs, but the strict ordered inventory rejected the two new titles appended at the end. Move only those two entries to their native-test execution position; all335 existing titles and every assertion remain unchanged. The retained local TAP independently confirms337 passes and zero failures/skips/cancellations/todos. Preserve the original failed receipt; fresh exact-source CI must pass before merge.

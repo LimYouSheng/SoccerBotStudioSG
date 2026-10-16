@@ -1,3 +1,5 @@
+import { archiveRejectedCustomerGrant } from "../customer-authority";
+import { authenticate } from "../access";
 import { NativeCalendarReads } from "../native-calendar";
 import {
   executeNativeCheckout,
@@ -385,6 +387,7 @@ const harness = {
           });
           break;
         }
+        case "archive-rejected":
         case "customer-prepare":
         case "customer-current":
         case "customer-calendar":
@@ -432,6 +435,19 @@ const harness = {
             result = await provider.nativeRead(admittedEnv, control, {
               kind: "catalogue-services",
             });
+            break;
+          }
+          if (input.action === "archive-rejected") {
+            const access = await authenticate(
+              customerRequest,
+              admittedEnv,
+              Date.now(),
+            );
+            await archiveRejectedCustomerGrant(
+              admittedEnv,
+              access.capability_hash,
+            );
+            result = { archived: true };
             break;
           }
           if (input.action === "customer-prepare") {

@@ -332,6 +332,10 @@
     "title": "preloaded browser slots survive date and player changes and Continue refreshes changed availability"
   },
   {
+    "file": "src/features/booking/booking-parity.test.tsx",
+    "title": "reservation conflict removes its session locally and returns to calendar with contact preserved"
+  },
+  {
     "file": "src/features/booking/confirmation-checking.test.tsx",
     "title": "aborts stale session reads and cannot reuse their confirmed result"
   },
@@ -390,6 +394,10 @@
   {
     "file": "src/features/booking/direct-checkout.test.tsx",
     "title": "holds once before review and starts payment without preparing or checking availability again"
+  },
+  {
+    "file": "src/features/booking/direct-checkout.test.tsx",
+    "title": "live reservation response distinguishes a rejected selection from an uncertain write"
   },
   {
     "file": "src/features/booking/email-bot-proof.test.tsx",

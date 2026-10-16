@@ -12,6 +12,7 @@ import { join } from "node:path";
 import { exportInventory } from "./check-export.mjs";
 import {
   validateDeployment,
+  verifySandboxSettings,
   awaitDeploymentHealth,
 } from "./deploy-cloudflare.mjs";
 const revision = "a".repeat(40);
@@ -45,6 +46,15 @@ function fixture() {
       PREMIUM_SERVICE_ID: "3",
       IDENTITY_DELIVERY: "ongoing",
       LIVE_READBACK: "enabled",
+      CHECKOUT_PAYMENT_ROUTE: "hitpay",
+      HITPAY_CHECKOUT: "enabled",
+      HITPAY_RECOVERY: "enabled",
+      HITPAY_WEBHOOK: "enabled",
+      HITPAY_MERCHANT: "app404",
+      HITPAY_BUSINESS_ID: "a2d2119d-79f1-41fa-9d65-6e311d06da35",
+      HITPAY_CONTRACT_ACCEPTED: "sandbox-reviewed",
+      SIMPLYBOOK_EXTERNAL_PAYMENT: "sandbox-reviewed",
+      SIMPLYBOOK_EXTERNAL_PROCESSOR: "manual",
     },
   });
   write("developer-release/manifest.json", {
@@ -193,5 +203,42 @@ test("deployment readiness remains bounded and refuses foreign revisions failed 
         pause: async () => assert.fail("failure must not be retried"),
       }),
     );
+  }
+});
+
+test("deployment checks actual sandbox flags and secret presence without requiring secret values", () => {
+  const f = fixture();
+  try {
+    const config = validateDeployment(f.root, revision);
+    const bindings = Object.entries(config.vars).map(([name, text]) => ({
+      name,
+      text,
+      type: "plain_text",
+    }));
+    for (const name of [
+      "HITPAY_SANDBOX_API_KEY",
+      "HITPAY_WEBHOOK_SALT",
+      "SIMPLYBOOK_DEV_SIGNING_SECRET",
+    ])
+      bindings.push({ name, type: "secret_text" });
+    verifySandboxSettings({ bindings }, config);
+    for (const name of [
+      "CHECKOUT_PAYMENT_ROUTE",
+      "HITPAY_MERCHANT",
+      "HITPAY_RECOVERY",
+      "HITPAY_WEBHOOK_SALT",
+    ]) {
+      assert.throws(() =>
+        verifySandboxSettings(
+          { bindings: bindings.filter((b) => b.name !== name) },
+          config,
+        ),
+      );
+    }
+    const changed = structuredClone(bindings);
+    changed.find((b) => b.name === "HITPAY_CHECKOUT").text = "disabled";
+    assert.throws(() => verifySandboxSettings({ bindings: changed }, config));
+  } finally {
+    rmSync(f.root, { recursive: true, force: true });
   }
 });

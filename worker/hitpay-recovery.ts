@@ -5,7 +5,12 @@ import {
   paymentScopeSchema,
   assertPaymentScope,
 } from "./hitpay-contract";
-import { claimHitpay, findHitpayRequest, paymentRow } from "./hitpay-journal";
+import {
+  claimHitpay,
+  findHitpayRequest,
+  paymentRow,
+  reopenHitpayReview,
+} from "./hitpay-journal";
 import { associationSchema, intentSchema, recordObservation } from "./journal";
 import { readNativeAttempt, storedNativeSignature } from "./native-adapter";
 import { ProviderSession, type ProviderControl } from "./provider-session";
@@ -236,21 +241,24 @@ export async function recoverHitpay(
   } finally {
     if (
       result === "due" &&
-      (row.tries >= 12 || Date.now() >= row.recovery_end_ms)
+      (row.tries >= row.retry_limit || Date.now() >= row.recovery_end_ms)
     ) {
       result = "manual_review";
       reason = "recovery_exhausted";
     }
-    await env.STATE.prepare(
-      "UPDATE hitpay_payments SET state=?,reason=?,ready_ms=? WHERE attempt_id=? AND state='claimed' AND generation=?",
-    )
-      .bind(
+    // Commit the terminal decision and the pending-receipt wake-up together.
+    // If storage fails, the retained claim lease remains reclaimable by cron.
+    await env.STATE.batch([
+      env.STATE.prepare(
+        "UPDATE hitpay_payments SET state=?,reason=?,ready_ms=? WHERE attempt_id=? AND state='claimed' AND generation=?",
+      ).bind(
         result,
         reason,
         Date.now() + Math.min(3600000, 90000 * 2 ** Math.min(row.tries - 1, 6)),
         id,
         row.generation,
-      )
-      .run();
+      ),
+      reopenHitpayReview(env.STATE, id, Date.now()),
+    ]);
   }
 }

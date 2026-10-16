@@ -206,6 +206,11 @@ before(async () => {
       .replace(/^--.*$/gm, "")
       .replace(/\n/g, " "),
   );
+  await db.exec(
+    readFileSync("migrations/0030_hitpay_webhook_recovery.sql", "utf8")
+      .replace(/^--.*$/gm, "")
+      .replace(/\n/g, " "),
+  );
 });
 after(async () => {
   if (mf) await mf.dispose();
@@ -842,7 +847,11 @@ test("orchestration preflights the complete cart before any effect and preserves
       .bind(a.id)
       .first();
     const r = await orchestrate(a, scenario);
-    assert.deepEqual(r.result, { state, paymentAvailable: false });
+    assert.deepEqual(r.result, {
+      state,
+      paymentAvailable: false,
+      rejectedSessionIndex: 1,
+    });
     assert.deepEqual(r.calls, ["validate:0", "validate:1"]);
     assert.deepEqual(await effects(a), []);
     const after = await db

@@ -364,7 +364,11 @@ export async function executeNativeCheckout(options: {
     observeResponse(operation.kind, response.body);
     return response;
   };
-  let result: { state: string; paymentAvailable: boolean } = {
+  let result: {
+    state: string;
+    paymentAvailable: boolean;
+    rejectedSessionIndex?: number;
+  } = {
     state: "recovery_required",
     paymentAvailable: false,
   };
@@ -884,7 +888,7 @@ export async function currentCustomerNative(request: Request, env: Env) {
   const access = await authenticate(request, env, Date.now());
   const row = await env.STATE.withSession("first-primary")
     .prepare(
-      "SELECT a.id,a.intent_json,a.state,g.state AS grant_state,g.availability_json FROM native_checkout_grants g JOIN attempts a ON a.id=g.attempt_id WHERE g.capability_hash=? AND a.owner_id=?",
+      "SELECT a.id,a.intent_json,a.state,g.state AS grant_state,g.result_json,g.availability_json FROM native_checkout_grants g JOIN attempts a ON a.id=g.attempt_id WHERE g.capability_hash=? AND a.owner_id=?",
     )
     .bind(access.capability_hash, access.owner_id)
     .first<{
@@ -892,9 +896,18 @@ export async function currentCustomerNative(request: Request, env: Env) {
       intent_json: string;
       state: string;
       grant_state: string;
+      result_json: string | null;
       availability_json: string | null;
     }>();
   if (!row) return { state: "empty" as const };
+  if (
+    row.state === "prepared" &&
+    row.grant_state === "blocked" &&
+    ["selection_unavailable", "restart_required"].includes(
+      JSON.parse(row.result_json || "{}").state,
+    )
+  )
+    return { state: "empty" as const };
   const intent = intentSchema.parse(JSON.parse(row.intent_json));
   const cache = z
     .record(z.string(), nativeAvailabilitySchema)

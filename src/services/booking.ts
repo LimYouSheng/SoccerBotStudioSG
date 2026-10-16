@@ -354,6 +354,17 @@ async function nativeRequest(
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   if (!response.ok) {
+    if (response.status === 409 && path === "/api/booking/prepare") {
+      const body = await response.json().catch(() => null);
+      if (
+        body?.error === "native_selection_changed" ||
+        body?.error === "native_restart_required"
+      )
+        throw new BookingServiceError(
+          "selection_changed",
+          "Your selection is no longer available or has changed. Please choose again. Your details have been kept.",
+        );
+    }
     if (response.status === 409)
       throw new BookingServiceError(
         "conflict",
@@ -549,6 +560,7 @@ export const liveBookingService: BookingService = defineBookingService({
         attemptId: nativeAttemptId,
         state: z.string(),
         paymentAvailable: z.boolean(),
+        rejectedSessionIndex: z.number().int().min(0).max(11).optional(),
       })
       .parse(
         await nativeRequest(
@@ -564,11 +576,20 @@ export const liveBookingService: BookingService = defineBookingService({
     if (
       result.state === "restart_required" ||
       result.state === "selection_unavailable"
-    )
+    ) {
+      if (
+        result.rejectedSessionIndex === undefined ||
+        result.rejectedSessionIndex >= attempt.draft.slots.length
+      )
+        throw invalidResponse();
       throw new BookingServiceError(
-        "conflict",
-        "This selection has changed. Return to your booking and restart checkout.",
+        result.state === "selection_unavailable"
+          ? "selection_unavailable"
+          : "selection_changed",
+        "This selection is no longer available or has changed. Please choose again. Your details have been kept.",
+        result.rejectedSessionIndex,
       );
+    }
     if (holding && result.state === "associated")
       return { ...attempt, held: true, status: "ready" };
     // A response can never mark the browser paid. All ambiguous writes remain

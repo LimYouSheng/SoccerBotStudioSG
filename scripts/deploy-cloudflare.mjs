@@ -42,6 +42,15 @@ export function validateDeployment(directory, revision) {
       PREMIUM_SERVICE_ID: "3",
       IDENTITY_DELIVERY: "ongoing",
       LIVE_READBACK: "enabled",
+      CHECKOUT_PAYMENT_ROUTE: "hitpay",
+      HITPAY_CHECKOUT: "enabled",
+      HITPAY_RECOVERY: "enabled",
+      HITPAY_WEBHOOK: "enabled",
+      HITPAY_MERCHANT: "app404",
+      HITPAY_BUSINESS_ID: "a2d2119d-79f1-41fa-9d65-6e311d06da35",
+      HITPAY_CONTRACT_ACCEPTED: "sandbox-reviewed",
+      SIMPLYBOOK_EXTERNAL_PAYMENT: "sandbox-reviewed",
+      SIMPLYBOOK_EXTERNAL_PROCESSOR: "manual",
     },
   });
   assert.equal(config.name, "soccerbot-dev");
@@ -102,6 +111,40 @@ async function readHealth(origin) {
   assert.equal(response.status, 200);
   return response.json();
 }
+export function verifySandboxSettings(settings, config) {
+  for (const name of [
+    "SOURCE_REVISION",
+    "CHECKOUT_PAYMENT_ROUTE",
+    "HITPAY_CHECKOUT",
+    "HITPAY_RECOVERY",
+    "HITPAY_WEBHOOK",
+    "HITPAY_MERCHANT",
+    "HITPAY_BUSINESS_ID",
+    "HITPAY_CONTRACT_ACCEPTED",
+    "SIMPLYBOOK_EXTERNAL_PAYMENT",
+    "SIMPLYBOOK_EXTERNAL_PROCESSOR",
+  ]) {
+    assert.equal(
+      settings.bindings.find(
+        (binding) => binding.name === name && binding.type === "plain_text",
+      )?.text,
+      config.vars[name],
+      `Deployed setting mismatch: ${name}`,
+    );
+  }
+  for (const name of [
+    "HITPAY_SANDBOX_API_KEY",
+    "HITPAY_WEBHOOK_SALT",
+    "SIMPLYBOOK_DEV_SIGNING_SECRET",
+  ]) {
+    assert.ok(
+      settings.bindings.some(
+        (binding) => binding.name === name && binding.type === "secret_text",
+      ),
+      `Missing deployed secret binding: ${name}`,
+    );
+  }
+}
 async function deploy() {
   assert.equal(process.env.GITHUB_REF, "refs/heads/main");
   assert.ok(
@@ -140,6 +183,21 @@ async function deploy() {
     read: () => readHealth(config.vars.APP_ORIGIN),
     pause: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   });
+  const settingsResponse = await fetch(
+    `https://api.cloudflare.com/client/v4/accounts/${config.account_id}/workers/scripts/${config.name}/settings`,
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
+        Accept: "application/json",
+      },
+      redirect: "error",
+      signal: AbortSignal.timeout(15000),
+    },
+  );
+  assert.equal(settingsResponse.status, 200, "Deployed settings read failed");
+  const settings = await settingsResponse.json();
+  assert.equal(settings.success, true);
+  verifySandboxSettings(settings.result, config);
   writeFileSync(
     `${directory}/deployment.json`,
     JSON.stringify(
@@ -150,6 +208,7 @@ async function deploy() {
         versionId: health.versionId,
         origin: config.vars.APP_ORIGIN,
         liveCustomerAccess: "enabled",
+        sandboxSettingsVerified: true,
         verifiedAt: new Date().toISOString(),
       },
       null,

@@ -60,6 +60,8 @@ export interface BookingService {
 export type BookingErrorCode =
   | "invalid_request"
   | "invalid_response"
+  | "selection_unavailable"
+  | "selection_changed"
   | "conflict"
   | "unavailable"
   | "temporarily_unavailable"
@@ -68,6 +70,7 @@ export class BookingServiceError extends Error {
   constructor(
     public readonly code: BookingErrorCode,
     message: string,
+    public readonly rejectedSessionIndex?: number,
   ) {
     super(message);
     this.name = "BookingServiceError";

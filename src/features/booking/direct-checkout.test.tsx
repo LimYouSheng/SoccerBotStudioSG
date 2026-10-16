@@ -244,3 +244,53 @@ it("holds once before review and starts payment without preparing or checking av
   expect(assign).toHaveBeenCalledWith(url);
   expect(navigation.replace).not.toHaveBeenCalledWith("/book/payment/");
 });
+
+it("live reservation response distinguishes a rejected selection from an uncertain write", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-15T00:00:00Z"));
+  const attempt: Attempt = {
+    id,
+    draft,
+    status: "ready",
+    outcome: "pending",
+    checkUntil: 0,
+    booking: null,
+  };
+  const response = vi.fn(async () =>
+    Response.json({
+      attemptId: id,
+      state: "selection_unavailable",
+      paymentAvailable: false,
+      rejectedSessionIndex: 0,
+    }),
+  );
+  vi.stubGlobal("fetch", response);
+  await expect(
+    liveBookingService.pay({ attempt, outcome: "pending", holding: true }),
+  ).rejects.toMatchObject({
+    code: "selection_unavailable",
+    rejectedSessionIndex: 0,
+  });
+  response.mockImplementation(async () =>
+    Response.json({
+      attemptId: id,
+      state: "recovery_required",
+      paymentAvailable: false,
+    }),
+  );
+  await expect(
+    liveBookingService.pay({ attempt, outcome: "pending", holding: true }),
+  ).resolves.toMatchObject({ id, status: "checking" });
+  response.mockImplementation(async () =>
+    Response.json({
+      attemptId: id,
+      state: "selection_unavailable",
+      paymentAvailable: false,
+      rejectedSessionIndex: 9,
+    }),
+  );
+  await expect(
+    liveBookingService.pay({ attempt, outcome: "pending", holding: true }),
+  ).rejects.toMatchObject({ code: "invalid_response" });
+  expect(response).toHaveBeenCalledTimes(3);
+});

@@ -23,6 +23,7 @@ export type HitpayRow = {
   state: string;
   reason: string;
   tries: number;
+  retry_limit: number;
   ready_ms: number;
   generation: number;
   paid_ms: number | null;
@@ -175,13 +176,16 @@ export async function storedHitpayCheckout(env: Env, id: string, now: number) {
   };
 }
 export async function claimHitpay(env: Env, id: string, now: number) {
-  await env.STATE.prepare(
-    "UPDATE hitpay_payments SET state='manual_review',reason='recovery_exhausted' WHERE attempt_id=? AND state IN ('due','claimed') AND ready_ms<=? AND (tries>=12 OR recovery_end_ms<=?)",
-  )
-    .bind(id, now, now)
-    .run();
+  // An interrupted final claim may retain an unseen authenticated receipt.
+  // Exhaustion and its permitted wake-up must commit before selecting new work.
+  await env.STATE.batch([
+    env.STATE.prepare(
+      "UPDATE hitpay_payments SET state='manual_review',reason='recovery_exhausted' WHERE attempt_id=? AND state IN ('due','claimed') AND ready_ms<=? AND (tries>=retry_limit OR recovery_end_ms<=?)",
+    ).bind(id, now, now),
+    reopenHitpayReview(env.STATE, id, now),
+  ]);
   return env.STATE.prepare(
-    "UPDATE hitpay_payments SET state='claimed',tries=tries+1,generation=generation+1,ready_ms=? WHERE attempt_id=? AND state IN ('due','claimed') AND ready_ms<=? AND tries<12 AND recovery_end_ms>? RETURNING *",
+    "UPDATE hitpay_payments SET state='claimed',tries=tries+1,generation=generation+1,receipt_checkpoint=COALESCE((SELECT MAX(rowid) FROM hitpay_receipts WHERE attempt_id=hitpay_payments.attempt_id),0),ready_ms=? WHERE attempt_id=? AND state IN ('due','claimed') AND ready_ms<=? AND tries<retry_limit AND recovery_end_ms>? RETURNING *",
   )
     .bind(now + 120000, id, now, now)
     .first<HitpayRow>();
@@ -254,4 +258,14 @@ export async function hitpayConfirmationGuard(env: Env, id: string) {
         ? "payment_received_booking_pending"
         : "payment_verification_pending",
   };
+}
+
+// A durable receipt watermark closes the webhook-versus-active-claim race.
+// Each distinct authenticated receipt can wake eligible terminal work once.
+export function reopenHitpayReview(db: D1Database, id: string, now: number) {
+  return db
+    .prepare(
+      "UPDATE hitpay_payments SET state='due',reason='webhook_recheck_pending',ready_ms=?,retry_limit=MIN(16,MAX(retry_limit,tries+1)),receipt_checkpoint=(SELECT MAX(rowid) FROM hitpay_receipts WHERE attempt_id=hitpay_payments.attempt_id) WHERE attempt_id=? AND state='manual_review' AND reason IN ('hitpay_payment_failed','hitpay_payment_expired','hitpay_payment_canceled','recovery_exhausted') AND tries<16 AND recovery_end_ms>? AND EXISTS(SELECT 1 FROM hitpay_receipts WHERE attempt_id=hitpay_payments.attempt_id AND rowid>hitpay_payments.receipt_checkpoint)",
+    )
+    .bind(now, id, now);
 }
