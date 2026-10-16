@@ -943,6 +943,12 @@ test("HitPay webhook arriving during a claim is reconciled after its older termi
 
 test("HitPay terminal persistence failure retains a reclaimable lease and durable webhook", async () => {
   await seedPayment();
+  // Exercise the last ordinary attempt: the pending receipt must retain its
+  // bounded extra reconciliation even when the failed lease is exhausted.
+  await db
+    .prepare("UPDATE hitpay_payments SET tries=11 WHERE attempt_id=?")
+    .bind(attemptId)
+    .run();
   let entered, release;
   const reading = new Promise((resolve) => {
     entered = resolve;
