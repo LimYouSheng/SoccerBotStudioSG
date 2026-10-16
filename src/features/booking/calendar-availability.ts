@@ -7,6 +7,7 @@ import {
 import { monthAt, todaySG } from "@/domain/dates";
 import { CATALOGUE_MAX_AGE_MS } from "@/domain/catalog";
 import type {
+  AvailableSlot,
   BookingService,
   CalendarAvailability,
 } from "@/services/contracts";
@@ -142,7 +143,7 @@ export function useCalendarAvailability(
   }, [state]);
   const current = state?.owner === service && state.key === key ? state : null;
   const reconcile = useCallback(
-    (date: string, available: boolean | undefined) => {
+    (date: string, available: boolean | undefined, slots?: AvailableSlot[]) => {
       setState((previous) => {
         if (!previous || previous.owner !== service || previous.key !== key)
           return previous;
@@ -150,9 +151,22 @@ export function useCalendarAvailability(
         const entry = previous.entries[month];
         if (!entry) return previous;
         const existing = entry.dates.find((day) => day.date === date);
-        if (existing?.available === available) return previous;
+        if (existing?.available === available && !slots) return previous;
         const dates = entry.dates.filter((day) => day.date !== date);
-        if (available !== undefined) dates.push({ date, available });
+        if (available !== undefined)
+          dates.push({
+            date,
+            available,
+            ...(slots && slots.every((slot) => slot.native)
+              ? {
+                  offers: slots.map((slot) => ({
+                    ...slot.native!,
+                    instructorId: slot.instructor,
+                    startMs: Date.parse(`${slot.date}T${slot.start}:00+08:00`),
+                  })),
+                }
+              : {}),
+          });
         return {
           ...previous,
           entries: {

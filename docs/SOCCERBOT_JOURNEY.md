@@ -1,10 +1,14 @@
 # SoccerBotStudio — Journey
 
+## Calendar return and local reconciliation — 16 October 2026
+
+Owner verified24October09:00 is correctly unavailable; that report is withdrawn. A separate frontend pause survives successful fresh validation followed by preparation failure, leaving Back-to-calendar loading until a selection edit. Release the pause on cancellation or operation completion only without a retained attempt. Prepared/held/unknown-write attempts remain protected. Apply successful fresh day results directly to the existing month cache; prune invalid selections and preserve contact. Read errors preserve cached display rather than invalidating/refetching four months. Fresh submission and server write/hold checks remain mandatory; no post-hold slot recheck. Local code verification passes180 unit/component tests, tooling, policy, formatting, lint, types, build and export. Updated PR35 exact-source CI remains pending. No15-minute cache warmer exists or is added here.
+
 ## Stable guest option and HAR04/05 — 16 October 2026
 
 PR34 is owner-merged as4e98eae after all three PR gates passed in38828870612. Owner reports guest-button movement when saved identity restores. Account options use equal-height grid stretching and a flexible paragraph, so added email controls move the guest button. Align independent cards to the start; extend the existing remembered-account browser case with deferred identity restoration and exact before/after guest-button geometry. Preserve all existing account actions and browser gates.
 
-HAR04/05 capture successful availability responses but omit subsequent preparation requests. Bounded Cloudflare logs establish POST /api/booking/prepare503 at00:55:20 and00:57:30UTC with zero traced provider calls; do not infer unavailable slots or completed bookings. Configuration presence is verified, but automatic approval review rejected non-secret flag-value inspection; explicit owner approval is pending. No provider booking/payment, deployment or configuration mutation performed. UI source/type/lint checks pass; exact-source CI and physical layout acceptance remain pending.
+HAR04/05 capture successful availability responses but omit subsequent preparation requests. Bounded Cloudflare logs establish POST /api/booking/prepare503 at00:55:20 and00:57:30UTC with zero traced provider calls; do not infer unavailable slots or completed bookings. Owner approved non-secret reads and sandbox restoration. Live route was native with HitPay checkout/recovery/webhook disabled. Isolated real-Worker A/B changes only the route: native returns503 hitpay_checkout_disabled, hitpay returns201 prepared, with zero booking/payment writes. Restored all four approved settings and independently verified them with source4e98eae unchanged; unrelated bindings and secret inheritance preserved. No provider booking/payment or code deployment performed. Physical acceptance remains pending.
 
 ## Confirmation restoration race exposed by mechanism tests — 16 October 2026
 
