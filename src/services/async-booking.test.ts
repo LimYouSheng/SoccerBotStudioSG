@@ -19,7 +19,7 @@ function draft() {
     ...blankDraft(),
     mode: "guest" as const,
     accepted: true,
-    slots: [demoSession({ date: "2026-10-13", start: "09:00" })!],
+    slots: [demoSession({ date: "2026-10-13", start: "12:00" })!],
     contact: {
       name: "Demo Customer",
       email: "demo@example.com",

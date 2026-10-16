@@ -11,7 +11,10 @@ import {
 } from "../domain/booking";
 import { contactErrors, blankContact } from "../domain/contact";
 import { SESSION_STARTS, STUDIOS } from "../domain/demo-catalog";
-import { START_INTERVAL_MINUTES } from "../domain/booking-policy";
+import {
+  START_INTERVAL_MINUTES,
+  withinOpeningHours,
+} from "../domain/booking-policy";
 import { addDays, todaySG, clock } from "../domain/dates";
 import { demoBookingModel as service } from "@/services/demo/booking";
 import {
@@ -38,7 +41,7 @@ function validDraft(): BookingDraft {
   return {
     ...blankDraft(),
     mode: "guest",
-    slots: [demoSession({ date: tomorrow(), start: "09:00" })!],
+    slots: [demoSession({ date: tomorrow(), start: "12:00" })!],
     accepted: true,
     contact: {
       ...blankContact(),
@@ -65,22 +68,22 @@ describe("booking contract", () => {
     expect(STUDIOS).toHaveLength(1);
     expect(START_INTERVAL_MINUTES).toBe(50);
     expect(SESSION_STARTS.slice(0, 3).map(clock)).toEqual([
-      "09:00",
-      "09:50",
-      "10:40",
+      "12:00",
+      "12:50",
+      "13:40",
     ]);
   });
   it("does not admit duplicate, overlapping, stale or off-grid slots", () => {
-    const slot = { date: tomorrow(), start: "09:00" };
+    const slot = { date: tomorrow(), start: "12:00" };
     expect(selectionErrors([slot, slot])).not.toEqual([]);
-    expect(overlaps(slot, { ...slot, start: "09:20" })).toBe(true);
-    expect(selectionErrors([{ ...slot, start: "09:40" }])).not.toEqual([]);
+    expect(overlaps(slot, { ...slot, start: "12:20" })).toBe(true);
+    expect(selectionErrors([{ ...slot, start: "12:40" }])).not.toEqual([]);
     expect(selectionErrors([{ ...slot, date: "2020-01-01" }])).not.toEqual([]);
   });
   it("requires a per-session assignment before details", () => {
     const draft = validDraft();
     draft.slots = [
-      { date: tomorrow(), start: "09:00" },
+      { date: tomorrow(), start: "12:00" },
     ] as BookingDraft["slots"];
     expect(guardedStep("details", draft, null)).toBe("time");
     expect(draftError(draft)).toBeTruthy();
@@ -134,7 +137,7 @@ describe("service and payment invariants", () => {
     const draft = validDraft();
     service.checkout(draft, null);
     expect(
-      service.availability(tomorrow()).find((slot) => slot.start === "09:00")
+      service.availability(tomorrow()).find((slot) => slot.start === "12:00")
         ?.available,
     ).toBe(true);
   });
@@ -148,7 +151,7 @@ describe("service and payment invariants", () => {
   });
   it("rechecks final-slot conflicts before offering payment", () => {
     safeWrite("soccerbot-next-demo-inventory", [
-      `Studio 1|${tomorrow()}|09:00`,
+      `Studio 1|${tomorrow()}|12:00`,
     ]);
     expect(() => service.checkout(validDraft(), null)).toThrow(
       /no longer available/,
@@ -165,7 +168,7 @@ describe("service and payment invariants", () => {
     expect(second.booking).toEqual(first.booking);
     expect(first.booking?.totalCents).toBe(8800);
     expect(
-      service.availability(tomorrow()).find((slot) => slot.start === "09:00")
+      service.availability(tomorrow()).find((slot) => slot.start === "12:00")
         ?.available,
     ).toBe(false);
     expect(service.resolve(first)).toEqual(first);
@@ -210,15 +213,15 @@ describe("service and payment invariants", () => {
     vi.setSystemTime(new Date("2026-10-14T00:00:00Z"));
     const draft = validDraft();
     draft.slots.push(
-      demoSession({ date: addDays(tomorrow(), 1), start: "09:00" })!,
+      demoSession({ date: addDays(tomorrow(), 1), start: "12:00" })!,
     );
     const attempt = service.pay(service.checkout(draft, null), "success"),
       paid = service.resolve(attempt, attempt.checkUntil),
       ics = calendarText(paid.booking!);
     expect(paid.booking?.totalCents).toBe(17600);
     expect(ics.match(/BEGIN:VEVENT/g)).toHaveLength(2);
-    expect(ics).toContain("T010000Z");
-    expect(ics).toContain("T014000Z");
+    expect(ics).toContain("T040000Z");
+    expect(ics).toContain("T044000Z");
     expect(new Set(paid.booking?.slots.map(slotKey)).size).toBe(2);
   });
 });
@@ -260,39 +263,42 @@ describe("customer verification preview", () => {
   });
 });
 describe("opening hours and demo instructor rotation", () => {
-  it("offers only complete sessions within 9am to 9pm and rotates instructors every three hours", () => {
+  it("offers only complete sessions within noon to 8pm and rotates instructors every three hours", () => {
     const slots = service.availability(tomorrow());
     expect(slots.map((slot) => slot.start)).toEqual([
-      "09:00",
-      "09:50",
-      "10:40",
-      "11:30",
-      "12:20",
-      "13:10",
-      "14:00",
-      "14:50",
-      "15:40",
-      "16:30",
-      "17:20",
-      "18:10",
-      "19:00",
-      "19:50",
+      "12:00",
+      "12:50",
+      "13:40",
+      "14:30",
+      "15:20",
+      "16:10",
+      "17:00",
+      "17:50",
+      "18:40",
     ]);
     for (const [start, instructor] of [
-      ["09:00", "faisal"],
-      ["11:30", "faisal"],
-      ["12:20", "daniel"],
-      ["14:50", "daniel"],
-      ["15:40", "instructor3"],
-      ["17:20", "instructor3"],
-      ["18:10", "instructor4"],
-      ["19:50", "instructor4"],
+      ["12:00", "faisal"],
+      ["14:30", "faisal"],
+      ["15:20", "daniel"],
+      ["17:50", "daniel"],
+      ["18:40", "instructor3"],
     ]) {
       expect(demoSession({ date: tomorrow(), start })?.instructor).toBe(
         instructor,
       );
       expect(slots.find((slot) => slot.start === start)?.instructor).toBe(
         instructor,
+      );
+    }
+    for (const [time, allowed] of [
+      ["11:59:59.999", false],
+      ["12:00:00", true],
+      ["19:20:00", true],
+      ["19:20:00.001", false],
+      ["20:00:00", false],
+    ] as const) {
+      expect(withinOpeningHours(Date.parse(`2026-10-16T${time}+08:00`))).toBe(
+        allowed,
       );
     }
     expect(demoSession({ date: tomorrow(), start: "08:10" })).toBeNull();
@@ -317,37 +323,37 @@ describe("opening hours and demo instructor rotation", () => {
         .filter((slot) => slot.rotationAt)
         .map(({ start, rotationAt }) => [start, rotationAt]),
     ).toEqual([
-      ["11:30", "12:00"],
-      ["14:50", "15:00"],
+      ["14:30", "15:00"],
+      ["17:50", "18:00"],
     ]);
     expect(
-      slots.find((slot) => slot.start === "17:20")?.rotationAt,
+      slots.find((slot) => slot.start === "18:40")?.rotationAt,
     ).toBeUndefined();
     const date = Array.from({ length: 7 }, (_, i) =>
       addDays(tomorrow(), i),
     ).find((date) => new Date(`${date}T12:00:00Z`).getUTCDay() === 2)!;
     const draft = {
       ...validDraft(),
-      slots: [demoSession({ date, start: "11:30" })!],
+      slots: [demoSession({ date, start: "14:30" })!],
     };
     expect(
-      service.availability(date).find((slot) => slot.start === "11:30")
+      service.availability(date).find((slot) => slot.start === "14:30")
         ?.available,
     ).toBe(true);
     const attempt = service.checkout(draft, null);
     const checking = service.pay(attempt, "success");
     const paid = service.resolve(checking, checking.checkUntil);
     expect(paid.booking?.slots[0].instructor).toBe("faisal");
-    expect(paid.booking?.slots[0].start).toBe("11:30");
+    expect(paid.booking?.slots[0].start).toBe("14:30");
   });
   it("accepts different session instructors and rejects stale assignments or missing rotation disclosures", () => {
     const date = Array.from({ length: 7 }, (_, i) =>
       addDays(tomorrow(), i),
     ).find((date) => new Date(`${date}T12:00:00Z`).getUTCDay() === 2)!;
     const slots = [
-      demoSession({ date, start: "11:30" })!,
-      demoSession({ date, start: "12:20" })!,
-      demoSession({ date: addDays(date, 1), start: "09:00" })!,
+      demoSession({ date, start: "14:30" })!,
+      demoSession({ date, start: "15:20" })!,
+      demoSession({ date: addDays(date, 1), start: "12:00" })!,
     ];
     const attempt = service.pay(
       service.checkout({ ...validDraft(), slots }, null),
@@ -399,7 +405,7 @@ it("upgrades the previous draft without deleting its source or losing contact an
       ...draft,
       instructor: null,
       contact: { ...draft.contact, notes: "old optional field" },
-      slots: [{ date: tomorrow(), start: "09:00" }],
+      slots: [{ date: tomorrow(), start: "12:00" }],
     },
     attempt: null,
   };
@@ -459,22 +465,22 @@ it("upgrades pending and paid legacy attempts without changing their identity or
 describe("elapsed demo slots", () => {
   it("marks a slot unavailable exactly at its Singapore start and afterwards", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
-    const start = Date.parse("2026-10-06T09:00:00+08:00");
+    const start = Date.parse("2026-10-06T12:00:00+08:00");
     for (const offset of [-1, 0, 1]) {
       vi.setSystemTime(start + offset);
       expect(
         service
           .availability("2026-10-06")
-          .find((slot) => slot.start === "09:00")?.available,
+          .find((slot) => slot.start === "12:00")?.available,
       ).toBe(offset < 0);
     }
   });
   it("rejects checkout at or after start without discarding the selected draft", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
-    const start = Date.parse("2026-10-06T09:00:00+08:00");
+    const start = Date.parse("2026-10-06T12:00:00+08:00");
     vi.setSystemTime(start - 1);
     const draft = validDraft();
-    draft.slots = [demoSession({ date: "2026-10-06", start: "09:00" })!];
+    draft.slots = [demoSession({ date: "2026-10-06", start: "12:00" })!];
     const original = structuredClone(draft);
     expect(service.checkout(draft, null).status).toBe("ready");
     for (const offset of [0, 1]) {
@@ -501,23 +507,23 @@ it("uses Singapore instants across month and year boundaries regardless of UTC d
     ).toBe(true);
     const draft = validDraft();
     draft.slots = [
-      demoSession({ date, start: "09:00" })!,
-      demoSession({ date: addDays(date, 1), start: "09:00" })!,
+      demoSession({ date, start: "12:00" })!,
+      demoSession({ date: addDays(date, 1), start: "12:00" })!,
     ];
     expect(selectionErrors(draft.slots)).toEqual([]);
     expect(service.checkout(draft, null).draft.slots).toEqual(draft.slots);
     expect(
-      service.availability(date).find((slot) => slot.start === "09:00")
+      service.availability(date).find((slot) => slot.start === "12:00")
         ?.available,
     ).toBe(true);
   }
 });
 it("rejects a new payment after start but preserves pending recovery and paid receipts", () => {
   vi.useFakeTimers({ toFake: ["Date"] });
-  const start = Date.parse("2026-10-06T09:00:00+08:00");
+  const start = Date.parse("2026-10-06T12:00:00+08:00");
   vi.setSystemTime(start - 1);
   const draft = validDraft();
-  draft.slots = [demoSession({ date: "2026-10-06", start: "09:00" })!];
+  draft.slots = [demoSession({ date: "2026-10-06", start: "12:00" })!];
   const ready = service.checkout(draft, null);
   const checking = service.pay(ready, "pending");
   vi.setSystemTime(start + 5000);

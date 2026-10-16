@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { BOOKING_LEAD_MS } from "@/domain/booking-policy";
+import { BOOKING_LEAD_MS, withinOpeningHours } from "@/domain/booking-policy";
 import {
   BookingServiceError,
   type AvailableSlot,
@@ -75,9 +75,12 @@ export function useBookingAvailability(
               .flatMap((date) => displayCache[date])
               .filter(
                 (slot) =>
+                  withinOpeningHours(
+                    Date.parse(`${slot.date}T${slot.start}:00+08:00`),
+                  ) &&
                   Date.parse(`${slot.date}T${slot.start}:00+08:00`) -
                     minute * 60_000 >=
-                  BOOKING_LEAD_MS,
+                    BOOKING_LEAD_MS,
               ),
           }
         : null,
@@ -111,7 +114,13 @@ export function useBookingAvailability(
                   key,
                   dates: requested,
                   status: "success",
-                  slots: values.flat(),
+                  slots: values
+                    .flat()
+                    .filter((slot) =>
+                      withinOpeningHours(
+                        Date.parse(`${slot.date}T${slot.start}:00+08:00`),
+                      ),
+                    ),
                 }
               : {
                   owner: service,

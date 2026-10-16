@@ -508,7 +508,7 @@ test("native guest journey preserves players contact and one checkout across ref
     await page.getByRole("button", { name: label, exact: true }).click();
     await page
       .getByRole("group", { name: "Session times" })
-      .getByRole("button", { name: /08:10–08:50/ })
+      .getByRole("button", { name: /12:10–12:50/ })
       .click();
     expect(
       calls.filter((c) => c.path.startsWith("/api/calendar/")),

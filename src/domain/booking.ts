@@ -7,6 +7,7 @@ import {
 } from "./contact";
 import {
   BOOKING_LEAD_MS,
+  withinOpeningHours,
   MAX_PLAYERS,
   SESSION_MINUTES,
 } from "./booking-policy";
@@ -120,6 +121,9 @@ export function selectionErrors(slots: Slot[], now = Date.now()): string[] {
     slots.some(
       (slot) =>
         !slotSchema.safeParse(slot).success ||
+        !withinOpeningHours(
+          Date.parse(`${slot.date}T${slot.start}:00+08:00`),
+        ) ||
         slot.date > max.toISOString().slice(0, 10) ||
         ("native" in slot && slot.native !== undefined
           ? !sessionSchema.safeParse(slot).success
@@ -148,7 +152,7 @@ export function selectionErrors(slots: Slot[], now = Date.now()): string[] {
           BOOKING_LEAD_MS,
     )
   )
-    return ["Book sessions at least 2.5 hours before their start time."];
+    return ["Book sessions at least 4 hours before their start time."];
   if (
     slots.some((slot, i) =>
       slots.slice(0, i).some((other) => overlaps(slot, other)),

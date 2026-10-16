@@ -1,7 +1,10 @@
 // Initial sandbox checkout URL only; the server binds merchant and request ID.
 export function isHitpayCheckoutUrl(value: string): boolean {
-  return /^https:\/\/securecheckout\.sandbox\.hit-pay\.com\/payment-request\/@[A-Za-z0-9_-]{1,80}\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/checkout$/.test(
-    value,
+  return (
+    value === value.trim() &&
+    /^https:\/\/(?:securecheckout|checkout)\.sandbox\.hit-pay\.com\/payment-request\/@[A-Za-z0-9_-]{1,80}\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/checkout$/.test(
+      value,
+    )
   );
 }
 

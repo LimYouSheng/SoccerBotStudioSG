@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   BOOKING_LEAD_MS,
+  withinOpeningHours,
   NATIVE_TRIAL_LEAD_MS,
 } from "../src/domain/booking-policy";
 import { sessionRate } from "../src/domain/session-pricing";
@@ -260,10 +261,12 @@ export async function windowCalendar(
       ...day,
       offers: day.offers.filter(
         (offer) =>
+          (!liveCustomerAccess(options.env) ||
+            withinOpeningHours(offer.startMs)) &&
           offer.startMs - Date.now() >=
-          (liveCustomerAccess(options.env)
-            ? BOOKING_LEAD_MS
-            : NATIVE_TRIAL_LEAD_MS),
+            (liveCustomerAccess(options.env)
+              ? BOOKING_LEAD_MS
+              : NATIVE_TRIAL_LEAD_MS),
       ),
     })),
   });
@@ -293,10 +296,12 @@ export async function publicCalendar(options: ReadOptions & { month: string }) {
       ...(liveCustomerAccess(options.env) ? { offers: day.offers } : {}),
       available: day.offers.some(
         (offer) =>
+          (!liveCustomerAccess(options.env) ||
+            withinOpeningHours(offer.startMs)) &&
           offer.startMs - Date.now() >=
-          (liveCustomerAccess(options.env)
-            ? BOOKING_LEAD_MS
-            : NATIVE_TRIAL_LEAD_MS),
+            (liveCustomerAccess(options.env)
+              ? BOOKING_LEAD_MS
+              : NATIVE_TRIAL_LEAD_MS),
       ),
     })),
   });

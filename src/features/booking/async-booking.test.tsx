@@ -32,7 +32,7 @@ function draft(): BookingDraft {
     ...blankDraft(),
     mode: "guest",
     accepted: true,
-    slots: [demoSession({ date, start: "09:00" })!],
+    slots: [demoSession({ date, start: "12:00" })!],
     contact: {
       name: "Demo Customer",
       email: "demo@example.com",
@@ -123,7 +123,7 @@ test("calendar and basket share delayed availability once and preserve selection
   await act(async () => {
     response.resolve(demoBookingModel.availability(date));
   });
-  expect(screen.getByRole("button", { name: /09:00–09:40/ })).toHaveAttribute(
+  expect(screen.getByRole("button", { name: /12:00–12:40/ })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
@@ -217,7 +217,7 @@ test("reordered dates and player revisions discard old replies even when the ada
   await act(async () => {
     current.resolve(demoBookingModel.availability(date));
   });
-  expect(screen.getByRole("button", { name: /09:00–09:40/ })).toBeEnabled();
+  expect(screen.getByRole("button", { name: /12:00–12:40/ })).toBeEnabled();
   fireEvent.click(screen.getByRole("button", { name: "Change players" }));
   expect(
     screen.getByRole("status", { name: "Checking available times…" }),
@@ -232,7 +232,7 @@ test("reordered dates and player revisions discard old replies even when the ada
     changed.resolve(demoBookingModel.availability(date));
   });
   expect(availability.mock.calls[2][0].players).toBe(2);
-  expect(screen.getByRole("button", { name: /09:00–09:40/ })).toBeEnabled();
+  expect(screen.getByRole("button", { name: /12:00–12:40/ })).toBeEnabled();
   expect(screen.queryByText("No times on this day.")).not.toBeInTheDocument();
 });
 test("unmount aborts the shared read and a late reply cannot replace remounted session data", async () => {
@@ -257,7 +257,7 @@ test("unmount aborts the shared read and a late reply cannot replace remounted s
   });
   expect(screen.getByText("No times on this day.")).toBeVisible();
   expect(
-    screen.queryByRole("button", { name: /09:00–09:40/ }),
+    screen.queryByRole("button", { name: /12:00–12:40/ }),
   ).not.toBeInTheDocument();
 });
 test("review waits before navigation and same-turn duplicate checkout has one logical effect", async () => {
@@ -679,7 +679,7 @@ test("a checkout capacity conflict invalidates shared availability before return
   await act(async () => {});
   sessionStorage.setItem(
     "soccerbot-next-demo-inventory",
-    JSON.stringify([`Studio 1|${date}|09:00`]),
+    JSON.stringify([`Studio 1|${date}|12:00`]),
   );
   await act(async () => {
     fireEvent.click(
@@ -697,12 +697,12 @@ test("a checkout capacity conflict invalidates shared availability before return
   );
   await act(async () => {});
   expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
-  expect(screen.getByRole("button", { name: /09:00–09:40/ })).toHaveTextContent(
+  expect(screen.getByRole("button", { name: /12:00–12:40/ })).toHaveTextContent(
     "Unavailable",
   );
   expect(loadBooking().draft.slots).toHaveLength(1);
   fireEvent.click(
-    screen.getByRole("button", { name: "Remove 2026-10-13 at 09:00" }),
+    screen.getByRole("button", { name: "Remove 2026-10-13 at 12:00" }),
   );
   expect(loadBooking().draft.slots).toEqual([]);
 });
