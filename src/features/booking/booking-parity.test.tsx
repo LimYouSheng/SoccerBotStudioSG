@@ -77,7 +77,9 @@ function CalendarProbe({
 }
 test("calendar prefetch publishes the first month before sequential background months and discards an old scope reply", async () => {
   vi.spyOn(Date, "now").mockReturnValue(Date.parse("2027-01-01T00:00:00Z"));
-  let finish!: (value: CalendarAvailability) => void;
+  let finish!: (
+    value: Awaited<ReturnType<NonNullable<BookingService["publicCalendar"]>>>,
+  ) => void;
   const first = {
     ...demoBookingService,
     calendar: vi.fn(
@@ -352,7 +354,9 @@ test("fresh calendar receipts render before the minute clock ticks and expire at
   vi.useFakeTimers();
   const initial = Date.parse("2027-01-01T00:00:00Z");
   vi.setSystemTime(initial);
-  let finish!: (value: CalendarAvailability) => void;
+  let finish!: (
+    value: Awaited<ReturnType<NonNullable<BookingService["publicCalendar"]>>>,
+  ) => void;
   const calendar = vi.fn(
     async ({ month }: { month: string }) =>
       ({ month, observedAtMs: Date.now(), dates: [] }) as CalendarAvailability,
@@ -887,7 +891,9 @@ test("reservation conflict removes its session locally and returns to calendar w
 test("Details pauses future month prefetch and calendar return reuses the loaded month", async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2027-01-01T00:00:00Z"));
-  let finish!: (value: CalendarAvailability) => void;
+  let finish!: (
+    value: Awaited<ReturnType<NonNullable<BookingService["publicCalendar"]>>>,
+  ) => void;
   const publicCalendar = vi.fn<NonNullable<BookingService["publicCalendar"]>>(
     ({ month }) =>
       month === "2027-01"
