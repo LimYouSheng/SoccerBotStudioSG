@@ -88,7 +88,7 @@ before(async () => {
     "data:text/javascript;base64," + Buffer.from(source).toString("base64")
   );
 });
-beforeEach(async (t) => {
+beforeEach(async () => {
   outbound = 0;
   handler = null;
   mf = new Miniflare(
@@ -175,8 +175,8 @@ beforeEach(async (t) => {
     .prepare("INSERT INTO checkout_payment_routes VALUES(?,'hitpay')")
     .bind(attemptId)
     .run();
-  if (t.name.includes("creation") || t.name.includes("holding appointment"))
-    return;
+});
+async function seedPayment({ expired = false } = {}) {
   await db
     .prepare(
       "INSERT INTO hitpay_payments(attempt_id,scope_json,reference,request_id,expires_ms,created_ms,recovery_end_ms,state,reason,ready_ms) VALUES(?,?,?,?,?,?,?,'due','payment_pending',?)",
@@ -186,13 +186,13 @@ beforeEach(async (t) => {
       JSON.stringify(scope),
       "synthetic-reference",
       requestId,
-      t.name.includes("late") ? Date.now() - 1 : Date.now() + 60000,
+      expired ? Date.now() - 1 : Date.now() + 60000,
       Date.now(),
       Date.now() + 86400000,
       Date.now() + 60000,
     )
     .run();
-});
+}
 afterEach(async () => {
   await mf?.dispose();
   assert.equal(outbound, 0, "ingress never dispatches provider traffic");
@@ -223,6 +223,7 @@ async function row() {
 }
 
 test("HitPay ingress verifies untouched bytes before parsing or durable effects", async () => {
+  await seedPayment();
   for (const [body, headers, status] of [
     ["{", { "Hitpay-Signature": "0".repeat(64) }, 401],
     ["{", {}, 400],
@@ -254,6 +255,7 @@ test("HitPay ingress verifies untouched bytes before parsing or durable effects"
   );
 });
 test("HitPay receipts deduplicate concurrent delivery and preserve payment evidence", async () => {
+  await seedPayment();
   const replies = await Promise.all(Array.from({ length: 6 }, () => send()));
   assert.deepEqual(
     replies.map((r) => r.status),
@@ -290,6 +292,7 @@ test("HitPay receipts deduplicate concurrent delivery and preserve payment evide
   ]);
 });
 test("HitPay ingress rejects foreign references and bounded receipt exhaustion atomically", async () => {
+  await seedPayment();
   assert.equal(
     (await send(JSON.stringify({ id: requestId, reference_number: "foreign" })))
       .status,
@@ -320,6 +323,7 @@ test("HitPay ingress rejects foreign references and bounded receipt exhaustion a
   );
 });
 test("HitPay journal makes routes scopes and verified identities immutable", async () => {
+  await seedPayment();
   await assert.rejects(
     db
       .prepare(
@@ -356,6 +360,7 @@ test("HitPay journal makes routes scopes and verified identities immutable", asy
   );
 });
 test("HitPay authoritative contract rejects identity money currency refund and status mismatches", async () => {
+  await seedPayment();
   const valid = {
     id: requestId,
     reference_number: "synthetic-reference",
@@ -522,6 +527,7 @@ async function recover() {
   return mf.dispatchFetch(origin + "/test/recover");
 }
 test("HitPay recovery independently verifies payment and bookings before one external write", async () => {
+  await seedPayment();
   const provider = providerFixture();
   assert.equal((await recover()).status, 200);
   const saved = await row();
@@ -535,6 +541,7 @@ test("HitPay recovery independently verifies payment and bookings before one ext
   assert.equal(provider.reads(), 1);
 });
 test("HitPay recovery preserves unknown writes and reads back without repeating payment", async () => {
+  await seedPayment();
   const provider = providerFixture({ lostWrite: true });
   await recover();
   assert.equal((await row()).external_state, "unknown", (await row()).reason);
@@ -547,13 +554,15 @@ test("HitPay recovery preserves unknown writes and reads back without repeating 
   assert.equal((await row()).state, "complete", (await row()).reason);
   assert.equal(provider.writes(), 1);
 });
-test("HitPay mismatch and invalid bookings never finalize SimplyBook", async () => {
+test("HitPay amount mismatch never finalizes SimplyBook", async () => {
+  await seedPayment();
   const provider = providerFixture({ wrongAmount: true });
   await recover();
   assert.equal((await row()).state, "manual_review");
   assert.equal(provider.writes(), 0);
 });
 test("HitPay claims serialize concurrent recovery and exhaust without reopening checkout", async () => {
+  await seedPayment();
   await db
     .prepare("UPDATE hitpay_payments SET ready_ms=0 WHERE attempt_id=?")
     .bind(attemptId)
@@ -634,6 +643,7 @@ test("HitPay creation recovery searches exact reference without another POST", a
   assert.equal((await row()).state, "due");
 });
 test("HitPay late payment retains money evidence without recreating or finalizing expired bookings", async () => {
+  await seedPayment({ expired: true });
   const provider = providerFixture();
   await recover();
   assert.equal((await row()).state, "manual_review");
@@ -641,7 +651,8 @@ test("HitPay late payment retains money evidence without recreating or finalizin
   assert.equal((await row()).payment_id, paymentId);
   assert.equal(provider.writes(), 0);
 });
-test("HitPay cancelled booking and preexisting invoice payment stop finalisation", async () => {
+test("HitPay cancelled booking stops finalisation", async () => {
+  await seedPayment();
   const provider = providerFixture({ cancelled: true });
   await recover();
   assert.equal((await row()).state, "manual_review");
@@ -670,6 +681,7 @@ test("HitPay creation accepts only a bounded Singapore expiry and retains a sing
   assert.equal(posts, 1);
 });
 test("HitPay protected confirmation queues stale booking proof without resetting recovery or leaking ownership", async () => {
+  await seedPayment();
   const provider = providerFixture();
   await recover();
   const token = "a".repeat(64);
@@ -803,4 +815,13 @@ test("HitPay holding appointment expiry blocks payment without querying availabi
   assert.equal(result.status, 409);
   assert.equal(outbound, 0);
   assert.equal(await row(), null);
+});
+
+test("HitPay preexisting invoice payment requires review without another external write", async () => {
+  await seedPayment();
+  const provider = providerFixture({ initialPaid: true });
+  await recover();
+  assert.equal((await row()).state, "manual_review");
+  assert.equal((await row()).reason, "invoice_already_paid_review");
+  assert.equal(provider.writes(), 0);
 });

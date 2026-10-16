@@ -5,11 +5,11 @@ import { useBooking } from "@/features/booking/provider";
 import { ProtectedConfirmation } from "@/features/booking/protected-confirmation";
 function ConfirmationRoute() {
   const params = useSearchParams();
-  const { reset, revision } = useBooking();
+  const { reset, confirmationRevision } = useBooking();
   return (
     <ProtectedConfirmation
       attemptId={params.get("attempt") || ""}
-      sessionRevision={revision}
+      sessionRevision={confirmationRevision}
       onAgain={reset}
     />
   );

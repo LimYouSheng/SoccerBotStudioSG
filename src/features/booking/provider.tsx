@@ -58,6 +58,7 @@ interface BookingContextValue extends StoredBooking {
   ready: boolean;
   now: number;
   revision: number;
+  confirmationRevision: number;
   bookingService: BookingService;
   identityService: CustomerIdentityService;
   action: ActionState;
@@ -87,8 +88,16 @@ export function BookingProvider({
   );
   const [value, dispatch] = useReducer(
     (
-      _state: StoredBooking & { ready: boolean; revision: number },
-      next: StoredBooking & { ready: boolean; revision: number },
+      _state: StoredBooking & {
+        ready: boolean;
+        revision: number;
+        confirmationRevision: number;
+      },
+      next: StoredBooking & {
+        ready: boolean;
+        revision: number;
+        confirmationRevision: number;
+      },
     ) => next,
     {
       version: 2,
@@ -96,6 +105,7 @@ export function BookingProvider({
       attempt: null,
       ready: false,
       revision: 0,
+      confirmationRevision: 0,
     },
   );
   const [actionState, dispatchAction] = useState<
@@ -203,12 +213,15 @@ export function BookingProvider({
     };
   }, []);
   const latest = useRef(value);
+  const hydrationOwner = useRef({ service, identityService });
   const commit = useCallback(
-    (next: StoredBooking) => {
+    (next: StoredBooking, preserveConfirmation = false) => {
       const state = {
         ...next,
         ready: true,
         revision: latest.current.revision + 1,
+        confirmationRevision:
+          latest.current.confirmationRevision + (preserveConfirmation ? 0 : 1),
       };
       latest.current = state;
       if (service.mode === "demo") saveBooking(next);
@@ -236,10 +249,17 @@ export function BookingProvider({
   }, [setAction]);
   useEffect(() => {
     mounted.current = true;
+    const sameSession =
+      hydrationOwner.current.service === service &&
+      hydrationOwner.current.identityService === identityService;
+    hydrationOwner.current = { service, identityService };
+    // Hydration and read-only restoration do not change the cookie identity.
+    // Actual session/booking actions retain protected-read invalidation.
     commit(
       service.mode === "demo"
         ? loadBooking()
         : { version: 2, draft: blankDraft(), attempt: null },
+      sameSession,
     );
     const controller = new AbortController();
     const revision = latest.current.revision;
@@ -257,7 +277,7 @@ export function BookingProvider({
             latest.current.revision === revision &&
             !active.current
           )
-            commit({ version: 2, draft: attempt.draft, attempt });
+            commit({ version: 2, draft: attempt.draft, attempt }, true);
         },
         () => {
           /* A failed protected read cannot restore private state. */

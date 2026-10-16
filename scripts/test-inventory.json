@@ -417,7 +417,15 @@
   },
   {
     "file": "src/features/booking/protected-confirmation.test.tsx",
+    "title": "booking restoration does not restart a protected confirmation read"
+  },
+  {
+    "file": "src/features/booking/protected-confirmation.test.tsx",
     "title": "denied and malformed responses cannot show confirmation or protected details"
+  },
+  {
+    "file": "src/features/booking/protected-confirmation.test.tsx",
+    "title": "failed booking restoration does not block independent protected confirmation"
   },
   {
     "file": "src/features/booking/protected-confirmation.test.tsx",
@@ -810,6 +818,10 @@
   {
     "file": "tests/live-email.spec.ts",
     "title": "native guest journey preserves players contact and one checkout across refresh"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "real payment recovery confirms the browser return from verified provider state"
   },
   {
     "file": "tests/live-email.spec.ts",

@@ -1,5 +1,11 @@
+import ConfirmationPage from "@/app/confirmation/page";
+import { BookingProvider } from "./provider";
+import { liveBookingService } from "@/services/booking";
+import { demoCustomerIdentity } from "@/services/demo/identity";
+import { blankDraft, type Attempt } from "@/domain/booking";
 import { afterEach, expect, it, vi } from "vitest";
 import {
+  act,
   fireEvent,
   cleanup,
   render,
@@ -223,4 +229,93 @@ it("verified live receipt uses demo sections and refuses exports after access is
     "download could not be created",
   );
   expect(reads).toBe(2);
+});
+
+vi.mock("next/navigation", () => ({
+  useSearchParams: () =>
+    new URLSearchParams("attempt=00000000-0000-4000-8000-000000000001"),
+}));
+it("booking restoration does not restart a protected confirmation read", async () => {
+  let finishRestore!: (attempt: Attempt | null) => void;
+  const restore = vi.fn(
+    () =>
+      new Promise<Attempt | null>((resolve) => {
+        finishRestore = resolve;
+      }),
+  );
+  const fetch = vi.fn((url: string) =>
+    Promise.resolve(
+      url.endsWith("/confirmation")
+        ? Response.json({ status: "confirmed", reason: "verified" })
+        : new Response(null, { status: 503 }),
+    ),
+  );
+  vi.stubGlobal("fetch", fetch);
+  render(
+    <BookingProvider
+      bookingService={{
+        ...liveBookingService,
+        publicCalendar: undefined,
+        calendar: undefined,
+        restore,
+      }}
+      identityService={{ ...demoCustomerIdentity, mode: "live" }}
+    >
+      <ConfirmationPage />
+    </BookingProvider>,
+  );
+  expect(restore).toHaveBeenCalledTimes(1);
+  expect(
+    await screen.findByRole("heading", { name: "Booking confirmed" }),
+  ).toBeInTheDocument();
+  expect(
+    fetch.mock.calls.filter(([url]) => url.endsWith("/confirmation")),
+  ).toHaveLength(1);
+  await act(async () =>
+    finishRestore({
+      id: first,
+      status: "checking",
+      draft: blankDraft(),
+      outcome: "pending",
+      checkUntil: Date.now() + 600000,
+      booking: null,
+    }),
+  );
+  expect(
+    await screen.findByRole("heading", { name: "Booking confirmed" }),
+  ).toBeInTheDocument();
+  expect(
+    fetch.mock.calls.filter(([url]) => url.endsWith("/confirmation")),
+  ).toHaveLength(1);
+});
+it("failed booking restoration does not block independent protected confirmation", async () => {
+  const fetch = vi.fn((url: string) =>
+    Promise.resolve(
+      url.endsWith("/confirmation")
+        ? Response.json({ status: "confirmed", reason: "verified" })
+        : new Response(null, { status: 503 }),
+    ),
+  );
+  vi.stubGlobal("fetch", fetch);
+  render(
+    <BookingProvider
+      bookingService={{
+        ...liveBookingService,
+        publicCalendar: undefined,
+        calendar: undefined,
+        restore: async () => {
+          throw new Error("synthetic restoration unavailable");
+        },
+      }}
+      identityService={{ ...demoCustomerIdentity, mode: "live" }}
+    >
+      <ConfirmationPage />
+    </BookingProvider>,
+  );
+  expect(
+    await screen.findByRole("heading", { name: "Booking confirmed" }),
+  ).toBeInTheDocument();
+  expect(
+    fetch.mock.calls.filter(([url]) => url.endsWith("/confirmation")),
+  ).toHaveLength(1);
 });
