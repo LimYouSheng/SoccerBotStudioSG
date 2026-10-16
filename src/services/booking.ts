@@ -354,6 +354,11 @@ async function nativeRequest(
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   if (!response.ok) {
+    if (path.startsWith("/api/booking/hitpay/"))
+      throw new BookingServiceError(
+        "payment_unavailable",
+        "Payment checkout could not be verified. Your booking attempt has been kept. Do not start another booking or payment; contact the studio for help.",
+      );
     if (response.status === 409 && path === "/api/booking/prepare") {
       const body = await response.json().catch(() => null);
       if (

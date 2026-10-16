@@ -22,7 +22,6 @@ export function DetailsStep({
       update,
       identityService,
       bookingService,
-      validateSelection,
       reserve,
       action,
       selectionNotice,
@@ -202,16 +201,9 @@ export function DetailsStep({
               try {
                 if (draft.mode === "member" && remember && !(await save()))
                   return;
-                const result =
-                  bookingService.mode === "live"
-                    ? await validateSelection()
-                    : "available";
-                if (!mounted.current || result === "cancelled") return;
-                if (result === "error") return;
-                if (result !== "available") {
-                  router.push("/book/time/");
-                  return;
-                }
+                // Preparation validates the selection server-side before the
+                // one-use holding operation; no duplicate browser day read.
+                if (!mounted.current) return;
                 if (bookingService.mode === "live" && !(await reserve()))
                   return;
                 if (mounted.current) router.push("/book/review/");

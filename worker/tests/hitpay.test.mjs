@@ -411,6 +411,27 @@ test("HitPay authoritative contract rejects identity money currency refund and s
     { payments: [{ ...valid.payments[0], currency: "USD" }] },
   ])
     assert.throws(() => verify({ ...valid, ...patch }));
+  for (const [field, patch] of [
+    ["request_id", { id: businessId }],
+    ["reference", { reference_number: "other" }],
+    ["amount", { amount: "87.99" }],
+    ["currency", { currency: "USD" }],
+    ["business", { business_id: requestId }],
+    ["checkout_url_format", { url: "https://wrong.invalid/private" }],
+    ["checkout_path", { url: valid.url.replace("@soccerbot", "@different") }],
+  ]) {
+    assert.throws(
+      () => verify({ ...valid, ...patch }),
+      (error) => {
+        assert.equal(error.code, "hitpay_association_mismatch");
+        assert.equal(
+          contract.hitpayFailureReason(error),
+          "hitpay_mismatch_" + field,
+        );
+        return true;
+      },
+    );
+  }
   for (const value of [null, "1e2", -1, " 88", "88.000", Infinity])
     assert.throws(() => contract.minorAmount(value));
   assert.equal(contract.minorAmount("0.01"), 1);
@@ -559,6 +580,7 @@ test("HitPay amount mismatch never finalizes SimplyBook", async () => {
   const provider = providerFixture({ wrongAmount: true });
   await recover();
   assert.equal((await row()).state, "manual_review");
+  assert.equal((await row()).reason, "hitpay_mismatch_amount");
   assert.equal(provider.writes(), 0);
 });
 test("HitPay claims serialize concurrent recovery and exhaust without reopening checkout", async () => {
@@ -980,4 +1002,29 @@ test("HitPay terminal persistence failure retains a reclaimable lease and durabl
   assert.equal((await recover()).status, 200);
   assert.equal((await row()).state, "complete");
   assert.equal(provider.writes(), 1);
+});
+
+test("HitPay creation mismatch retains only a redacted field diagnostic and never repeats creation", async () => {
+  let creates = 0;
+  handler = async () => {
+    creates++;
+    return Response.json({
+      ...paymentResponse(),
+      reference_number: "soccerbot-dev-" + attemptId,
+      status: "pending",
+      payments: [],
+      url: "https://unexpected.invalid/private-token",
+    });
+  };
+  assert.equal((await mf.dispatchFetch(origin + "/test/create")).status, 409);
+  let saved = await row();
+  assert.equal(saved.reason, "hitpay_mismatch_checkout_url_format");
+  assert.equal(saved.request_id, null);
+  assert.equal(saved.checkout_url, null);
+  assert.equal(saved.external_state, "none");
+  assert.equal(JSON.stringify(saved).includes("private-token"), false);
+  assert.equal((await mf.dispatchFetch(origin + "/test/create")).status, 409);
+  saved = await row();
+  assert.equal(saved.reason, "hitpay_mismatch_checkout_url_format");
+  assert.equal(creates, 1);
 });

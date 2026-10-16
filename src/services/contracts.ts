@@ -62,6 +62,7 @@ export type BookingErrorCode =
   | "invalid_response"
   | "selection_unavailable"
   | "selection_changed"
+  | "payment_unavailable"
   | "conflict"
   | "unavailable"
   | "temporarily_unavailable"

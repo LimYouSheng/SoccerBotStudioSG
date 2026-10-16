@@ -842,5 +842,13 @@
   {
     "file": "tests/live-email.spec.ts",
     "title": "synthetic live verification reads server identity and keeps native booking unavailable"
+  },
+  {
+    "file": "src/features/booking/booking-parity.test.tsx",
+    "title": "Details pauses future month prefetch and calendar return reuses the loaded month"
+  },
+  {
+    "file": "src/features/booking/direct-checkout.test.tsx",
+    "title": "HitPay HTTP conflict preserves the hold and shows payment failure without selection recovery"
   }
 ]

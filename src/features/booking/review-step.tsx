@@ -134,9 +134,11 @@ export function ReviewStep() {
       {error && (
         <div className="alert mt-5" role="alert">
           {error}
-          <Link className="text-link ml-3" href="/book/time/">
-            Review selections
-          </Link>
+          {!attempt?.held && (
+            <Link className="text-link ml-3" href="/book/time/">
+              Review selections
+            </Link>
+          )}
         </div>
       )}
       <div className="actions">
