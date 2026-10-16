@@ -4,7 +4,12 @@ import { expect, test, type Page, type Route } from "@playwright/test";
 // CI-only synthetic transports. No widget script, email or provider is contacted.
 const sitekey = "0x4AAAAAAFSTbdgbJQsvM5vy";
 const challengeId = "10000000-0000-4000-8000-000000000001";
-async function fixture(page: Page, delivery = false, remembered = false) {
+async function fixture(
+  page: Page,
+  delivery = false,
+  remembered = false,
+  identityReady?: Promise<void>,
+) {
   const calls: { path: string; method: string; body: unknown }[] = [];
   const unexpected: string[] = [];
   let verified = remembered;
@@ -60,6 +65,7 @@ async function fixture(page: Page, delivery = false, remembered = false) {
     let status = 503,
       result: unknown = { error: "identity_unavailable" };
     if (url.pathname === "/api/identity" && method === "GET") {
+      await identityReady;
       status = 200;
       result = verified
         ? {
@@ -247,7 +253,23 @@ test("synthetic live verification reads server identity and keeps native booking
 test("remembered live account edits and rereads contact while native booking stays unavailable", async ({
   page,
 }) => {
-  const evidence = await fixture(page, true, true);
+  let restoreIdentity!: () => void;
+  const identityReady = new Promise<void>((resolve) => {
+    restoreIdentity = resolve;
+  });
+  const evidence = await fixture(page, true, true, identityReady);
+  const guest = page.getByRole("button", {
+    name: "Continue as guest",
+    exact: true,
+  });
+  const before = await guest.boundingBox();
+  expect(before).not.toBeNull();
+  restoreIdentity();
+  await expect(
+    page.getByRole("button", { name: "Continue signed in", exact: true }),
+  ).toBeVisible();
+  const after = await guest.boundingBox();
+  expect(after).toEqual(before);
   await page
     .getByRole("button", { name: "Manage saved contact", exact: true })
     .click();
