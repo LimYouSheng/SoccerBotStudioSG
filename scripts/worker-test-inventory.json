@@ -172,6 +172,8 @@
   "native date-scoped owner exception reaches fresh availability and exact two-date preparation only",
   "native calendar scopes range reads to granted dates and retains fresh continuation checks",
   "Review booking creates one HitPay holding appointment without payment or post-reservation availability",
+  "HitPay hold rejection retains redacted creation flags and invoice joins before normalization without replay",
+  "HitPay hold readback evidence is durable before the next provider read and survives invoice rejection",
   "provider operation rejects absent expired and disabled grants before dispatch",
   "provider identity counts every physical request and returns only sanitized evidence",
   "concurrent provider proof grants share authentication and upstream reads",
@@ -333,7 +335,5 @@
   "webhook body limits and HTTP boundaries reject before capture",
   "webhook slow streamed bodies time out and never acknowledge a receipt",
   "webhook comparison channels isolate capture deduplication caps and closure",
-  "invoice capture retains authentication boundaries and immutable event authority",
-  "HitPay hold rejection retains redacted creation flags and invoice joins before normalization without replay",
-  "HitPay hold readback evidence is durable before the next provider read and survives invoice rejection"
+  "invoice capture retains authentication boundaries and immutable event authority"
 ]

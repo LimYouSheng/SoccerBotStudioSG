@@ -2,6 +2,8 @@
 
 ## Hold-state experiment evidence — 16 October 2026
 
+CI38836809759 passed frontend verification and all337 runtime tests in both Worker jobs, but the strict ordered inventory rejected the two new titles appended at the end. Move only those two entries to their native-test execution position; all335 existing titles and every assertion remain unchanged. The retained local TAP independently confirms337 passes and zero failures/skips/cancellations/todos. Preserve the original failed receipt; fresh exact-source CI must pass before merge.
+
 Owner authorizes narrow diagnostic capture before the next physical hold experiment. Deployed4e98eae retained structural errors and identifiers but not rejected status values. For HitPay holding operations, persist an allowlisted snapshot in native_checkout_grants.result_json.holdEvidence immediately after book/batch-close/booking-read/invoice-read returns and before normalization. Capture operation, receipt time, request correlation, normalized boolean flags with representation kind, recognized statuses, numeric booking/invoice joins and bounded due_datetime. Keep unknown strings redacted, omit contact/client data and booking hashes, and preserve snapshots when final result/diagnostics are saved. Maximum32 snapshots with12-entry collection bounds; no new migration or provider calls. Evidence is private and never grants booking/payment authority. Strict held-versus-confirmed checks remain unchanged pending actual provider evidence. Full verification and PR35 CI are required before owner merge/deployment; no real booking/payment was executed.
 
 ## Complete sandbox configuration readback — 16 October 2026
