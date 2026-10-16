@@ -26,7 +26,7 @@ beforeEach(() => {
     slots: [
       demoSession({
         date: restoredDate,
-        start: "11:30",
+        start: "14:30",
       })!,
     ],
   };
@@ -51,14 +51,14 @@ test("booking page restores a future Tuesday on Wednesday before selecting and r
   expect(
     within(calendar).getByRole("button", { name: dateLabel(todaySG()) }),
   ).toHaveAttribute("aria-pressed", "false");
-  const crossing = screen.getByRole("button", { name: /11:30–12:10/ });
+  const crossing = screen.getByRole("button", { name: /14:30–15:10/ });
   expect(crossing).toHaveAttribute("aria-pressed", "true");
   expect(crossing).toHaveTextContent("Faisal Shahril");
-  expect(crossing).toHaveTextContent("Crosses the 12:00 instructor rotation");
+  expect(crossing).toHaveTextContent("Crosses the 15:00 instructor rotation");
   expect(screen.queryByRole("radio")).not.toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Continue" })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: /12:20–13:00/ })).toBeEnabled();
-  await user.click(screen.getByRole("button", { name: /12:20–13:00/ }));
+  expect(screen.getByRole("button", { name: /15:20–16:00/ })).toBeEnabled();
+  await user.click(screen.getByRole("button", { name: /15:20–16:00/ }));
   const instructors = screen.getByRole("region", { name: "Your instructors" });
   expect(within(instructors).getAllByRole("article")).toHaveLength(2);
   expect(
@@ -67,9 +67,9 @@ test("booking page restores a future Tuesday on Wednesday before selecting and r
   expect(
     within(instructors).getByRole("article", { name: "Daniel Tan" }),
   ).toBeInTheDocument();
-  await user.click(screen.getByRole("button", { name: /09:00–09:40/ }));
+  await user.click(screen.getByRole("button", { name: /12:00–12:40/ }));
   expect(within(instructors).getAllByRole("article")).toHaveLength(2);
-  await user.click(screen.getByRole("button", { name: /12:20–13:00/ }));
+  await user.click(screen.getByRole("button", { name: /15:20–16:00/ }));
   expect(within(instructors).getAllByRole("article")).toHaveLength(1);
   await user.click(screen.getByRole("button", { name: "Clear all" }));
   expect(
@@ -86,7 +86,7 @@ test("crossing notices persist in the basket and review before payment", async (
   );
   await act(async () => {});
   expect(
-    within(screen.getByRole("complementary")).getByText(/Crosses the 12:00/),
+    within(screen.getByRole("complementary")).getByText(/Crosses the 15:00/),
   ).toHaveTextContent("stays for the full session");
   expect(screen.getByRole("link", { name: "Continue" })).toHaveAttribute(
     "href",
@@ -98,7 +98,7 @@ test("crossing notices persist in the basket and review before payment", async (
       <ReviewStep />
     </BookingProvider>,
   );
-  expect(screen.getByText(/Crosses the 12:00/)).toHaveTextContent(
+  expect(screen.getByText(/Crosses the 15:00/)).toHaveTextContent(
     "stays for the full session",
   );
   expect(
@@ -119,7 +119,7 @@ test("confirmation shows each contact and location once with all five sections e
     },
     slots: [
       ...stored.draft.slots,
-      demoSession({ date: stored.draft.slots[0].date, start: "12:20" })!,
+      demoSession({ date: stored.draft.slots[0].date, start: "15:20" })!,
     ],
   };
   const checking = demoBookingModel.pay(
@@ -152,13 +152,13 @@ test("confirmation shows each contact and location once with all five sections e
   );
   expect(screen.getAllByText("Daniel Tan", { exact: true })).toHaveLength(1);
   expect(
-    screen.getByText(/Crosses the 12:00 instructor rotation/),
+    screen.getByText(/Crosses the 15:00 instructor rotation/),
   ).toBeVisible();
 });
 
 test("an open booking page expires a selected slot at its start and keeps it removable", async () => {
   vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
-  vi.setSystemTime(new Date("2026-10-06T08:59:59.999+08:00"));
+  vi.setSystemTime(new Date("2026-10-06T11:59:59.999+08:00"));
   const draft = { ...blankDraft(), mode: "guest" as const };
   saveBooking({ version: 2, draft, attempt: null });
   const view = render(
@@ -167,7 +167,7 @@ test("an open booking page expires a selected slot at its start and keeps it rem
     </BookingProvider>,
   );
   await act(async () => {});
-  const slot = screen.getByRole("button", { name: /09:00–09:40/ });
+  const slot = screen.getByRole("button", { name: /12:00–12:40/ });
   expect(slot).toBeEnabled();
   fireEvent.click(slot);
   expect(screen.getByRole("link", { name: "Continue" })).toBeInTheDocument();
@@ -181,17 +181,17 @@ test("an open booking page expires a selected slot at its start and keeps it rem
   ).toBeVisible();
   expect(loadBooking().draft.slots).toHaveLength(1);
   fireEvent.click(
-    screen.getByRole("button", { name: "Remove 2026-10-06 at 09:00" }),
+    screen.getByRole("button", { name: "Remove 2026-10-06 at 12:00" }),
   );
   expect(loadBooking().draft.slots).toHaveLength(0);
-  expect(screen.getByRole("button", { name: /09:00–09:40/ })).toBeDisabled();
+  expect(screen.getByRole("button", { name: /12:00–12:40/ })).toBeDisabled();
   view.unmount();
 });
 
 test("restored elapsed sessions remain labelled and removable alongside valid future sessions", async () => {
   vi.setSystemTime(new Date("2027-01-01T00:00:00+08:00"));
-  const stale = demoSession({ date: "2026-12-31", start: "19:50" })!;
-  const future = demoSession({ date: "2027-01-01", start: "09:00" })!;
+  const stale = demoSession({ date: "2026-12-31", start: "18:40" })!;
+  const future = demoSession({ date: "2027-01-01", start: "12:00" })!;
   saveBooking({
     version: 2,
     draft: { ...blankDraft(), mode: "guest", slots: [stale, future] },
@@ -208,7 +208,7 @@ test("restored elapsed sessions remain labelled and removable alongside valid fu
   expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
   expect(loadBooking().draft.slots).toEqual([stale, future]);
   fireEvent.click(
-    screen.getByRole("button", { name: "Remove 2026-12-31 at 19:50" }),
+    screen.getByRole("button", { name: "Remove 2026-12-31 at 18:40" }),
   );
   await act(async () => {});
   expect(loadBooking().draft.slots).toEqual([future]);
@@ -228,24 +228,24 @@ test("selection rechecks time before dispatch and refreshes after a suspended ta
     </BookingProvider>,
   );
   await act(async () => {});
-  const slot = screen.getByRole("button", { name: /09:00–09:40/ });
+  const slot = screen.getByRole("button", { name: /12:00–12:40/ });
   expect(slot).toBeEnabled();
   // Move Date only, without delivering the scheduled UI timer.
-  vi.setSystemTime(new Date("2026-10-06T09:00:00+08:00"));
+  vi.setSystemTime(new Date("2026-10-06T12:00:00+08:00"));
   fireEvent.click(slot);
   expect(loadBooking().draft.slots).toEqual([]);
   await act(async () => {
     fireEvent.focus(window);
   });
-  expect(screen.getByRole("button", { name: /09:00–09:40/ })).toBeDisabled();
-  expect(screen.getByRole("button", { name: /09:00–09:40/ })).toHaveTextContent(
+  expect(screen.getByRole("button", { name: /12:00–12:40/ })).toBeDisabled();
+  expect(screen.getByRole("button", { name: /12:00–12:40/ })).toHaveTextContent(
     "Session has started",
   );
 });
 test("an open calendar follows Singapore year rollover without deleting its draft", async () => {
   vi.useFakeTimers({ toFake: ["Date", "setTimeout", "clearTimeout"] });
   vi.setSystemTime(new Date("2026-12-31T23:59:59.999+08:00"));
-  const slot = demoSession({ date: "2027-01-01", start: "09:00" })!;
+  const slot = demoSession({ date: "2027-01-01", start: "12:00" })!;
   saveBooking({
     version: 2,
     draft: { ...blankDraft(), mode: "guest", slots: [slot] },

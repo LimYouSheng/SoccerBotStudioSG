@@ -342,8 +342,8 @@ export function TimeStep() {
         <Icon name="clock" />
         <span>
           {live
-            ? "Each session includes one instructor. Availability is checked again before you continue and before booking."
-            : "Open 9am–9pm. Each session includes one instructor. In this preview, instructors rotate every three hours; the instructor assigned at the start stays for your full session."}
+            ? "Open noon–8pm. Book at least 4 hours ahead. Each session includes one instructor. Your selection is checked when you review your booking."
+            : "Open noon–8pm. Each session includes one instructor. In this preview, instructors rotate every three hours; the instructor assigned at the start stays for your full session."}
         </span>
       </p>
     </>

@@ -1289,7 +1289,9 @@ test("priced customer calendar chooses native service by Singapore weekday and p
           day.toISOString().slice(0, 10) <= request.to;
           day.setUTCDate(day.getUTCDate() + 1)
         )
-          body[day.toISOString().slice(0, 10)] = available ? ["09:00:00"] : [];
+          body[day.toISOString().slice(0, 10)] = available
+            ? ["11:59:00", "12:00:00", "19:21:00"]
+            : [];
         return { receivedAtMs: Date.now(), body };
       },
     },
@@ -1337,7 +1339,7 @@ test("priced customer calendar chooses native service by Singapore weekday and p
   );
   data.services[3].price = "108";
   available = true;
-  now = Date.parse("2026-11-06T06:29:58+08:00");
+  now = Date.parse("2026-11-06T07:59:58+08:00");
   const boundary = await windowAvailability({
     ...input,
     serviceId: "2",
@@ -1347,7 +1349,7 @@ test("priced customer calendar chooses native service by Singapore weekday and p
   assert.equal(
     boundary.offers.length,
     1,
-    "exactly 150 minutes remains bookable",
+    "exactly 240 minutes remains bookable",
   );
   now++;
   assert.deepEqual(
@@ -1373,13 +1375,13 @@ test("priced prebooking accepts exact mixed service totals and rejects cheap hol
     {
       ...intent.sessions[0],
       serviceId: "12",
-      startMs: Date.parse("2026-11-06T09:00:00+08:00"),
+      startMs: Date.parse("2026-11-06T12:00:00+08:00"),
       totalMinor: 8800,
     },
     {
       ...intent.sessions[0],
       serviceId: "13",
-      startMs: Date.parse("2026-11-09T09:00:00+08:00"),
+      startMs: Date.parse("2026-11-09T12:00:00+08:00"),
       totalMinor: 10800,
     },
   ];
@@ -1389,7 +1391,7 @@ test("priced prebooking accepts exact mixed service totals and rejects cheap hol
   const read = exchangeFor(data, intent);
   const exchange = async (request) =>
     request.kind === "availability"
-      ? { receivedAtMs: Date.now(), body: { [request.date]: ["09:00:00"] } }
+      ? { receivedAtMs: Date.now(), body: { [request.date]: ["12:00:00"] } }
       : read.exchange(request);
   const contract = {
     ...binding,
@@ -1454,11 +1456,11 @@ test("catalogue accepts observed explicit provider null maps without allowing ot
   }
 });
 
-test("customer booking accepts exactly 150 minutes and rechecks the cutoff after provider reads", async (t) => {
-  let now = Date.parse("2026-11-06T06:30:00+08:00");
+test("customer booking accepts exactly 240 minutes and rechecks the cutoff after provider reads", async (t) => {
+  let now = Date.parse("2026-11-06T08:00:00+08:00");
   t.mock.method(Date, "now", () => now);
   const intent = approved();
-  intent.sessions[0].startMs = now + 150 * 60000;
+  intent.sessions[0].startMs = now + 240 * 60000;
   intent.customerMode = "booking-contact";
   intent.contact = {
     name: "Synthetic Guest",
@@ -1477,7 +1479,7 @@ test("customer booking accepts exactly 150 minutes and rechecks the cutoff after
     bufferAfterMinutes: 10,
     clientLoginRequired: false,
     providerSchedules: "non-overlapping",
-    bookingLeadMinutes: 150,
+    bookingLeadMinutes: 240,
     confirmedAtMs: now - 1000,
     expiresAtMs: now + 600000,
   };
@@ -1490,7 +1492,7 @@ test("customer booking accepts exactly 150 minutes and rechecks the cutoff after
   );
   assert.equal(
     nativeTrialLeadMs(contract, binding, intent.sessions[0], now),
-    150 * 60000,
+    240 * 60000,
   );
   assert.equal((await validator.review(intent)).state, "ready");
   assert.deepEqual(await validator.revalidate(intent), intent);
@@ -1524,6 +1526,40 @@ test("customer booking accepts exactly 150 minutes and rechecks the cutoff after
       ),
       48 * 3600000,
     );
+  // Legacy ongoing declarations remain readable, but new reviews use the current cutoff.
+  assert.equal(
+    nativeTrialLeadMs(
+      { ...contract, bookingLeadMinutes: 150 },
+      binding,
+      intent.sessions[0],
+      now,
+    ),
+    240 * 60000,
+  );
+  for (const [time, allowed] of [
+    ["11:59:00", false],
+    ["12:00:00", true],
+    ["19:20:00", true],
+    ["19:21:00", false],
+    ["20:00:00", false],
+  ]) {
+    now = Date.parse("2026-11-06T07:00:00+08:00");
+    const candidate = structuredClone(intent);
+    candidate.sessions[0].startMs = Date.parse(`2026-11-06T${time}+08:00`);
+    const reads = exchangeFor(fixtures(), candidate);
+    const current = new NativePrebooking(
+      binding,
+      new CatalogueReads(),
+      reads.exchange,
+      { ...contract, confirmedAtMs: now - 1000, expiresAtMs: now + 600000 },
+    );
+    assert.equal(
+      (await current.review(candidate)).state,
+      allowed ? "ready" : "selection_unavailable",
+    );
+    if (!allowed) assert.equal(reads.calls.length, 0);
+    assert.ok(reads.calls.every((request) => request.kind !== "book"));
+  }
   assert.ok(read.calls.every((request) => request.kind !== "book"));
 });
 

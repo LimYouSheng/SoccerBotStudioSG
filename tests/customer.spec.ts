@@ -25,7 +25,7 @@ async function chooseSlots(page: Page, multiple = false) {
       exact: true,
     })
     .click();
-  await page.getByRole("button", { name: /09:00–09:40/ }).click();
+  await page.getByRole("button", { name: /12:00–12:40/ }).click();
   if (multiple) {
     await page
       .getByRole("button", {
@@ -33,7 +33,7 @@ async function chooseSlots(page: Page, multiple = false) {
         exact: true,
       })
       .click();
-    await page.getByRole("button", { name: /09:00–09:40/ }).click();
+    await page.getByRole("button", { name: /12:00–12:40/ }).click();
   }
   await page.getByRole("link", { name: "Continue", exact: true }).click();
 }
@@ -203,8 +203,8 @@ test("50-minute cadence, automatic instructors, contact validation and final-slo
     "no longer available",
   );
   await page.getByRole("link", { name: "Review selections" }).click();
-  await expect(page.getByRole("button", { name: /09:50–10:30/ })).toBeVisible();
-  await expect(page.getByRole("button", { name: /09:40–10:20/ })).toHaveCount(
+  await expect(page.getByRole("button", { name: /12:50–13:30/ })).toBeVisible();
+  await expect(page.getByRole("button", { name: /12:40–13:20/ })).toHaveCount(
     0,
   );
   await expect(
@@ -379,26 +379,29 @@ test("oracle booking sizing and rotation disclaimers persist through checkout", 
       exact: true,
     })
     .click();
-  await expect(page.getByRole("button", { name: /09:00–09:40/ })).toContainText(
+  await expect(page.getByRole("button", { name: /12:00–12:40/ })).toContainText(
     "Faisal Shahril",
   );
-  await expect(page.getByRole("button", { name: /12:20–13:00/ })).toContainText(
+  await expect(page.getByRole("button", { name: /15:20–16:00/ })).toContainText(
     "Daniel Tan",
   );
-  await expect(page.getByRole("button", { name: /15:40–16:20/ })).toContainText(
+  await expect(page.getByRole("button", { name: /18:40–19:20/ })).toContainText(
     "Instructor 3",
   );
-  await expect(page.getByRole("button", { name: /18:10–18:50/ })).toContainText(
-    "Instructor 4",
-  );
-  await expect(page.getByRole("button", { name: /20:40–21:20/ })).toHaveCount(
+  await expect(page.getByRole("button", { name: /18:10–18:50/ })).toHaveCount(
     0,
   );
-  const crossing = page.getByRole("button", { name: /11:30–12:10/ });
-  await expect(crossing).toContainText("Crosses the 12:00 instructor rotation");
+  await expect(page.getByRole("button", { name: /19:30–20:10/ })).toHaveCount(
+    0,
+  );
+  await expect(
+    page.getByRole("group", { name: "Session times" }).getByRole("button"),
+  ).toHaveCount(9);
+  const crossing = page.getByRole("button", { name: /14:30–15:10/ });
+  await expect(crossing).toContainText("Crosses the 15:00 instructor rotation");
   await crossing.click();
   await expect(page.getByRole("radio")).toHaveCount(0);
-  await page.getByRole("button", { name: /12:20–13:00/ }).click();
+  await page.getByRole("button", { name: /15:20–16:00/ }).click();
   const instructors = page.getByRole("region", { name: "Your instructors" });
   await expect(instructors.getByRole("article")).toHaveCount(2);
   await expect(
@@ -430,7 +433,7 @@ test("oracle booking sizing and rotation disclaimers persist through checkout", 
   await details(page);
   await fullWidth(".actions .button", ".actions");
   await expect(page.locator(".series-list .rotation-notice")).toContainText(
-    "Crosses the 12:00 instructor rotation",
+    "Crosses the 15:00 instructor rotation",
   );
   await payment(page);
   await expect(
@@ -628,7 +631,7 @@ test("header blue and the typography hierarchy stay consistent across every book
       exact: true,
     })
     .click();
-  const crossing = page.getByRole("button", { name: /11:30–12:10/ });
+  const crossing = page.getByRole("button", { name: /14:30–15:10/ });
   await crossing.click();
   await expect(crossing).toHaveCSS("background-color", brand);
   await expect(crossing.locator(".time-instructor")).toHaveCSS(
@@ -687,7 +690,7 @@ test("elapsed selections block checkout on an open page and remain removable bef
 }) => {
   await chooseSlots(page);
   await details(page);
-  await page.clock.pauseAt(new Date("2026-10-06T08:59:59.999+08:00"));
+  await page.clock.pauseAt(new Date("2026-10-06T11:59:59.999+08:00"));
   await expect(
     page.getByRole("button", { name: "Continue to payment" }),
   ).toBeEnabled();
@@ -705,7 +708,7 @@ test("elapsed selections block checkout on an open page and remain removable bef
     page.getByRole("button", { name: "Continue", exact: true }),
   ).toBeDisabled();
   await expect(
-    page.getByRole("button", { name: /09:00–09:40/ }),
+    page.getByRole("button", { name: /12:00–12:40/ }),
   ).toHaveAttribute("aria-pressed", "true");
   expect(
     await page.evaluate(
@@ -715,21 +718,21 @@ test("elapsed selections block checkout on an open page and remain removable bef
     ),
   ).toBe(1);
   await page
-    .getByRole("button", { name: "Remove 2026-10-06 at 09:00" })
+    .getByRole("button", { name: "Remove 2026-10-06 at 12:00" })
     .click();
   await expect(
-    page.getByRole("button", { name: /09:00–09:40/ }),
+    page.getByRole("button", { name: /12:00–12:40/ }),
   ).toBeDisabled();
   await page.clock.runFor(1);
   await expect(
-    page.getByRole("button", { name: /09:00–09:40/ }),
+    page.getByRole("button", { name: /12:00–12:40/ }),
   ).toBeDisabled();
   await page.clock.resume();
-  await page.getByRole("button", { name: /09:50–10:30/ }).click();
+  await page.getByRole("button", { name: /12:50–13:30/ }).click();
   await page
     .getByRole("button", { name: dateLabel("2026-10-07"), exact: true })
     .click();
-  await page.getByRole("button", { name: /09:00–09:40/ }).click();
+  await page.getByRole("button", { name: /12:00–12:40/ }).click();
   await page.getByRole("link", { name: "Continue", exact: true }).click();
   await details(page);
   await payment(page);

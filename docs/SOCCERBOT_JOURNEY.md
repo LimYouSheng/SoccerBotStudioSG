@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Opening hours, four-hour lead and observed HitPay host — 16 October 2026
+
+Owner requested the noon–20:00 permanent opening window and four-hour lead together with the diagnosed HitPay fix. Read-only owner-local API checks returned HTTP200, one exact reference, matching amount/currency and path, and the checkout.sandbox.hit-pay.com host. The previous strict hostname was the mismatched URL component; expired state was observed later. No extra booking was needed for diagnosis. Implement the exact additional host with negative security coverage; update opening/lead policy and meaningful calendar/booking fixtures. Initial fixture failures preserved: overlapping-time expectation, UTC export expectations and the elapsed-slot clock needed to follow the changed demo opening time. No assertions, required gates or provider contracts were weakened.
+
+Synthetic mechanism tests now exercise the observed checkout host and a session inside the new opening window. Existing financial recovery/history remains unchanged. Owner has one remaining booking; no assistant booking/payment, cancellation, webhook registration, deployment or configuration write is part of this change. Final non-browser and exact-source CI evidence remains pending.
+
 ## HAR06 checkout latency and payment diagnostics — 16 October 2026
 
 Owner HAR06 and redacted Worker/D1 evidence establish booking49/invoice40 created successfully at11:38SGT, with confirmed booking flags and an unpaid invoice. Details-to-Review took about53seconds: roughly20seconds queued behind background month work,5seconds for the browser-triggered fresh day read,6seconds for preparation (another fresh read), and21seconds for holding creation/readback (19 provider calls). This establishes the observed unpaid booking representation for this attempt; external-payment acceptance remains unproven. HitPay recovery stopped at hitpay_association_mismatch; no verified payment or external invoice write. Dashboard lists/logs were empty and runtime read-only HitPay access returned403, so the mismatched returned field remains unknown. Preserve the attempt; no recreation, payment retry, refund or manual-review reopening is authorized.

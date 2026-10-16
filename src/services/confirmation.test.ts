@@ -80,6 +80,8 @@ it("accepts only the backend-issued native path for the matching protected attem
   });
   for (const invalid of [
     url + "?redirect=evil",
+    url + "\n",
+    url.replace("securecheckout.", "checkout.") + "\n",
     url + "#paid",
     url.replace(".asia", ".asia.evil.test"),
     url.replace("https:", "http:"),
@@ -139,12 +141,24 @@ it("accepts only a bounded protected HitPay sandbox checkout URL", async () => {
     url,
     expiresAtMs,
   });
+  fetch.mockResolvedValue(reply(url.replace("securecheckout.", "checkout.")));
+  expect((await read("live")).checkout).toEqual({
+    state: "available",
+    url: url.replace("securecheckout.", "checkout."),
+    expiresAtMs,
+  });
   for (const invalid of [
+    url.replace("securecheckout.", "checkout.sandbox.hit-pay.com.evil."),
+    url.replace("securecheckout.", "attacker@checkout."),
+    url.replace("securecheckout.sandbox", "checkout"),
+    url.replace("hit-pay.com/", "hit-pay.com:444/"),
     url.replace("https:", "http:"),
     url.replace(".sandbox", ""),
     url.replace("hit-pay.com", "hit-pay.com.evil.test"),
     url.replace("securecheckout.", "attacker@securecheckout."),
     url + "?redirect=evil",
+    url + "\n",
+    url.replace("securecheckout.", "checkout.") + "\n",
     url + "#paid",
     url + "/",
     url.replace("@soccerbot", "%40soccerbot"),

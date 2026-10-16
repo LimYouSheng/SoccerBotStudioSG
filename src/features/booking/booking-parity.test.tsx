@@ -121,7 +121,7 @@ test("calendar prefetch publishes the first month before sequential background m
 
 const slot = {
   date: "2027-01-05",
-  start: "09:00",
+  start: "12:00",
   instructor: "14",
   native: {
     serviceId: "12",
@@ -527,7 +527,7 @@ test("browser slot cache expires after five minutes", async () => {
             serviceName: "Session",
             instructorId: "3",
             instructorName: "Trainer",
-            startMs: Date.parse(`${month}-05T09:00:00+08:00`),
+            startMs: Date.parse(`${month}-05T12:00:00+08:00`),
             priceMinor: 8800,
             currency: "SGD" as const,
           },
@@ -697,7 +697,7 @@ test("failed preparation releases cached calendar without removing the selection
                   serviceName: "Real session",
                   instructorId: slot.instructor,
                   instructorName: "Real trainer",
-                  startMs: Date.parse(`${slot.date}T09:00:00+08:00`),
+                  startMs: Date.parse(`${slot.date}T12:00:00+08:00`),
                   priceMinor: 8800,
                   currency: "SGD" as const,
                 },
@@ -788,7 +788,7 @@ test("reservation conflict removes its session locally and returns to calendar w
                   serviceName: "Real session",
                   instructorId: slot.instructor,
                   instructorName: "Real trainer",
-                  startMs: Date.parse(`${slot.date}T09:00:00+08:00`),
+                  startMs: Date.parse(`${slot.date}T12:00:00+08:00`),
                   priceMinor: 8800,
                   currency: "SGD" as const,
                 },
@@ -831,7 +831,7 @@ test("reservation conflict removes its session locally and returns to calendar w
     return (
       <>
         <button
-          onClick={() => state.update({ slots: [{ ...slot, start: "09:50" }] })}
+          onClick={() => state.update({ slots: [{ ...slot, start: "12:50" }] })}
         >
           Choose replacement
         </button>
@@ -938,4 +938,65 @@ test("Details pauses future month prefetch and calendar return reuses the loaded
     "2027-02",
     "2027-02",
   ]);
+});
+
+test("cached calendar offers obey opening hours and the four-hour cutoff without another request", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  const initial = Date.parse("2027-01-05T08:00:00+08:00");
+  vi.setSystemTime(initial);
+  const publicCalendar = vi.fn<NonNullable<BookingService["publicCalendar"]>>(
+    async ({ month }) => ({
+      month,
+      serviceId: "12",
+      observedAtMs: initial,
+      dates:
+        month === "2027-01"
+          ? [
+              {
+                date: "2027-01-05",
+                available: true,
+                offers: ["11:59", "12:00", "19:20", "19:21"].map((time) => ({
+                  serviceId: "12",
+                  serviceName: "Synthetic session",
+                  instructorId: "2",
+                  instructorName: "Synthetic instructor",
+                  startMs: Date.parse(`2027-01-05T${time}:00+08:00`),
+                  priceMinor: 8800,
+                  currency: "SGD" as const,
+                })),
+              },
+            ]
+          : [],
+    }),
+  );
+  const service: BookingService = {
+    ...demoBookingService,
+    mode: "live",
+    publicCalendar,
+  };
+  function Probe({ now }: { now: number }) {
+    const calendar = useCalendarAvailability(
+      service,
+      "12",
+      "2027-01",
+      "public",
+      false,
+    );
+    return (
+      <output data-testid="eligible">
+        {calendar
+          .entry("2027-01", now)
+          ?.dates[0]?.offers?.map((offer) =>
+            new Date(offer.startMs + 28800000).toISOString().slice(11, 16),
+          )
+          .join(",")}
+      </output>
+    );
+  }
+  const view = render(<Probe now={initial} />);
+  await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(4));
+  expect(screen.getByTestId("eligible")).toHaveTextContent("12:00,19:20");
+  view.rerender(<Probe now={initial + 1} />);
+  expect(screen.getByTestId("eligible")).toHaveTextContent(/^19:20$/);
+  expect(publicCalendar).toHaveBeenCalledTimes(4);
 });

@@ -227,7 +227,7 @@ test("the Payment preview entry and temporary checking failure retain customer s
       exact: true,
     })
     .click();
-  await page.getByRole("button", { name: /09:00–09:40/ }).click();
+  await page.getByRole("button", { name: /12:00–12:40/ }).click();
   await page.getByRole("link", { name: "Continue", exact: true }).click();
   await page
     .getByLabel("Full name", { exact: false })

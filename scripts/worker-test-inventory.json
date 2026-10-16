@@ -24,7 +24,7 @@
   "priced customer calendar chooses native service by Singapore weekday and public holiday and refreshes changes",
   "priced prebooking accepts exact mixed service totals and rejects cheap holiday service substitution",
   "catalogue accepts observed explicit provider null maps without allowing other object relationships",
-  "customer booking accepts exactly 150 minutes and rechecks the cutoff after provider reads",
+  "customer booking accepts exactly 240 minutes and rechecks the cutoff after provider reads",
   "provider identity renewal keeps native reads valid across token retention boundaries",
   "foundation valid bindings emit correlated storage evidence without secret markers",
   "foundation missing and malformed configuration denies before protected reads",

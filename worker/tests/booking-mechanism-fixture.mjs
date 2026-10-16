@@ -16,7 +16,7 @@ export async function createBookingMechanism() {
   const day = new Date(Date.now() + 3 * 86400000);
   while (day.getUTCDay() !== 3) day.setUTCDate(day.getUTCDate() + 1);
   const date = day.toISOString().slice(0, 10);
-  const startMs = Date.parse(date + "T08:10:00+08:00");
+  const startMs = Date.parse(date + "T12:10:00+08:00");
   const fixtures = JSON.parse(
     readFileSync("worker/tests/native-fixtures.json", "utf8"),
   ).responses;
@@ -40,7 +40,7 @@ export async function createBookingMechanism() {
   }
   creation.bookings[0].client_hash = "synthetic-client-hash";
   const requestId = "20000000-0000-4000-8000-000000000002";
-  const checkoutUrl = `https://securecheckout.sandbox.hit-pay.com/payment-request/@soccerbot/${requestId}/checkout`;
+  const checkoutUrl = `https://checkout.sandbox.hit-pay.com/payment-request/@soccerbot/${requestId}/checkout`;
   const businessId = "00000000-0000-4000-8000-000000000003";
   const calls = [],
     unexpected = [];
@@ -196,7 +196,7 @@ export async function createBookingMechanism() {
               cursor.setUTCDate(cursor.getUTCDate() + 1)
             ) {
               const key = cursor.toISOString().slice(0, 10);
-              matrix[key] = key === date && !booked ? ["08:10:00"] : [];
+              matrix[key] = key === date && !booked ? ["12:10:00"] : [];
             }
           const results = {
             getToken: "synthetic-public-token",

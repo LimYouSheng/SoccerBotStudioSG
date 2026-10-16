@@ -2500,7 +2500,7 @@ test("inspection window serves session catalogue and cached times without granti
     revision = "d".repeat(40);
   const date = new Date(start + 4 * 86400000).toISOString().slice(0, 10),
     month = date.slice(0, 7);
-  let starts = ["10:00:00"];
+  let starts = ["13:00:00"];
   const f = await fixture({
     full: true,
     end,
@@ -2659,7 +2659,7 @@ test("inspection window serves session catalogue and cached times without granti
 
 test("ongoing customer access survives campaign closure and preserves fresh consent and booking replay guards", async () => {
   const date = new Date(Date.now() + 4 * 86400000).toISOString().slice(0, 10);
-  const startMs = Date.parse(date + "T10:00:00+08:00");
+  const startMs = Date.parse(date + "T13:00:00+08:00");
   const samples = JSON.parse(
     readFileSync("worker/tests/native-fixtures.json", "utf8"),
   ).responses;
@@ -2669,16 +2669,16 @@ test("ongoing customer access survives campaign closure and preserves fresh cons
   for (const row of [booking, creation.bookings[0]]) {
     row.event_id = "2";
     row.unit_id = "2";
-    row.start_date_time = date + " 10:00:00";
-    row.end_date_time = date + " 10:50:00";
+    row.start_date_time = date + " 13:00:00";
+    row.end_date_time = date + " 13:50:00";
   }
   creation.bookings[0].client_hash = "synthetic-client-hash";
   for (const value of [invoice, creation.invoice]) {
     const row = value.lines[0].bookings[0];
     row.service_id = 2;
     row.provider_id = 2;
-    row.start_datetime = date + " 10:00:00";
-    row.end_datetime = date + " 10:50:00";
+    row.start_datetime = date + " 13:00:00";
+    row.end_datetime = date + " 13:50:00";
   }
   invoice.due_datetime = new Date(Date.now() + 1200000)
     .toISOString()
@@ -2709,7 +2709,7 @@ test("ongoing customer access survives campaign closure and preserves fresh cons
           day.setUTCDate(day.getUTCDate() + 1)
         ) {
           const key = day.toISOString().slice(0, 10);
-          matrix[key] = key === date && available ? ["10:00:00"] : [];
+          matrix[key] = key === date && available ? ["13:00:00"] : [];
         }
       const results = {
         getEventList: {
@@ -2762,7 +2762,7 @@ test("ongoing customer access survives campaign closure and preserves fresh cons
         serviceName: "Synthetic Session",
         instructorId: "2",
         instructorName: "Synthetic Trainer",
-        startMs: Date.parse(date + "T10:00:00+08:00"),
+        startMs: Date.parse(date + "T13:00:00+08:00"),
         priceMinor: 8800,
         currency: "SGD",
       },
@@ -2874,7 +2874,7 @@ test("ongoing customer access survives campaign closure and preserves fresh cons
       .prepare("SELECT * FROM native_checkout_grants")
       .first();
     assert.equal(grant.ongoing, 1);
-    assert.equal(JSON.parse(grant.contract_json).bookingLeadMinutes, 150);
+    assert.equal(JSON.parse(grant.contract_json).bookingLeadMinutes, 240);
     assert.ok(grant.starting_used >= 2000);
     assert.equal(grant.maximum_used - grant.starting_used, 96);
     assert.equal(books, 0);
@@ -2951,7 +2951,7 @@ test("native availability and preparation cross the real HTTP coordinator bounda
         getUnitList: {
           2: { id: 2, name: "Synthetic Trainer", is_active: "1" },
         },
-        getStartTimeMatrix: { [date]: ["10:00:00", "10:50:00"] },
+        getStartTimeMatrix: { [date]: ["13:00:00", "13:50:00"] },
       };
       if (body && Object.hasOwn(results, body.method))
         return Response.json({
@@ -3906,7 +3906,7 @@ test("ongoing checkout admits the priced weekend service with the customer lead-
           cursor.setUTCDate(cursor.getUTCDate() + 1)
         ) {
           const key = cursor.toISOString().slice(0, 10);
-          matrix[key] = key === date ? ["10:00:00"] : [];
+          matrix[key] = key === date ? ["13:00:00"] : [];
         }
       const results = {
         getEventList: Object.fromEntries(
@@ -3963,7 +3963,7 @@ test("ongoing checkout admits the priced weekend service with the customer lead-
           {
             serviceId: "3",
             instructorId: "2",
-            startMs: Date.parse(date + "T10:00:00+08:00"),
+            startMs: Date.parse(date + "T13:00:00+08:00"),
             players: 2,
             totalMinor: 10800,
           },
@@ -3978,7 +3978,7 @@ test("ongoing checkout admits the priced weekend service with the customer lead-
     const grant = await f.db
       .prepare("SELECT contract_json FROM native_checkout_grants")
       .first();
-    assert.equal(JSON.parse(grant.contract_json).bookingLeadMinutes, 150);
+    assert.equal(JSON.parse(grant.contract_json).bookingLeadMinutes, 240);
     assert.equal(JSON.parse(grant.contract_json).premiumServiceId, "3");
     assert.ok(
       f.calls.some((call) => call.body?.method === "getStartTimeMatrix"),

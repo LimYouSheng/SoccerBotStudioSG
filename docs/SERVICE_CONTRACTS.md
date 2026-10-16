@@ -1,5 +1,11 @@
 # SoccerBotStudio — Service Contracts
 
+## Opening hours, four-hour lead and observed HitPay host — 16 October 2026
+
+Owner local authenticated GETs found exactly one matching HitPay request for the retained attempt: status expired, reference/currency/SGD108 and merchant/request path matched; business_id was absent (allowed by the contract). The returned origin is https://checkout.sandbox.hit-pay.com, whereas the prior allowlist accepted only securecheckout.sandbox.hit-pay.com. Add the observed exact sandbox host to the shared validator used by Worker creation/recovery and protected browser checkout. Preserve all association checks and refuse production/lookalike hosts, extra paths, query/fragment, user information and ports. This fixes acceptance of that URL representation; it does not prove successful payment, signed callbacks or SimplyBook external-payment finalisation. Do not reopen or pay the expired request.
+
+Customer availability and new booking validation now require noon–20:00 SGT, complete40-minute sessions, and at least240minutes lead. Filter retained month offers locally and server-side so cached morning/late offers cannot bypass the change. Preserve provider-selected starts. SimplyBook account schedule alignment still needs owner confirmation; no provider settings are changed by this source patch.
+
 ## HAR06 checkout latency and payment diagnostics — 16 October 2026
 
 Owner HAR06 and redacted Worker/D1 evidence establish booking49/invoice40 created successfully at11:38SGT, with confirmed booking flags and an unpaid invoice. Details-to-Review took about53seconds: roughly20seconds queued behind background month work,5seconds for the browser-triggered fresh day read,6seconds for preparation (another fresh read), and21seconds for holding creation/readback (19 provider calls). This establishes the observed unpaid booking representation for this attempt; external-payment acceptance remains unproven. HitPay recovery stopped at hitpay_association_mismatch; no verified payment or external invoice write. Dashboard lists/logs were empty and runtime read-only HitPay access returned403, so the mismatched returned field remains unknown. Preserve the attempt; no recreation, payment retry, refund or manual-review reopening is authorized.

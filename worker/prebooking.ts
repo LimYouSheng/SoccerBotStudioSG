@@ -8,6 +8,7 @@ import {
 } from "../src/domain/catalog";
 import {
   BOOKING_LEAD_MINUTES,
+  withinOpeningHours,
   BOOKING_LEAD_MS,
   NATIVE_TRIAL_LEAD_MS,
   SESSION_MINUTES,
@@ -78,7 +79,9 @@ export const nativeAccountContractSchema = z
     bufferAfterMinutes: z.literal(10),
     clientLoginRequired: z.literal(false),
     providerSchedules: z.literal("non-overlapping"),
-    bookingLeadMinutes: z.literal(BOOKING_LEAD_MINUTES).optional(),
+    bookingLeadMinutes: z
+      .union([z.literal(150), z.literal(BOOKING_LEAD_MINUTES)])
+      .optional(),
     trialLeadTimeException: z.literal("owner-2026-10-14-15").optional(),
     confirmedAtMs: z.number().int().positive().safe(),
     expiresAtMs: z.number().int().positive().safe(),
@@ -105,8 +108,18 @@ export function nativeContractSelection(
     priceMinor: rate.priceMinor,
   };
 }
+// Only new ongoing customer contracts use current opening hours. Historical
+// finite trials and already-created booking readback keep their original scope.
+export function nativeCustomerHours(
+  contract: NativeAccountContract | undefined,
+  startMs: number,
+) {
+  return (
+    contract?.bookingLeadMinutes === undefined || withinOpeningHours(startMs)
+  );
+}
 // Lead policy comes from a trusted server-owned account contract, never a
-// customer DTO. Ongoing customer contracts use 150 minutes; historical finite
+// customer DTO. Ongoing customer contracts use 240 minutes; historical finite
 // trials retain their original 48-hour rule or exact date-specific exception.
 export function nativeTrialLeadMs(
   contractValue: unknown,
@@ -118,7 +131,7 @@ export function nativeTrialLeadMs(
   if (!parsed.success) return NATIVE_TRIAL_LEAD_MS;
   const contract = parsed.data;
   if (
-    contract.bookingLeadMinutes === BOOKING_LEAD_MINUTES &&
+    contract.bookingLeadMinutes !== undefined &&
     contract.accountId === binding.accountId &&
     contract.environmentId === binding.environmentId &&
     contract.companyLogin === binding.companyLogin &&
@@ -173,6 +186,8 @@ export class NativePrebooking {
     if (!Number.isInteger(sessionIndex) || !session)
       throw new ApiError(409, "native_session_missing");
     providerSelectionSchema.parse(sessionSelection(session));
+    if (!nativeCustomerHours(this.accountContract, session.startMs))
+      return { state: "selection_unavailable" as const, intent };
     if (
       session.startMs - now <
       nativeTrialLeadMs(this.accountContract, this.binding, session, now)

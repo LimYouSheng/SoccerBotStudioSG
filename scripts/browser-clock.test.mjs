@@ -106,7 +106,7 @@ function fixture(t) {
       slots: [
         {
           date: `2026-10-${String(nextDay++).padStart(2, "0")}`,
-          start: "09:00",
+          start: "12:00",
           instructor: "faisal",
         },
       ],

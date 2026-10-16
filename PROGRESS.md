@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## Opening hours, four-hour lead and observed HitPay host — 16 October 2026
+
+PR37 is merged in remote main9d9e273. New branch applies the owner-approved noon–20:00 SGT opening window,240-minute lead and exact checkout.sandbox.hit-pay.com allowance established by local read-only evidence. Existing expired HitPay attempt remains closed/manual review; no new booking/payment or provider settings change. Cached display, server preparation/pre-write boundaries and mechanism tests are updated. Run final non-browser checks and exact-source CI, then publish for specific merge approval. SimplyBook schedule alignment and the owner-operated paid/webhook/external-invoice experiment remain unproven; preserve the last booking until readiness is checked.
+
 ## HAR06 checkout latency and payment diagnostics — 16 October 2026
 
 Owner HAR06 and redacted Worker/D1 evidence establish booking49/invoice40 created successfully at11:38SGT, with confirmed booking flags and an unpaid invoice. Details-to-Review took about53seconds: roughly20seconds queued behind background month work,5seconds for the browser-triggered fresh day read,6seconds for preparation (another fresh read), and21seconds for holding creation/readback (19 provider calls). This establishes the observed unpaid booking representation for this attempt; external-payment acceptance remains unproven. HitPay recovery stopped at hitpay_association_mismatch; no verified payment or external invoice write. Dashboard lists/logs were empty and runtime read-only HitPay access returned403, so the mismatched returned field remains unknown. Preserve the attempt; no recreation, payment retry, refund or manual-review reopening is authorized.

@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Opening hours, four-hour lead and observed HitPay host — 16 October 2026
+
+Current customer policy is permanently noon–20:00 Singapore time, with the full 40-minute session ending by20:00, and a minimum240-minute lead. Exactly four hours is eligible. Provider schedules still determine actual starts and capacity; no fabricated native grid. These rules supersede the earlier150-minute policy. New preparation, server pre-write checks and public/protected display filtering share the policy. Retained150-minute declarations remain parseable for history/recovery, but new reviews apply240minutes. Existing paid/held records are not rewritten. Historical finite experiment contracts retain their original scope.
+
+The direct HitPay sandbox checkout allowlist accepts exactly checkout.sandbox.hit-pay.com and securecheckout.sandbox.hit-pay.com over HTTPS, with the existing merchant/request UUID/checkout path and no query, fragment, credentials or explicit port. Account/reference/currency/amount and payment checks remain unchanged; no generic wildcard or production host is admitted.
+
 ## HAR06 checkout latency and payment diagnostics — 16 October 2026
 
 Owner HAR06 and redacted Worker/D1 evidence establish booking49/invoice40 created successfully at11:38SGT, with confirmed booking flags and an unpaid invoice. Details-to-Review took about53seconds: roughly20seconds queued behind background month work,5seconds for the browser-triggered fresh day read,6seconds for preparation (another fresh read), and21seconds for holding creation/readback (19 provider calls). This establishes the observed unpaid booking representation for this attempt; external-payment acceptance remains unproven. HitPay recovery stopped at hitpay_association_mismatch; no verified payment or external invoice write. Dashboard lists/logs were empty and runtime read-only HitPay access returned403, so the mismatched returned field remains unknown. Preserve the attempt; no recreation, payment retry, refund or manual-review reopening is authorized.

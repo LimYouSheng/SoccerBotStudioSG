@@ -1,4 +1,9 @@
-import { SESSION_MINUTES, START_INTERVAL_MINUTES } from "./booking-policy";
+import {
+  OPENING_MINUTE,
+  CLOSING_MINUTE,
+  SESSION_MINUTES,
+  START_INTERVAL_MINUTES,
+} from "./booking-policy";
 export {
   SESSION_MINUTES,
   START_INTERVAL_MINUTES,
@@ -8,8 +13,7 @@ import { z } from "zod";
 // Explicit Preview fixtures; never a live catalogue or fallback.
 export const PRICE_CENTS = 8800;
 export const SERVICE_NAME = "Kickoff Special (Trial Price)";
-export const OPENING_MINUTE = 9 * 60;
-export const CLOSING_MINUTE = 21 * 60;
+export { OPENING_MINUTE, CLOSING_MINUTE } from "./booking-policy";
 export const SESSION_STARTS = Array.from(
   {
     length:

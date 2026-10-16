@@ -293,15 +293,23 @@
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",
+    "title": "Details accepts input before checking the complete selection on submission"
+  },
+  {
+    "file": "src/features/booking/booking-parity.test.tsx",
+    "title": "Details pauses future month prefetch and calendar return reuses the loaded month"
+  },
+  {
+    "file": "src/features/booking/booking-parity.test.tsx",
     "title": "browser slot cache expires after five minutes"
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",
-    "title": "calendar prefetch publishes the first month before sequential background months and discards an old scope reply"
+    "title": "cached calendar offers obey opening hours and the four-hour cutoff without another request"
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",
-    "title": "Details accepts input before checking the complete selection on submission"
+    "title": "calendar prefetch publishes the first month before sequential background months and discards an old scope reply"
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",
@@ -378,6 +386,10 @@
   {
     "file": "src/features/booking/details-step.test.tsx",
     "title": "verified opt-out details submit without saving a contact profile"
+  },
+  {
+    "file": "src/features/booking/direct-checkout.test.tsx",
+    "title": "HitPay HTTP conflict preserves the hold and shows payment failure without selection recovery"
   },
   {
     "file": "src/features/booking/direct-checkout.test.tsx",
@@ -585,7 +597,7 @@
   },
   {
     "file": "src/services/booking.test.ts",
-    "title": "offers only complete sessions within 9am to 9pm and rotates instructors every three hours"
+    "title": "offers only complete sessions within noon to 8pm and rotates instructors every three hours"
   },
   {
     "file": "src/services/booking.test.ts",
@@ -633,11 +645,11 @@
   },
   {
     "file": "src/services/booking.test.ts",
-    "title": "uses one shared studio with 40-minute sessions every 50 minutes"
+    "title": "uses Singapore instants across month and year boundaries regardless of UTC date"
   },
   {
     "file": "src/services/booking.test.ts",
-    "title": "uses Singapore instants across month and year boundaries regardless of UTC date"
+    "title": "uses one shared studio with 40-minute sessions every 50 minutes"
   },
   {
     "file": "src/services/booking.test.ts",
@@ -842,13 +854,5 @@
   {
     "file": "tests/live-email.spec.ts",
     "title": "synthetic live verification reads server identity and keeps native booking unavailable"
-  },
-  {
-    "file": "src/features/booking/booking-parity.test.tsx",
-    "title": "Details pauses future month prefetch and calendar return reuses the loaded month"
-  },
-  {
-    "file": "src/features/booking/direct-checkout.test.tsx",
-    "title": "HitPay HTTP conflict preserves the hold and shows payment failure without selection recovery"
   }
 ]

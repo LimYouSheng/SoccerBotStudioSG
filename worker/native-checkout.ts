@@ -20,6 +20,7 @@ import {
   nativeContractSelection,
   offeredStarts,
   nativeTrialLeadMs,
+  nativeCustomerHours,
 } from "./prebooking";
 import {
   nativeAvailabilitySchema,
@@ -654,6 +655,7 @@ export async function prepareCustomerNative(
       (session) =>
         session.serviceId !==
           nativeContractSelection(contract, session.startMs).serviceId ||
+        !nativeCustomerHours(contract, session.startMs) ||
         session.startMs - now <
           nativeTrialLeadMs(contract, binding, session, now) ||
         !dates.includes(
@@ -828,13 +830,14 @@ export async function customerNativeAvailability(options: {
         const startMs = Date.parse(`${date}T${time}+08:00`);
         const now = Date.now();
         if (
+          !nativeCustomerHours(contract, startMs) ||
           startMs - now <
-          nativeTrialLeadMs(
-            contract,
-            binding,
-            { serviceId, instructorId: instructor.id, startMs },
-            now,
-          )
+            nativeTrialLeadMs(
+              contract,
+              binding,
+              { serviceId, instructorId: instructor.id, startMs },
+              now,
+            )
         )
           continue;
         // Unexpected simultaneous eligibility is configuration drift. Never pick
@@ -1014,8 +1017,9 @@ export async function customerNativeCalendar(options: {
         ...day,
         offers: day.offers.filter(
           (offer) =>
+            nativeCustomerHours(contract, offer.startMs) &&
             offer.startMs - now >=
-            nativeTrialLeadMs(contract, binding, offer, now),
+              nativeTrialLeadMs(contract, binding, offer, now),
         ),
       })),
     };

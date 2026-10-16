@@ -10,7 +10,7 @@ import { blankDraft, type Attempt } from "@/domain/booking";
 const navigation = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
 vi.mock("next/navigation", () => ({ useRouter: () => navigation }));
 const id = "00000000-0000-4000-8000-000000000001";
-const url = `https://securecheckout.sandbox.hit-pay.com/payment-request/@soccerbot/${id}/checkout`;
+const url = `https://checkout.sandbox.hit-pay.com/payment-request/@soccerbot/${id}/checkout`;
 const draft = {
   ...blankDraft(),
   mode: "guest" as const,
@@ -25,7 +25,7 @@ const draft = {
   slots: [
     {
       date: "2026-10-20",
-      start: "09:00",
+      start: "12:00",
       instructor: "4",
       native: {
         serviceId: "2",

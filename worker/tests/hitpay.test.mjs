@@ -385,6 +385,26 @@ test("HitPay authoritative contract rejects identity money currency refund and s
     contract.verifyHitpayRequest(v, scope, "synthetic-reference", requestId);
   assert.equal(verify(valid).paymentId, paymentId);
   assert.equal(
+    verify({
+      ...valid,
+      business_id: undefined,
+      url: valid.url.replace("securecheckout.", "checkout."),
+    }).paymentId,
+    paymentId,
+  );
+  for (const url of [
+    valid.url.replace("securecheckout.", "checkout.") + "?redirect=evil",
+    valid.url
+      .replace("securecheckout.", "checkout.")
+      .replace("@soccerbot", "@foreign"),
+    valid.url.replace("securecheckout.sandbox", "checkout"),
+    valid.url
+      .replace("securecheckout.", "checkout.")
+      .replace(requestId, businessId),
+  ])
+    assert.throws(() => verify({ ...valid, url }));
+
+  assert.equal(
     verify({ ...valid, expiry_date: "2026-10-15T18:00:00" }).expiresAtMs,
     Date.parse("2026-10-15T10:00:00Z"),
   );
