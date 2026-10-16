@@ -632,7 +632,7 @@ test("native guest journey preserves players contact and one checkout across ref
       // Stop polling and cache warming before draining intercepted requests.
       // Otherwise the still-mounted app can create work during teardown.
       await test.step("Stop browser traffic", async () => {
-        if (!page.isClosed()) await page.close();
+        if (!page.isClosed()) await page.goto("about:blank");
       });
       await test.step("Drain mechanism routes", () =>
         page.unrouteAll({ behavior: "wait" }));
@@ -744,7 +744,7 @@ test("real payment recovery confirms the browser return from verified provider s
       // Stop polling and cache warming before draining intercepted requests.
       // Otherwise the still-mounted app can create work during teardown.
       await test.step("Stop browser traffic", async () => {
-        if (!page.isClosed()) await page.close();
+        if (!page.isClosed()) await page.goto("about:blank");
       });
       await test.step("Drain mechanism routes", () =>
         page.unrouteAll({ behavior: "wait" }));
