@@ -940,3 +940,38 @@ test("HitPay webhook arriving during a claim is reconciled after its older termi
   await send();
   assert.equal((await row()).state, "complete");
 });
+
+test("HitPay terminal persistence failure retains a reclaimable lease and durable webhook", async () => {
+  await seedPayment();
+  let entered, release;
+  const reading = new Promise((resolve) => {
+    entered = resolve;
+  });
+  handler = async () => {
+    entered();
+    return new Promise((resolve) => {
+      release = resolve;
+    });
+  };
+  const pending = recover();
+  await reading;
+  assert.equal((await send()).status, 202);
+  await db.exec(
+    "CREATE TRIGGER synthetic_reopen_failure BEFORE UPDATE ON hitpay_payments WHEN NEW.reason='webhook_recheck_pending' BEGIN SELECT RAISE(ABORT,'synthetic_storage_failure'); END;",
+  );
+  release(
+    Response.json({ ...paymentResponse(), status: "failed", payments: [] }),
+  );
+  assert.equal((await pending).status, 500);
+  assert.equal((await row()).state, "claimed");
+  assert.equal(
+    (await db.prepare("SELECT COUNT(*) AS count FROM hitpay_receipts").first())
+      .count,
+    1,
+  );
+  await db.exec("DROP TRIGGER synthetic_reopen_failure;");
+  const provider = providerFixture();
+  assert.equal((await recover()).status, 200);
+  assert.equal((await row()).state, "complete");
+  assert.equal(provider.writes(), 1);
+});

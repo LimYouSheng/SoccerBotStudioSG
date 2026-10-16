@@ -246,19 +246,19 @@ export async function recoverHitpay(
       result = "manual_review";
       reason = "recovery_exhausted";
     }
-    await env.STATE.prepare(
-      "UPDATE hitpay_payments SET state=?,reason=?,ready_ms=? WHERE attempt_id=? AND state='claimed' AND generation=?",
-    )
-      .bind(
+    // Commit the terminal decision and any pending-receipt wake-up together.
+    // If storage fails, the retained claim lease remains reclaimable by cron.
+    await env.STATE.batch([
+      env.STATE.prepare(
+        "UPDATE hitpay_payments SET state=?,reason=?,ready_ms=? WHERE attempt_id=? AND state='claimed' AND generation=?",
+      ).bind(
         result,
         reason,
         Date.now() + Math.min(3600000, 90000 * 2 ** Math.min(row.tries - 1, 6)),
         id,
         row.generation,
-      )
-      .run();
-    // A webhook may have arrived while the claim was reading an older state.
-    // Reconcile that unseen receipt without losing the terminal decision first.
-    await reopenHitpayReview(env.STATE, id, Date.now()).run();
+      ),
+      reopenHitpayReview(env.STATE, id, Date.now()),
+    ]);
   }
 }
