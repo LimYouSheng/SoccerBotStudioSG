@@ -77,9 +77,7 @@ function CalendarProbe({
 }
 test("calendar prefetch publishes the first month before sequential background months and discards an old scope reply", async () => {
   vi.spyOn(Date, "now").mockReturnValue(Date.parse("2027-01-01T00:00:00Z"));
-  let finish!: (
-    value: Awaited<ReturnType<NonNullable<BookingService["publicCalendar"]>>>,
-  ) => void;
+  let finish!: (value: CalendarAvailability) => void;
   const first = {
     ...demoBookingService,
     calendar: vi.fn(
@@ -354,9 +352,7 @@ test("fresh calendar receipts render before the minute clock ticks and expire at
   vi.useFakeTimers();
   const initial = Date.parse("2027-01-01T00:00:00Z");
   vi.setSystemTime(initial);
-  let finish!: (
-    value: Awaited<ReturnType<NonNullable<BookingService["publicCalendar"]>>>,
-  ) => void;
+  let finish!: (value: CalendarAvailability) => void;
   const calendar = vi.fn(
     async ({ month }: { month: string }) =>
       ({ month, observedAtMs: Date.now(), dates: [] }) as CalendarAvailability,
