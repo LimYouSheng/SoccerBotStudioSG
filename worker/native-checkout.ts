@@ -1,3 +1,4 @@
+import { retainHoldEvidence } from "./native-hold-evidence";
 import { retainHitpayHold } from "./hitpay-hold";
 import { hitpaySetting } from "./hitpay-contract";
 import { selectPaymentRoute } from "./hitpay-journal";
@@ -338,12 +339,28 @@ export async function executeNativeCheckout(options: {
         operation,
         assertGranted,
       );
+      if (options.holding)
+        await retainHoldEvidence(
+          env.STATE,
+          attemptId,
+          operation.kind,
+          response.body,
+          response.receivedAtMs,
+        );
       observeResponse(operation.kind, response.body);
       return response;
     }
     signal?.throwIfAborted();
     await provider.identity(env, control);
     const response = await provider.nativeRead(env, control, operation, signal);
+    if (options.holding)
+      await retainHoldEvidence(
+        env.STATE,
+        attemptId,
+        operation.kind,
+        response.body,
+        response.receivedAtMs,
+      );
     observeResponse(operation.kind, response.body);
     return response;
   };
@@ -515,7 +532,7 @@ export async function executeNativeCheckout(options: {
     }
   }
   await env.STATE.prepare(
-    "UPDATE native_checkout_grants SET state=?,result_json=? WHERE attempt_id=? AND state='running'",
+    "UPDATE native_checkout_grants SET state=?,result_json=json_patch(COALESCE(result_json,'{}'),?) WHERE attempt_id=? AND state='running'",
   )
     .bind(
       result.state === "associated" ? "complete" : "blocked",

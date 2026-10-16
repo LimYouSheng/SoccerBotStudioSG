@@ -1,5 +1,9 @@
 # SoccerBotStudio — Service Contracts
 
+## Private hold evidence — 16 October 2026
+
+HitPay hold execution persists redacted provider observations before strict validation. Each snapshot belongs to its running one-use native checkout grant, with provider receipt time and HTTP/coordinator correlation ID. Only allowlisted status values, typed boolean flags, numeric booking/invoice references and bounded invoice due_datetime are retained. Missing/malformed fields remain explicitly unknown; no contact, credentials, hashes or arbitrary provider strings are copied. Collections are bounded to12 entries and the grant to32 snapshots. Evidence-write failure stops progress without retrying a provider write. Final grant-result persistence preserves earlier snapshots. Customer responses remain unchanged; these observations cannot authorize a hold, payment or confirmation. No additional provider read is issued to fill missing evidence.
+
 ## Holding request HTTP boundary — 15 October 2026
 
 The global query allowlist permits exactly POST /api/booking/native/{attemptId}?hold=1 using the existing native-route ID grammar. Authentication, origin and account/attempt/payment-route checks still follow. GET hold, duplicate hold, alternate values/encoding, extra parameters and hold on other routes remain400 unexpected_parameters. Existing GET availability?refresh=1 allowance is unchanged. The public Worker entry point must be exercised in addition to direct handler and mocked browser tests.
