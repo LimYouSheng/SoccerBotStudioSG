@@ -567,6 +567,11 @@ test("native guest journey preserves players contact and one checkout across ref
         (c) => c.path === `/api/booking/hitpay/${transport.attemptId()}`,
       ),
     ).toHaveLength(0);
+    const displayReadsBeforeRestore = calls.filter(
+      (call) =>
+        call.path.startsWith("/api/calendar/") ||
+        call.path === "/api/catalogue",
+    ).length;
     await page.reload();
     await expect(
       page.getByRole("heading", { name: "Review booking", exact: true }),
@@ -581,6 +586,13 @@ test("native guest journey preserves players contact and one checkout across ref
       .getByRole("button", { name: "Continue to payment", exact: true })
       .click();
     await expect(page).toHaveURL(checkoutUrl);
+    expect(
+      calls.filter(
+        (call) =>
+          call.path.startsWith("/api/calendar/") ||
+          call.path === "/api/catalogue",
+      ),
+    ).toHaveLength(displayReadsBeforeRestore);
     await expect(
       page.getByRole("heading", { name: "Synthetic HitPay checkout" }),
     ).toBeVisible();

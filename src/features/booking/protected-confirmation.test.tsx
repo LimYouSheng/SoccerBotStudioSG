@@ -319,3 +319,83 @@ it("failed booking restoration does not block independent protected confirmation
     fetch.mock.calls.filter(([url]) => url.endsWith("/confirmation")),
   ).toHaveLength(1);
 });
+it("expired checking shows authenticated recorded payment without confirming or exporting stale booking evidence", async () => {
+  const deadline = Date.now() - 1000;
+  localStorage.setItem(
+    `soccerbot-checking:${first}`,
+    JSON.stringify({ deadline, next: 0, count: 1 }),
+  );
+  const fetch = vi.fn(async (url: string) => {
+    if (!url.endsWith("/checkout"))
+      throw new Error("Unexpected confirmation or receipt request");
+    return Response.json({
+      attemptId: first,
+      mode: "live",
+      checkout: { state: "unavailable" },
+      payment: { status: "recorded", paidAtMs: deadline - 60000 },
+      summary: {
+        players: 1,
+        totalMinor: 10800,
+        currency: "SGD",
+        sessions: [{ startMs: Date.now() + 86400000, players: 1 }],
+      },
+      checking: { deadlineMs: deadline, nextCheckMs: 0, pollAfterMs: 5000 },
+    });
+  });
+  vi.stubGlobal("fetch", fetch);
+  render(<ProtectedConfirmation attemptId={first} checkoutMode="live" />);
+  expect(
+    await screen.findByRole("heading", {
+      name: "Payment received",
+    }),
+  ).toBeInTheDocument();
+  expect(screen.getByText(/Do not pay again/)).toBeInTheDocument();
+  expect(
+    screen.queryByRole("heading", { name: "Booking confirmed" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("link", { name: /Open checkout/ }),
+  ).not.toBeInTheDocument();
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(
+    JSON.parse(localStorage.getItem(`soccerbot-checking:${first}`)!).deadline,
+  ).toBe(deadline);
+});
+it("restoring a held attempt blocks background calendar work before and after restoration", async () => {
+  let finish!: (attempt: Attempt) => void;
+  const restore = vi.fn(
+    () =>
+      new Promise<Attempt>((resolve) => {
+        finish = resolve;
+      }),
+  );
+  const publicCalendar = vi.fn();
+  const fetch = vi.fn(() =>
+    Promise.reject(new Error("Unexpected catalogue request")),
+  );
+  vi.stubGlobal("fetch", fetch);
+  render(
+    <BookingProvider
+      bookingService={{ ...liveBookingService, restore, publicCalendar }}
+      identityService={{ ...demoCustomerIdentity, mode: "live" }}
+    >
+      <p>Restoring</p>
+    </BookingProvider>,
+  );
+  await act(async () => {});
+  expect(restore).toHaveBeenCalledTimes(1);
+  expect(publicCalendar).not.toHaveBeenCalled();
+  expect(fetch).not.toHaveBeenCalled();
+  await act(async () =>
+    finish({
+      id: first,
+      status: "ready",
+      draft: blankDraft(),
+      outcome: "pending",
+      checkUntil: Date.now() + 600000,
+      booking: null,
+    }),
+  );
+  expect(publicCalendar).not.toHaveBeenCalled();
+  expect(fetch).not.toHaveBeenCalled();
+});

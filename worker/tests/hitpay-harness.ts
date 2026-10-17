@@ -1,3 +1,5 @@
+import { checkoutContext } from "../confirmation";
+import { ApiError } from "../policy";
 import { intentSchema } from "../journal";
 // Synthetic-only harness. This entry is excluded from deployed routing.
 import worker, {
@@ -12,6 +14,26 @@ export class SoccerBotAccountCoordinator extends ProductionCoordinator {
 const harness = {
   async fetch(request: Request, env: Env) {
     const url = new URL(request.url);
+    if (
+      ["/test/late-checkout", "/test/foreign-checkout"].includes(url.pathname)
+    ) {
+      try {
+        return Response.json(
+          await checkoutContext(
+            request,
+            url.pathname === "/test/foreign-checkout"
+              ? { ...env, SIMPLYBOOK_DEV_COMPANY_LOGIN: "foreign-company" }
+              : env,
+            "00000000-0000-4000-8000-000000000001",
+            Date.now() + 1200000,
+          ),
+        );
+      } catch (error) {
+        if (error instanceof ApiError)
+          return Response.json({ code: error.code }, { status: error.status });
+        throw error;
+      }
+    }
     if (url.pathname === "/test/elapsed-cooldown") {
       const stub = env.COORDINATOR.getByName(
         "simplybook-developer-account",

@@ -735,7 +735,7 @@ test("HitPay protected confirmation queues stale booking proof without resetting
       createHash("sha256").update(token).digest("hex"),
       "synthetic-owner",
       Date.now() - 60000,
-      Date.now() + 600000,
+      Date.now() + 3600000,
     )
     .run();
   const endpoint = origin + `/api/attempts/${attemptId}/confirmation`;
@@ -766,6 +766,65 @@ test("HitPay protected confirmation queues stale booking proof without resetting
   assert.equal((await row()).state, "complete");
   assert.equal(provider.writes(), 1);
   assert.equal(provider.reads(), 2);
+  // A later protected return preserves recorded payment without reopening checks.
+  const deadline = (
+    await db
+      .prepare("SELECT deadline_ms FROM attempts WHERE id=?")
+      .bind(attemptId)
+      .first()
+  ).deadline_ms;
+  const checkout = origin + `/api/attempts/${attemptId}/checkout`;
+  assert.equal((await mf.dispatchFetch(checkout)).status, 401);
+  const saved = await row();
+  const callsBefore = outbound;
+  const context = await mf.dispatchFetch(origin + "/test/late-checkout", {
+    headers,
+  });
+  assert.equal(context.status, 200);
+  const body = await context.json();
+  assert.deepEqual(body.payment, {
+    status: "recorded",
+    paidAtMs: saved.paid_ms,
+  });
+  assert.deepEqual(body.checkout, { state: "unavailable" });
+  assert.equal(body.checking.deadlineMs, deadline);
+  assert.equal(outbound, callsBefore);
+  assert.deepEqual(await row(), saved);
+  const foreignToken = "f".repeat(64);
+  await db
+    .prepare(
+      "INSERT INTO guest_access(capability_hash,owner_id,issued_ms,expires_ms) VALUES(?,?,?,?)",
+    )
+    .bind(
+      createHash("sha256").update(foreignToken).digest("hex"),
+      "foreign-owner",
+      Date.now() - 1000,
+      Date.now() + 3600000,
+    )
+    .run();
+  assert.equal(
+    (
+      await mf.dispatchFetch(checkout, {
+        headers: { cookie: `__Host-soccerbot-access=${foreignToken}` },
+      })
+    ).status,
+    404,
+  );
+  assert.equal(
+    (await mf.dispatchFetch(origin + "/test/foreign-checkout", { headers }))
+      .status,
+    409,
+  );
+  await db
+    .prepare(
+      "UPDATE hitpay_payments SET state='manual_review' WHERE attempt_id=?",
+    )
+    .bind(attemptId)
+    .run();
+  assert.equal(
+    (await (await mf.dispatchFetch(checkout, { headers })).json()).payment,
+    undefined,
+  );
 });
 
 async function seedHold(expires = Date.now() + 300000) {

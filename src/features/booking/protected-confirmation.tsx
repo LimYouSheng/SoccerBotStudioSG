@@ -90,7 +90,11 @@ export function ProtectedConfirmation({
     );
     return () => clearTimeout(timer);
   }, [link]);
+  const recordedPayment = current?.payment;
+  const historicalPayment =
+    !!recordedPayment && ["unresolved", "unavailable"].includes(view);
   const showLink =
+    !recordedPayment &&
     current?.checkout.state === "available" &&
     current.checkout.url !== expiredLink &&
     !["confirmed", "denied", "unresolved"].includes(view);
@@ -137,7 +141,9 @@ export function ProtectedConfirmation({
           </p>
         )}
         <h1>
-          {paymentReceived && view !== "confirmed" && view !== "denied" ? (
+          {historicalPayment ? (
+            "Payment received"
+          ) : paymentReceived && view !== "confirmed" && view !== "denied" ? (
             "Payment received; booking confirmation pending"
           ) : view === "checking" ? (
             showLink && link && !isHitpayCheckoutUrl(link.url) ? (
@@ -161,16 +167,29 @@ export function ProtectedConfirmation({
           )}
         </h1>
         <p>
-          {view === "confirmed"
-            ? "Your payment and booking have been verified."
-            : view === "denied"
-              ? "Your access has expired or was revoked. Contact the studio to recover access before trying another payment."
-              : view === "checking"
-                ? "Please wait while we verify your booking."
-                : view === "unavailable"
-                  ? "Status checking is temporarily unavailable. Your information is preserved. You can check again shortly."
-                  : "We could not verify this booking. Please contact the studio before trying another payment. The checking deadline does not mean your payment was cancelled."}
+          {historicalPayment
+            ? "Your payment was verified and recorded. Automatic booking checks have ended. Contact the studio if you need the latest booking status. Do not pay again."
+            : view === "confirmed"
+              ? "Your payment and booking have been verified."
+              : view === "denied"
+                ? "Your access has expired or was revoked. Contact the studio to recover access before trying another payment."
+                : view === "checking"
+                  ? "Please wait while we verify your booking."
+                  : view === "unavailable"
+                    ? "Status checking is temporarily unavailable. Your information is preserved. You can check again shortly."
+                    : "We could not verify this booking. Please contact the studio before trying another payment. The checking deadline does not mean your payment was cancelled."}
         </p>
+        {historicalPayment && recordedPayment && (
+          <p>
+            Payment verified:{" "}
+            {new Intl.DateTimeFormat("en-SG", {
+              timeZone: "Asia/Singapore",
+              dateStyle: "medium",
+              timeStyle: "short",
+            }).format(recordedPayment.paidAtMs)}{" "}
+            (Singapore time)
+          </p>
+        )}
         {current && (
           <section aria-label="Current booking summary">
             <h2 className="section-title">Your booking</h2>
@@ -196,40 +215,44 @@ export function ProtectedConfirmation({
             </p>
           </section>
         )}
-        {checkoutMode && !(link && isHitpayCheckoutUrl(link.url)) && (
-          <>
-            <p>
-              Checkout opens separately. Your browser may use a tab or window.
-              Return to SoccerBot to check progress; opening or closing checkout
-              does not confirm payment.
-            </p>
-            {showLink && current?.checkout.state === "available" ? (
-              <a
-                className="button wide"
-                href={current.checkout.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                referrerPolicy="no-referrer"
-                onClick={(event) => {
-                  if (link?.expiresAtMs && Date.now() >= link.expiresAtMs) {
-                    event.preventDefault();
-                    setExpiredLink(link.url);
-                  } else setOpened(attemptId);
-                }}
-              >
-                {opened === attemptId ? "Open checkout again" : "Open checkout"}
-              </a>
-            ) : view === "checking" || view === "unavailable" ? (
-              <p role="status">
-                {preparation === "loading" ? (
-                  <BrandLoading compact label="Preparing checkout…" />
-                ) : (
-                  "Checkout unavailable. Do not start another payment."
-                )}
+        {checkoutMode &&
+          !recordedPayment &&
+          !(link && isHitpayCheckoutUrl(link.url)) && (
+            <>
+              <p>
+                Checkout opens separately. Your browser may use a tab or window.
+                Return to SoccerBot to check progress; opening or closing
+                checkout does not confirm payment.
               </p>
-            ) : null}
-          </>
-        )}
+              {showLink && current?.checkout.state === "available" ? (
+                <a
+                  className="button wide"
+                  href={current.checkout.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  referrerPolicy="no-referrer"
+                  onClick={(event) => {
+                    if (link?.expiresAtMs && Date.now() >= link.expiresAtMs) {
+                      event.preventDefault();
+                      setExpiredLink(link.url);
+                    } else setOpened(attemptId);
+                  }}
+                >
+                  {opened === attemptId
+                    ? "Open checkout again"
+                    : "Open checkout"}
+                </a>
+              ) : view === "checking" || view === "unavailable" ? (
+                <p role="status">
+                  {preparation === "loading" ? (
+                    <BrandLoading compact label="Preparing checkout…" />
+                  ) : (
+                    "Checkout unavailable. Do not start another payment."
+                  )}
+                </p>
+              ) : null}
+            </>
+          )}
         {!["confirmed", "unresolved", "denied"].includes(view) && (
           <button
             className="button secondary wide payment-status-action"

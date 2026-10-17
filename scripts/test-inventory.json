@@ -464,6 +464,14 @@
     "title": "verified live receipt uses demo sections and refuses exports after access is revoked"
   },
   {
+    "file": "src/features/booking/protected-confirmation.test.tsx",
+    "title": "expired checking shows authenticated recorded payment without confirming or exporting stale booking evidence"
+  },
+  {
+    "file": "src/features/booking/protected-confirmation.test.tsx",
+    "title": "restoring a held attempt blocks background calendar work before and after restoration"
+  },
+  {
     "file": "src/features/booking/time-step.test.tsx",
     "title": "an open booking page expires a selected slot at its start and keeps it removable"
   },
