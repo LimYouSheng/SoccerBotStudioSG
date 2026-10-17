@@ -17,13 +17,15 @@ const harness = {
     if (
       ["/test/late-checkout", "/test/foreign-checkout"].includes(url.pathname)
     ) {
+      const readEnv =
+        url.pathname === "/test/foreign-checkout"
+          ? { ...env, SIMPLYBOOK_DEV_COMPANY_LOGIN: "foreign-company" }
+          : env;
       try {
         return Response.json(
           await checkoutContext(
             request,
-            url.pathname === "/test/foreign-checkout"
-              ? { ...env, SIMPLYBOOK_DEV_COMPANY_LOGIN: "foreign-company" }
-              : env,
+            readEnv,
             "00000000-0000-4000-8000-000000000001",
             Date.now() + 1200000,
           ),
