@@ -42,14 +42,6 @@ async function fixture(
       });
       return;
     }
-    if (url.href === "https://soccerbotstudiosg.simplybook.asia/v2/") {
-      // Synthetic frame only: preserve the no-provider-network browser gate.
-      await route.fulfill({
-        contentType: "text/html",
-        body: "<!doctype html><title>Synthetic initialization</title>",
-      });
-      return;
-    }
     if (url.origin !== "http://127.0.0.1:4173") {
       unexpected.push(url.origin);
       await route.abort();
@@ -338,13 +330,6 @@ async function mechanismTransport(
   const handle = async (route: Route) => {
     const request = route.request(),
       url = new URL(request.url());
-    if (url.href === "https://soccerbotstudiosg.simplybook.asia/v2/") {
-      await route.fulfill({
-        contentType: "text/html",
-        body: "<!doctype html><title>Synthetic initialization</title>",
-      });
-      return;
-    }
     if (url.href === mechanism.checkoutUrl) {
       await route.fulfill({
         contentType: "text/html",
