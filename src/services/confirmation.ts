@@ -27,6 +27,7 @@ export class ConfirmationError extends Error {
 }
 const instant = z.number().int().nonnegative().safe();
 const contextSchema = z.strictObject({
+  confirmation: receiptSchema.optional(),
   payment: z
     .strictObject({ status: z.literal("recorded"), paidAtMs: instant })
     .optional(),
@@ -112,13 +113,21 @@ export async function readBookingReceipt(
 ) {
   const { response } = await protectedRead(attemptId, "receipt", signal);
   const receipt = receiptSchema.parse(await response.json());
+  // The authenticated server validates provider freshness. Compare its receipt
+  // to its HTTP clock, not a customer's potentially skewed device clock.
+  const serverDate = Date.parse(response.headers.get("Date") ?? "");
+  const referenceTime = Number.isFinite(serverDate) ? serverDate : Date.now();
+  const precision = Number.isFinite(serverDate) ? 999 : 0;
   if (
     signal.aborted ||
     receipt.attemptId !== attemptId ||
-    receipt.verifiedAtMs > Date.now() ||
-    Date.now() - receipt.verifiedAtMs > 60000
+    receipt.verifiedAtMs > referenceTime + precision ||
+    referenceTime - receipt.verifiedAtMs > 60000
   )
     throw new ConfirmationError("unavailable");
+  return bookingFromReceipt(receipt);
+}
+export function bookingFromReceipt(receipt: z.infer<typeof receiptSchema>) {
   const slots = receipt.sessions.map((offer) => {
     const wall = new Date(offer.startMs + 28800000).toISOString();
     return {
@@ -160,7 +169,11 @@ export const protectedCheckoutService: ProtectedCheckoutService = {
   async context({ attemptId, mode, signal }) {
     const { response } = await protectedRead(attemptId, "checkout", signal);
     const context = contextSchema.parse(await response.json());
-    if (context.attemptId !== attemptId || context.mode !== mode)
+    if (
+      context.attemptId !== attemptId ||
+      context.mode !== mode ||
+      (context.confirmation && context.confirmation.attemptId !== attemptId)
+    )
       throw new ConfirmationError("unavailable");
     if (context.checkout.state === "available") {
       if (

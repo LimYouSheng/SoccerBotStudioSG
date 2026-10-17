@@ -2,7 +2,7 @@
 import { BookingLoading as BrandLoading } from "./booking-loading";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Icon } from "@/components/icon";
 import { Dialog } from "@/components/dialog";
 import { selectionErrors } from "@/domain/booking";
@@ -63,7 +63,8 @@ export function ReviewStep() {
     };
   }, [cancel]);
   const error = action.error;
-  const busy = action.status === "loading";
+  const [navigating, startNavigation] = useTransition();
+  const busy = action.status === "loading" || navigating;
   return (
     <>
       <h1 className="page-title">Review booking</h1>
@@ -151,7 +152,7 @@ export function ReviewStep() {
           }
           onClick={async () => {
             if ((await checkout()) && mounted.current)
-              router.push("/book/payment/");
+              startNavigation(() => router.push("/book/payment/"));
           }}
         >
           {busy ? (

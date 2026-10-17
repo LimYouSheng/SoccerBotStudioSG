@@ -874,5 +874,17 @@
   {
     "file": "src/features/booking/booking-parity.test.tsx",
     "title": "failed public calendar releases full-page loading and leaves refresh available"
+  },
+  {
+    "file": "src/domain/confirmation.test.ts",
+    "title": "recorded confirmation checks historical proof but authenticates current access"
+  },
+  {
+    "file": "src/features/booking/account-step.test.tsx",
+    "title": "guest loading remains until the destination commits without exposing the previous form"
+  },
+  {
+    "file": "src/features/booking/protected-confirmation.test.tsx",
+    "title": "reopening an expired paid booking shows the saved full confirmation without polling or granting exports"
   }
 ]

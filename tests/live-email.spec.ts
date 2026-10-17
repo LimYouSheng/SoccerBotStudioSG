@@ -767,19 +767,18 @@ test("real payment recovery confirms the browser return from verified provider s
     });
     expect((await mechanism.completePayment()).status).toBe(202);
     await mechanism.recover();
-    const confirmation = page.waitForResponse(
+    const savedConfirmation = page.waitForResponse(
       (response) =>
         new URL(response.url()).pathname ===
-          `/api/attempts/${attemptId}/confirmation` &&
-        response.status() === 200,
+          `/api/attempts/${attemptId}/checkout` && response.status() === 200,
     );
     await page.goto(`/confirmation/?attempt=${attemptId}`);
     await page
       .getByRole("dialog", { name: "Get the SoccerBot Player App" })
       .getByRole("button", { name: "Not now", exact: true })
       .click();
-    expect(await (await confirmation).json()).toMatchObject({
-      status: "confirmed",
+    expect(await (await savedConfirmation).json()).toMatchObject({
+      confirmation: { attemptId },
     });
     await expect(
       page.getByRole("heading", { name: "Booking confirmed", exact: true }),
@@ -799,12 +798,15 @@ test("real payment recovery confirms the browser return from verified provider s
     }, attemptId);
     await page.reload();
     await expect(
-      page.getByRole("heading", { name: "Payment received", exact: true }),
-    ).toBeVisible();
-    await expect(page.getByText(/Do not pay again/)).toBeVisible();
-    await expect(
       page.getByRole("heading", { name: "Booking confirmed", exact: true }),
-    ).toHaveCount(0);
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Client Details" }),
+    ).toBeVisible();
+    await expect(page.getByText(/Saved confirmation · Verified/)).toBeVisible();
+    await expect(page.getByRole("link", { name: "Open checkout" })).toHaveCount(
+      0,
+    );
     expect(
       transport.calls.filter((call) => call.path.endsWith("/confirmation")),
     ).toHaveLength(confirmationReads);

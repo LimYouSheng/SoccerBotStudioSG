@@ -1,6 +1,6 @@
 "use client";
 import { BookingLoading as BrandLoading } from "./booking-loading";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icon";
 import { blankContact } from "@/domain/contact";
@@ -21,7 +21,9 @@ export function AccountStep() {
     [error, setError] = useState(""),
     [challenge, setChallenge] = useState<CustomerChallenge | null>(null);
   const [identity, setIdentity] = useState(() => identityService.current());
-  const [busy, setBusy] = useState(false);
+  const [working, setBusy] = useState(false);
+  const [navigating, startNavigation] = useTransition();
+  const busy = working || navigating;
   const [botToken, setBotToken] = useState("");
   const [botGeneration, setBotGeneration] = useState(0);
   const refreshing = useRef<AbortController | null>(null);
@@ -87,7 +89,7 @@ export function AccountStep() {
       contact,
     });
     if (editProfile) setView("profile");
-    else router.push("/book/session/");
+    else startNavigation(() => router.push("/book/session/"));
   }
   function request() {
     void perform(async (signal) => {

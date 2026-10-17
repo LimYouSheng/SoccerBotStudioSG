@@ -7,8 +7,12 @@ import {
   START_INTERVAL_MINUTES,
   SESSION_MINUTES,
 } from "../src/domain/booking-policy";
+import { receiptData } from "./receipt-data";
 import { storedNativeCheckout } from "./native-adapter";
-import { verifyConfirmation } from "../src/domain/confirmation";
+import {
+  verifyConfirmation,
+  verifyRecordedConfirmation,
+} from "../src/domain/confirmation";
 import { authenticate, type Access } from "./access";
 import { intentSchema, associationSchema } from "./journal";
 import { ApiError, policy } from "./policy";
@@ -103,6 +107,7 @@ export function decideStoredConfirmation(
   access: Access,
   now: number,
   p: ReturnType<typeof policy>,
+  recordedAtMs?: number,
 ) {
   if (!row.association_json || !row.observation_json)
     return {
@@ -160,7 +165,7 @@ export function decideStoredConfirmation(
       },
     })),
   };
-  return verifyConfirmation({
+  const input = {
     nowMs: now,
     policy: {
       maxObservationAgeMs: p.OBSERVATION_MAX_AGE_MS,
@@ -176,7 +181,10 @@ export function decideStoredConfirmation(
     },
     bookings: stored.bookings,
     invoice: stored.invoice,
-  });
+  };
+  return recordedAtMs === undefined
+    ? verifyConfirmation(input)
+    : verifyRecordedConfirmation(input, recordedAtMs);
 }
 
 // A protected context/read boundary, not an invented native preparation method.
@@ -189,32 +197,65 @@ export async function checkoutContext(
   const access = await authenticate(request, env, now);
   const row = await env.STATE.withSession("first-primary")
     .prepare(
-      "SELECT intent_json,intent_hash,association_json,deadline_ms,confirmation_next_ms FROM attempts WHERE id=? AND owner_id=?",
+      "SELECT id,created_ms,state,observation_json,intent_json,intent_hash,association_json,deadline_ms,confirmation_next_ms FROM attempts WHERE id=? AND owner_id=?",
     )
     .bind(id, access.owner_id)
-    .first<{
-      intent_json: string;
-      intent_hash: string;
-      association_json: string | null;
-      deadline_ms: number;
-      confirmation_next_ms: number;
-    }>();
+    .first<
+      StoredAttempt & {
+        intent_json: string;
+        intent_hash: string;
+        association_json: string | null;
+        deadline_ms: number;
+        confirmation_next_ms: number;
+      }
+    >();
   if (!row) throw new ApiError(404, "attempt_unavailable");
   const intent = intentSchema.parse(JSON.parse(row.intent_json));
   const hitpayCheckout = await storedHitpayCheckout(env, id, now);
+  const payment =
+    hitpayCheckout === null
+      ? undefined
+      : await recordedHitpayPayment(
+          env,
+          id,
+          row.intent_hash,
+          row.association_json,
+          row.intent_json,
+        );
+  let savedConfirmation;
+  if (payment && row.observation_json) {
+    const evidence = JSON.parse(row.observation_json);
+    const times = [
+      evidence.invoice?.observedAtMs,
+      ...(Array.isArray(evidence.bookings)
+        ? evidence.bookings.map(
+            (booking: { observedAtMs?: number }) => booking.observedAtMs,
+          )
+        : []),
+    ];
+    const recordedAt = times.every(Number.isSafeInteger)
+      ? Math.max(...times)
+      : NaN;
+    if (
+      decideStoredConfirmation(row, access, now, policy(env), recordedAt)
+        .status === "confirmed"
+    )
+      try {
+        savedConfirmation = await receiptData(env, row, recordedAt);
+      } catch (error) {
+        if (
+          !(error instanceof ApiError) ||
+          error.code !== "receipt_details_unavailable"
+        )
+          throw error;
+      }
+  }
+  await authenticate(request, env, Date.now());
   return {
     attemptId: id,
     mode: "live" as const,
-    payment:
-      hitpayCheckout === null
-        ? undefined
-        : await recordedHitpayPayment(
-            env,
-            id,
-            row.intent_hash,
-            row.association_json,
-            row.intent_json,
-          ),
+    payment,
+    confirmation: savedConfirmation,
     checkout:
       hitpayCheckout ??
       (row.association_json &&

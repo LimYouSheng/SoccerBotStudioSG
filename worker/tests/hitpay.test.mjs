@@ -41,6 +41,13 @@ const intent = {
   accountId: config.account_id,
   environmentId: "developer",
   customerId: "51",
+  contact: {
+    name: "Synthetic Customer",
+    email: "synthetic@example.test",
+    phone: "+6591234567",
+    contactMethod: "email",
+    academy: "",
+  },
   currency: "SGD",
   totalMinor: 8800,
   taxMinor: 0,
@@ -738,6 +745,43 @@ test("HitPay protected confirmation queues stale booking proof without resetting
       Date.now() + 3600000,
     )
     .run();
+  const date = new Date(intent.sessions[0].startMs + 28800000)
+    .toISOString()
+    .slice(0, 10);
+  await db
+    .prepare(
+      "INSERT INTO native_checkout_grants(attempt_id,capability_hash,intent_hash,source_revision,contract_json,not_before_ms,expires_ms,starting_used,maximum_used,state,availability_json) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+    )
+    .bind(
+      attemptId,
+      createHash("sha256").update(token).digest("hex"),
+      scope.intentHash,
+      "a".repeat(40),
+      "{}",
+      Date.now(),
+      Date.now() + 600000,
+      0,
+      64,
+      "complete",
+      JSON.stringify({
+        [date]: {
+          date,
+          observedAtMs: Date.now(),
+          offers: [
+            {
+              serviceId: "12",
+              instructorId: "14",
+              serviceName: "Synthetic Session",
+              instructorName: "Synthetic Trainer",
+              startMs: intent.sessions[0].startMs,
+              priceMinor: 8800,
+              currency: "SGD",
+            },
+          ],
+        },
+      }),
+    )
+    .run();
   const endpoint = origin + `/api/attempts/${attemptId}/confirmation`;
   const headers = { cookie: `__Host-soccerbot-access=${token}` };
   assert.equal((await mf.dispatchFetch(endpoint)).status, 401);
@@ -786,10 +830,54 @@ test("HitPay protected confirmation queues stale booking proof without resetting
     status: "recorded",
     paidAtMs: saved.paid_ms,
   });
+  assert.equal(body.confirmation.attemptId, attemptId);
+  assert.equal(body.confirmation.contact.name, "Synthetic Customer");
+  assert.equal(body.confirmation.sessions.length, 1);
+  assert.ok(body.confirmation.verifiedAtMs < Date.now() + 1200000);
   assert.deepEqual(body.checkout, { state: "unavailable" });
   assert.equal(body.checking.deadlineMs, deadline);
   assert.equal(outbound, callsBefore);
   assert.deepEqual(await row(), saved);
+  const finalProof = await db
+    .prepare("SELECT observation_json FROM attempts WHERE id=?")
+    .bind(attemptId)
+    .first();
+  const stale = JSON.parse(finalProof.observation_json);
+  for (const proof of [...stale.bookings, stale.invoice])
+    proof.observedAtMs = Date.now() - 30000;
+  await db
+    .prepare("UPDATE attempts SET observation_json=? WHERE id=?")
+    .bind(JSON.stringify(stale), attemptId)
+    .run();
+  const staleContext = await (
+    await mf.dispatchFetch(checkout, { headers })
+  ).json();
+  assert.equal(
+    staleContext.confirmation.verifiedAtMs,
+    stale.invoice.observedAtMs,
+  );
+  assert.equal(
+    (
+      await mf.dispatchFetch(origin + `/api/attempts/${attemptId}/receipt`, {
+        headers,
+      })
+    ).status,
+    409,
+  );
+  stale.bookings[0].status = "cancelled";
+  await db
+    .prepare("UPDATE attempts SET observation_json=? WHERE id=?")
+    .bind(JSON.stringify(stale), attemptId)
+    .run();
+  assert.equal(
+    (await (await mf.dispatchFetch(checkout, { headers })).json()).confirmation,
+    undefined,
+  );
+  await db
+    .prepare("UPDATE attempts SET observation_json=? WHERE id=?")
+    .bind(finalProof.observation_json, attemptId)
+    .run();
+  assert.equal(outbound, callsBefore);
   const foreignToken = "f".repeat(64);
   await db
     .prepare(
