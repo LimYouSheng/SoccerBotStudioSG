@@ -1,5 +1,5 @@
 "use client";
-import { BrandLoading } from "@/components/brand-loading";
+import { BookingLoading as BrandLoading } from "./booking-loading";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/icon";
@@ -110,7 +110,7 @@ export function PaymentStep() {
     return (
       <div className="status-shell">
         <div role="status" className="status-heading">
-          {checking ? (
+          {checking && !error ? (
             <BrandLoading compact label="Processing payment" />
           ) : (
             <span className="status-icon pending">

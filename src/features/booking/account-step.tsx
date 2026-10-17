@@ -1,5 +1,5 @@
 "use client";
-import { BrandLoading } from "@/components/brand-loading";
+import { BookingLoading as BrandLoading } from "./booking-loading";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icon";
@@ -139,6 +139,7 @@ export function AccountStep() {
             </p>
             <button
               className="button wide"
+              disabled={busy}
               onClick={() =>
                 identity
                   ? void perform(async (signal) => {
