@@ -788,6 +788,30 @@ test("real payment recovery confirms the browser return from verified provider s
       mechanism.calls.filter((call) => call.url.endsWith("/accept-payment")),
     ).toHaveLength(1);
     expect(mechanism.unexpected).toEqual([]);
+    const confirmationReads = transport.calls.filter((call) =>
+      call.path.endsWith("/confirmation"),
+    ).length;
+    await page.evaluate((id) => {
+      localStorage.setItem(
+        `soccerbot-checking:${id}`,
+        JSON.stringify({ deadline: Date.now() - 1, next: 0, count: 120 }),
+      );
+    }, attemptId);
+    await page.reload();
+    await expect(
+      page.getByRole("heading", { name: "Payment received", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText(/Do not pay again/)).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Booking confirmed", exact: true }),
+    ).toHaveCount(0);
+    expect(
+      transport.calls.filter((call) => call.path.endsWith("/confirmation")),
+    ).toHaveLength(confirmationReads);
+    expect(
+      mechanism.calls.filter((call) => call.url.endsWith("/accept-payment")),
+    ).toHaveLength(1);
+    expect(mechanism.unexpected).toEqual([]);
   } finally {
     try {
       // Stop polling and cache warming before draining intercepted requests.
