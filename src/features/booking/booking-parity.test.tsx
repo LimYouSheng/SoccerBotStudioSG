@@ -7,7 +7,6 @@ import {
   within,
 } from "@testing-library/react";
 import { afterEach, expect, test, vi } from "vitest";
-import { NativeSessionInit } from "./native-session-init";
 import { useCalendarAvailability } from "./calendar-availability";
 import { demoBookingService } from "@/services/demo/booking";
 import { BookingServiceError } from "@/services/contracts";
@@ -35,21 +34,16 @@ afterEach(() => {
   replace.mockClear();
 });
 
-test("native initialization stays hidden and stable and never preloads a payment capability", () => {
-  const { container, rerender } = render(<NativeSessionInit enabled={false} />);
-  expect(container.querySelector("iframe")).toBeNull();
-  rerender(<NativeSessionInit enabled />);
-  const frame = container.querySelector("iframe")!;
-  expect(frame).toHaveAttribute("hidden");
-  expect(frame).toHaveAttribute(
-    "src",
-    "https://soccerbotstudiosg.simplybook.asia/v2/",
+test("live booking selection does not initialize an unrelated provider session", async () => {
+  const { container } = render(
+    <BookingProvider bookingService={{ ...demoBookingService, mode: "live" }}>
+      <Seed />
+    </BookingProvider>,
   );
-  expect(frame).toHaveAttribute("sandbox", "allow-scripts allow-same-origin");
-  fireEvent.load(frame);
-  rerender(<NativeSessionInit enabled />);
-  expect(container.querySelector("iframe")).toBe(frame);
-  expect(screen.queryByText(/ready|authorized/i)).not.toBeInTheDocument();
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: "Choose test session" }));
+  await act(async () => {});
+  expect(container.querySelector("iframe")).toBeNull();
 });
 
 function CalendarProbe({

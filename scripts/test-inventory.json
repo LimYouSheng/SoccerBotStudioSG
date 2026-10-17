@@ -333,7 +333,7 @@
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",
-    "title": "native initialization stays hidden and stable and never preloads a payment capability"
+    "title": "live booking selection does not initialize an unrelated provider session"
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",

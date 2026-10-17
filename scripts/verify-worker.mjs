@@ -30,6 +30,7 @@ const commands = [
       "worker/tests/identity.test.mjs",
       "worker/tests/identity-delivery.test.mjs",
       "worker/tests/provider.test.mjs",
+      "worker/tests/provider-queue.test.mjs",
       "worker/tests/native.test.mjs",
       "worker/tests/runtime.test.mjs",
       "worker/tests/recovery.test.mjs",

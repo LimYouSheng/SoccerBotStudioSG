@@ -1,3 +1,4 @@
+import { ProviderQueue } from "./provider-queue";
 import { payHitpayHold } from "./hitpay-hold";
 import { hitpayRecoveryEnabled } from "./hitpay-contract";
 import { recoverHitpay } from "./hitpay-recovery";
@@ -46,7 +47,7 @@ import { ProviderSession, type ProviderControl } from "./provider-session";
 export class SoccerBotAccountCoordinator extends DurableObject<Env> {
   private provider = new ProviderSession();
   private calendarReads = new NativeCalendarReads();
-  private nativeAvailabilityQueue: Promise<unknown> = Promise.resolve();
+  private providerQueue = new ProviderQueue();
   private get sql() {
     return instrumentStorage(this.ctx.storage.sql);
   }
@@ -565,7 +566,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     scope: { date: string; serviceId: string; cookie: string; fresh?: boolean },
     correlationId: string,
   ) {
-    const pending = this.nativeAvailabilityQueue.then(() =>
+    const pending = this.providerQueue.run("foreground", () =>
       traced(correlationId, "coordinator", async () => {
         if (hasPublicCalendarWindow(this.env)) {
           await authenticate(
@@ -603,24 +604,16 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         });
       }),
     );
-    this.nativeAvailabilityQueue = pending.then(
-      () => undefined,
-      () => undefined,
-    );
     return rpcOutcome(() => pending);
   }
   async publicCalendar(month: string, correlationId: string) {
-    const pending = this.nativeAvailabilityQueue.then(() =>
+    const pending = this.providerQueue.run("display", () =>
       traced(correlationId, "coordinator", () =>
         publicCalendar({
           ...this.calendarReadOptions(),
           month,
         }),
       ),
-    );
-    this.nativeAvailabilityQueue = pending.then(
-      () => undefined,
-      () => undefined,
     );
     return rpcOutcome(() => pending);
   }
@@ -641,14 +634,10 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     };
   }
   async windowCatalogue(correlationId: string) {
-    const pending = this.nativeAvailabilityQueue.then(() =>
+    const pending = this.providerQueue.run("display", () =>
       traced(correlationId, "coordinator", () =>
         windowCatalogue(this.calendarReadOptions()),
       ),
-    );
-    this.nativeAvailabilityQueue = pending.then(
-      () => undefined,
-      () => undefined,
     );
     return rpcOutcome(() => pending);
   }
@@ -656,7 +645,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     scope: { month: string; serviceId: string; cookie: string },
     correlationId: string,
   ) {
-    const pending = this.nativeAvailabilityQueue.then(() =>
+    const pending = this.providerQueue.run("display", () =>
       traced(correlationId, "coordinator", async () => {
         if (hasPublicCalendarWindow(this.env)) {
           await authenticate(
@@ -693,17 +682,13 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         });
       }),
     );
-    this.nativeAvailabilityQueue = pending.then(
-      () => undefined,
-      () => undefined,
-    );
     return rpcOutcome(() => pending);
   }
   async prepareCustomer(
     scope: { cookie: string; value: unknown },
     correlationId: string,
   ) {
-    const pending = this.nativeAvailabilityQueue.then(() =>
+    const pending = this.providerQueue.run("foreground", () =>
       traced(correlationId, "coordinator", async () => {
         const request = new Request(this.env.APP_ORIGIN, {
           headers: { cookie: scope.cookie },
@@ -717,10 +702,6 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         return prepareCustomerNative(request, this.env, scope.value);
       }),
     );
-    this.nativeAvailabilityQueue = pending.then(
-      () => undefined,
-      () => undefined,
-    );
     return rpcOutcome(() => pending);
   }
   async nativeCheckout(
@@ -728,7 +709,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     correlationId: string,
   ) {
     this.calendarReads.invalidate();
-    const pending = this.nativeAvailabilityQueue.then(() =>
+    const pending = this.providerQueue.run("foreground", () =>
       traced(correlationId, "coordinator", () =>
         executeNativeCheckout({
           request: new Request(this.env.APP_ORIGIN, {
@@ -744,17 +725,13 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         }).finally(() => this.calendarReads.invalidate()),
       ),
     );
-    this.nativeAvailabilityQueue = pending.then(
-      () => undefined,
-      () => undefined,
-    );
     return rpcOutcome(() => pending);
   }
   async hitpayPayment(
     scope: { attemptId: string; cookie: string },
     correlationId: string,
   ) {
-    const pending = this.nativeAvailabilityQueue.then(() =>
+    const pending = this.providerQueue.run("foreground", () =>
       traced(correlationId, "coordinator", () =>
         payHitpayHold(
           new Request(this.env.APP_ORIGIN, {
@@ -767,14 +744,10 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         ),
       ),
     );
-    this.nativeAvailabilityQueue = pending.then(
-      () => undefined,
-      () => undefined,
-    );
     return rpcOutcome(() => pending);
   }
   async hitpayRecovery(attemptId: string, correlationId: string) {
-    const run = this.nativeAvailabilityQueue.then(() =>
+    const run = this.providerQueue.run("foreground", () =>
       traced(correlationId, "coordinator", () =>
         recoverHitpay(
           this.env,
@@ -784,14 +757,10 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         ),
       ),
     );
-    this.nativeAvailabilityQueue = run.then(
-      () => undefined,
-      () => undefined,
-    );
     return run;
   }
   async ongoingRecovery(attemptId: string, correlationId: string) {
-    const run = this.nativeAvailabilityQueue.then(async () => {
+    const run = this.providerQueue.run("foreground", async () => {
       const due = await ongoingReadbackDue(this.env, Date.now(), attemptId);
       if (!due) return { outcomes: [], reads: 0 };
       const used = this.providerAccounting().used;
@@ -809,10 +778,6 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         correlationId,
       );
     });
-    this.nativeAvailabilityQueue = run.then(
-      () => undefined,
-      () => undefined,
-    );
     return run;
   }
   async nativeRecovery(
