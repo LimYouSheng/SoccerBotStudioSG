@@ -1,5 +1,5 @@
 "use client";
-import { BrandLoading } from "@/components/brand-loading";
+import { BookingLoading as BrandLoading } from "./booking-loading";
 import Link from "next/link";
 import { useEffect } from "react";
 import type { CustomerCatalogue } from "@/domain/catalog";

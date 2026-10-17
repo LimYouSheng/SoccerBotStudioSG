@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { guardedStep, type BookingStep } from "@/domain/booking";
 import { Icon } from "@/components/icon";
-import { BrandLoading } from "@/components/brand-loading";
+import { BookingLoading as BrandLoading } from "./booking-loading";
 import { useBooking } from "./provider";
 import { AccountStep } from "./account-step";
 import { SessionStep } from "./session-step";

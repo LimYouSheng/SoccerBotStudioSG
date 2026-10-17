@@ -1,6 +1,6 @@
 "use client";
 import { isHitpayCheckoutUrl } from "@/domain/native-checkout";
-import { BrandLoading } from "@/components/brand-loading";
+import { BookingLoading as BrandLoading } from "./booking-loading";
 import { useEffect, useRef, useState } from "react";
 import { BookingConfirmation } from "./confirmation-step";
 import { downloadBooking, downloadCalendar } from "@/services/exports";
@@ -140,7 +140,18 @@ export function ProtectedConfirmation({
           {paymentReceived && view !== "confirmed" && view !== "denied" ? (
             "Payment received; booking confirmation pending"
           ) : view === "checking" ? (
-            <BrandLoading compact label="Checking your payment and booking…" />
+            showLink && link && !isHitpayCheckoutUrl(link.url) ? (
+              "Complete your payment"
+            ) : (
+              <BrandLoading
+                compact
+                label={
+                  checkoutMode && preparation === "loading"
+                    ? "Preparing checkout…"
+                    : "Checking your payment and booking…"
+                }
+              />
+            )
           ) : view === "confirmed" ? (
             "Booking confirmed"
           ) : view === "unresolved" ? (

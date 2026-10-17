@@ -854,5 +854,17 @@
   {
     "file": "tests/live-email.spec.ts",
     "title": "synthetic live verification reads server identity and keeps native booking unavailable"
+  },
+  {
+    "file": "src/features/booking/booking-loading.test.tsx",
+    "title": "overlapping booking reads share one full-page loader and preserve the mounted form"
+  },
+  {
+    "file": "src/features/booking/booking-loading.test.tsx",
+    "title": "unmounting a pending booking screen releases the overlay and existing page inert state"
+  },
+  {
+    "file": "src/features/booking/booking-parity.test.tsx",
+    "title": "failed public calendar releases full-page loading and leaves refresh available"
   }
 ]

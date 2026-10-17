@@ -460,9 +460,24 @@ test("native guest journey preserves players contact and one checkout across ref
     expect(calls.filter((c) => c.path === "/api/catalogue")).toHaveLength(1);
     expect(calls.filter((c) => c.path === "/api/access")).toHaveLength(0);
     await page.getByRole("link", { name: "Book now", exact: true }).click();
-    await page
-      .getByRole("button", { name: "Continue as guest", exact: true })
-      .click();
+    const guest = page.getByRole("button", {
+      name: "Continue as guest",
+      exact: true,
+    });
+    const email = page.getByRole("button", {
+      name: "Continue with email",
+      exact: true,
+    });
+    await expect(guest).toBeVisible();
+    await expect(email).toBeVisible();
+    const guestBox = (await guest.boundingBox())!;
+    const emailBox = (await email.boundingBox())!;
+    expect(Math.abs(guestBox.width - emailBox.width)).toBeLessThanOrEqual(1);
+    expect(Math.abs(guestBox.height - emailBox.height)).toBeLessThanOrEqual(1);
+    if (Math.abs(guestBox.x - emailBox.x) > 1)
+      expect(Math.abs(guestBox.y - emailBox.y)).toBeLessThanOrEqual(1);
+    else expect(Math.abs(guestBox.x - emailBox.x)).toBeLessThanOrEqual(1);
+    await guest.click();
     await expect(page).toHaveURL(/\/book\/session\/$/);
     await page
       .getByRole("button", { name: "Add one player", exact: true })

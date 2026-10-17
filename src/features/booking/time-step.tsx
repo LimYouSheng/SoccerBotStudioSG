@@ -1,5 +1,5 @@
 "use client";
-import { BrandLoading } from "@/components/brand-loading";
+import { BookingLoading as BrandLoading } from "./booking-loading";
 import { useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/icon";
 
@@ -78,6 +78,8 @@ export function TimeStep() {
     (day) => day.date > date && day.available,
   )?.date;
   const { retry } = availability;
+  const calendarFailed =
+    publicCalendarReady && calendar.failed.includes(month.slice(0, 7));
   const displayUnavailable =
     publicCalendarReady && !!monthResult && dayAvailability.get(date) !== true;
   const result = useMemo(
@@ -258,7 +260,13 @@ export function TimeStep() {
         <span>SGT · Per session</span>
       </div>
       {!result ? (
-        <BrandLoading compact label="Checking available times…" />
+        calendarFailed ? (
+          <p>
+            Refresh availability to choose a session. Your selections are saved.
+          </p>
+        ) : (
+          <BrandLoading compact label="Checking available times…" />
+        )
       ) : result.status !== "success" ? (
         <div className="alert" role="alert">
           <p>{result.message}</p>

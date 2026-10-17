@@ -2563,12 +2563,14 @@
   }
   .access-option p {
     color: var(--color-muted);
-    flex: 1;
+    min-height: 3lh;
     margin-bottom: 28px;
     overflow-wrap: anywhere;
   }
   .access-option .button {
-    margin-top: auto;
+    width: 100%;
+    min-height: 56px;
+    margin-top: 0;
   }
   .auth-mark {
     display: grid;
@@ -3801,4 +3803,10 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Full-page booking work retains its screen and scroll position underneath. */
+html:has(.booking-flow-overlay) {
+  overflow: hidden;
+  scrollbar-gutter: stable;
 }

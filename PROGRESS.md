@@ -1,5 +1,11 @@
 # SoccerBotStudioSG current progress
 
+## Booking presentation repair and measured latency — 17 October 2026
+
+Owner HAR-fixed-01 reached hold200, payment handoff200 and eventual confirmation/receipt200 on deployed PR39 source b9f2b51. Measured preparation7.8seconds plus hold21.1seconds remains too long for the owner. Correlated traces show9 preparation and19 holding provider calls; the remaining latency is mainly execution rather than queued calendar work. No further backend check removal is justified without equivalent validation evidence. Preserve the original attempt and financial evidence.
+
+Repair equal guest/email action geometry and replace in-flow loaders with the existing full-page logo presentation while keeping forms/attempts mounted. Include failure/unmount cleanup, overlapping read tests and CI button geometry assertions. This is a source/UI repair and latency investigation, not a measured backend speedup. Next: final non-browser checks, publish a separate repair PR, exact-source CI and specific merge/deployment approval. Service Contracts owns the measured request sequence and limitations.
+
 ## Migration process and testing requirements documentation — 16 October 2026
 
 Owner requests a separate documentation-only PR for the next client migration: per-environment secret configuration, saved-versus-active deployment verification, legacy recovery/receipt continuity, actual application-API browser tests, isolated code mutation and side-effect tests, and measured latency/performance acceptance. Rules and Architecture and Service Contracts own the requirements; Journey records the decision. No new test implementation or live acceptance is claimed.

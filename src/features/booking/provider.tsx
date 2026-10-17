@@ -1,4 +1,5 @@
 "use client";
+import { BookingLoadingProvider } from "./booking-loading";
 import { protectedCheckoutService } from "@/services/confirmation";
 import { isHitpayCheckoutUrl } from "@/domain/native-checkout";
 import { todaySG } from "@/domain/dates";
@@ -516,7 +517,7 @@ export function BookingProvider({
         },
       }}
     >
-      {children}
+      <BookingLoadingProvider>{children}</BookingLoadingProvider>
     </Context.Provider>
   );
 }

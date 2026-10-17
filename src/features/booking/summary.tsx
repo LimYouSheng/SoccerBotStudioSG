@@ -1,5 +1,5 @@
 "use client";
-import { BrandLoading } from "@/components/brand-loading";
+import { BookingLoading as BrandLoading } from "./booking-loading";
 import Link from "next/link";
 import { Icon } from "@/components/icon";
 import { PRICE_CENTS, SERVICE_NAME } from "@/domain/demo-catalog";

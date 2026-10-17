@@ -994,3 +994,33 @@ test("cached calendar offers obey opening hours and the four-hour cutoff without
   expect(screen.getByTestId("eligible")).toHaveTextContent(/^19:20$/);
   expect(publicCalendar).toHaveBeenCalledTimes(4);
 });
+
+test("failed public calendar releases full-page loading and leaves refresh available", async () => {
+  const service: BookingService = {
+    ...demoBookingService,
+    mode: "live",
+    operations: { ...demoBookingService.operations, availability: "live" },
+    publicCalendar: async () => {
+      throw new Error("unavailable");
+    },
+  };
+  render(
+    <BookingProvider bookingService={service}>
+      <Seed />
+      <TimeStep />
+    </BookingProvider>,
+  );
+  await act(async () => {});
+  fireEvent.click(screen.getByRole("button", { name: "Choose test session" }));
+  expect(
+    await screen.findByText(
+      "Availability could not be checked. Your selections are saved.",
+    ),
+  ).toBeInTheDocument();
+  await waitFor(() =>
+    expect(document.querySelector(".booking-flow-overlay")).toBeNull(),
+  );
+  expect(
+    screen.getByRole("button", { name: "Refresh availability" }),
+  ).toBeEnabled();
+});

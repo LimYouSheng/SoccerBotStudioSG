@@ -33,6 +33,13 @@ test("account waits for owned guest access and duplicate click cannot navigate e
   const button = screen.getByRole("button", { name: /Continue as guest/ });
   fireEvent.click(button);
   fireEvent.click(button);
+  expect(
+    screen.getByRole("status", { name: "Preparing your booking…" }),
+  ).toHaveClass("page-loading");
+  expect(document.querySelector(".booking-loading-inline")).toBeNull();
+  expect(
+    screen.getByRole("button", { name: /Continue with email/ }),
+  ).toBeDisabled();
   expect(guest).toHaveBeenCalledTimes(1);
   expect(navigation.push).not.toHaveBeenCalled();
   await act(async () => finish());
