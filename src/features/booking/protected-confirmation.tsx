@@ -168,7 +168,7 @@ export function ProtectedConfirmation({
         </h1>
         <p>
           {historicalPayment
-            ? "Your payment was verified and recorded. Automatic booking checks have ended. Contact the studio if you need the latest booking status. Do not pay again."
+            ? "Your payment was verified and recorded. Contact the studio if you need the latest booking status. Do not pay again."
             : view === "confirmed"
               ? "Your payment and booking have been verified."
               : view === "denied"
