@@ -2544,7 +2544,7 @@
   }
   .access-options {
     display: grid;
-    align-items: stretch;
+    align-items: start;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 20px;
   }
@@ -2563,14 +2563,14 @@
   }
   .access-option p {
     color: var(--color-muted);
-    flex: 1;
+    min-height: 3lh;
     margin-bottom: 28px;
     overflow-wrap: anywhere;
   }
   .access-option .button {
     width: 100%;
     min-height: 56px;
-    margin-top: auto;
+    margin-top: 0;
   }
   .auth-mark {
     display: grid;

@@ -145,7 +145,11 @@ export function ProtectedConfirmation({
             ) : (
               <BrandLoading
                 compact
-                label="Checking your payment and booking…"
+                label={
+                  checkoutMode && preparation === "loading"
+                    ? "Preparing checkout…"
+                    : "Checking your payment and booking…"
+                }
               />
             )
           ) : view === "confirmed" ? (
