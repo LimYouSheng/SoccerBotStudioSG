@@ -1,6 +1,6 @@
 "use client";
 import { BookingLoading as BrandLoading } from "./booking-loading";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icon";
 import { CONTACT_METHODS } from "@/domain/catalog";
@@ -29,7 +29,9 @@ export function DetailsStep({
     } = useBooking(),
     router = useRouter(),
     c = draft.contact;
-  const [checking, setChecking] = useState(false);
+  const [working, setChecking] = useState(false);
+  const [navigating, startNavigation] = useTransition();
+  const checking = working || navigating;
   const submitting = useRef(false);
   const mounted = useRef(false);
   useEffect(() => {
@@ -206,7 +208,8 @@ export function DetailsStep({
                 if (!mounted.current) return;
                 if (bookingService.mode === "live" && !(await reserve()))
                   return;
-                if (mounted.current) router.push("/book/review/");
+                if (mounted.current)
+                  startNavigation(() => router.push("/book/review/"));
               } finally {
                 submitting.current = false;
                 if (mounted.current) setChecking(false);

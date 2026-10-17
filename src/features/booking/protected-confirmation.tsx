@@ -8,6 +8,7 @@ type BookingReceipt = Awaited<ReturnType<typeof readBookingReceipt>>;
 import { sitePath } from "@/content/site-path";
 import {
   readBookingReceipt,
+  bookingFromReceipt,
   protectedCheckoutService,
 } from "@/services/confirmation";
 import type { CheckoutContext } from "@/services/contracts";
@@ -24,13 +25,39 @@ export function ProtectedConfirmation({
   sessionRevision?: number;
   onAgain?: () => void;
 }) {
+  const [context, setContext] = useState<{
+    value: CheckoutContext;
+    revision: number;
+  } | null>(null);
+  const contextMatches =
+    context?.value.attemptId === attemptId &&
+    context.value.mode === checkoutMode &&
+    context.revision === sessionRevision;
+  const saved = contextMatches ? context.value.confirmation : undefined;
+  const [contextFailure, setContextFailure] = useState<{
+    id: string;
+    revision: number;
+  } | null>(null);
+  const contextSettled =
+    contextMatches ||
+    (contextFailure?.id === attemptId &&
+      contextFailure.revision === sessionRevision);
   const { view, busy, check, bindWindow, paymentReceived } =
-    useConfirmationChecking(attemptId, sessionRevision);
+    useConfirmationChecking(
+      attemptId,
+      sessionRevision,
+      (!checkoutMode || contextSettled) && !saved,
+    );
   const [receipt, setReceipt] = useState<{
     value: BookingReceipt;
     revision: number;
   } | null>(null);
   const receiptWork = useRef<AbortController | null>(null);
+  const [receiptFailure, setReceiptFailure] = useState<{
+    id: string;
+    revision: number;
+  } | null>(null);
+  const [receiptRead, setReceiptRead] = useState(0);
   useEffect(() => {
     if (view !== "confirmed" || checkoutMode === "synthetic") return;
     const controller = new AbortController();
@@ -40,13 +67,12 @@ export function ProtectedConfirmation({
         if (!controller.signal.aborted)
           setReceipt({ value, revision: sessionRevision });
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!controller.signal.aborted)
+          setReceiptFailure({ id: attemptId, revision: sessionRevision });
+      });
     return () => controller.abort();
-  }, [attemptId, view, checkoutMode, sessionRevision]);
-  const [context, setContext] = useState<{
-    value: CheckoutContext;
-    revision: number;
-  } | null>(null);
+  }, [attemptId, view, checkoutMode, sessionRevision, receiptRead]);
   const [expiredLink, setExpiredLink] = useState<string | null>(null);
   const [opened, setOpened] = useState<string | null>(null);
   const [preparation, setPreparation] = useState("loading");
@@ -65,7 +91,10 @@ export function ProtectedConfirmation({
           }
         },
         () => {
-          if (active) setPreparation("unavailable");
+          if (active) {
+            setPreparation("unavailable");
+            setContextFailure({ id: attemptId, revision: sessionRevision });
+          }
         },
       );
     return () => {
@@ -80,6 +109,13 @@ export function ProtectedConfirmation({
     view !== "denied"
       ? context.value
       : null;
+  useEffect(() => {
+    if (current) bindWindow(current.checking);
+  }, [current, bindWindow, contextSettled]);
+  useEffect(
+    () => () => receiptWork.current?.abort(),
+    [attemptId, sessionRevision],
+  );
   const link =
     current?.checkout.state === "available" ? current.checkout : null;
   useEffect(() => {
@@ -98,14 +134,20 @@ export function ProtectedConfirmation({
     current?.checkout.state === "available" &&
     current.checkout.url !== expiredLink &&
     !["confirmed", "denied", "unresolved"].includes(view);
-  if (
-    view === "confirmed" &&
-    receipt?.value.attemptId === attemptId &&
-    receipt.revision === sessionRevision &&
-    checkoutMode !== "synthetic"
-  ) {
+  const displayedReceipt = saved
+    ? bookingFromReceipt(saved)
+    : view === "confirmed" &&
+        receipt?.value.attemptId === attemptId &&
+        receipt.revision === sessionRevision
+      ? receipt.value
+      : null;
+  if (displayedReceipt && checkoutMode !== "synthetic") {
     const exportReceipt = async (format: "calendar" | "details") => {
-      const controller = receiptWork.current;
+      const controller =
+        receiptWork.current && !receiptWork.current.signal.aborted
+          ? receiptWork.current
+          : new AbortController();
+      receiptWork.current = controller;
       if (!controller || controller.signal.aborted)
         throw new Error("receipt_unavailable");
       const current = await readBookingReceipt(attemptId, controller.signal);
@@ -121,8 +163,9 @@ export function ProtectedConfirmation({
     };
     return (
       <BookingConfirmation
-        booking={receipt.value.booking}
-        taxMinor={receipt.value.taxMinor}
+        booking={displayedReceipt.booking}
+        taxMinor={displayedReceipt.taxMinor}
+        verifiedAtMs={saved?.verifiedAtMs}
         onAgain={() => {
           onAgain?.();
           window.location.assign(sitePath("/book/account/"));
@@ -132,6 +175,27 @@ export function ProtectedConfirmation({
       />
     );
   }
+  const receiptUnavailable =
+    receiptFailure?.id === attemptId &&
+    receiptFailure.revision === sessionRevision;
+  if (
+    (view === "checking" &&
+      !(showLink && link && !isHitpayCheckoutUrl(link.url))) ||
+    (view === "confirmed" &&
+      checkoutMode !== "synthetic" &&
+      !receiptUnavailable)
+  )
+    return (
+      <BrandLoading
+        label={
+          view === "confirmed"
+            ? "Preparing your confirmation…"
+            : checkoutMode && preparation === "loading"
+              ? "Preparing checkout…"
+              : "Checking your payment and booking…"
+        }
+      />
+    );
   return (
     <div className="status-shell">
       <section className="surface confirmation-card" aria-live="polite">
@@ -189,6 +253,22 @@ export function ProtectedConfirmation({
             }).format(recordedPayment.paidAtMs)}{" "}
             (Singapore time)
           </p>
+        )}
+        {view === "confirmed" && receiptUnavailable && (
+          <div role="alert">
+            <p>
+              Your booking is confirmed, but its details could not be loaded.
+            </p>
+            <button
+              className="button"
+              onClick={() => {
+                setReceiptFailure(null);
+                setReceiptRead((value) => value + 1);
+              }}
+            >
+              Load booking details
+            </button>
+          </div>
         )}
         {current && (
           <section aria-label="Current booking summary">

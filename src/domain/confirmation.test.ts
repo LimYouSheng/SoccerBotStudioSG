@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { verifyConfirmation, type ConfirmationInput } from "./confirmation";
+import {
+  verifyConfirmation,
+  verifyRecordedConfirmation,
+  type ConfirmationInput,
+} from "./confirmation";
 
 function fixture(): ConfirmationInput {
   const nowMs = 1_800_000_000_000;
@@ -635,4 +639,30 @@ describe("offline confirmation evidence", () => {
     expect(input).toEqual(before);
     expect(calls).toBe(0);
   });
+});
+
+it("recorded confirmation checks historical proof but authenticates current access", () => {
+  const input = fixture();
+  const recordedAt = input.nowMs;
+  input.nowMs += 20000;
+  expect(verifyConfirmation(input).reason).toBe("stale_observation");
+  expect(verifyRecordedConfirmation(input, recordedAt).status).toBe(
+    "confirmed",
+  );
+  expect(verifyRecordedConfirmation(input, input.nowMs + 1).status).toBe(
+    "unresolved",
+  );
+  expect(verifyRecordedConfirmation(input, NaN).status).toBe("unresolved");
+  input.access.expiresAtMs = input.nowMs;
+  expect(verifyRecordedConfirmation(input, recordedAt).status).toBe("denied");
+  input.access.expiresAtMs += 10000;
+  input.invoice!.paymentReceived = false;
+  expect(verifyRecordedConfirmation(input, recordedAt).reason).toBe(
+    "payment_conflict",
+  );
+  input.invoice!.paymentReceived = true;
+  input.bookings[0].observedAtMs -= 2000;
+  expect(verifyRecordedConfirmation(input, recordedAt).reason).toBe(
+    "stale_observation",
+  );
 });

@@ -32,6 +32,7 @@ function save(id: string, window: Window) {
 export function useConfirmationChecking(
   attemptId: string,
   sessionRevision = 0,
+  enabled = true,
 ) {
   const [result, setResult] = useState<{
     id: string;
@@ -49,6 +50,7 @@ export function useConfirmationChecking(
     [],
   );
   useEffect(() => {
+    if (!enabled) return;
     let active = true,
       busy = false,
       generation = 0;
@@ -247,7 +249,7 @@ export function useConfirmationChecking(
       document.removeEventListener("visibilitychange", visibility);
       window.removeEventListener("focus", visibility);
     };
-  }, [attemptId, sessionRevision]);
+  }, [attemptId, sessionRevision, enabled]);
   return {
     paymentReceived:
       result?.id === attemptId && result.revision === sessionRevision

@@ -15,6 +15,32 @@ import {
 import { ProtectedConfirmation } from "./protected-confirmation";
 const first = "00000000-0000-4000-8000-000000000001",
   second = "00000000-0000-4000-8000-000000000002";
+const receiptFixture = (now = Date.now()) => ({
+  attemptId: first,
+  verifiedAtMs: now,
+  createdAtMs: now,
+  totalMinor: 8800,
+  taxMinor: 0,
+  contact: {
+    name: "Synthetic Customer",
+    email: "synthetic@example.com",
+    phone: "+6591234567",
+    contactMethod: "email",
+    academy: "",
+  },
+  sessions: [
+    {
+      serviceId: "12",
+      serviceName: "Native Session",
+      instructorId: "14",
+      instructorName: "Native Trainer",
+      startMs: now + 86400000,
+      priceMinor: 8800,
+      currency: "SGD",
+      players: 2,
+    },
+  ],
+});
 afterEach(() => {
   cleanup();
   localStorage.clear();
@@ -31,9 +57,14 @@ it("shows checking before the protected server result and confirms only verified
   vi.stubGlobal("fetch", fetch);
   render(<ProtectedConfirmation attemptId={first} />);
   expect(
-    screen.getByRole("heading", { name: "Checking your payment and booking…" }),
+    screen.getByRole("status", { name: "Checking your payment and booking…" }),
   ).toBeInTheDocument();
   finish(Response.json({ status: "confirmed", reason: "verified" }));
+  await screen.findByRole("status", { name: "Preparing your confirmation…" });
+  expect(
+    screen.queryByRole("heading", { name: "Booking confirmed" }),
+  ).not.toBeInTheDocument();
+  finish(Response.json(receiptFixture()));
   expect(
     await screen.findByRole("heading", { name: "Booking confirmed" }),
   ).toBeInTheDocument();
@@ -177,32 +208,7 @@ it("access denial hides a previously loaded checkout context", async () => {
 
 it("verified live receipt uses demo sections and refuses exports after access is revoked", async () => {
   const now = Date.now();
-  const receipt = {
-    attemptId: first,
-    verifiedAtMs: now,
-    createdAtMs: now,
-    totalMinor: 8800,
-    taxMinor: 0,
-    contact: {
-      name: "Synthetic Customer",
-      email: "synthetic@example.com",
-      phone: "+6591234567",
-      contactMethod: "email",
-      academy: "",
-    },
-    sessions: [
-      {
-        serviceId: "12",
-        serviceName: "Native Session",
-        instructorId: "14",
-        instructorName: "Native Trainer",
-        startMs: now + 86400000,
-        priceMinor: 8800,
-        currency: "SGD",
-        players: 2,
-      },
-    ],
-  };
+  const receipt = receiptFixture(now + 120000);
   let reads = 0;
   vi.stubGlobal(
     "fetch",
@@ -210,7 +216,9 @@ it("verified live receipt uses demo sections and refuses exports after access is
       Promise.resolve(
         url.endsWith("/receipt")
           ? ++reads === 1
-            ? Response.json(receipt)
+            ? Response.json(receipt, {
+                headers: { Date: new Date(now + 120000).toUTCString() },
+              })
             : new Response(null, { status: 401 })
           : Response.json({ status: "confirmed", reason: "verified" }),
       ),
@@ -410,4 +418,57 @@ it("restoring a held attempt blocks background calendar work before and after re
   );
   expect(publicCalendar).not.toHaveBeenCalled();
   expect(fetch).not.toHaveBeenCalled();
+});
+
+it("reopening an expired paid booking shows the saved full confirmation without polling or granting exports", async () => {
+  const now = Date.now();
+  const saved = receiptFixture(now - 3600000);
+  localStorage.setItem(
+    `soccerbot-checking:${first}`,
+    JSON.stringify({ deadline: now - 1000, next: 0, count: 120 }),
+  );
+  const fetch = vi.fn((url: string) =>
+    Promise.resolve(
+      url.endsWith("/checkout")
+        ? Response.json({
+            attemptId: first,
+            mode: "live",
+            confirmation: saved,
+            payment: { status: "recorded", paidAtMs: saved.verifiedAtMs },
+            checkout: { state: "unavailable" },
+            summary: {
+              players: 2,
+              totalMinor: 8800,
+              currency: "SGD",
+              sessions: [{ startMs: now + 86400000, players: 2 }],
+            },
+            checking: {
+              deadlineMs: now - 1000,
+              nextCheckMs: 0,
+              pollAfterMs: 5000,
+            },
+          })
+        : new Response(null, { status: 409 }),
+    ),
+  );
+  vi.stubGlobal("fetch", fetch);
+  const page = render(
+    <ProtectedConfirmation attemptId={first} checkoutMode="live" />,
+  );
+  await screen.findByRole("heading", { name: "Client Details" });
+  expect(screen.getByText(/Saved confirmation · Verified/)).toBeInTheDocument();
+  expect(fetch).toHaveBeenCalledTimes(1);
+  page.unmount();
+  render(<ProtectedConfirmation attemptId={first} checkoutMode="live" />);
+  await screen.findByRole("heading", { name: "Client Details" });
+  expect(fetch).toHaveBeenCalledTimes(2);
+  fireEvent.click(screen.getByRole("button", { name: "Add to calendar" }));
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "download could not be created",
+  );
+  expect(fetch.mock.calls.map(([url]) => url.split("/").at(-1))).toEqual([
+    "checkout",
+    "checkout",
+    "receipt",
+  ]);
 });

@@ -190,6 +190,20 @@ function pending(
  * All results contain only closed status/reason codes; denied callers learn no IDs.
  */
 export function verifyConfirmation(value: unknown): ConfirmationDecision {
+  return verifyEvidence(value);
+}
+// Historical presentation only. Access is still checked at nowMs; evidence is
+// checked at its recorded time. This decision must never authorize exports.
+export function verifyRecordedConfirmation(
+  value: unknown,
+  recordedAtMs: number,
+): ConfirmationDecision {
+  return verifyEvidence(value, recordedAtMs);
+}
+function verifyEvidence(
+  value: unknown,
+  recordedAtMs?: number,
+): ConfirmationDecision {
   // Authorize the binding before inspecting financial/session evidence. This is
   // a scope/validity check of supplied context, never token/signature verification.
   const gate = accessGate.safeParse(value);
@@ -209,6 +223,13 @@ export function verifyConfirmation(value: unknown): ConfirmationDecision {
   if (!parsed.success) return { status: "unresolved", reason: "invalid_input" };
   const input = parsed.data;
   const { attempt, bookings, invoice, policy } = input;
+  const evidenceTime = recordedAtMs ?? nowMs;
+  if (
+    !Number.isSafeInteger(evidenceTime) ||
+    evidenceTime > nowMs ||
+    (recordedAtMs !== undefined && evidenceTime < attempt.approvedAtMs)
+  )
+    return { status: "unresolved", reason: "observation_time_invalid" };
   const expectedIds = attempt.bookings.map(
     (booking) => booking.session.bookingId,
   );
@@ -284,7 +305,7 @@ export function verifyConfirmation(value: unknown): ConfirmationDecision {
   if (
     observations.some(
       (observation) =>
-        observation.observedAtMs > nowMs ||
+        observation.observedAtMs > evidenceTime ||
         observation.observedAtMs < attempt.approvedAtMs,
     )
   ) {
@@ -293,7 +314,7 @@ export function verifyConfirmation(value: unknown): ConfirmationDecision {
   if (
     observations.some(
       (observation) =>
-        nowMs - observation.observedAtMs > policy.maxObservationAgeMs,
+        evidenceTime - observation.observedAtMs > policy.maxObservationAgeMs,
     )
   ) {
     return { status: "unresolved", reason: "stale_observation" };
