@@ -343,7 +343,19 @@ it("expired checking shows authenticated recorded payment without confirming or 
     });
   });
   vi.stubGlobal("fetch", fetch);
-  render(<ProtectedConfirmation attemptId={first} checkoutMode="live" />);
+  render(
+    <BookingProvider
+      bookingService={{
+        ...liveBookingService,
+        restore: undefined,
+        publicCalendar: undefined,
+        calendar: undefined,
+      }}
+      identityService={demoCustomerIdentity}
+    >
+      <ConfirmationPage />
+    </BookingProvider>,
+  );
   expect(
     await screen.findByRole("heading", {
       name: "Payment received",

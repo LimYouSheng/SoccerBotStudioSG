@@ -11,7 +11,7 @@ import { storedNativeCheckout } from "./native-adapter";
 import { verifyConfirmation } from "../src/domain/confirmation";
 import { authenticate, type Access } from "./access";
 import { intentSchema, associationSchema } from "./journal";
-import { ApiError, policy, digest } from "./policy";
+import { ApiError, policy } from "./policy";
 export type StoredAttempt = {
   id: string;
   created_ms: number;
@@ -200,8 +200,6 @@ export async function checkoutContext(
       confirmation_next_ms: number;
     }>();
   if (!row) throw new ApiError(404, "attempt_unavailable");
-  if ((await digest(row.intent_json)) !== row.intent_hash)
-    throw new ApiError(409, "hitpay_scope_mismatch");
   const intent = intentSchema.parse(JSON.parse(row.intent_json));
   const hitpayCheckout = await storedHitpayCheckout(env, id, now);
   return {
@@ -215,6 +213,7 @@ export async function checkoutContext(
             id,
             row.intent_hash,
             row.association_json,
+            row.intent_json,
           ),
     checkout:
       hitpayCheckout ??

@@ -166,6 +166,7 @@ export async function recordedHitpayPayment(
   id: string,
   intentHash: string,
   associationJson: string | null,
+  intentJson: string,
 ) {
   const row = await paymentRow(env.STATE, id);
   if (
@@ -182,7 +183,8 @@ export async function recordedHitpayPayment(
   if (
     scope.attemptId !== id ||
     scope.intentHash !== intentHash ||
-    scope.associationJson !== associationJson
+    scope.associationJson !== associationJson ||
+    scope.intentHash !== (await digest(intentJson))
   )
     throw new ApiError(409, "hitpay_scope_mismatch");
   return { status: "recorded" as const, paidAtMs: row.paid_ms };
