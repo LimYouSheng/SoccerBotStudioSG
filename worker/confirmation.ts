@@ -1,5 +1,6 @@
 import {
   storedHitpayCheckout,
+  recordedHitpayPayment,
   hitpayConfirmationGuard,
 } from "./hitpay-journal";
 import {
@@ -188,11 +189,12 @@ export async function checkoutContext(
   const access = await authenticate(request, env, now);
   const row = await env.STATE.withSession("first-primary")
     .prepare(
-      "SELECT intent_json,association_json,deadline_ms,confirmation_next_ms FROM attempts WHERE id=? AND owner_id=?",
+      "SELECT intent_json,intent_hash,association_json,deadline_ms,confirmation_next_ms FROM attempts WHERE id=? AND owner_id=?",
     )
     .bind(id, access.owner_id)
     .first<{
       intent_json: string;
+      intent_hash: string;
       association_json: string | null;
       deadline_ms: number;
       confirmation_next_ms: number;
@@ -203,6 +205,16 @@ export async function checkoutContext(
   return {
     attemptId: id,
     mode: "live" as const,
+    payment:
+      hitpayCheckout === null
+        ? undefined
+        : await recordedHitpayPayment(
+            env,
+            id,
+            row.intent_hash,
+            row.association_json,
+            row.intent_json,
+          ),
     checkout:
       hitpayCheckout ??
       (row.association_json &&

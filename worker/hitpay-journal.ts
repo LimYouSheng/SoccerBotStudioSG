@@ -159,6 +159,37 @@ export async function prepareHitpay(
     .bind(verified.id, verified.url, Date.now() + 90000, scope.attemptId)
     .run();
 }
+// Historical payment evidence only; this never authorizes confirmation or export.
+// The caller authenticates ownership before reading this private metadata.
+export async function recordedHitpayPayment(
+  env: Env,
+  id: string,
+  intentHash: string,
+  associationJson: string | null,
+  intentJson: string,
+) {
+  const row = await paymentRow(env.STATE, id);
+  if (
+    !row ||
+    row.state !== "complete" ||
+    row.reason !== "verified" ||
+    row.paid_ms === null ||
+    !row.payment_id ||
+    row.external_state !== "observed"
+  )
+    return undefined;
+  const scope = paymentScopeSchema.parse(JSON.parse(row.scope_json));
+  await assertPaymentScope(env, scope);
+  if (
+    scope.attemptId !== id ||
+    scope.intentHash !== intentHash ||
+    scope.associationJson !== associationJson ||
+    scope.intentHash !== (await digest(intentJson))
+  )
+    throw new ApiError(409, "hitpay_scope_mismatch");
+  return { status: "recorded" as const, paidAtMs: row.paid_ms };
+}
+
 export async function storedHitpayCheckout(env: Env, id: string, now: number) {
   const route = await env.STATE.withSession("first-primary")
     .prepare("SELECT route FROM checkout_payment_routes WHERE attempt_id=?")

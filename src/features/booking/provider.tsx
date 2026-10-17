@@ -123,6 +123,16 @@ export function BookingProvider({
     (revision: number) => revision + 1,
     0,
   );
+  const [restoredOwner, setRestoredOwner] = useState<{
+    service: BookingService;
+    identityService: CustomerIdentityService;
+  } | null>(null);
+  const restorationPending =
+    service.mode === "live" &&
+    identityService.mode === "live" &&
+    !!service.restore &&
+    (restoredOwner?.service !== service ||
+      restoredOwner.identityService !== identityService);
   const [calendarMonth, showMonth] = useState(() => todaySG().slice(0, 7));
   const [calendarPaused, pauseCalendar] = useState(false);
   const [calendarBrowsing, setCalendarBrowsing] = useState(true);
@@ -143,13 +153,19 @@ export function BookingProvider({
       service.publicCalendar ? "public" : sessionKey(),
       availabilityRevision,
     ]),
-    !value.ready || !calendarBrowsing || calendarPaused || !!value.attempt,
+    !value.ready ||
+      restorationPending ||
+      !calendarBrowsing ||
+      calendarPaused ||
+      !!value.attempt,
   );
   useEffect(() => {
     if (
       service.mode !== "live" ||
       service.operations.availability !== "live" ||
-      !service.publicCalendar
+      !service.publicCalendar ||
+      restorationPending ||
+      !!value.attempt
     )
       return;
     const controller = new AbortController();
@@ -157,7 +173,7 @@ export function BookingProvider({
       // The booking screen owns the recoverable error; no background retry.
     });
     return () => controller.abort();
-  }, [service]);
+  }, [service, restorationPending, value.attempt]);
   const availability = useBookingAvailability(
     service,
     value.attempt ||
@@ -257,21 +273,27 @@ export function BookingProvider({
       identityService.mode === "live" &&
       service.restore
     ) {
-      void service.restore(controller.signal).then(
-        (attempt) => {
-          if (
-            attempt &&
-            !controller.signal.aborted &&
-            mounted.current &&
-            latest.current.revision === revision &&
-            !active.current
-          )
-            commit({ version: 2, draft: attempt.draft, attempt }, true);
-        },
-        () => {
-          /* A failed protected read cannot restore private state. */
-        },
-      );
+      void service
+        .restore(controller.signal)
+        .then(
+          (attempt) => {
+            if (
+              attempt &&
+              !controller.signal.aborted &&
+              mounted.current &&
+              latest.current.revision === revision &&
+              !active.current
+            )
+              commit({ version: 2, draft: attempt.draft, attempt }, true);
+          },
+          () => {
+            /* A failed protected read cannot restore private state. */
+          },
+        )
+        .finally(() => {
+          if (!controller.signal.aborted)
+            setRestoredOwner({ service, identityService });
+        });
     }
     return () => {
       controller.abort();

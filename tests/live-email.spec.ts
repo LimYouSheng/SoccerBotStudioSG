@@ -567,6 +567,11 @@ test("native guest journey preserves players contact and one checkout across ref
         (c) => c.path === `/api/booking/hitpay/${transport.attemptId()}`,
       ),
     ).toHaveLength(0);
+    const displayReadsBeforeRestore = calls.filter(
+      (call) =>
+        call.path.startsWith("/api/calendar/") ||
+        call.path === "/api/catalogue",
+    ).length;
     await page.reload();
     await expect(
       page.getByRole("heading", { name: "Review booking", exact: true }),
@@ -581,6 +586,13 @@ test("native guest journey preserves players contact and one checkout across ref
       .getByRole("button", { name: "Continue to payment", exact: true })
       .click();
     await expect(page).toHaveURL(checkoutUrl);
+    expect(
+      calls.filter(
+        (call) =>
+          call.path.startsWith("/api/calendar/") ||
+          call.path === "/api/catalogue",
+      ),
+    ).toHaveLength(displayReadsBeforeRestore);
     await expect(
       page.getByRole("heading", { name: "Synthetic HitPay checkout" }),
     ).toBeVisible();
@@ -772,6 +784,30 @@ test("real payment recovery confirms the browser return from verified provider s
     await expect(
       page.getByRole("heading", { name: "Booking confirmed", exact: true }),
     ).toBeVisible();
+    expect(
+      mechanism.calls.filter((call) => call.url.endsWith("/accept-payment")),
+    ).toHaveLength(1);
+    expect(mechanism.unexpected).toEqual([]);
+    const confirmationReads = transport.calls.filter((call) =>
+      call.path.endsWith("/confirmation"),
+    ).length;
+    await page.evaluate((id) => {
+      localStorage.setItem(
+        `soccerbot-checking:${id}`,
+        JSON.stringify({ deadline: Date.now() - 1, next: 0, count: 120 }),
+      );
+    }, attemptId);
+    await page.reload();
+    await expect(
+      page.getByRole("heading", { name: "Payment received", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText(/Do not pay again/)).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Booking confirmed", exact: true }),
+    ).toHaveCount(0);
+    expect(
+      transport.calls.filter((call) => call.path.endsWith("/confirmation")),
+    ).toHaveLength(confirmationReads);
     expect(
       mechanism.calls.filter((call) => call.url.endsWith("/accept-payment")),
     ).toHaveLength(1);

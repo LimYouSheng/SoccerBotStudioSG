@@ -27,6 +27,9 @@ export class ConfirmationError extends Error {
 }
 const instant = z.number().int().nonnegative().safe();
 const contextSchema = z.strictObject({
+  payment: z
+    .strictObject({ status: z.literal("recorded"), paidAtMs: instant })
+    .optional(),
   attemptId: idSchema,
   mode: z.enum(["synthetic", "live"]),
   checkout: z.discriminatedUnion("state", [

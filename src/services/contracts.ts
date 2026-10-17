@@ -119,6 +119,7 @@ export interface AssistantService {
 }
 
 export type CheckoutContext = {
+  payment?: { status: "recorded"; paidAtMs: number };
   attemptId: string;
   mode: "synthetic" | "live";
   checkout:
