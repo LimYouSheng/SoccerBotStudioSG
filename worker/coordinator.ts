@@ -69,6 +69,9 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     ctx.storage.sql.exec(
       "CREATE TABLE IF NOT EXISTS financial_releases(id TEXT PRIMARY KEY,attempt_id TEXT NOT NULL,recorded_ms INTEGER NOT NULL)",
     );
+    ctx.storage.sql.exec(
+      "CREATE TABLE IF NOT EXISTS payment_wakeups(attempt_id TEXT PRIMARY KEY, correlation_id TEXT NOT NULL, generation INTEGER NOT NULL)",
+    );
     // Keep pacing/rate reads independent of retained admission history. The
     // partial index contains only reservations that still hold concurrency.
     ctx.storage.sql.exec(
@@ -765,11 +768,46 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     );
     return rpcOutcome(() => pending);
   }
+  // Only authenticated, account-bound webhook ingress calls this RPC. Persist
+  // the wake-up before acknowledging; the minute cron remains the fallback.
+  async wakeHitpayRecovery(attemptId: string, correlationId: string) {
+    z.string().uuid().parse(attemptId);
+    z.string().uuid().parse(correlationId);
+    if (!hitpayRecoveryEnabled(this.env)) return;
+    this.sql.exec(
+      "INSERT INTO payment_wakeups(attempt_id,correlation_id,generation) VALUES(?,?,1) ON CONFLICT(attempt_id) DO UPDATE SET correlation_id=excluded.correlation_id,generation=payment_wakeups.generation+1",
+      attemptId,
+      correlationId,
+    );
+    await this.ctx.storage.setAlarm(Date.now());
+  }
+  async alarm() {
+    const wake = this.sql
+      .exec<{
+        attempt_id: string;
+        correlation_id: string;
+        generation: number;
+      }>(
+        "SELECT attempt_id,correlation_id,generation FROM payment_wakeups ORDER BY rowid LIMIT 1",
+      )
+      .toArray()[0];
+    if (!wake) return;
+    await this.hitpayRecovery(wake.attempt_id, wake.correlation_id);
+    // A receipt arriving during recovery retains its newer wake-up. Recovery
+    // itself owns the durable payment lease, retry budget and effect journal.
+    this.sql.exec(
+      "DELETE FROM payment_wakeups WHERE attempt_id=? AND generation=?",
+      wake.attempt_id,
+      wake.generation,
+    );
+    if (this.sql.exec("SELECT 1 FROM payment_wakeups LIMIT 1").toArray().length)
+      await this.ctx.storage.setAlarm(Date.now());
+  }
   async hitpayRecovery(attemptId: string, correlationId: string) {
     const run = this.providerQueue.run("foreground", () =>
       traced(correlationId, "coordinator", () =>
         recoverHitpay(
-          this.env,
+          { ...this.env, STATE: instrumentStorage(this.env.STATE, "d1") },
           attemptId,
           this.provider,
           this.providerControl(true, false, true),

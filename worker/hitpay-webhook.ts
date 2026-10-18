@@ -1,7 +1,8 @@
 import { reopenHitpayReview } from "./hitpay-journal";
 import { z } from "zod";
 import { ApiError } from "./policy";
-import { verifyBindings } from "./bindings";
+import { coordinatorName, verifyBindings } from "./bindings";
+import { traceId } from "./diagnostics";
 import {
   assertPaymentScope,
   hitpayId,
@@ -135,5 +136,9 @@ export async function receiveHitpayWebhook(request: Request, env: Env) {
       "UPDATE hitpay_payments SET ready_ms=MIN(ready_ms,?) WHERE attempt_id=? AND state='due' AND EXISTS(SELECT 1 FROM hitpay_receipts WHERE digest=? AND attempt_id=?)",
     ).bind(now, payment.attempt_id, digest, payment.attempt_id),
   ]);
+  await env.COORDINATOR.getByName(coordinatorName).wakeHitpayRecovery(
+    payment.attempt_id,
+    traceId(),
+  );
   return { received: true };
 }

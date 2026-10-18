@@ -1,5 +1,11 @@
 # SoccerBotStudioSG current progress
 
+## Latest02 performance and email access — 18 October 2026
+
+Branch `perf/payment-recovery-wakeup` starts from refreshed main45ec58c. Source adds durable webhook-triggered payment recovery, coordinator recovery D1 timing and the ongoing contact authority repair. Focused alarm/cron-race and intervening-webhook tests passed. Email contact401 was reproduced with closed historical proof and fixed; read/save/revocation regression passed. Browser paid-return test now requires automatic webhook recovery without manually invoking cron. Full Worker checks and exact-source CI are pending.
+
+Owner80% targets from latest02: Details → Review about4.3s, return-to-full-confirmation about12.5s. Observed baseline21.663s/62.5s; no new-source live improvement is claimed. Remaining booking provider critical-path work exceeds the target and requires a larger evidence-backed consolidation; do not remove safety checks or declare success from fewer calls. No live bookings/payments, remote configuration changes, merge or deployment in this source task.
+
 ## Checkout authority optimization — 18 October 2026
 
 Branch `perf/checkout-authority` starts from refreshed main9a15cae. Consolidate repeated forward checkout grant reads while preserving entry/response authentication, write-boundary grants, atomic dispatch/effect claims, cleanup and payment recovery. Add separate coordinator D1 timing and a two-tab real-application-API browser test; providers remain simulated and owner/CI operate browsers.

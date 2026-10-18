@@ -4020,7 +4020,7 @@ test("ongoing checkout admits the priced weekend service with the customer lead-
   }
 });
 
-test("held checkout crosses authenticated HTTP routes and durable coordination without rechecking its reserved slot", async () => {
+test("held checkout crosses authenticated HTTP routes and durable coordination without rechecking its reserved slot", async (t) => {
   const { createBookingMechanism } =
     await import("./booking-mechanism-fixture.mjs");
   const f = await createBookingMechanism();
@@ -4133,6 +4133,19 @@ test("held checkout crosses authenticated HTTP routes and durable coordination w
     );
     assert.equal((await f.completePayment()).status, 202);
     await (await f.mf.getWorker()).scheduled();
+    // The automatic alarm may own the lease before cron starts. Cron then
+    // correctly returns without joining it; await durable completion, not
+    // another dispatch. All financial and selected-slot assertions stay below.
+    await t.waitFor(
+      async () => {
+        const row = await f.db
+          .prepare("SELECT state FROM hitpay_payments WHERE attempt_id=?")
+          .bind(id)
+          .first();
+        assert.equal(row?.state, "complete");
+      },
+      { timeout: 10000 },
+    );
     const confirmation = await f.mf.dispatchFetch(
       f.origin + `/api/attempts/${id}/confirmation`,
       { headers },

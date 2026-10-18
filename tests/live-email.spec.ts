@@ -777,20 +777,34 @@ test("real payment recovery confirms the browser return from verified provider s
       paymentAvailable: true,
     });
     expect((await mechanism.completePayment()).status).toBe(202);
-    await mechanism.recover();
-    const savedConfirmation = page.waitForResponse(
-      (response) =>
-        new URL(response.url()).pathname ===
-          `/api/attempts/${attemptId}/checkout` && response.status() === 200,
-    );
+    // The authenticated webhook must wake production recovery itself. No
+    // manual cron invocation or fabricated application confirmation response.
+    const savedConfirmation = page.waitForResponse(async (response) => {
+      const path = new URL(response.url()).pathname;
+      if (
+        response.status() !== 200 ||
+        ![
+          `/api/attempts/${attemptId}/checkout`,
+          `/api/attempts/${attemptId}/confirmation`,
+        ].includes(path)
+      )
+        return false;
+      const body = await response.json();
+      return (
+        body.confirmation?.attemptId === attemptId ||
+        body.status === "confirmed"
+      );
+    });
     await page.goto(`/confirmation/?attempt=${attemptId}`);
     await page
       .getByRole("dialog", { name: "Get the SoccerBot Player App" })
       .getByRole("button", { name: "Not now", exact: true })
       .click();
-    expect(await (await savedConfirmation).json()).toMatchObject({
-      confirmation: { attemptId },
-    });
+    const verifiedResponse = await (await savedConfirmation).json();
+    expect(
+      verifiedResponse.confirmation?.attemptId === attemptId ||
+        verifiedResponse.status === "confirmed",
+    ).toBe(true);
     await expect(
       page.getByRole("heading", { name: "Booking confirmed", exact: true }),
     ).toBeVisible();

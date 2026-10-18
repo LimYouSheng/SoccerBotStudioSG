@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { authenticate } from "./access";
-import { ApiError } from "./policy";
+import { ApiError, liveCustomerAccess } from "./policy";
 import { rememberedConsentSql } from "./remembered-identity";
 
 const inputSchema = z.strictObject({
@@ -21,9 +21,19 @@ const authority = `v.access_hash=? AND v.owner_id=? AND v.revoked_ms IS NULL
   AND v.verified_ms<=? AND v.expires_ms>?
   AND EXISTS(SELECT 1 FROM guest_access g WHERE g.capability_hash=v.access_hash
     AND g.owner_id=v.owner_id AND g.revoked_ms IS NULL AND g.issued_ms<=? AND g.expires_ms>?)
-  AND (NOT EXISTS(SELECT 1 FROM identity_delivery_window WHERE singleton=3)
+  AND (?=1 OR NOT EXISTS(SELECT 1 FROM identity_delivery_window WHERE singleton=3)
     OR EXISTS(SELECT 1 FROM identity_delivery_window WHERE singleton=3 AND state='open'
       AND source_revision=? AND origin=? AND opened_ms<=? AND expires_ms>? AND ?='finite-test'))`;
+// Ongoing developer authority supersedes finite proof windows, not ownership,
+// revocation, expiry or Remember me consent. Retain finite-mode atomic guards.
+function ongoingContact(env: Env) {
+  const mode: unknown = Reflect.get(env, "IDENTITY_DELIVERY");
+  return Number(
+    mode === "ongoing" &&
+      env.ENVIRONMENT === "developer" &&
+      liveCustomerAccess(env),
+  );
+}
 export async function readContactProfile(
   request: Request,
   env: Env,
@@ -45,6 +55,7 @@ export async function readContactProfile(
       now,
       now,
       now,
+      ongoingContact(env),
       env.SOURCE_REVISION,
       env.APP_ORIGIN,
       now,
@@ -85,6 +96,7 @@ export async function saveContactProfile(
       now,
       now,
       now,
+      ongoingContact(env),
       env.SOURCE_REVISION,
       env.APP_ORIGIN,
       now,
