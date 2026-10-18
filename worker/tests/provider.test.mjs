@@ -351,6 +351,59 @@ test("provider rate failures consume budget enforce cooldown and never retry", a
     await f.mf.dispose();
   }
 });
+test("catalogue retries during provider cooldown preserve its original deadline and resume after expiry", async () => {
+  let refuse = true;
+  const f = await fixture({
+    full: true,
+    secrets: {
+      LIVE_CUSTOMER_ACCESS: "enabled",
+      SOURCE_REVISION: "a".repeat(40),
+    },
+    respond: (request) =>
+      refuse && new URL(request.url).pathname === "/admin/auth"
+        ? new Response(null, { status: 403 })
+        : undefined,
+  });
+  try {
+    const read = () => f.mf.dispatchFetch(origin + "/api/catalogue");
+    const failed = await read();
+    assert.equal(failed.status, 503);
+    assert.equal((await failed.json()).error, "provider_auth_failed");
+    assert.equal(f.calls.length, 2);
+    // Model part of the existing minute having elapsed, without sleeping or
+    // removing the gate. Repeated browser reads must not renew that deadline.
+    const deadline = Date.now() + 40000;
+    await f.sql("UPDATE budget SET cooldown_ms=?", deadline);
+    for (let i = 0; i < 3; i++) {
+      const blocked = await read();
+      assert.equal(blocked.status, 503);
+      assert.ok(
+        ["cooldown", "provider_refresh_busy"].includes(
+          (await blocked.json()).error,
+        ),
+      );
+      assert.equal(
+        (await f.sql("SELECT cooldown_ms FROM budget"))[0].cooldown_ms,
+        deadline,
+      );
+      assert.equal(f.calls.length, 2);
+    }
+    // Advance only this isolated fixture's deadlines to exercise normal resume.
+    await f.sql("UPDATE budget SET cooldown_ms=0");
+    await f.sql("UPDATE refreshes SET expires_ms=0");
+    await f.sql("UPDATE admissions SET started_ms=started_ms-60000");
+    refuse = false;
+    const recovered = await f.call(await f.grant());
+    assert.equal(
+      recovered.body.result.verified,
+      true,
+      JSON.stringify(recovered.body),
+    );
+    assert.equal(f.calls.length, 6);
+  } finally {
+    await f.mf.dispose();
+  }
+});
 test("provider oversized response is bounded and never accepted as authentication", async () => {
   const f = await fixture({
     respond: () => Response.json({ data: "x".repeat(131073) }),

@@ -197,6 +197,7 @@
   "provider auth challenge is unavailable and never triggers notification or retry",
   "provider identity mismatch prevents tariff read and never exposes account fields",
   "provider rate failures consume budget enforce cooldown and never retry",
+  "catalogue retries during provider cooldown preserve its original deadline and resume after expiry",
   "provider oversized response is bounded and never accepted as authentication",
   "closed provider campaign refuses physical dispatch",
   "provider ordinary requests preserve recovery reserve at durable budget boundary",
