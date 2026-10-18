@@ -1247,31 +1247,6 @@ async function uncertainHolding(
         .prepare("SELECT COUNT(*) AS n FROM hitpay_holds")
         .first<{ n: number }>())!.n,
     ).toBe(0);
-    // Exhaust this browser's checking allowance, never mutate the immutable
-    // server deadline or reinterpret exhaustion as cancellation.
-    await page.evaluate((id) => {
-      localStorage.setItem(
-        `soccerbot-checking:${id}`,
-        JSON.stringify({ deadline: Date.now() - 1, next: 0, count: 120 }),
-      );
-    }, row!.id);
-    expect(
-      await mechanism.db
-        .prepare("SELECT deadline_ms FROM attempts WHERE id=?")
-        .bind(row!.id)
-        .first(),
-    ).toEqual({ deadline_ms: row!.deadline_ms });
-    await page.goto(`/confirmation/?attempt=${row!.id}`);
-    await expect(
-      page.getByRole("heading", {
-        name: "Your booking needs review",
-        exact: true,
-      }),
-    ).toBeVisible();
-    await assertNoPaymentOrConfirmation(page, mechanism);
-    expect(
-      mechanism.calls.filter((call) => call.body?.method === "book"),
-    ).toHaveLength(fault === "preflight" ? 0 : 1);
   } finally {
     await stopMechanism(page, mechanism, transport);
   }
@@ -1581,6 +1556,70 @@ test("real API catalogue outage exposes retry without inventing sessions or rene
       page.getByRole("link", { name: "See available times", exact: true }),
     ).toHaveCount(0);
     await assertNoPaymentOrConfirmation(page, mechanism);
+  } finally {
+    await stopMechanism(page, mechanism, transport);
+  }
+});
+
+test("real API exhausted browser checking window retains the original deadline and uncertain booking without payment", async ({
+  page,
+}) => {
+  const mechanism = await createBookingMechanism({
+    respond: async (call) =>
+      call.body?.method === "book"
+        ? new Response(null, { status: 503 })
+        : undefined,
+  });
+  const transport = await mechanismTransport(page, mechanism);
+  try {
+    const { headers, attemptId } = await prepareBrowserAttempt(page, mechanism);
+    const hold = await mechanism.mf.dispatchFetch(
+      mechanism.origin + `/api/booking/native/${attemptId}?hold=1`,
+      { method: "POST", headers },
+    );
+    expect(await hold.json()).toMatchObject({
+      state: "recovery_required",
+      paymentAvailable: false,
+    });
+    const row = await mechanism.db
+      .prepare("SELECT id,intent_hash,deadline_ms FROM attempts WHERE id=?")
+      .bind(attemptId)
+      .first();
+    await page.addInitScript((id) => {
+      localStorage.setItem(
+        `soccerbot-checking:${id}`,
+        JSON.stringify({ deadline: Date.now() - 1, next: 0, count: 120 }),
+      );
+    }, attemptId);
+    await page.goto(`/confirmation/?attempt=${attemptId}`);
+    await page
+      .getByRole("dialog", { name: "Get the SoccerBot Player App" })
+      .getByRole("button", { name: "Not now", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", {
+        name: "Your booking needs review",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await assertNoPaymentOrConfirmation(page, mechanism);
+    expect(
+      await mechanism.db
+        .prepare("SELECT id,intent_hash,deadline_ms FROM attempts WHERE id=?")
+        .bind(attemptId)
+        .first(),
+    ).toEqual(row);
+    expect(
+      mechanism.calls.filter((call) => call.body?.method === "book"),
+    ).toHaveLength(1);
+    expect(
+      await mechanism.db
+        .prepare(
+          "SELECT outcome FROM session_effects WHERE attempt_id=? AND step='session:0'",
+        )
+        .bind(attemptId)
+        .first(),
+    ).toEqual({ outcome: "unknown" });
   } finally {
     await stopMechanism(page, mechanism, transport);
   }

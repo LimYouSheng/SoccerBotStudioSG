@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## Independent checking-window regression — 19 October 2026 SGT
+
+The repaired dismissal journey passes all3 devices on4fc8ce3. Two tablet cases timed out when combining full guest selection, uncertain holding, reload and checking-window exhaustion. Keep the original outage/unknown/readback reload assertions and move the shared exhausted-window behavior into one dedicated actual-Worker browser scenario. Its setup uses real API preparation/holding, then asserts unresolved UI, immutable server deadline, retained unknown effect and no payment. No timeout increase, retry, skip or product guard change. Live-profile inventory is now18 scenarios/54 device runs,14 actual-Worker and four older application-response fixtures. CI acceptance remains pending.
+
 ## Browser failure regression expansion — 18 October 2026
 
 Owner challenged the unchanged69 browser runs and requested comprehensive failure coverage. That number is23 legacy scenarios across3 devices; it did not include new failure journeys. Added10 live-profile scenarios, increasing that suite from7 to17 (21 to51 device runs). Thirteen now run actual application Worker/API/D1 paths with provider doubles; four older identity scenarios mock application responses. Added coverage: changed slot/price, provider outage, unknown creation, readback failure, revoked access, lost successful response, payment failure, dismissal failure/retry and catalogue retry/cooldown. Assertions pair visible recovery with original attempt identity and forbidden-effect checks. No new provider/browser actions are performed locally. Original combined-hold candidate passed all CI gates; expanded cases await exact-candidate CI and are not yet claimed as accepted coverage. SERVICE_CONTRACTS.md owns the named matrix and remaining distinctions.

@@ -942,5 +942,9 @@
   {
     "file": "tests/live-email.spec.ts",
     "title": "real API catalogue outage exposes retry without inventing sessions or renewing provider calls"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "real API exhausted browser checking window retains the original deadline and uncertain booking without payment"
   }
 ]

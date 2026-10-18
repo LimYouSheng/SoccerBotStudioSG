@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Independent checking-window regression — 19 October 2026 SGT
+
+The repaired dismissal journey passes all3 devices on4fc8ce3. Two tablet cases timed out when combining full guest selection, uncertain holding, reload and checking-window exhaustion. Keep the original outage/unknown/readback reload assertions and move the shared exhausted-window behavior into one dedicated actual-Worker browser scenario. Its setup uses real API preparation/holding, then asserts unresolved UI, immutable server deadline, retained unknown effect and no payment. No timeout increase, retry, skip or product guard change. Live-profile inventory is now18 scenarios/54 device runs,14 actual-Worker and four older application-response fixtures. CI acceptance remains pending.
+
 ## Browser failure-test ownership — 18 October 2026
 
 Every changed customer-visible failure/recovery path requires a named browser regression, supported by mechanism tests for server invariants. Use the real application Worker/API/coordinator/D1 where the behavior depends on backend state; inject failures at the external-provider or HTTP-transport boundary. Assert retained input, correct destination/loading/error state and original attempt/effect counts. Unknown writes must not be hidden by deleting rows, recreating reservations or enabling another payment. Lost-response cases must distinguish a failed response from a failed effect. Keep application-response UI fixtures explicitly identified; scenario counts and device-expanded run counts are separate. Browser execution stays in owner/CI environments, and simulated provider success never proves live provider atomicity or latency. The current named matrix is maintained in SERVICE_CONTRACTS.md.

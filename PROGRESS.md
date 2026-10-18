@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## Independent checking-window regression — 19 October 2026 SGT
+
+The repaired dismissal journey passes all3 devices on4fc8ce3. Two tablet cases timed out when combining full guest selection, uncertain holding, reload and checking-window exhaustion. Keep the original outage/unknown/readback reload assertions and move the shared exhausted-window behavior into one dedicated actual-Worker browser scenario. Its setup uses real API preparation/holding, then asserts unresolved UI, immutable server deadline, retained unknown effect and no payment. No timeout increase, retry, skip or product guard change. Live-profile inventory is now18 scenarios/54 device runs,14 actual-Worker and four older application-response fixtures. CI acceptance remains pending.
+
 ## Browser failure coverage expansion — 18 October 2026
 
 The owner explicitly requires browser regression coverage for error handling, not only mechanism tests. The legacy suite remains23 scenarios across3 devices (69 runs). The live-profile suite expands from7 to17 scenarios (21 to51 device runs):13 use actual Worker routes, coordinator and D1 with simulated external providers; four older identity cases use application-response fixtures and must not be represented as real-API acceptance. Ten new journeys cover slot rejection, price drift, pre-creation outage, unknown creation, failed readback, revoked access, lost successful hold response, payment creation failure, failed dismissal/retry and catalogue outage/retry. Each asserts customer-visible state and absence of forbidden effects where applicable. Provider simulation does not establish live provider atomicity or production latency.
