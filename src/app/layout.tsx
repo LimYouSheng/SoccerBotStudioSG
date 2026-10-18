@@ -3,6 +3,7 @@ import { BookingProvider } from "@/features/booking/provider";
 import { BookingNavigation } from "@/components/booking-navigation";
 import { SiteShell } from "@/components/site-shell";
 import { sitePath } from "@/content/site-path";
+import { CircleCursor } from "@/components/circle-cursor";
 import "./globals.css";
 export const metadata: Metadata = {
   title: {
@@ -23,6 +24,7 @@ export default function RootLayout({
   return (
     <html lang="en-SG">
       <body>
+        <CircleCursor />
         <BookingProvider>
           <BookingNavigation>
             <SiteShell>{children}</SiteShell>

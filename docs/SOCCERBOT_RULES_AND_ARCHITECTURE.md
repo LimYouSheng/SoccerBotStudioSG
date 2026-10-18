@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Circular mouse cursor — 18 October 2026
+
+Mouse pointers use a circle with a gently trailing dot. Touch, reduced-motion and forced-colour preferences keep the native cursor, as do text/form controls. The decoration must not intercept clicks, alter layout, or drive React renders on pointer movement.
+
 ## Single-session holding validation — 18 October 2026
 
 For exactly one selected session, the complete fresh validation immediately before the atomic dispatch claim also serves as the session's write-boundary validation. No provider operation intervenes before its creation; do not repeat the same validation reads. Preserve immutable intent/hash, access/fence, deadline, effect reservation, association readback and original unknown-write recovery. Multi-session carts retain complete preflight plus per-session revalidation because earlier provider writes intervene. Preparation and all post-hold no-recreation/no-selected-availability rules remain unchanged. This is source optimization, not measured live latency acceptance.
