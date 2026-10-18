@@ -1208,8 +1208,8 @@ async function uncertainHolding(
     );
     await expect(page).toHaveURL(/\/book\/payment\/$/);
     await expect(
-      page.getByRole("heading", {
-        name: "Your booking needs review",
+      page.getByRole("status", {
+        name: "Checking your payment and booking…",
         exact: true,
       }),
     ).toBeVisible();
@@ -1243,6 +1243,22 @@ async function uncertainHolding(
         .prepare("SELECT COUNT(*) AS n FROM hitpay_holds")
         .first<{ n: number }>())!.n,
     ).toBe(0);
+    // Expire only this synthetic fixture's checking window; do not wait in real time.
+    await mechanism.db
+      .prepare("UPDATE attempts SET deadline_ms=? WHERE id=?")
+      .bind(Date.now() - 1, row!.id)
+      .run();
+    await page.goto(`/confirmation/?attempt=${row!.id}`);
+    await expect(
+      page.getByRole("heading", {
+        name: "Your booking needs review",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await assertNoPaymentOrConfirmation(page, mechanism);
+    expect(
+      mechanism.calls.filter((call) => call.body?.method === "book"),
+    ).toHaveLength(fault === "preflight" ? 0 : 1);
   } finally {
     await stopMechanism(page, mechanism, transport);
   }
