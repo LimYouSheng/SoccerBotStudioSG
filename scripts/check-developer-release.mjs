@@ -165,6 +165,7 @@ try {
     "0029_direct_hitpay.sql",
     "0030_hitpay_webhook_recovery.sql",
     "0031_rejected_checkout_history.sql",
+    "0032_completed_checkout_history.sql",
   ]);
   // Old-state compatibility remains tested locally, never re-applied remotely.
   for (const name of names.slice(5, 8)) await migrate(name);
@@ -423,6 +424,7 @@ try {
   await migrate("0029_direct_hitpay.sql");
   await migrate("0030_hitpay_webhook_recovery.sql");
   await migrate("0031_rejected_checkout_history.sql");
+  await migrate("0032_completed_checkout_history.sql");
   assert.deepEqual(
     (
       await db

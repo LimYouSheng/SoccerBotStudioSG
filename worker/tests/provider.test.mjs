@@ -1375,6 +1375,25 @@ test("discovery failed read releases concurrency but remains counted across evic
     const result = await f.call(token, "POST", discoveryOperation);
     assert.equal(result.body.state, "blocked");
     assert.equal(result.body.result.reason, "provider_transport_uncertain");
+    const failures = f.logs.flatMap((message) => {
+      try {
+        const value = JSON.parse(message);
+        return value.event === "provider_failure" ? [value] : [];
+      } catch {
+        return [];
+      }
+    });
+    assert.equal(failures.length, 1);
+    assert.equal(failures[0].reason, "timeout");
+    assert.equal(failures[0].operation, "public-auth");
+    assert.deepEqual(Object.keys(failures[0]).sort(), [
+      "correlationId",
+      "durationMs",
+      "event",
+      "operation",
+      "reason",
+    ]);
+
     assert.equal(result.body.result.accounting.used, 9);
     assert.equal(result.body.result.accounting.active, 0);
     await f.mf.unsafeEvictDurableObject(

@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Completed booking exit and provider diagnostics — 18 October 2026
+
+Owner reports Make another booking returns to confirmation after successful payment and requests both explicit exit actions deactivate that routing. Source reset rejects restored checking attempts; hard navigation restores the same server-bound grant. Implement authenticated completed-grant archival, preserve original receipt snapshots and await success before navigation. A concurrent-exit regression exposed receipt details reading only active grants; extend the canonical receipt snapshot lookup to immutable completed history. Full non-browser and CI acceptance remain pending.
+
+Original calendar failure18October18:09SGT: correlated Worker duration24.751s, provider7 calls/19.124s/one error and coordinator storage0.223s. Refresh six seconds later fails before provider dispatch, consistent with the one-minute cooldown. Later bounded calendar read succeeded in12.545s. These observations do not identify the exact failed provider operation or establish a permanent fix. Add secret-free per-operation failure diagnostics for subsequent evidence; no retries, timeout increases or provider experiments. Cursor PR45 was owner-merged; this follow-up starts from main e46d5f5.
+
 ## Circular mouse cursor — 18 October 2026
 
 Owner requests a circular cursor with a lagging centre dot. Added one root-level pointer decoration with bounded dot travel and an animation loop that stops when settled. Native controls, keyboard use, touch and accessibility preferences retain normal cursor behaviour. Owner/CI visual acceptance remains pending; no assistant browser execution. The supplied latest.har contains calendar503/provider_transport_uncertain after30.262s and catalogue200 after5.688s, but no booking submission, so it cannot measure the single-session optimization. Raw HAR remains private; no provider or payment changes.

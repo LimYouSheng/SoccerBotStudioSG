@@ -1,5 +1,11 @@
 # SoccerBotStudio — Service Contracts
 
+## Completed booking exit and provider diagnostics — 18 October 2026
+
+POST /api/attempts/{id}/dismiss accepts no body and runs in the account foreground queue. Current owner authentication, same origin, verified saved confirmation and a complete ongoing grant are required. Compatible migration0032 retains immutable completed grant history. One D1 batch copies the exact eligible grant then removes only its active copy; repeated exits are idempotent and cannot remove a subsequent grant. GET booking/current then returns empty until a new booking is prepared; receipt details read the original snapshot from active or completed history after existing authorization. The frontend awaits success before either exit navigation and keeps confirmation with an error on failure. No provider call, cancellation, refund, deadline extension or recovery reset.
+
+Provider failure logs contain only correlation ID, fixed operation name, duration and bounded failure classification (timeout, caller_aborted, connection, representation or application error code). Never log raw errors, URLs, headers, request/response bodies or secrets. Existing 15-second call timeout, one-minute cooldown, accounting and unknown-write rules remain unchanged.
+
 ## Single-session validation consolidation — 18 October 2026
 
 The Details Review booking operation retains fresh preparation, one attempt identity and holding creation. For one session, orchestration calls the full adapter revalidate once before its atomic dispatch claim. The validated intent is hash-compared before claim and again before creation; current deadline/session-time checks, authenticated effect reservation and native assertCurrent remain. No browser cache, shared TTL extension or provider validation bypass is introduced. Validation failures retain the original prepared attempt and error mapping with no dispatch/effect; uncertain provider writes retain recovery_required under the original identity. Multiple sessions continue preflight(0..n) then validate/create each item sequentially.

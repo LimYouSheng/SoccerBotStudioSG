@@ -21,6 +21,10 @@ export function ConfirmationStep() {
     <BookingConfirmation
       booking={booking}
       preview
+      onHome={() => {
+        reset();
+        router.push("/");
+      }}
       onAgain={() => {
         reset();
         router.push("/book/account/");
@@ -34,6 +38,7 @@ export function BookingConfirmation({
   taxMinor = 0,
   verifiedAtMs,
   onAgain,
+  onHome,
   calendarDownload,
   detailsDownload,
 }: {
@@ -41,12 +46,28 @@ export function BookingConfirmation({
   preview?: boolean;
   taxMinor?: number;
   verifiedAtMs?: number;
-  onAgain: () => void;
+  onAgain: () => void | Promise<void>;
+  onHome?: () => void | Promise<void>;
   calendarDownload?: () => Promise<void>;
   detailsDownload?: () => Promise<void>;
 }) {
   const [error, setError] = useState(""),
-    [downloading, setDownloading] = useState(false);
+    [downloading, setDownloading] = useState(false),
+    [leaving, setLeaving] = useState(false);
+  async function leave(operation: () => void | Promise<void>) {
+    if (leaving) return;
+    setLeaving(true);
+    setError("");
+    try {
+      await operation();
+    } catch {
+      setError(
+        "Your booking could not be closed on this device. Please try again.",
+      );
+    } finally {
+      setLeaving(false);
+    }
+  }
   async function download(operation: () => Promise<void> | void) {
     setDownloading(true);
     setError("");
@@ -200,7 +221,11 @@ export function BookingConfirmation({
             )}
           </span>
         </button>
-        <button className="button secondary" onClick={onAgain}>
+        <button
+          className="button secondary"
+          disabled={leaving}
+          onClick={() => void leave(onAgain)}
+        >
           <Icon name="plus" />
           <span>Make another booking</span>
         </button>
@@ -214,7 +239,18 @@ export function BookingConfirmation({
           {error}
         </p>
       )}
-      <Link href="/" className="text-link mt-5 block text-center">
+      <Link
+        href="/"
+        className="text-link mt-5 block text-center"
+        onClick={
+          onHome
+            ? (event) => {
+                event.preventDefault();
+                void leave(onHome);
+              }
+            : undefined
+        }
+      >
         Back to home
       </Link>
     </div>

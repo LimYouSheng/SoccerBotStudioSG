@@ -913,6 +913,108 @@ test("HitPay protected confirmation queues stale booking proof without resetting
     (await (await mf.dispatchFetch(checkout, { headers })).json()).payment,
     undefined,
   );
+
+  const exitUrl = origin + `/api/attempts/${attemptId}/dismiss`;
+  const exitHeaders = { ...headers, origin };
+  assert.equal(
+    (await mf.dispatchFetch(exitUrl, { method: "POST", headers: exitHeaders }))
+      .status,
+    409,
+  );
+  await db
+    .prepare("UPDATE hitpay_payments SET state='complete' WHERE attempt_id=?")
+    .bind(attemptId)
+    .run();
+  await db
+    .prepare("UPDATE native_checkout_grants SET ongoing=1 WHERE attempt_id=?")
+    .bind(attemptId)
+    .run();
+  const originalGrant = await db
+    .prepare("SELECT * FROM native_checkout_grants WHERE attempt_id=?")
+    .bind(attemptId)
+    .first();
+  const originalPayment = await row();
+  const originalAttempt = await db
+    .prepare("SELECT * FROM attempts WHERE id=?")
+    .bind(attemptId)
+    .first();
+  assert.equal(
+    (await mf.dispatchFetch(exitUrl, { method: "POST", headers: { origin } }))
+      .status,
+    401,
+  );
+  assert.equal(
+    (
+      await mf.dispatchFetch(exitUrl, {
+        method: "POST",
+        headers: { origin, cookie: `__Host-soccerbot-access=${foreignToken}` },
+      })
+    ).status,
+    404,
+  );
+  assert.equal(
+    (
+      await mf.dispatchFetch(exitUrl, {
+        method: "POST",
+        headers: { ...headers, origin: "https://foreign.test" },
+      })
+    ).status,
+    403,
+  );
+  const exits = await Promise.all(
+    [1, 2].map(() =>
+      mf.dispatchFetch(exitUrl, { method: "POST", headers: exitHeaders }),
+    ),
+  );
+  assert.deepEqual(
+    exits.map((r) => r.status),
+    [200, 200],
+  );
+  assert.deepEqual(
+    await db
+      .prepare(
+        "SELECT * FROM completed_native_checkout_grants WHERE attempt_id=?",
+      )
+      .bind(attemptId)
+      .first(),
+    originalGrant,
+  );
+  assert.equal(
+    await db
+      .prepare("SELECT * FROM native_checkout_grants WHERE attempt_id=?")
+      .bind(attemptId)
+      .first(),
+    null,
+  );
+  assert.deepEqual(await row(), originalPayment);
+  assert.deepEqual(
+    await db
+      .prepare("SELECT * FROM attempts WHERE id=?")
+      .bind(attemptId)
+      .first(),
+    originalAttempt,
+  );
+  assert.deepEqual(
+    await (
+      await mf.dispatchFetch(origin + "/api/booking/current", { headers })
+    ).json(),
+    { state: "empty" },
+  );
+  assert.equal(
+    (await (await mf.dispatchFetch(checkout, { headers })).json()).confirmation
+      .attemptId,
+    attemptId,
+  );
+  assert.equal(outbound, callsBefore);
+  await assert.rejects(
+    db
+      .prepare(
+        "DELETE FROM completed_native_checkout_grants WHERE attempt_id=?",
+      )
+      .bind(attemptId)
+      .run(),
+    /completed_native_preserve/,
+  );
 });
 
 async function seedHold(expires = Date.now() + 300000) {

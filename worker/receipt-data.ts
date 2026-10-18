@@ -14,9 +14,9 @@ export async function receiptData(
   if (!intent.contact) throw new ApiError(503, "receipt_details_unavailable");
   const snapshot = await env.STATE.withSession("first-primary")
     .prepare(
-      "SELECT availability_json FROM native_checkout_grants WHERE attempt_id=?",
+      "SELECT availability_json FROM native_checkout_grants WHERE attempt_id=? UNION ALL SELECT availability_json FROM completed_native_checkout_grants WHERE attempt_id=?",
     )
-    .bind(row.id)
+    .bind(row.id, row.id)
     .first<{ availability_json: string | null }>();
   const offers = Object.values(
     z

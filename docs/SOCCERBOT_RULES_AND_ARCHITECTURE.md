@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Completed booking exit and provider diagnostics — 18 October 2026
+
+Explicit Back to home or Make another booking on a verified completed confirmation ends automatic restoration of that attempt. An authenticated, same-origin POST must verify retained complete payment and full saved confirmation before archiving the exact ongoing completed checkout grant and releasing its active slot. Pending, unknown, manual-review and foreign attempts remain protected. Original attempts, payment evidence, deadlines, ownership and confirmation/export access remain unchanged. Ordinary closing/revisiting still restores confirmation until explicit exit.
+
 ## Circular mouse cursor — 18 October 2026
 
 Mouse pointers use a circle with a gently trailing dot. Touch, reduced-motion and forced-colour preferences keep the native cursor, as do text/form controls. The decoration must not intercept clicks, alter layout, or drive React renders on pointer movement.

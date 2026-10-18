@@ -205,3 +205,17 @@ export async function startSyntheticCheckout(
   return z.strictObject({ attemptId: idSchema }).parse(await response.json())
     .attemptId;
 }
+
+export async function dismissCompletedBooking(attemptId: string) {
+  const id = idSchema.parse(attemptId);
+  const response = await fetch(`/api/attempts/${id}/dismiss`, {
+    method: "POST",
+    credentials: "same-origin",
+    redirect: "error",
+    headers: { Accept: "application/json" },
+  });
+  if (!response.ok || !(await response.json()).dismissed)
+    throw new Error(
+      "Your booking could not be closed on this device. Please try again.",
+    );
+}
