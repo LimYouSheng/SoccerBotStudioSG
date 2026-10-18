@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## Optimistic Review milestone test — 19 October 2026 SGT
+
+PR53 candidate8d3571b passed frontend/backend and71/72 live browser runs. Offline tablet trace showed two protected progress responses still running, before creation was associated; the test incorrectly started its five-second UI assertion from the Details click, including all preflight/provider setup. The fixture now explicitly signals that booking readback has started, keeps that response gated, then asserts pending Review/payment blocking under the unchanged UI and overall test deadlines. This tests the intended after-creation transition without claiming a five-second end-to-end latency result. No production behavior, timeout, retry, count or assertion was weakened.
+
 ## Pending-checkout accessible status repair — 19 October 2026 SGT
 
 PR52 main39149579852 passed all three gates and deployed verified692cf92 to the developer Worker. PR53 CI39151457912 passed Worker verification; frontend/backend each passed69/72 browser runs, failing the same pending-checkout status assertion on three devices. The neutral confirmation layout accidentally replaced the preparing-checkout accessible label before protected context settled. Restore the original state-specific label, keep checkout unavailable, and add a component regression. Existing browser assertions, counts and timeouts remain unchanged. Live-email passed69/72 and exposed the lost successful holding response on all devices. One protected current-attempt read now restores only the original verified hold; mismatched/unverified/failed recovery cannot enable payment or replay creation. The existing real-API browser scenario requires immediate restored Review and subsequent reload, retaining one-write and no-payment assertions. Pending Review also retains its final layout and disables backward navigation until holding completes. Repair candidate CI is pending.

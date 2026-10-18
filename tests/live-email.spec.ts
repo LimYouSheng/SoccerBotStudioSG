@@ -1799,9 +1799,14 @@ async function optimisticHold(page: Page, failReadback: boolean) {
   const gate = new Promise<void>((resolve) => {
     release = resolve;
   });
+  let readbackStarted!: () => void;
+  const created = new Promise<void>((resolve) => {
+    readbackStarted = resolve;
+  });
   const mechanism = await createBookingMechanism({
     respond: async (call) => {
       if (call.body?.method === "getBookingDetails") {
+        readbackStarted();
         await gate;
         if (failReadback) return new Response(null, { status: 503 });
       }
@@ -1819,6 +1824,9 @@ async function optimisticHold(page: Page, failReadback: boolean) {
     await page
       .getByRole("button", { name: "Review booking", exact: true })
       .click();
+    // Assert the creation milestone, not a five-second budget for preflight.
+    // The original request stays blocked at readback throughout UI assertions.
+    await created;
     await expect(
       page.getByRole("heading", { name: "Review booking", exact: true }),
     ).toBeVisible();
