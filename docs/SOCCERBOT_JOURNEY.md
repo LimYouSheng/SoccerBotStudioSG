@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## Location dialog focus repair — 19 October 2026 SGT
+
+PR52 candidate179ae0d failed the same desktop Chromium focus-return assertion in both frontend and backend browser gates (71/72 passed in each). Closing the location dialog removed it before passive-effect cleanup could reliably restore native focus. The shared Dialog now closes during layout-effect cleanup, while attached, and restores the connected opener without scrolling. The original browser assertion remains unchanged; no timeout, retry or skip is added. Worker verification passed independently; live-email failures remain separate from this repair. Exact-candidate browser acceptance stays pending CI.
+
 ## Latest04 and batch sequencing — 19 October 2026 SGT
 
 Owner supplies latest04, requests contact spacing, signed-in email prominence, header hover repair, studio-location popup and batch duplicate removal. Map preference: lowest latency. Implement immediate dialog with on-demand satellite iframe and Google Maps link; no map SDK or initial external map load. Embedded 3D is not configured or claimed.
