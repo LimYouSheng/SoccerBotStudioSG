@@ -69,6 +69,7 @@ const harness = {
       batchReceipts?: unknown[];
       batchClosure?: unknown;
     };
+    let authorityReads = 0;
     let reserved = 0,
       finished = 0,
       requests = 0;
@@ -501,12 +502,40 @@ const harness = {
             });
             break;
           }
+          // Count executed checkout grant reads without logging SQL values.
+          const track = (
+            database: D1Database | D1DatabaseSession,
+          ): typeof database =>
+            new Proxy(database, {
+              get(target, key) {
+                if (key === "withSession" && "withSession" in target)
+                  return (
+                    constraint: D1SessionBookmark | D1SessionConstraint,
+                  ) => track(target.withSession(constraint));
+                if (key === "prepare")
+                  return (sql: string) => {
+                    if (
+                      sql.startsWith(
+                        "SELECT 1 FROM native_checkout_grants g JOIN attempts",
+                      )
+                    )
+                      authorityReads++;
+                    return target.prepare(sql);
+                  };
+                const value: unknown = Reflect.get(target, key);
+                return typeof value === "function" ? value.bind(target) : value;
+              },
+            });
+          const checkoutEnv = {
+            ...admittedEnv,
+            STATE: track(admittedEnv.STATE) as D1Database,
+          };
           result = await executeNativeCheckout({
             holding: input.scenario === "hitpay-hold",
             request: new Request("https://soccerbot.test/", {
               headers: { cookie: input.cookie },
             }),
-            env: admittedEnv,
+            env: checkoutEnv,
             attemptId: input.scope.attemptId,
             provider: new ProviderSession(),
             control,
@@ -602,6 +631,7 @@ const harness = {
       }
       return Response.json({
         result,
+        authorityReads,
         reserved,
         finished,
         requests,

@@ -248,7 +248,12 @@ export class ProviderSession {
     env: Env,
     control: ProviderControl,
     request: NativeRequest,
-    assertGranted: () => Promise<void>,
+    authority:
+      | (() => Promise<void>)
+      | {
+          beforeIdentity: () => Promise<void>;
+          beforeWrite: () => Promise<void>;
+        },
     onReserved?: (id: string) => Promise<void>,
   ) {
     const p = policy(env);
@@ -283,7 +288,9 @@ export class ProviderSession {
       !control.financialRecovery
     )
       throw new ApiError(503, "financial_recovery_required");
-    await assertGranted();
+    await (typeof authority === "function"
+      ? authority()
+      : authority.beforeIdentity());
     await this.identity(env, control);
     const secrets = this.bindScope(env);
     const family = [
@@ -298,7 +305,9 @@ export class ProviderSession {
     const token = this.tokens.get(family);
     if (!token || token.until <= Date.now())
       throw new ApiError(503, "provider_auth_expired");
-    await assertGranted();
+    await (typeof authority === "function"
+      ? authority()
+      : authority.beforeWrite());
     const body = await providerRequest(
       "native",
       secrets,

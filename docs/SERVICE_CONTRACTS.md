@@ -1,5 +1,13 @@
 # SoccerBotStudio — Service Contracts
 
+## Checkout authority and timing — 18 October 2026
+
+`executeNativeCheckout` separates local window/access-expiry checks from the durable grant check. Forward read, prebooking and reservation callbacks no longer repeat the grant join. `ProviderSession.nativeWrite` accepts explicit before-identity and before-write authority callbacks for this owner; existing callback callers retain both original checks. The forward checkout checks locally before identity and checks current D1 authority once afterward. Booking effect claims/fences and the final authenticated response remain authoritative; cleanup retains its original checks. No availability, price, relationship, consent or idempotency validation is removed.
+
+Coordinator checkout now instruments its D1 binding in a separate `d1` span. Counts/durations/errors only are logged; no SQL, credentials, contact or provider payload. Existing local SQLite `storage` and provider spans remain separate and may be nested; do not add overlapping spans as independent wall time. Latest owner single-session HAR measured preparation6.424s and hold20.847s versus7.812s/21.054s in har-fixed-01: two observations, not controlled acceptance. New-source latency remains pending owner evidence.
+
+Regression coverage includes bounded durable grant reads, revoked access during provider reads, existing unknown-write and batch fences, and a new two-tab browser case through real Worker/D1/coordinator routes with simulated providers. Browser execution remains owner/CI-operated; simulation does not prove live SimplyBook batch atomicity.
+
 ## Initial comments enabled in source — 18 October 2026
 
 Owner explicitly authorizes direct initial comment delivery, superseding the earlier conditional-write prerequisite for new bookings. After the current attempt's complete new booking/invoice set is validated, nativeBookingOperations claims native-comment:index and sends PUT /admin/bookings/{id}/comment with JSON comment through the existing admitted admin transport. The body comes only from the approved intent: Number of players, optional School / organisation, Preferred communication. The native studio count remains1.

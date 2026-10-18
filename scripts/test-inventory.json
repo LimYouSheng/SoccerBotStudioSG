@@ -886,5 +886,9 @@
   {
     "file": "src/features/booking/protected-confirmation.test.tsx",
     "title": "reopening an expired paid booking shows the saved full confirmation without polling or granting exports"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "concurrent browser tabs reuse one hold and payment and reject revoked access"
   }
 ]

@@ -734,7 +734,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           request: new Request(this.env.APP_ORIGIN, {
             headers: { cookie: scope.cookie },
           }),
-          env: this.env,
+          env: { ...this.env, STATE: instrumentStorage(this.env.STATE, "d1") },
           attemptId: scope.attemptId,
           holding: scope.holding,
           provider: this.provider,

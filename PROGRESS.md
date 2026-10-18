@@ -1,5 +1,11 @@
 # SoccerBotStudioSG current progress
 
+## Checkout authority optimization — 18 October 2026
+
+Branch `perf/checkout-authority` starts from refreshed main9a15cae. Consolidate repeated forward checkout grant reads while preserving entry/response authentication, write-boundary grants, atomic dispatch/effect claims, cleanup and payment recovery. Add separate coordinator D1 timing and a two-tab real-application-API browser test; providers remain simulated and owner/CI operate browsers.
+
+Focused grant-count and access/grant-revocation checks passed. An isolated mutation removing the before-write grant check was detected: the regression observed one forbidden booking instead of zero. Independent concurrent real Worker API simulation produced one booking and one payment request. Types, ESLint, source/policy and changed-file formatting passed. Full Worker suite and exact-source CI are pending at this checkpoint. No live calls, merge or deployment.
+
 ## Booking presentation repair and measured latency — 17 October 2026
 
 Owner HAR-fixed-01 reached hold200, payment handoff200 and eventual confirmation/receipt200 on deployed PR39 source b9f2b51. Measured preparation7.8seconds plus hold21.1seconds remains too long for the owner. Correlated traces show9 preparation and19 holding provider calls; the remaining latency is mainly execution rather than queued calendar work. No further backend check removal is justified without equivalent validation evidence. Preserve the original attempt and financial evidence.

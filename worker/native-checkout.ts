@@ -182,14 +182,21 @@ export async function executeNativeCheckout(options: {
     return nativeCheckoutStatus(request, env, attemptId);
   let cleanupMode = false;
   let cleanupSignal: AbortSignal | undefined;
-  const assertGranted = async () => {
+  // Entry authentication establishes this operation's access. Reads retain
+  // local time/cancellation checks; writes recheck durable authority after identity.
+  const assertWindow = () => {
     cleanupSignal?.throwIfAborted();
     const current = Date.now();
+    if (current >= access.expires_ms) throw new ApiError(401, "access_denied");
     if (
       current + 15000 >=
       Math.min(grant.expires_ms, ongoing ? grant.expires_ms : p.CAMPAIGN_END_MS)
     )
       throw new ApiError(503, "native_write_window_closed");
+  };
+  const assertGranted = async () => {
+    assertWindow();
+    const current = Date.now();
     const valid = await env.STATE.withSession("first-primary")
       .prepare(
         "SELECT 1 FROM native_checkout_grants g JOIN attempts a ON a.id=g.attempt_id JOIN guest_access c ON c.capability_hash=g.capability_hash WHERE g.attempt_id=? AND g.state='running' AND g.source_revision=? AND g.intent_hash=a.intent_hash AND g.intent_hash=? AND g.expires_ms>? AND g.contract_json=? AND c.owner_id=a.owner_id AND c.revoked_ms IS NULL AND c.issued_ms<=? AND c.expires_ms>? AND (a.state IN ('prepared','dispatching') OR (?=1 AND g.cleanup_allowed=1 AND a.state='recovery_required')) AND a.deadline_ms>?",
@@ -216,7 +223,8 @@ export async function executeNativeCheckout(options: {
     reserve: async () => {
       const delay = Math.max(0, last + 300 - Date.now());
       if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
-      await assertGranted();
+      if (cleanupMode) await assertGranted();
+      else assertWindow();
       if (
         (cleanupMode && cleanupCount >= 16) ||
         count >=
@@ -314,7 +322,8 @@ export async function executeNativeCheckout(options: {
   const exchange: NativeExchange = async (operation, signal) => {
     lastOperation = operation.kind;
     representation = undefined;
-    await assertGranted();
+    if (cleanupMode) await assertGranted();
+    else assertWindow();
     if (cleanupMode) await provider.identity(env, control);
     if (operation.kind === "booking-cancel" && !cleanupMode)
       throw new ApiError(503, "native_cleanup_not_granted");
@@ -335,12 +344,11 @@ export async function executeNativeCheckout(options: {
         "booking-cancel",
       ].includes(operation.kind)
     ) {
-      const response = await provider.nativeWrite(
-        env,
-        control,
-        operation,
-        assertGranted,
-      );
+      const response = await provider.nativeWrite(env, control, operation, {
+        beforeIdentity: async () =>
+          cleanupMode ? assertGranted() : assertWindow(),
+        beforeWrite: assertGranted,
+      });
       if (options.holding)
         await retainHoldEvidence(
           env.STATE,
@@ -397,7 +405,7 @@ export async function executeNativeCheckout(options: {
           lastOperation = undefined;
           representation = undefined;
           try {
-            await assertGranted();
+            assertWindow();
             const identity = await provider.identity(env, control);
             stage = "allowance";
             const allowance = z

@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Checkout authority consolidation — 18 October 2026
+
+Details → Review authenticates at its server entry and retains the one-use grant and atomic dispatch/effect claims. During that operation, provider reads/reservations use local access-expiry, deadline, cancellation and budget checks instead of repeating the full D1 grant join. Each provider write still rechecks the durable grant after provider identity is established; handoff and the final response retain current authority checks. Cleanup, payment recovery, receipt protection, provider validation and unknown-write recovery remain unchanged. This is request-local consolidation, not browser-owned authority or a cross-request authorization cache.
+
 ## New-booking comment delivery — 18 October 2026
 
 Owner explicitly directs sending the comment without the earlier conditional-update prerequisite. For each newly created validated booking, write the immutable session player count, optional school/organisation and approved communication label once through the supported admin comment endpoint. This decision supersedes the earlier preservation-based delivery block for initial comments. No historical backfill, intake fields or booking/payment replay. The annotation has its own durable effect and remains non-blocking; uncertain writes are retained, never resent automatically.
