@@ -32,6 +32,7 @@ export function BookingConfirmation({
   booking,
   preview = false,
   taxMinor = 0,
+  verifiedAtMs,
   onAgain,
   calendarDownload,
   detailsDownload,
@@ -39,6 +40,7 @@ export function BookingConfirmation({
   booking: Booking;
   preview?: boolean;
   taxMinor?: number;
+  verifiedAtMs?: number;
   onAgain: () => void;
   calendarDownload?: () => Promise<void>;
   detailsDownload?: () => Promise<void>;
@@ -63,6 +65,17 @@ export function BookingConfirmation({
           <Icon name="check" />
         </span>
         <h1>Booking confirmed</h1>
+        {verifiedAtMs !== undefined && (
+          <p>
+            Saved confirmation · Verified{" "}
+            {new Intl.DateTimeFormat("en-SG", {
+              timeZone: "Asia/Singapore",
+              dateStyle: "medium",
+              timeStyle: "short",
+            }).format(verifiedAtMs)}{" "}
+            (Singapore time)
+          </p>
+        )}
         <p className="reference">
           Booking reference{" "}
           <strong className="text-ink">{booking.reference}</strong>
@@ -201,7 +214,7 @@ export function BookingConfirmation({
           {error}
         </p>
       )}
-      <Link href="/" className="text-link mt-5">
+      <Link href="/" className="text-link mt-5 block text-center">
         Back to home
       </Link>
     </div>

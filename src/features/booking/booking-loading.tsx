@@ -9,6 +9,8 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { BrandLoading } from "@/components/brand-loading";
+const loadingMessage =
+  "Please don’t close or refresh this page while we finish.";
 const Loading = createContext<((label: string) => () => void) | null>(null);
 
 // Keep the active screen mounted: loading must not discard contact, consent,
@@ -47,7 +49,10 @@ export function BookingLoadingProvider({ children }: { children: ReactNode }) {
       {busy &&
         createPortal(
           <div className="booking-flow-overlay">
-            <BrandLoading label={pending.values().next().value} />
+            <BrandLoading
+              label={pending.values().next().value}
+              message={loadingMessage}
+            />
           </div>,
           document.body,
         )}
@@ -67,6 +72,6 @@ export function BookingLoading({
   return register ? (
     <span className="sr-only">{label}</span>
   ) : (
-    <BrandLoading label={label} />
+    <BrandLoading label={label} message={loadingMessage} />
   );
 }

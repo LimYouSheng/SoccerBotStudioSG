@@ -1,4 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
+import { Suspense, use, useState } from "react";
+import { BookingLoadingProvider } from "./booking-loading";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, expect, test, vi } from "vitest";
 import { demoCustomerIdentity } from "@/services/demo/identity";
@@ -69,4 +71,44 @@ test("remember me is explicit default off and opted in preview expiry stays nine
   );
   expect(saved.expiresAt).toBeGreaterThanOrEqual(before + 90 * 86400000);
   expect(saved.expiresAt).toBeLessThanOrEqual(Date.now() + 90 * 86400000);
+});
+
+test("guest loading remains until the destination commits without exposing the previous form", async () => {
+  let finish!: () => void;
+  const route = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  function Destination() {
+    use(route);
+    return <h1>Choose your session</h1>;
+  }
+  function Router() {
+    const [next, setNext] = useState(false);
+    mocks.push.mockImplementation(() => setNext(true));
+    return (
+      <BookingLoadingProvider>
+        <Suspense fallback={<p>Route pending</p>}>
+          {next ? <Destination /> : <AccountStep />}
+        </Suspense>
+      </BookingLoadingProvider>
+    );
+  }
+  const user = userEvent.setup();
+  render(<Router />);
+  await user.click(screen.getByRole("button", { name: "Continue as guest" }));
+  expect(
+    screen.getByRole("status", { name: "Preparing your booking…" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Continue as guest" }),
+  ).toBeDisabled();
+  await act(async () => finish());
+  expect(
+    await screen.findByRole("heading", { name: "Choose your session" }),
+  ).toBeInTheDocument();
+  expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Continue as guest" }),
+  ).not.toBeInTheDocument();
+  mocks.push.mockReset();
 });

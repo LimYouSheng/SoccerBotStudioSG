@@ -4,11 +4,13 @@ export function BrandLoading({
   leaving = false,
   overlay = true,
   label = "Opening booking",
+  message,
 }: {
   compact?: boolean;
   leaving?: boolean;
   overlay?: boolean;
   label?: string;
+  message?: string;
 }) {
   const Container = compact ? "span" : "div";
   return (
@@ -47,6 +49,9 @@ export function BrandLoading({
           alt={compact ? "" : "SOCCERBOTSTUDIO Singapore"}
         />
         {!compact && <span className="page-loading-track" aria-hidden="true" />}
+        {message && (
+          <span className="block mt-5 text-sm text-muted">{message}</span>
+        )}
       </span>
     </Container>
   );

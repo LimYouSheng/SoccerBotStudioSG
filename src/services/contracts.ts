@@ -1,5 +1,8 @@
 import type { z } from "zod";
-import type { nativeOfferSchema } from "@/domain/native-checkout";
+import type {
+  nativeOfferSchema,
+  receiptSchema,
+} from "@/domain/native-checkout";
 import type {
   Attempt,
   Booking,
@@ -119,6 +122,7 @@ export interface AssistantService {
 }
 
 export type CheckoutContext = {
+  confirmation?: z.infer<typeof receiptSchema>;
   payment?: { status: "recorded"; paidAtMs: number };
   attemptId: string;
   mode: "synthetic" | "live";
