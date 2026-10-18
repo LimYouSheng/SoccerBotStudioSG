@@ -325,6 +325,7 @@ test("remembered live account edits and rereads contact while native booking sta
 async function mechanismTransport(
   page: Page,
   mechanism: Awaited<ReturnType<typeof createBookingMechanism>>,
+  beforeDispatch?: (path: string) => Promise<void>,
 ) {
   let attemptId = "";
   const calls: { path: string; method: string; body: unknown }[] = [];
@@ -351,6 +352,7 @@ async function mechanismTransport(
     }
     const body: unknown = request.postData() ? request.postDataJSON() : null;
     calls.push({ path: url.pathname, method: request.method(), body });
+    await beforeDispatch?.(url.pathname);
     // Loopback transport adapter only: do not fabricate application responses.
     // Secure __Host cookies cannot be used by the HTTP static preview origin.
     const headers = new Headers(await request.allHeaders());
@@ -757,7 +759,13 @@ test("real payment recovery confirms the browser return from verified provider s
   page,
 }) => {
   const mechanism = await createBookingMechanism();
-  const transport = await mechanismTransport(page, mechanism);
+  let releaseDismiss!: () => void;
+  const dismissGate = new Promise<void>((resolve) => {
+    releaseDismiss = resolve;
+  });
+  const transport = await mechanismTransport(page, mechanism, (path) =>
+    path.endsWith("/dismiss") ? dismissGate : Promise.resolve(),
+  );
   try {
     const { headers, attemptId } = await prepareBrowserAttempt(page, mechanism);
     const held = await mechanism.mf.dispatchFetch(
@@ -844,6 +852,14 @@ test("real payment recovery confirms the browser return from verified provider s
     await expect(
       page.getByRole("button", { name: "Continue as guest", exact: true }),
     ).toBeVisible();
+    // Navigation must finish while the real dismiss request is still blocked.
+    const dismissed = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname.endsWith("/dismiss") &&
+        response.status() === 200,
+    );
+    releaseDismiss();
+    await dismissed;
     await page.reload();
     await expect(
       page.getByRole("button", { name: "Continue as guest", exact: true }),
@@ -865,6 +881,7 @@ test("real payment recovery confirms the browser return from verified provider s
     ).toHaveLength(1);
     expect(mechanism.unexpected).toEqual([]);
   } finally {
+    releaseDismiss();
     try {
       // Stop polling and cache warming before draining intercepted requests.
       // Otherwise the still-mounted app can create work during teardown.

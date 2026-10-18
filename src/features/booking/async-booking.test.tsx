@@ -5,7 +5,11 @@ import { blankDraft, type Attempt, type BookingDraft } from "@/domain/booking";
 import { dateLabel } from "@/domain/dates";
 import { demoBookingModel, demoBookingService } from "@/services/demo/booking";
 import { demoSession } from "@/services/demo/schedule";
-import { demoIdentityService, DEMO_CODE } from "@/services/demo/identity";
+import {
+  demoIdentityService,
+  demoCustomerIdentity,
+  DEMO_CODE,
+} from "@/services/demo/identity";
 import { liveBookingService } from "@/services/booking";
 import type { AvailableSlot, BookingService } from "@/services/contracts";
 import { loadBooking, saveBooking } from "@/services/storage";
@@ -99,6 +103,127 @@ beforeEach(() => {
 afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
+const completedId = "00000000-0000-4000-8000-000000000001";
+function RebookingProbe() {
+  const state = useBooking();
+  return (
+    <>
+      <output data-testid="restored-attempt">
+        {state.attempt?.id ?? "none"}
+      </output>
+      <output data-testid="rebooking-error">{state.rebookingError}</output>
+      <button onClick={() => state.restartAfterConfirmation(completedId)}>
+        Restart completed
+      </button>
+      <button
+        onClick={() => {
+          state.update(draft());
+          void state.reserve();
+        }}
+      >
+        Review new booking
+      </button>
+      <button onClick={state.retryRebooking}>Retry exit</button>
+    </>
+  );
+}
+test("rebooking clears the view immediately but gates new checkout on background dismissal and preserves failures", async () => {
+  const dismissal = deferred<Response>();
+  const request = vi.fn().mockReturnValue(dismissal.promise);
+  vi.stubGlobal("fetch", request);
+  const checkout = vi.fn(async () => {
+    throw new Error("synthetic checkout stop");
+  });
+  render(
+    <BookingProvider
+      bookingService={{
+        ...demoBookingService,
+        mode: "live",
+        operations: { ...demoBookingService.operations, checkout: "live" },
+        checkout,
+      }}
+    >
+      <RebookingProbe />
+    </BookingProvider>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Restart completed" }));
+  expect(screen.getByTestId("restored-attempt")).toHaveTextContent("none");
+  expect(sessionStorage.getItem("soccerbot.completed-exit")).toBe(completedId);
+  fireEvent.click(screen.getByRole("button", { name: "Review new booking" }));
+  expect(checkout).not.toHaveBeenCalled();
+  await act(async () => dismissal.resolve(new Response(null, { status: 503 })));
+  expect(checkout).not.toHaveBeenCalled();
+  expect(screen.getByTestId("rebooking-error")).toHaveTextContent(
+    "confirmation is saved",
+  );
+  expect(sessionStorage.getItem("soccerbot.completed-exit")).toBe(completedId);
+  request.mockResolvedValueOnce(Response.json({ dismissed: true }));
+  await act(async () =>
+    fireEvent.click(screen.getByRole("button", { name: "Retry exit" })),
+  );
+  expect(sessionStorage.getItem("soccerbot.completed-exit")).toBeNull();
+  await act(async () =>
+    fireEvent.click(screen.getByRole("button", { name: "Review new booking" })),
+  );
+  expect(checkout).toHaveBeenCalledTimes(1);
+  expect(request).toHaveBeenCalledTimes(2);
+});
+
+test("reload resumes an interrupted completed exit without restoring that confirmation or suppressing another attempt", async () => {
+  const dismissal = deferred<Response>();
+  vi.stubGlobal("fetch", vi.fn().mockReturnValue(dismissal.promise));
+  sessionStorage.setItem("soccerbot.completed-exit", completedId);
+  const nativeDraft = draft();
+  nativeDraft.slots = [
+    {
+      date,
+      start: "12:00",
+      instructor: "14",
+      native: {
+        serviceId: "2",
+        serviceName: "Synthetic Session",
+        instructorName: "Synthetic Instructor",
+        priceMinor: 8800,
+        currency: "SGD",
+      },
+    },
+  ];
+  const restored: Attempt = {
+    id: completedId,
+    status: "checking",
+    outcome: "pending",
+    checkUntil: 0,
+    booking: null,
+    draft: nativeDraft,
+  };
+  const identity = { ...demoCustomerIdentity, mode: "live" as const };
+  const restore = vi.fn().mockResolvedValue(restored);
+  const service = { ...demoBookingService, mode: "live" as const, restore };
+  const view = render(
+    <BookingProvider bookingService={service} identityService={identity}>
+      <RebookingProbe />
+    </BookingProvider>,
+  );
+  await act(async () => {});
+  expect(screen.getByTestId("restored-attempt")).toHaveTextContent("none");
+  view.unmount();
+  restore.mockResolvedValueOnce({
+    ...restored,
+    id: "00000000-0000-4000-8000-000000000002",
+  });
+  render(
+    <BookingProvider bookingService={service} identityService={identity}>
+      <RebookingProbe />
+    </BookingProvider>,
+  );
+  await act(async () => {});
+  expect(screen.getByTestId("restored-attempt")).toHaveTextContent(
+    "00000000-0000-4000-8000-000000000002",
+  );
+  await act(async () => dismissal.resolve(Response.json({ dismissed: true })));
 });
 
 test("calendar and basket share delayed availability once and preserve selection through loading success", async () => {

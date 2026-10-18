@@ -2,6 +2,7 @@
 import { isHitpayCheckoutUrl } from "@/domain/native-checkout";
 import { BookingLoading as BrandLoading } from "./booking-loading";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { BookingConfirmation } from "./confirmation-step";
 import { downloadBooking, downloadCalendar } from "@/services/exports";
 type BookingReceipt = Awaited<ReturnType<typeof readBookingReceipt>>;
@@ -20,12 +21,15 @@ export function ProtectedConfirmation({
   checkoutMode,
   sessionRevision = 0,
   onAgain,
+  onRestart,
 }: {
   attemptId: string;
   checkoutMode?: "synthetic" | "live";
   sessionRevision?: number;
   onAgain?: () => void;
+  onRestart?: (attemptId: string) => void;
 }) {
+  const router = useRouter();
   const [context, setContext] = useState<{
     value: CheckoutContext;
     revision: number;
@@ -168,6 +172,11 @@ export function ProtectedConfirmation({
         taxMinor={displayedReceipt.taxMinor}
         verifiedAtMs={saved?.verifiedAtMs}
         onAgain={async () => {
+          if (onRestart) {
+            onRestart(attemptId);
+            router.push("/book/account/");
+            return;
+          }
           if (checkoutMode === "live") await dismissCompletedBooking(attemptId);
           onAgain?.();
           window.location.assign(sitePath("/book/account/"));

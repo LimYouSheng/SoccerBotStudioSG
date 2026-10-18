@@ -6,13 +6,19 @@ import { useBooking } from "@/features/booking/provider";
 import { ProtectedConfirmation } from "@/features/booking/protected-confirmation";
 function ConfirmationRoute() {
   const params = useSearchParams();
-  const { reset, confirmationRevision, bookingService } = useBooking();
+  const {
+    reset,
+    restartAfterConfirmation,
+    confirmationRevision,
+    bookingService,
+  } = useBooking();
   return (
     <ProtectedConfirmation
       attemptId={params.get("attempt") || ""}
       sessionRevision={confirmationRevision}
       checkoutMode={bookingService.mode === "live" ? "live" : undefined}
       onAgain={reset}
+      onRestart={restartAfterConfirmation}
     />
   );
 }

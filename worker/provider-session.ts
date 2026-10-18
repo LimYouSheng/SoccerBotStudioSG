@@ -35,6 +35,14 @@ const object = (value: unknown): Record<string, unknown> => {
     throw new ApiError(503, "provider_representation_unknown");
   return value as Record<string, unknown>;
 };
+// No physical request failed when local admission/refresh coordination refused
+// a read. Preserve its existing deadline and valid tokens instead of turning
+// each visitor retry into another minute of account-wide unavailability.
+const locallyBlocked = (error: unknown) =>
+  error instanceof ApiError &&
+  ["cooldown", "provider_refresh_busy", "concurrency", "rate"].includes(
+    error.code,
+  );
 // Instance-owned by the account DO. Tokens never cross RPC or enter SQL/logs.
 export class ProviderSession {
   private catalogueReads = new CatalogueReads();
@@ -175,8 +183,10 @@ export class ProviderSession {
     try {
       return await pending;
     } catch (error) {
-      this.tokens.clear();
-      control.pause();
+      if (!locallyBlocked(error)) {
+        this.tokens.clear();
+        control.pause();
+      }
       throw error;
     } finally {
       this.comparisonRead = undefined;
@@ -443,8 +453,10 @@ export class ProviderSession {
     try {
       return await pending;
     } catch (error) {
-      this.tokens.clear();
-      control.pause();
+      if (!locallyBlocked(error)) {
+        this.tokens.clear();
+        control.pause();
+      }
       throw error;
     } finally {
       this.identityRead = undefined;

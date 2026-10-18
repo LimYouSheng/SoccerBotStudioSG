@@ -1,6 +1,12 @@
 "use client";
 import { BookingLoadingProvider } from "./booking-loading";
-import { protectedCheckoutService } from "@/services/confirmation";
+import {
+  protectedCheckoutService,
+  dismissCompletedBooking,
+  completedExitIntent,
+  rememberCompletedExit,
+  forgetCompletedExit,
+} from "@/services/confirmation";
 import { isHitpayCheckoutUrl } from "@/domain/native-checkout";
 import { todaySG } from "@/domain/dates";
 import { slotKey } from "@/domain/booking";
@@ -67,6 +73,9 @@ interface BookingContextValue extends StoredBooking {
   check: () => Promise<boolean>;
   resolve: () => Promise<boolean>;
   reset: () => void;
+  restartAfterConfirmation: (attemptId: string) => void;
+  rebookingError: string | null;
+  retryRebooking: () => void;
 }
 const Context = createContext<BookingContextValue | null>(null);
 export function BookingProvider({
@@ -119,6 +128,35 @@ export function BookingProvider({
     operation: Action;
   } | null>(null);
   const mounted = useRef(false);
+  const exitWork = useRef<{
+    id: string;
+    promise: Promise<boolean>;
+    failed: boolean;
+  } | null>(null);
+  const [rebookingError, setRebookingError] = useState<string | null>(null);
+  const finishExit = useCallback((id: string) => {
+    if (exitWork.current?.id === id && !exitWork.current.failed)
+      return exitWork.current.promise;
+    rememberCompletedExit(id);
+    setRebookingError(null);
+    const work = { id, failed: false, promise: Promise.resolve(false) };
+    exitWork.current = work;
+    work.promise = dismissCompletedBooking(id).then(
+      () => {
+        forgetCompletedExit(id);
+        return true;
+      },
+      () => {
+        work.failed = true;
+        if (mounted.current && exitWork.current === work)
+          setRebookingError(
+            "We couldn’t finish closing your previous booking. Your confirmation is saved. Please try again before reviewing a new booking.",
+          );
+        return false;
+      },
+    );
+    return work.promise;
+  }, []);
   const [availabilityRevision, invalidateAvailability] = useReducer(
     (revision: number) => revision + 1,
     0,
@@ -268,6 +306,8 @@ export function BookingProvider({
     );
     const controller = new AbortController();
     const revision = latest.current.revision;
+    const exiting = service.mode === "live" ? completedExitIntent() : null;
+    if (exiting) void finishExit(exiting);
     if (
       service.mode === "live" &&
       identityService.mode === "live" &&
@@ -279,6 +319,7 @@ export function BookingProvider({
           (attempt) => {
             if (
               attempt &&
+              attempt.id !== exiting &&
               !controller.signal.aborted &&
               mounted.current &&
               latest.current.revision === revision &&
@@ -300,7 +341,7 @@ export function BookingProvider({
       mounted.current = false;
       cancel();
     };
-  }, [commit, cancel, service, identityService]);
+  }, [commit, cancel, service, identityService, finishExit]);
   useEffect(() => {
     const resume = (event: PageTransitionEvent) => {
       // Browser Back may restore this document with its handoff loader intact.
@@ -338,6 +379,19 @@ export function BookingProvider({
         !request.controller.signal.aborted &&
         latest.current.revision === current.revision;
       try {
+        if (
+          service.mode === "live" &&
+          exitWork.current &&
+          (operation === "reserve" || operation === "checkout")
+        ) {
+          const finished = await finishExit(exitWork.current.id);
+          if (!isCurrent()) return false;
+          if (!finished)
+            throw new BookingServiceError(
+              "temporarily_unavailable",
+              "Your previous booking could not be closed. Please try again.",
+            );
+        }
         if (
           service.mode === "demo" &&
           current.draft.mode === "member" &&
@@ -473,7 +527,7 @@ export function BookingProvider({
         if (mounted.current && !latest.current.attempt) pauseCalendar(false);
       }
     },
-    [service, commit, setAction, identityService, calendar],
+    [service, commit, setAction, identityService, calendar, finishExit],
   );
   useEffect(() => {
     if (service.mode !== "demo" || value.attempt?.status !== "checking") return;
@@ -500,6 +554,22 @@ export function BookingProvider({
         selectionNotice,
         showMonth,
         setCalendarBrowsing,
+        rebookingError,
+        retryRebooking() {
+          if (exitWork.current) void finishExit(exitWork.current.id);
+        },
+        restartAfterConfirmation(id) {
+          if (
+            active.current ||
+            (latest.current.attempt && latest.current.attempt.id !== id)
+          )
+            throw new Error("booking_exit_changed");
+          if (service.mode === "live") void finishExit(id);
+          cancel();
+          setSelectionNotice(null);
+          setRestoredOwner({ service, identityService });
+          commit({ version: 2, draft: blankDraft(), attempt: null });
+        },
         update(change) {
           const current = latest.current;
           if (current.attempt?.held) {
