@@ -1,6 +1,7 @@
 import type { Miniflare } from "miniflare";
 export function createBookingMechanism(): Promise<{
   mf: Miniflare;
+  db: Awaited<ReturnType<Miniflare["getD1Database"]>>;
   origin: string;
   date: string;
   startMs: number;

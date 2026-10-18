@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Checkout grant-read consolidation — 18 October 2026
+
+Owner requested removing repeated ownership checks after reviewing the latest single-session HAR. Actual observed Details → Review improved28.866s→27.271s while provider calls fell28→24; roughly10s remained outside provider spans. Inspection found coordinator D1 calls were uninstrumented, so no measured D1 attribution or SQLite-index diagnosis was justified.
+
+Source now removes repeated forward-read/reservation grant joins while retaining write-boundary checks, dispatch/effect claims, deadlines and original recovery. D1 timing is added at the coordinator checkout boundary. Added a real-application-API two-tab browser regression, not live provider traffic. Focused baseline tests passed; an isolated mutant removing the final grant check failed with one forbidden booking. Concurrent real Worker API simulation retained one booking and one payment request. Types/lint/source/policy checks passed. Full Worker/CI results remain pending; no live booking/payment, merge or deployment is authorized by this source task.
+
 ## Owner directs initial comments — 18 October 2026
 
 Owner says to send the comment without further considerations. Apply that current decision over the earlier conditional-update prerequisite: wire the already validated formatter into the admitted admin comment write for the newly created booking set. Keep one separately claimed annotation per session and no automatic retry after uncertain delivery. Existing records remain untouched.

@@ -141,6 +141,8 @@
   "native guest creation rejects mixed client receipts and retains a known booking when its client hash is missing",
   "native finite grant rejects absent wrong revision changed intent and expired authority before provider dispatch",
   "native finite checkout composes fresh checks one booking protected payment and replay prevention",
+  "native checkout checks durable grant only at write and handoff boundaries",
+  "native checkout rejects revocation during provider reads before booking write",
   "native forward reads refresh expired identity within accounting and fail closed on a wrong account",
   "native generic reads reject expired identity without spending recovery calls on refresh",
   "native prerequisite diagnostics retain safe private evidence without writes or customer disclosure",

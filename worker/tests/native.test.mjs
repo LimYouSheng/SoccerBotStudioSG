@@ -1509,6 +1509,86 @@ test("native finite checkout composes fresh checks one booking protected payment
   }
 });
 
+test("native checkout checks durable grant only at write and handoff boundaries", async () => {
+  const data = await prepared(false, true, true);
+  await grantNative(data);
+  const wall = new Date(
+    data.scope.intent.sessions[0].startMs + 8 * 3600000,
+  ).toISOString();
+  data.invoice.due_datetime = new Date(Date.now() + 600000)
+    .toISOString()
+    .replace(/\.\d{3}Z$/, "Z");
+  reply = nativeProviderReply(data, wall);
+  try {
+    const result = await call("finite-checkout", data);
+    assert.equal(result.result.state, "associated", JSON.stringify(result));
+    // Book, comment, handoff, payment-link: no per-read/reservation D1 checks.
+    assert.equal(result.authorityReads, 4);
+    const replay = await call("finite-checkout", data);
+    assert.equal(replay.authorityReads, 0);
+    assert.equal(replay.reserved, 0);
+  } finally {
+    reply = undefined;
+  }
+});
+
+test("native checkout rejects revocation during provider reads before booking write", async () => {
+  for (const revokeGrant of [false, true]) {
+    const data = await prepared(false, true, true);
+    await grantNative(data);
+    const wall = new Date(
+      data.scope.intent.sessions[0].startMs + 8 * 3600000,
+    ).toISOString();
+    const standard = nativeProviderReply(data, wall);
+    const before = calls.length;
+    reply = async (request, body) => {
+      if (body?.method === "getStartTimeMatrix" && revokeGrant)
+        await db
+          .prepare(
+            "UPDATE native_checkout_grants SET state='blocked' WHERE attempt_id=?",
+          )
+          .bind(data.scope.attemptId)
+          .run();
+      if (body?.method === "getStartTimeMatrix" && !revokeGrant)
+        await db
+          .prepare(
+            "UPDATE guest_access SET revoked_ms=? WHERE capability_hash=?",
+          )
+          .bind(
+            Date.now(),
+            createHash("sha256")
+              .update(data.cookie.split("=")[1])
+              .digest("hex"),
+          )
+          .run();
+      return standard(request, body);
+    };
+    try {
+      const result = await call("finite-checkout", data);
+      if (revokeGrant) {
+        assert.equal(result.status, 200);
+        assert.equal(result.result.state, "recovery_required");
+        assert.equal(result.result.paymentAvailable, false);
+      } else {
+        assert.equal(result.status, 409);
+        assert.equal(result.error, "access_denied");
+      }
+      assert.equal(
+        calls.slice(before).filter((call) => call.body?.method === "book")
+          .length,
+        0,
+      );
+      assert.equal(
+        calls.slice(before).filter((call) => call.url.endsWith("/payment-link"))
+          .length,
+        0,
+      );
+    } finally {
+      reply = undefined;
+    }
+  }
+});
+
 test("native forward reads refresh expired identity within accounting and fail closed on a wrong account", async () => {
   for (const wrongAccount of [false, true]) {
     const data = await prepared(false, true, true);

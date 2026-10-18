@@ -694,64 +694,72 @@ test("native guest journey preserves players contact and one checkout across ref
   }
 });
 
+async function prepareBrowserAttempt(
+  page: Page,
+  mechanism: Awaited<ReturnType<typeof createBookingMechanism>>,
+) {
+  // Setup uses the same public routes, auth and coordinator as the browser.
+  const access = await mechanism.mf.dispatchFetch(
+    mechanism.origin + "/api/access",
+    { method: "POST", headers: { origin: mechanism.origin } },
+  );
+  expect(access.status).toBe(201);
+  const cookie = access.headers.get("set-cookie")!.split(";")[0];
+  await page.context().addCookies([
+    {
+      name: "soccerbot-mechanism-access",
+      value: cookie.slice(cookie.indexOf("=") + 1),
+      url: "http://127.0.0.1:4173",
+      httpOnly: true,
+      sameSite: "Strict",
+      secure: false,
+    },
+  ]);
+  const headers = {
+    origin: mechanism.origin,
+    cookie,
+    "content-type": "application/json",
+  };
+  const prepared = await mechanism.mf.dispatchFetch(
+    mechanism.origin + "/api/booking/prepare",
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        key: crypto.randomUUID(),
+        holding: true,
+        accepted: false,
+        contact: {
+          name: "Synthetic Guest",
+          email: "synthetic@example.test",
+          phone: "+6591234567",
+          contactMethod: "email",
+          academy: "",
+        },
+        sessions: [
+          {
+            serviceId: "2",
+            instructorId: "14",
+            startMs: mechanism.startMs,
+            players: 2,
+            totalMinor: 8800,
+          },
+        ],
+      }),
+    },
+  );
+  expect(prepared.status).toBe(201);
+  const { attemptId } = (await prepared.json()) as { attemptId: string };
+  return { headers, attemptId };
+}
+
 test("real payment recovery confirms the browser return from verified provider state", async ({
   page,
 }) => {
   const mechanism = await createBookingMechanism();
   const transport = await mechanismTransport(page, mechanism);
   try {
-    // Setup uses the same public routes, auth and coordinator as the browser.
-    const access = await mechanism.mf.dispatchFetch(
-      mechanism.origin + "/api/access",
-      { method: "POST", headers: { origin: mechanism.origin } },
-    );
-    expect(access.status).toBe(201);
-    const cookie = access.headers.get("set-cookie")!.split(";")[0];
-    await page.context().addCookies([
-      {
-        name: "soccerbot-mechanism-access",
-        value: cookie.slice(cookie.indexOf("=") + 1),
-        url: "http://127.0.0.1:4173",
-        httpOnly: true,
-        sameSite: "Strict",
-        secure: false,
-      },
-    ]);
-    const headers = {
-      origin: mechanism.origin,
-      cookie,
-      "content-type": "application/json",
-    };
-    const prepared = await mechanism.mf.dispatchFetch(
-      mechanism.origin + "/api/booking/prepare",
-      {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          key: crypto.randomUUID(),
-          holding: true,
-          accepted: false,
-          contact: {
-            name: "Synthetic Guest",
-            email: "synthetic@example.test",
-            phone: "+6591234567",
-            contactMethod: "email",
-            academy: "",
-          },
-          sessions: [
-            {
-              serviceId: "2",
-              instructorId: "14",
-              startMs: mechanism.startMs,
-              players: 2,
-              totalMinor: 8800,
-            },
-          ],
-        }),
-      },
-    );
-    expect(prepared.status).toBe(201);
-    const { attemptId } = (await prepared.json()) as { attemptId: string };
+    const { headers, attemptId } = await prepareBrowserAttempt(page, mechanism);
     const held = await mechanism.mf.dispatchFetch(
       mechanism.origin + `/api/booking/native/${attemptId}?hold=1`,
       { method: "POST", headers },
@@ -853,5 +861,85 @@ test("real payment recovery confirms the browser return from verified provider s
     } finally {
       await test.step("Dispose isolated Worker", () => mechanism.close());
     }
+  }
+});
+
+test("concurrent browser tabs reuse one hold and payment and reject revoked access", async ({
+  page,
+}) => {
+  const mechanism = await createBookingMechanism();
+  const other = await page.context().newPage();
+  const transport = await mechanismTransport(page, mechanism);
+  const secondTransport = await mechanismTransport(other, mechanism);
+  try {
+    const { attemptId } = await prepareBrowserAttempt(page, mechanism);
+    await Promise.all([
+      page.goto("/book/account/"),
+      other.goto("/book/account/"),
+    ]);
+    const submit = (tab: Page, path: string, body?: unknown) =>
+      tab.evaluate(
+        async ({ path, body }) => {
+          const response = await fetch(path, {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: body === undefined ? undefined : JSON.stringify(body),
+          });
+          return { status: response.status, body: await response.json() };
+        },
+        { path, body },
+      );
+    const holds = await Promise.all([
+      submit(page, `/api/booking/native/${attemptId}?hold=1`),
+      submit(other, `/api/booking/native/${attemptId}?hold=1`),
+    ]);
+    expect(holds.map((result) => result.status)).toEqual([200, 200]);
+    expect(holds.some((result) => result.body.state === "associated")).toBe(
+      true,
+    );
+    expect(
+      mechanism.calls.filter((call) => call.body?.method === "book"),
+    ).toHaveLength(1);
+    const availabilityReads = mechanism.calls.filter(
+      (call) => call.body?.method === "getStartTimeMatrix",
+    ).length;
+    const payments = await Promise.all([
+      submit(page, `/api/booking/hitpay/${attemptId}`, { accepted: true }),
+      submit(other, `/api/booking/hitpay/${attemptId}`, { accepted: true }),
+    ]);
+    expect(payments.map((result) => result.status)).toEqual([200, 200]);
+    expect(
+      mechanism.calls.filter(
+        (call) =>
+          call.method === "POST" &&
+          new URL(call.url).pathname === "/v1/payment-requests",
+      ),
+    ).toHaveLength(1);
+    expect(
+      mechanism.calls.filter((call) => call.body?.method === "book"),
+    ).toHaveLength(1);
+    expect(
+      mechanism.calls.filter(
+        (call) => call.body?.method === "getStartTimeMatrix",
+      ),
+    ).toHaveLength(availabilityReads);
+    // Model server-side session revocation, then reuse the actual browser cookie.
+    await mechanism.db
+      .prepare("UPDATE guest_access SET revoked_ms=?")
+      .bind(Date.now())
+      .run();
+    const providerCalls = mechanism.calls.length;
+    const denied = await submit(
+      other,
+      `/api/booking/native/${attemptId}?hold=1`,
+    );
+    expect(denied.status).toBe(401);
+    expect(mechanism.calls).toHaveLength(providerCalls);
+    expect(mechanism.unexpected).toEqual([]);
+  } finally {
+    await Promise.all([page.goto("about:blank"), other.goto("about:blank")]);
+    await Promise.all([transport.drain(), secondTransport.drain()]);
+    await other.close();
+    await mechanism.close();
   }
 });

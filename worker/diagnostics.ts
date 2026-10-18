@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 type Span =
   | "storage"
+  | "d1"
   | "coordinator"
   | "coordinator_rpc"
   | "coordinator_wait"
@@ -62,6 +63,7 @@ export async function traced<T>(
     started: performance.now(),
     spans: {
       storage: fresh(),
+      d1: fresh(),
       coordinator: fresh(),
       coordinator_rpc: fresh(),
       coordinator_wait: fresh(),
@@ -96,7 +98,10 @@ export async function traced<T>(
 }
 // Preserve native receivers and promise identities. Only terminal D1 calls are
 // timed; prepare/bind/session chaining never logs SQL or values.
-export function instrumentStorage<T extends object>(target: T): T {
+export function instrumentStorage<T extends object>(
+  target: T,
+  span: "storage" | "d1" = "storage",
+): T {
   return new Proxy(target, {
     get(object, key) {
       const member: unknown = Reflect.get(object, key);
@@ -106,14 +111,14 @@ export function instrumentStorage<T extends object>(target: T): T {
         if (
           ["first", "all", "raw", "run", "exec", "batch"].includes(String(key))
         )
-          return measure("storage", invoke);
+          return measure(span, invoke);
         const result: unknown = invoke();
         if (
           ["prepare", "bind", "withSession"].includes(String(key)) &&
           result &&
           typeof result === "object"
         )
-          return instrumentStorage(result);
+          return instrumentStorage(result, span);
         return result;
       };
     },
