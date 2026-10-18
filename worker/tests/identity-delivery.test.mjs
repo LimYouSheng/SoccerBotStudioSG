@@ -960,6 +960,72 @@ test("ongoing delivery preserves closed proofs and restores consented identity a
   );
   assert.equal(calls.length, 2);
 });
+test("ongoing verified contact reads and consented saves ignore closed historical proof windows", async () => {
+  await ongoingDelivery();
+  await db.exec(
+    readFileSync("migrations/0015_contact_profiles.sql", "utf8")
+      .replace(/^--.*$/gm, "")
+      .replace(/\n/g, " "),
+  );
+  const windows = (
+    await db
+      .prepare("SELECT * FROM identity_delivery_window ORDER BY singleton")
+      .all()
+  ).results;
+  const cookie = await guest();
+  const recipient = "profile@example.invalid";
+  const issued = await challenge(cookie, { email: recipient });
+  assert.equal(issued.status, 200);
+  const c = await issued.json();
+  const sent = calls.findLast(
+    (call) => call.url === "https://api.resend.com/emails",
+  );
+  const code = sent.body.text.match(/code is (\d{6})/)[1];
+  assert.equal(
+    (
+      await request(
+        cookie,
+        { email: recipient, challengeId: c.challengeId, code, remember: true },
+        "verify",
+      )
+    ).status,
+    200,
+  );
+  const read = () =>
+    mf.dispatchFetch(origin + "/api/identity/contact", { headers: { cookie } });
+  const first = await read();
+  assert.equal(first.status, 200);
+  assert.deepEqual(await first.json(), { email: recipient, contact: null });
+  const contact = {
+    email: recipient,
+    name: "Synthetic Profile",
+    phone: "+6591234567",
+  };
+  const saved = await mf.dispatchFetch(origin + "/api/identity/contact", {
+    method: "POST",
+    headers: { origin, cookie, "content-type": "application/json" },
+    body: JSON.stringify(contact),
+  });
+  assert.equal(saved.status, 200);
+  assert.deepEqual(await (await read()).json(), {
+    email: recipient,
+    contact: { name: contact.name, phone: contact.phone },
+  });
+  assert.deepEqual(
+    (
+      await db
+        .prepare("SELECT * FROM identity_delivery_window ORDER BY singleton")
+        .all()
+    ).results,
+    windows,
+  );
+  await db
+    .prepare("UPDATE verified_identity SET revoked_ms=? WHERE email=?")
+    .bind(Date.now(), recipient)
+    .run();
+  assert.equal((await read()).status, 401);
+});
+
 test("ongoing delivery charges unknown sends against durable hourly capacity across restart and preserves history", async () => {
   await ongoingDelivery();
   const at = Date.now();

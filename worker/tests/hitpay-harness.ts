@@ -7,6 +7,18 @@ import worker, {
 } from "../index";
 import { prepareHitpay, claimHitpay } from "../hitpay-journal";
 export class SoccerBotAccountCoordinator extends ProductionCoordinator {
+  // Existing recovery fixtures explicitly control interleaving. Production
+  // enqueue/setAlarm still execute; tests invoke the real handler separately.
+  async alarm() {}
+  async drainSyntheticAlarm() {
+    await super.alarm();
+  }
+  syntheticWakeups() {
+    return this.ctx.storage.sql
+      .exec("SELECT attempt_id,generation FROM payment_wakeups ORDER BY rowid")
+      .toArray();
+  }
+
   expireSyntheticCooldown() {
     this.ctx.storage.sql.exec("UPDATE budget SET cooldown_ms=0");
   }
@@ -35,6 +47,13 @@ const harness = {
           return Response.json({ code: error.code }, { status: error.status });
         throw error;
       }
+    }
+    if (["/test/wakeups", "/test/alarm"].includes(url.pathname)) {
+      const stub = env.COORDINATOR.getByName(
+        "simplybook-developer-account",
+      ) as unknown as DurableObjectStub<SoccerBotAccountCoordinator>;
+      if (url.pathname === "/test/alarm") await stub.drainSyntheticAlarm();
+      return Response.json(await stub.syntheticWakeups());
     }
     if (url.pathname === "/test/elapsed-cooldown") {
       const stub = env.COORDINATOR.getByName(

@@ -574,6 +574,72 @@ async function recover() {
     .run();
   return mf.dispatchFetch(origin + "/test/recover");
 }
+test("HitPay webhook durable alarm races cron without duplicate financial writes", async () => {
+  await seedPayment();
+  const before = await row();
+  const provider = providerFixture();
+  assert.equal((await send()).status, 202);
+  const queued = await (
+    await mf.dispatchFetch(origin + "/test/wakeups")
+  ).json();
+  assert.equal(queued.length, 1);
+  assert.equal(queued[0].attempt_id, attemptId);
+  assert.equal((await row()).tries, 0);
+  const results = await Promise.all([
+    mf.dispatchFetch(origin + "/test/alarm"),
+    mf.dispatchFetch(origin + "/test/recover"),
+  ]);
+  assert.deepEqual(
+    results.map((r) => r.status),
+    [200, 200],
+  );
+  const saved = await row();
+  assert.equal(saved.state, "complete", saved.reason);
+  assert.equal(saved.recovery_end_ms, before.recovery_end_ms);
+  assert.equal(saved.tries, 1);
+  assert.equal(provider.writes(), 1);
+  assert.equal(provider.reads(), 1);
+  assert.deepEqual(
+    await (await mf.dispatchFetch(origin + "/test/wakeups")).json(),
+    [],
+  );
+  assert.equal((await send()).status, 202);
+  assert.equal((await mf.dispatchFetch(origin + "/test/alarm")).status, 200);
+  assert.equal(provider.writes(), 1);
+  assert.equal(provider.reads(), 1);
+});
+
+test("HitPay alarm retains a webhook arriving while its earlier wakeup runs", async () => {
+  await seedPayment();
+  const provider = providerFixture();
+  const standard = handler;
+  let delivered = false;
+  handler = async (request) => {
+    if (
+      !delivered &&
+      new URL(request.url).hostname === "api.sandbox.hit-pay.com"
+    ) {
+      delivered = true;
+      assert.equal((await send()).status, 202);
+    }
+    return standard(request);
+  };
+  assert.equal((await send()).status, 202);
+  assert.equal((await mf.dispatchFetch(origin + "/test/alarm")).status, 200);
+  const pending = await (
+    await mf.dispatchFetch(origin + "/test/wakeups")
+  ).json();
+  assert.equal(pending.length, 1);
+  assert.equal(pending[0].generation, 2);
+  assert.equal((await mf.dispatchFetch(origin + "/test/alarm")).status, 200);
+  assert.deepEqual(
+    await (await mf.dispatchFetch(origin + "/test/wakeups")).json(),
+    [],
+  );
+  assert.equal(provider.writes(), 1);
+  assert.equal(provider.reads(), 1);
+});
+
 test("HitPay recovery independently verifies payment and bookings before one external write", async () => {
   await seedPayment();
   const provider = providerFixture();

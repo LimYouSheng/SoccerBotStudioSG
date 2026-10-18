@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Immediate payment recovery and ongoing contact access — 18 October 2026
+
+An authenticated, exact-account HitPay receipt durably queues a coordinator alarm after receipt persistence. The alarm invokes the existing leased recovery operation; it never trusts callback paid status, resets deadlines or creates a new payment. Wake-up generations retain callbacks received during processing. Alarm retries and the unchanged minute cron provide recovery; original payment claims/effect guards remain authoritative. Only minimal attempt/correlation identifiers enter the local wake-up queue.
+
+Ongoing developer email authority supersedes closed historical proof windows for contact reads and consented saves, matching challenge/verification/restoration. Keep historical rows unchanged and retain finite-mode window guards, current identity/guest expiry/revocation and Remember me consent.
+
 ## Checkout authority consolidation — 18 October 2026
 
 Details → Review authenticates at its server entry and retains the one-use grant and atomic dispatch/effect claims. During that operation, provider reads/reservations use local access-expiry, deadline, cancellation and budget checks instead of repeating the full D1 grant join. Each provider write still rechecks the durable grant after provider identity is established; handoff and the final response retain current authority checks. Cleanup, payment recovery, receipt protection, provider validation and unknown-write recovery remain unchanged. This is request-local consolidation, not browser-owned authority or a cross-request authorization cache.

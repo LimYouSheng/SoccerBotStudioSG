@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Latest02 investigation, payment wake-up and email blocker — 18 October 2026
+
+Owner requested at least80% latency reduction after latest02.har. Fresh deployed revision matches mergedPR47/main45ec58c. Details → Review improved27.271s→21.663s, about20.6%; hold D1 timing is now visible at4.451s and provider time9.141s. Return-to-full-confirmation remains about62.5s. An authenticated webhook was retained roughly47s before paid evidence. Immediate durable wake-up replaces reliance on the next cron dispatch while preserving authoritative verification and claims. This is a concrete confirmation optimization, not proof the80% target has been met; booking provider critical-path consolidation remains open.
+
+Owner also reported unavailable email verification around21:32SGT. Bounded logs show verify200 followed by contact401 and a later resend429. Read-only D1 confirms a retained closed singleton3 proof. Reproduced contact401 in a populated-history fixture and fixed the owning contact SQL for ongoing authority; no proof reopening/history cleanup. An initial test fixture lacked the contact migration and returned503; adding its actual0015 schema reproduced the real401 before the code repair. Focused fixed contact and alarm/cron-race/wake-generation tests passed. Full non-browser and exact-source CI results remain pending at this source checkpoint. No live provider effects were performed by Codex.
+
 ## Checkout grant-read consolidation — 18 October 2026
 
 Owner requested removing repeated ownership checks after reviewing the latest single-session HAR. Actual observed Details → Review improved28.866s→27.271s while provider calls fell28→24; roughly10s remained outside provider spans. Inspection found coordinator D1 calls were uninstrumented, so no measured D1 attribution or SQLite-index diagnosis was justified.
