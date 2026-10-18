@@ -1,5 +1,15 @@
 # SoccerBotStudio — Journey
 
+Account secondary actions use the shared outlined button style in one three-column row beneath Continue; confirmed Back to home spans the full two-column action width. Existing real-API browser journeys assert alignment, spacing and width across configured viewports.
+
+## Three UI follow-ups to PR55 — 19 October 2026 SGT
+
+Additional owner requests: preferred communication has Email as its default with exactly Email, Call (existing phone identifier), SMS and WhatsApp; remove the placeholder and retain stored preferences. The shared method catalogue also supplies SimplyBook comment labels. Enlarge the hero address target with12px vertical/16px horizontal padding and68px minimum height. Hero entry reserves a same-home history entry, replaces it when booking navigation commits, and invalidates delayed callbacks on Back; this prevents returning to an older Studio history entry during the animation. Add an actual browser Back-during-transition regression and padded-corner location click coverage.
+
+Owner reports Review loading twice, asks for the final confirmation layout during verification with a spinner replacing the confirmed heading and all five actions hidden, and reports3–4s Back to home delay. Source shows Review already rendered inside Details before a second App Router transition; preserve it and update history without another route fetch. Source also shows Home awaiting dismissal while Make another booking uses shared background exit; reuse that owner for Home. These are source-supported causes, not a fresh measured reproduction of the owner's exact timing.
+
+Pending confirmation now uses authenticated display-only details without a verification timestamp and the same BookingConfirmation component as the final page. Add component assertions for unchanged card identity and hidden actions/success claims, and immediate shared exit. Existing real-Worker browser journeys now assert no Review route request/remount, full pending detail sections, and home navigation while dismissal is deliberately blocked. Retain old confirmation/receipt and negative payment tests. Initial focused run passed22/23; the remaining test accidentally counted the initial account redirect when prohibiting a Review route transition. Scope that assertion to /book/review/ while preserving DOM identity and no-loader assertions. Exact-source verification remains pending; no assistant browser/provider mutation or deployment.
+
 ## Follow-up latency review and earlier Review — 19 October 2026 SGT
 
 Owner requests a full bottleneck pass together with duplicate reference acknowledgement removal, then explicitly asks to show Review after step3 of8 (comment), while readback continues. Source confirms progress previously waited for association persistence after comment handling. Reuse the existing observed comment receipt in the protected status query rather than adding another milestone write. Native raw-reference retention remains; remove the redundant orchestration update and retain exact-reference/fence acknowledgement. Join confirmation route/payment reads without changing the confirmation decision.

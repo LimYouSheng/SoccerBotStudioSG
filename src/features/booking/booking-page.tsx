@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { sitePath } from "@/content/site-path";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { guardedStep, type BookingStep } from "@/domain/booking";
@@ -73,17 +74,22 @@ export function BookingPage({ step }: { step: BookingStep }) {
               ? "time"
               : guardedStep(step, draft, attempt, now),
     current = progress.findIndex(([id]) => id === displayStep);
+  const retainingReview =
+    step === "details" && actual === "review" && attempt?.held === true;
   useEffect(() => {
-    if (ready && actual !== step) router.replace(`/book/${actual}/`);
-  }, [actual, step, ready, router]);
+    if (!ready || actual === step) return;
+    if (retainingReview) {
+      // Review is already interactive. Commit its URL without remounting it
+      // through the app-router loading boundary. Refresh still opens Review.
+      window.history.replaceState(null, "", sitePath("/book/review/"));
+    } else router.replace(`/book/${actual}/`);
+  }, [actual, step, ready, router, retainingReview]);
   useEffect(() => {
     setCalendarBrowsing(["account", "session", "time"].includes(actual));
     return () => setCalendarBrowsing(true);
   }, [actual, setCalendarBrowsing]);
   // Review is already mounted after creation. Preserve it while the URL
   // catches up after verification; routing must not bring the overlay back.
-  const retainingReview =
-    step === "details" && actual === "review" && attempt?.held === true;
   if (!ready || (actual !== step && !retainingReview))
     return <BrandLoading overlay={false} />;
   const Screen = screens[step];

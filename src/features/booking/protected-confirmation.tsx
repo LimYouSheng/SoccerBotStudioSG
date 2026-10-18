@@ -183,6 +183,11 @@ export function ProtectedConfirmation({
           window.location.assign(sitePath("/book/account/"));
         }}
         onHome={async () => {
+          if (onRestart) {
+            onRestart(attemptId);
+            router.push("/");
+            return;
+          }
           if (checkoutMode === "live") await dismissCompletedBooking(attemptId);
           onAgain?.();
           window.location.assign(sitePath("/"));
@@ -201,7 +206,25 @@ export function ProtectedConfirmation({
     (view === "confirmed" &&
       checkoutMode !== "synthetic" &&
       !receiptUnavailable)
-  )
+  ) {
+    const pendingLabel =
+      view === "confirmed"
+        ? "Preparing your confirmation…"
+        : checkoutMode && preparation === "loading"
+          ? "Preparing checkout…"
+          : "Checking your payment and booking…";
+    if (current?.details) {
+      const details = bookingFromReceipt(current.details);
+      return (
+        <BookingConfirmation
+          booking={details.booking}
+          taxMinor={details.taxMinor}
+          pending
+          pendingLabel={pendingLabel}
+          onAgain={() => {}}
+        />
+      );
+    }
     return (
       <div className="status-shell">
         <section className="surface confirmation-card" aria-busy="true">
@@ -221,6 +244,7 @@ export function ProtectedConfirmation({
         </section>
       </div>
     );
+  }
   return (
     <div className="status-shell">
       <section className="surface confirmation-card" aria-live="polite">

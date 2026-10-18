@@ -404,7 +404,8 @@ test("native comments bind optional school to the approved contact and reject in
   intent.contact.academy = "";
   for (const [method, label] of [
     ["email", "Email"],
-    ["phone", "Phone call"],
+    ["phone", "Call"],
+    ["sms", "SMS"],
     ["whatsapp", "WhatsApp"],
   ]) {
     intent.contact.contactMethod = method;

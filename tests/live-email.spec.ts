@@ -270,6 +270,21 @@ test("remembered live account edits and rereads contact while native booking sta
       parseFloat(getComputedStyle(node).fontSize),
     ),
   ).toBeGreaterThanOrEqual(18);
+  const accountActions = page.locator(".account-actions .button");
+  await expect(accountActions).toHaveCount(3);
+  const actionBoxes = await accountActions.evaluateAll((buttons) =>
+    buttons.map((button) => {
+      const { x, y, width, height } = button.getBoundingClientRect();
+      return { x, y, width, height };
+    }),
+  );
+  for (let index = 1; index < actionBoxes.length; index++) {
+    expect(actionBoxes[index].y).toBe(actionBoxes[0].y);
+    expect(actionBoxes[index].height).toBe(actionBoxes[0].height);
+    expect(actionBoxes[index].x).toBeGreaterThan(
+      actionBoxes[index - 1].x + actionBoxes[index - 1].width,
+    );
+  }
   const after = await guest.boundingBox();
   expect(after).toEqual(before);
   await page
@@ -808,7 +823,7 @@ test("real payment recovery confirms the browser return from verified provider s
 }) => {
   const mechanism = await createBookingMechanism();
   let releaseDismiss!: () => void;
-  const dismissGate = new Promise<void>((resolve) => {
+  let dismissGate = new Promise<void>((resolve) => {
     releaseDismiss = resolve;
   });
   const transport = await mechanismTransport(page, mechanism, (path) =>
@@ -918,8 +933,31 @@ test("real payment recovery confirms the browser return from verified provider s
     await expect(
       page.getByRole("heading", { name: "Client Details" }),
     ).toBeVisible();
+    dismissGate = new Promise<void>((resolve) => {
+      releaseDismiss = resolve;
+    });
+    const homeButton = page.getByRole("link", {
+      name: "Back to home",
+      exact: true,
+    });
+    const homeBox = await homeButton.boundingBox();
+    const actionsBox = await page
+      .locator(".confirmation-actions")
+      .boundingBox();
+    expect(homeBox).not.toBeNull();
+    expect(actionsBox).not.toBeNull();
+    expect(homeBox!.x).toBeCloseTo(actionsBox!.x, 0);
+    expect(homeBox!.width).toBeCloseTo(actionsBox!.width, 0);
+    expect(homeBox!.y).toBeGreaterThan(actionsBox!.y + actionsBox!.height);
     await page.getByRole("link", { name: "Back to home", exact: true }).click();
     await expect(page).toHaveURL(/\/$/);
+    const homeDismissed = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname.endsWith("/dismiss") &&
+        response.status() === 200,
+    );
+    releaseDismiss();
+    await homeDismissed;
     await page.goto("/book/account/");
     await expect(
       page.getByRole("button", { name: "Continue as guest", exact: true }),
@@ -1089,9 +1127,17 @@ async function guestDetails(
     .getByLabel("Email address", { exact: false })
     .fill("synthetic@example.test");
   await page.getByLabel("Mobile number", { exact: false }).fill("+6591234567");
-  await page
-    .getByLabel("Preferred contact method", { exact: false })
-    .selectOption("email");
+  const contactMethod = page.getByLabel("Preferred contact method", {
+    exact: false,
+  });
+  await expect(contactMethod).toHaveValue("email");
+  await expect(contactMethod.locator("option")).toHaveText([
+    "Email",
+    "Call",
+    "SMS",
+    "WhatsApp",
+  ]);
+  await contactMethod.selectOption("email");
   await page
     .getByLabel("Academy / school / organisation", { exact: false })
     .fill("Synthetic School");
@@ -1826,17 +1872,9 @@ async function optimisticHold(page: Page, failReadback: boolean) {
     },
   });
   const transport = await mechanismTransport(page, mechanism);
-  let releaseNavigation!: () => void;
-  let navigationStarted!: () => void;
-  const navigationGate = new Promise<void>((resolve) => {
-    releaseNavigation = resolve;
-  });
-  const navigating = new Promise<void>((resolve) => {
-    navigationStarted = resolve;
-  });
+  let reviewRequests = 0;
   await page.route("**/book/review/**", async (route) => {
-    navigationStarted();
-    await navigationGate;
+    reviewRequests++;
     await route.continue();
   });
   try {
@@ -1883,19 +1921,25 @@ async function optimisticHold(page: Page, failReadback: boolean) {
         .prepare("SELECT COUNT(*) AS n FROM hitpay_holds")
         .first(),
     ).toEqual({ n: 0 });
+    const review = await page
+      .getByRole("heading", { name: "Review booking", exact: true })
+      .elementHandle();
     release();
     expect(await (await result).json()).toMatchObject({
       state: failReadback ? "recovery_required" : "associated",
     });
     if (!failReadback) {
-      await navigating;
+      await expect(page).toHaveURL(/\/book\/review\/$/);
+      expect(reviewRequests).toBe(0);
+      expect(await review?.evaluate((element) => element.isConnected)).toBe(
+        true,
+      );
       await expect(
         page.getByRole("heading", { name: "Review booking", exact: true }),
       ).toBeVisible();
       await expect(
         page.locator(".booking-flow-overlay, .page-loading-emblem"),
       ).toHaveCount(0);
-      releaseNavigation();
     }
     await expect(page).toHaveURL(
       failReadback ? /\/book\/payment\/$/ : /\/book\/review\/$/,
@@ -1915,7 +1959,6 @@ async function optimisticHold(page: Page, failReadback: boolean) {
     await assertNoPaymentOrConfirmation(page, mechanism);
   } finally {
     releaseComment();
-    releaseNavigation();
     release();
     await stopMechanism(page, mechanism, transport);
   }
@@ -1949,10 +1992,10 @@ test("real API unpaid return shows the pending confirmation layout without claim
       .getByRole("button", { name: "Not now", exact: true })
       .click();
     await expect(
-      page.getByRole("heading", { name: "Booking confirmation", exact: true }),
+      page.getByRole("heading", { name: "Client Details", exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByRole("region", { name: "Current booking summary" }),
+      page.getByRole("region", { name: "Session Details" }),
     ).toBeVisible();
     await expect(
       page.getByRole("status", {
@@ -1964,6 +2007,11 @@ test("real API unpaid return shows the pending confirmation layout without claim
       page.getByRole("heading", { name: "Booking confirmed", exact: true }),
     ).toHaveCount(0);
     await expect(page.getByRole("button", { name: /Download/ })).toHaveCount(0);
+    await expect(page.getByLabel("Booking actions")).toHaveCount(0);
+    await expect(
+      page.getByRole("link", { name: "Back to home", exact: true }),
+    ).toHaveCount(0);
+    await expect(page.getByText("Paid", { exact: true })).toHaveCount(0);
     expect(
       mechanism.calls.filter((call) => call.body?.method === "book"),
     ).toHaveLength(1);

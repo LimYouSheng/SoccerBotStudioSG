@@ -4,8 +4,9 @@ import { associationSchema, intentSchema } from "./journal";
 import {
   nativeAvailabilitySchema,
   receiptSchema,
+  bookingDetailsSchema,
 } from "../src/domain/native-checkout";
-export async function receiptData(
+export async function bookingDetailsData(
   env: Env,
   row: {
     id: string;
@@ -13,7 +14,6 @@ export async function receiptData(
     created_ms: number;
     association_json: string | null;
   },
-  now: number,
 ) {
   const intent = intentSchema.parse(JSON.parse(row.intent_json));
   if (!intent.contact) throw new ApiError(503, "receipt_details_unavailable");
@@ -44,17 +44,27 @@ export async function receiptData(
   );
   if (association.bookingIds.length !== slots.length)
     throw new ApiError(503, "receipt_details_unavailable");
-  return receiptSchema.parse({
+  return bookingDetailsSchema.parse({
     providerReferences: {
       bookingIds: association.bookingIds,
       invoiceId: association.invoiceId,
     },
     attemptId: row.id,
-    verifiedAtMs: now,
     createdAtMs: row.created_ms,
     taxMinor: intent.taxMinor,
     totalMinor: intent.totalMinor,
     contact: intent.contact,
     sessions: slots,
+  });
+}
+
+export async function receiptData(
+  env: Env,
+  row: Parameters<typeof bookingDetailsData>[1],
+  now: number,
+) {
+  return receiptSchema.parse({
+    ...(await bookingDetailsData(env, row)),
+    verifiedAtMs: now,
   });
 }

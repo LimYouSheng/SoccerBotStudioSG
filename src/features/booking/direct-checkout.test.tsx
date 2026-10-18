@@ -442,6 +442,13 @@ it("created single hold shows Review before readback and keeps payment disabled 
     </BookingProvider>,
   );
   fireEvent.click(screen.getByText("Seed"));
+  const contactMethod = screen.getByLabelText(/Preferred contact method/);
+  expect(contactMethod).toHaveValue("email");
+  expect(
+    Array.from((contactMethod as HTMLSelectElement).options).map(
+      (option) => option.text,
+    ),
+  ).toEqual(["Email", "Call", "SMS", "WhatsApp"]);
   await act(async () =>
     fireEvent.click(screen.getByRole("button", { name: "Review booking" })),
   );
@@ -462,11 +469,16 @@ it("created single hold shows Review before readback and keeps payment disabled 
     "aria-current",
     "step",
   );
+  const mountedReview = screen.getByRole("heading", { name: "Review booking" });
   await act(async () => complete({ ...created!, held: true, status: "ready" }));
+  expect(screen.getByRole("heading", { name: "Review booking" })).toBe(
+    mountedReview,
+  );
   expect(
     screen.queryByRole("button", { name: "Review booking" }),
   ).not.toBeInTheDocument();
-  expect(navigation.replace).toHaveBeenCalledWith("/book/review/");
+  expect(navigation.replace).not.toHaveBeenCalledWith("/book/review/");
+  expect(window.location.pathname).toMatch(/\/book\/review\/$/);
   expect(navigation.push).not.toHaveBeenCalled();
   expect(screen.getByRole("heading", { name: "Review booking" })).toBeVisible();
   expect(document.querySelector(".booking-flow-overlay")).toBeNull();

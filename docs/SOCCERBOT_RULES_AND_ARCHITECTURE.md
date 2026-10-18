@@ -1,5 +1,13 @@
 # SoccerBotStudio — Rules & Architecture
 
+Account secondary actions use the shared outlined button style in one three-column row beneath Continue; confirmed Back to home spans the full two-column action width. Existing real-API browser journeys assert alignment, spacing and width across configured viewports.
+
+## Stable Review and confirmation presentation — 19 October 2026 SGT
+
+Additional owner requests: preferred communication has Email as its default with exactly Email, Call (existing phone identifier), SMS and WhatsApp; remove the placeholder and retain stored preferences. The shared method catalogue also supplies SimplyBook comment labels. Enlarge the hero address target with12px vertical/16px horizontal padding and68px minimum height. Hero entry reserves a same-home history entry, replaces it when booking navigation commits, and invalidates delayed callbacks on Back; this prevents returning to an older Studio history entry during the animation. Add an actual browser Back-during-transition regression and padded-corner location click coverage.
+
+Once pending Review is mounted and the hold finishes, commit /book/review/ through native history without fetching/remounting the same page. The route remains refreshable and later navigation uses the normal router. Pending and confirmed customer confirmations share one presentation owner; display details never establish paid or confirmed state. While pending, the heading is the brand spinner, Paid and verification-time claims are absent, and booking actions/home are hidden. Current attempt ownership and session revision govern all detail responses. Both confirmed-page exits use the existing durable-in-browser exit marker and background server dismissal; navigation is immediate, failure remains visible on rebooking and cannot permit a new hold before dismissal succeeds.
+
 ## Comment-complete Review and D1 round trips — 19 October 2026 SGT
 
 For a single booking, protected progress may expose payment-disabled Review as soon as the successfully acknowledged comment matches the retained booking reference and the attempt is still dispatching. It need not wait for association persistence. The existing association milestone remains a fallback when annotation fails, because comments are non-blocking and unknown comment writes must not be replayed. Progress is display-only: original holding execution still owns booking/invoice readback, matching and unpaid checks, hold evidence and expiry. Payment requires that completed hold. Batch progress is unchanged. The existing one-second polling transport adds detection latency; this is not an instantaneous server-push contract or a measured4–5-second result.

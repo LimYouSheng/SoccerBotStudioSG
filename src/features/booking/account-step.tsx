@@ -169,11 +169,11 @@ export function AccountStep() {
               <Icon name="arrow" />
             </button>
             {identity && (
-              <>
+              <div className="account-actions">
                 {identity.remember === true && (
                   <button
                     type="button"
-                    className="text-link"
+                    className="button secondary"
                     disabled={busy}
                     onClick={() => {
                       void perform(async (signal) => {
@@ -192,7 +192,7 @@ export function AccountStep() {
                   </button>
                 )}
                 <button
-                  className="text-link"
+                  className="button secondary"
                   onClick={() => {
                     void perform(async (signal) => {
                       await identityService.signOut(signal);
@@ -204,7 +204,7 @@ export function AccountStep() {
                 </button>
                 {identityService.mode === "live" && (
                   <button
-                    className="text-link"
+                    className="button secondary"
                     disabled={busy}
                     onClick={() => {
                       void perform(async (signal) => {
@@ -216,7 +216,7 @@ export function AccountStep() {
                     Sign out all devices
                   </button>
                 )}
-              </>
+              </div>
             )}
           </section>
         </div>

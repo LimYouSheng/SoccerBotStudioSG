@@ -1,5 +1,15 @@
 # SoccerBotStudio — Service Contracts
 
+Account secondary actions use the shared outlined button style in one three-column row beneath Continue; confirmed Back to home spans the full two-column action width. Existing real-API browser journeys assert alignment, spacing and width across configured viewports.
+
+## Checkout display details and immediate confirmed-page exit — 19 October 2026 SGT
+
+Additional owner requests: preferred communication has Email as its default with exactly Email, Call (existing phone identifier), SMS and WhatsApp; remove the placeholder and retain stored preferences. The shared method catalogue also supplies SimplyBook comment labels. Enlarge the hero address target with12px vertical/16px horizontal padding and68px minimum height. Hero entry reserves a same-home history entry, replaces it when booking navigation commits, and invalidates delayed callbacks on Back; this prevents returning to an older Studio history entry during the animation. Add an actual browser Back-during-transition regression and padded-corner location click coverage.
+
+Protected GET /api/attempts/{id}/checkout adds optional details only when X-Booking-Details:1 is requested, preserving older clients with strict response parsing. New clients accept an older server without details. The details use bookingDetailsSchema: attempt/provider references, creation time, contact, selected session labels, amount and tax from the immutable attempt, association and retained availability snapshot. No verifiedAtMs, paid state or confirmation authority is present. receiptSchema extends the same validated detail shape with verifiedAtMs; protected receipt/export verification is unchanged. Saved confirmation still uses its original verification time. An unavailable detail snapshot retains existing safe loading/summary behavior. No new provider request, payment write or schema migration is introduced; pending layout costs one local snapshot read when no saved confirmation exists.
+
+Back to home and Make another booking synchronously record the same completed-exit intent and clear the active browser attempt, then navigate while dismissal runs in the existing provider owner. Revisit suppression and new-hold gating remain active until the protected server dismissal succeeds; a failed dismissal retains its marker and retry path. Direct standalone callers without that owner retain the existing awaited fallback.
+
 ## Latest05 latency pass and comment milestone — 19 October 2026 SGT
 
 GET /api/booking/native/{id} remains owner-authenticated and returns no provider capability. For one session in a running grant it returns verifying when either association exists or a dispatching attempt has an observed native-comment:0 referencing the same observed session:0. Unknown/mismatched comments and pre-association recovery do not qualify; batch creation does not qualify. This signal enables only locked Review. The holding POST remains the sole creation owner and must finish all authoritative readback and hold persistence before payment. Comment failure stays non-blocking, with existing association fallback and no resend.

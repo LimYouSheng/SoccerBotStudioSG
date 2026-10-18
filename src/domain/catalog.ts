@@ -13,7 +13,8 @@ export const CONTACT = {
 };
 export const CONTACT_METHODS = {
   email: "Email",
-  phone: "Phone call",
+  phone: "Call",
+  sms: "SMS",
   whatsapp: "WhatsApp",
 };
 export const PLAYER_APP_URL = "https://soccerbot360.com/en/player-app";

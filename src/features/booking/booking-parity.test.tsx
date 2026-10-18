@@ -659,7 +659,8 @@ test("Details accepts input before checking the complete selection on submission
   expect(screen.getByLabelText(/Full name/)).toHaveValue("Test Customer");
   expect(push).not.toHaveBeenCalled();
   await act(async () => finishHold());
-  expect(replace).toHaveBeenCalledWith("/book/review/");
+  expect(replace).not.toHaveBeenCalledWith("/book/review/");
+  expect(window.location.pathname).toMatch(/\/book\/review\/$/);
   expect(service.pay.mock.calls[0][0].attempt.draft.contact.name).toBe(
     "Test Customer",
   );
