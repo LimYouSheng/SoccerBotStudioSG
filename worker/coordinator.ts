@@ -1,3 +1,4 @@
+import { dismissCompletedCheckout } from "./completed-checkout";
 import { ProviderQueue } from "./provider-queue";
 import { payHitpayHold } from "./hitpay-hold";
 import { hitpayRecoveryEnabled } from "./hitpay-contract";
@@ -632,6 +633,24 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           )
           .one().latest ?? 0,
     };
+  }
+  async dismissCompleted(
+    scope: { attemptId: string; cookie: string },
+    correlationId: string,
+  ) {
+    return rpcOutcome(() =>
+      this.providerQueue.run("foreground", () =>
+        traced(correlationId, "coordinator", () =>
+          dismissCompletedCheckout(
+            new Request(this.env.APP_ORIGIN, {
+              headers: { cookie: scope.cookie },
+            }),
+            this.env,
+            scope.attemptId,
+          ),
+        ),
+      ),
+    );
   }
   async windowCatalogue(correlationId: string) {
     const pending = this.providerQueue.run("display", () =>

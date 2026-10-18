@@ -1,5 +1,19 @@
 # SoccerBotStudio — Rules & Architecture
 
+## New-booking comment delivery — 18 October 2026
+
+Owner explicitly directs sending the comment without the earlier conditional-update prerequisite. For each newly created validated booking, write the immutable session player count, optional school/organisation and approved communication label once through the supported admin comment endpoint. This decision supersedes the earlier preservation-based delivery block for initial comments. No historical backfill, intake fields or booking/payment replay. The annotation has its own durable effect and remains non-blocking; uncertain writes are retained, never resent automatically.
+
+## HitPay navigation loading and missing booking comments — 18 October 2026
+
+Keep the full-page SoccerBot loader and duplicate-operation guard active after assigning the trusted HitPay URL, until the document is replaced. Starting browser navigation is not completion; the review form must not reappear during the handoff. Request failures still release loading through the existing error path.
+
+Every intended booking annotation contains that session's player count, optional school/organisation and the approved communication-method label. This is a formatting contract, not evidence of provider delivery. The current adapter never writes booking comments. Preserve the existing requirement to avoid overwriting human comments; no intake fields or speculative extra book parameters are introduced.
+
+## Completed booking exit and provider diagnostics — 18 October 2026
+
+Explicit Back to home or Make another booking on a verified completed confirmation ends automatic restoration of that attempt. An authenticated, same-origin POST must verify retained complete payment and full saved confirmation before archiving the exact ongoing completed checkout grant and releasing its active slot. Pending, unknown, manual-review and foreign attempts remain protected. Original attempts, payment evidence, deadlines, ownership and confirmation/export access remain unchanged. Ordinary closing/revisiting still restores confirmation until explicit exit.
+
 ## Circular mouse cursor — 18 October 2026
 
 Mouse pointers use a circle with a gently trailing dot. Touch, reduced-motion and forced-colour preferences keep the native cursor, as do text/form controls. The decoration must not intercept clicks, alter layout, or drive React renders on pointer movement.

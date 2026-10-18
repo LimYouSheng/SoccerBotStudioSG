@@ -8,6 +8,7 @@ type BookingReceipt = Awaited<ReturnType<typeof readBookingReceipt>>;
 import { sitePath } from "@/content/site-path";
 import {
   readBookingReceipt,
+  dismissCompletedBooking,
   bookingFromReceipt,
   protectedCheckoutService,
 } from "@/services/confirmation";
@@ -166,9 +167,15 @@ export function ProtectedConfirmation({
         booking={displayedReceipt.booking}
         taxMinor={displayedReceipt.taxMinor}
         verifiedAtMs={saved?.verifiedAtMs}
-        onAgain={() => {
+        onAgain={async () => {
+          if (checkoutMode === "live") await dismissCompletedBooking(attemptId);
           onAgain?.();
           window.location.assign(sitePath("/book/account/"));
+        }}
+        onHome={async () => {
+          if (checkoutMode === "live") await dismissCompletedBooking(attemptId);
+          onAgain?.();
+          window.location.assign(sitePath("/"));
         }}
         calendarDownload={() => exportReceipt("calendar")}
         detailsDownload={() => exportReceipt("details")}

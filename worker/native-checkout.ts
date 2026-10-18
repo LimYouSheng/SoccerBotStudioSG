@@ -328,6 +328,7 @@ export async function executeNativeCheckout(options: {
     if (
       [
         "book",
+        "booking-comment",
         "batch-create",
         "batch-close",
         "payment-link",

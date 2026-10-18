@@ -277,7 +277,10 @@ test("remembered live account edits and rereads contact while native booking sta
   await page
     .getByRole("button", { name: "Save contact details", exact: true })
     .click();
-  await expect(page.getByRole("status")).toHaveText(
+  await expect(
+    page.getByRole("status", { name: "Saving contact details…", exact: true }),
+  ).toHaveCount(0);
+  await expect(page.locator("#details-form").getByRole("status")).toHaveText(
     "Contact details saved for your next visit.",
   );
   await page
@@ -810,6 +813,31 @@ test("real payment recovery confirms the browser return from verified provider s
     expect(
       transport.calls.filter((call) => call.path.endsWith("/confirmation")),
     ).toHaveLength(confirmationReads);
+    expect(
+      mechanism.calls.filter((call) => call.url.endsWith("/accept-payment")),
+    ).toHaveLength(1);
+    expect(mechanism.unexpected).toEqual([]);
+    await page.getByRole("button", { name: "Make another booking" }).click();
+    await expect(page).toHaveURL(/\/book\/account\/$/);
+    await expect(
+      page.getByRole("button", { name: "Continue as guest", exact: true }),
+    ).toBeVisible();
+    await page.reload();
+    await expect(
+      page.getByRole("button", { name: "Continue as guest", exact: true }),
+    ).toBeVisible();
+    await expect(page).toHaveURL(/\/book\/account\/$/);
+    // Explicit exit releases routing, but the protected old receipt remains.
+    await page.goto(`/confirmation/?attempt=${attemptId}`);
+    await expect(
+      page.getByRole("heading", { name: "Client Details" }),
+    ).toBeVisible();
+    await page.getByRole("link", { name: "Back to home", exact: true }).click();
+    await expect(page).toHaveURL(/\/$/);
+    await page.goto("/book/account/");
+    await expect(
+      page.getByRole("button", { name: "Continue as guest", exact: true }),
+    ).toBeVisible();
     expect(
       mechanism.calls.filter((call) => call.url.endsWith("/accept-payment")),
     ).toHaveLength(1);

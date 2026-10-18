@@ -230,6 +230,24 @@ export default {
           STATE: env.STATE ? instrumentStorage(env.STATE) : env.STATE,
         };
         await verifyBindings(env);
+        const dismiss = /^\/api\/attempts\/([a-f0-9-]{36})\/dismiss$/.exec(
+          url.pathname,
+        );
+        if (dismiss) {
+          if (request.method !== "POST")
+            throw new ApiError(405, "operation_unavailable");
+          return json(
+            unwrapRpcOutcome(
+              await env.COORDINATOR.getByName(coordinatorName).dismissCompleted(
+                {
+                  attemptId: dismiss[1],
+                  cookie: request.headers.get("cookie") || "",
+                },
+                correlationId,
+              ),
+            ),
+          );
+        }
         if (url.pathname === "/api/booking/current") {
           if (request.method !== "GET")
             throw new ApiError(405, "operation_unavailable");

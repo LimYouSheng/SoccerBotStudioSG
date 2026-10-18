@@ -475,4 +475,39 @@ it("reopening an expired paid booking shows the saved full confirmation without 
     "checkout",
     "receipt",
   ]);
+
+  const assign = vi.fn();
+  vi.stubGlobal(
+    "window",
+    new Proxy(window, {
+      get(target, key) {
+        return key === "location"
+          ? { assign }
+          : Reflect.get(target, key, target);
+      },
+    }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Make another booking" }));
+  await waitFor(() =>
+    expect(fetch.mock.calls.at(-1)?.[0]).toBe(`/api/attempts/${first}/dismiss`),
+  );
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "could not be closed",
+  );
+  expect(assign).not.toHaveBeenCalled();
+  fetch.mockImplementationOnce(() =>
+    Promise.resolve(Response.json({ dismissed: true })),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Make another booking" }));
+  await waitFor(() =>
+    expect(assign).toHaveBeenCalledWith(
+      expect.stringContaining("/book/account/"),
+    ),
+  );
+  fetch.mockImplementationOnce(() =>
+    Promise.resolve(Response.json({ dismissed: true })),
+  );
+  fireEvent.click(screen.getByRole("link", { name: "Back to home" }));
+  await waitFor(() => expect(assign).toHaveBeenCalledTimes(2));
+  expect(fetch.mock.calls.at(-1)?.[0]).toBe(`/api/attempts/${first}/dismiss`);
 });

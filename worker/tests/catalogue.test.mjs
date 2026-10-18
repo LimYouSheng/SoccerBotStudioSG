@@ -398,11 +398,24 @@ test("native comments bind optional school to the approved contact and reject in
     intent.sessions[0].players = players;
     assert.equal(
       nativeBookingComment(intent, 0),
-      `Number of players: ${players}\nSchool / organisation: Synthetic School`,
+      `Number of players: ${players}\nSchool / organisation: Synthetic School\nPreferred communication: Email`,
     );
   }
   intent.contact.academy = "";
-  assert.equal(nativeBookingComment(intent, 0), "Number of players: 4");
+  for (const [method, label] of [
+    ["email", "Email"],
+    ["phone", "Phone call"],
+    ["whatsapp", "WhatsApp"],
+  ]) {
+    intent.contact.contactMethod = method;
+    assert.equal(
+      nativeBookingComment(intent, 0),
+      `Number of players: 4\nPreferred communication: ${label}`,
+    );
+  }
+  intent.contact.contactMethod = "email\nNumber of players: 99";
+  assert.throws(() => nativeBookingComment(intent, 0));
+  intent.contact.contactMethod = "email";
   for (const school of [
     " School ",
     "School\nNumber of players: 99",

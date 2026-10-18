@@ -301,6 +301,16 @@ export function BookingProvider({
       cancel();
     };
   }, [commit, cancel, service, identityService]);
+  useEffect(() => {
+    const resume = (event: PageTransitionEvent) => {
+      // Browser Back may restore this document with its handoff loader intact.
+      // Release that UI operation so the retained attempt routes to recovery;
+      // never start another checkout or discard its identity.
+      if (event.persisted && active.current?.operation === "checkout") cancel();
+    };
+    window.addEventListener("pageshow", resume);
+    return () => window.removeEventListener("pageshow", resume);
+  }, [cancel]);
   const run = useCallback(
     async (operation: Action, outcome: Outcome = "success") => {
       if (active.current || !mounted.current || !latest.current.ready)
@@ -313,6 +323,7 @@ export function BookingProvider({
       )
         return false;
       const request = { controller: new AbortController(), operation };
+      let checkoutNavigationStarted = false;
       active.current = request; // Synchronous guard also catches same-turn double clicks.
       setAction({ status: "loading", operation });
       if (operation === "reserve" || operation === "checkout")
@@ -394,8 +405,10 @@ export function BookingProvider({
             context.checkout.state === "available" &&
             isHitpayCheckoutUrl(context.checkout.url)
           ) {
-            setAction({ status: "success", operation });
+            // assign starts navigation asynchronously. Keep the overlay and
+            // one-operation guard until this document is replaced.
             location.assign(context.checkout.url);
+            checkoutNavigationStarted = true;
             // Do not also navigate to the intermediate SoccerBot route.
             return false;
           }
@@ -455,7 +468,8 @@ export function BookingProvider({
         });
         return false;
       } finally {
-        if (active.current === request) active.current = null;
+        if (active.current === request && !checkoutNavigationStarted)
+          active.current = null;
         if (mounted.current && !latest.current.attempt) pauseCalendar(false);
       }
     },

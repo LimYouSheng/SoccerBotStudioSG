@@ -2,6 +2,7 @@ import { z } from "zod";
 import { sessionRate } from "../src/domain/session-pricing";
 import {
   CATALOGUE_RECORD_LIMIT,
+  CONTACT_METHODS,
   catalogueSelection,
   providerSelectionSchema,
   type CatalogueBinding,
@@ -25,9 +26,13 @@ export function nativeBookingComment(value: unknown, sessionIndex: number) {
   if (!Number.isInteger(sessionIndex) || !session)
     throw new ApiError(409, "native_session_missing");
   const school = intent.contact?.academy;
+  const method = intent.contact?.contactMethod;
   return (
     `Number of players: ${session.players}` +
-    (school ? `\nSchool / organisation: ${school}` : "")
+    (school ? `\nSchool / organisation: ${school}` : "") +
+    (method
+      ? `\nPreferred communication: ${CONTACT_METHODS[method as keyof typeof CONTACT_METHODS]}`
+      : "")
   );
 }
 const record = (raw: unknown): Record<string, unknown> => {

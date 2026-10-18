@@ -5,7 +5,7 @@ import {
 } from "./webhook-contract";
 import { z } from "zod";
 import { providerId } from "./provider-normalization";
-import { measure } from "./diagnostics";
+import { measure, traceId } from "./diagnostics";
 import { ApiError } from "./policy";
 
 // Fixed identity endpoints share the physical transport owner. Their durable
@@ -191,6 +191,7 @@ export type NativeRequest =
       evidenceObservedAtMs: number;
     }
   | { kind: "invoice-external-payment"; invoiceId: string; processor: string }
+  | { kind: "booking-comment"; bookingId: string; comment: string }
   | { kind: "invoice-read"; invoiceId: string }
   | { kind: "payment-link"; invoiceId: string };
 export type ProviderSecrets = {
@@ -299,6 +300,22 @@ export async function providerRequest(
       break;
     case "native": {
       if (!native) throw new ApiError(503, "provider_operation_unavailable");
+      if (native.kind === "booking-comment") {
+        url =
+          "https://user-api-v2.simplybook.me/admin/bookings/" +
+          providerId(native.bookingId) +
+          "/comment";
+        method = "PUT";
+        body = JSON.stringify({
+          comment: z
+            .string()
+            .min(1)
+            .max(512)
+            .refine((value) => !/[\x00-\x09\x0b-\x1f\x7f]/.test(value))
+            .parse(native.comment),
+        });
+        break;
+      }
       if (native.kind === "webhook-create") {
         const origin = z
           .literal("https://soccerbot-dev.limyousheng-94.workers.dev")
@@ -489,7 +506,12 @@ export async function providerRequest(
   const abort = () => controller.abort();
   signal?.addEventListener("abort", abort, { once: true });
   if (signal?.aborted) controller.abort();
-  const timer = setTimeout(() => controller.abort(), 15000);
+  let timedOut = false;
+  const started = performance.now();
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, 15000);
   let complete = false;
   let cooldown = 0;
   return await measure("provider", async () => {
@@ -603,6 +625,24 @@ export async function providerRequest(
       return value;
     } catch (error) {
       cooldown = 60000;
+      console.log(
+        JSON.stringify({
+          event: "provider_failure",
+          correlationId: traceId(),
+          operation: operation === "native" ? native?.kind : operation,
+          durationMs: Math.max(0, performance.now() - started),
+          reason:
+            error instanceof ApiError
+              ? error.code
+              : timedOut
+                ? "timeout"
+                : signal?.aborted
+                  ? "caller_aborted"
+                  : complete
+                    ? "representation"
+                    : "connection",
+        }),
+      );
       if (error instanceof ApiError) throw error;
       throw new ApiError(
         503,

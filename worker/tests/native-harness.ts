@@ -111,6 +111,14 @@ const harness = {
           operation.kind === "batch-close")
       )
         throw new Error("synthetic lost reply");
+      if (operation.kind === "booking-comment") {
+        if (input.scenario === "comment-lost")
+          throw new Error("synthetic comment reply lost");
+        return {
+          body: { comment: operation.comment },
+          receivedAtMs: Date.now(),
+        };
+      }
       if (operation.kind === "booking-cancel") {
         const bookings = (
           Array.isArray(input.booking) ? input.booking : [input.booking]

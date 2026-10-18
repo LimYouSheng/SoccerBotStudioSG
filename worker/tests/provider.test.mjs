@@ -74,7 +74,9 @@ async function fixture({
       serviceBindings: { ASSETS: () => new Response("synthetic") },
       outboundService: async (request) => {
         const url = new URL(request.url);
-        const body = request.method === "POST" ? await request.json() : null;
+        const body = ["POST", "PUT"].includes(request.method)
+          ? await request.json()
+          : null;
         calls.push({ url: request.url, method: request.method, body });
         assert.ok(
           ["user-api.simplybook.me", "user-api-v2.simplybook.me"].includes(
@@ -1375,6 +1377,25 @@ test("discovery failed read releases concurrency but remains counted across evic
     const result = await f.call(token, "POST", discoveryOperation);
     assert.equal(result.body.state, "blocked");
     assert.equal(result.body.result.reason, "provider_transport_uncertain");
+    const failures = f.logs.flatMap((message) => {
+      try {
+        const value = JSON.parse(message);
+        return value.event === "provider_failure" ? [value] : [];
+      } catch {
+        return [];
+      }
+    });
+    assert.equal(failures.length, 1);
+    assert.equal(failures[0].reason, "timeout");
+    assert.equal(failures[0].operation, "public-auth");
+    assert.deepEqual(Object.keys(failures[0]).sort(), [
+      "correlationId",
+      "durationMs",
+      "event",
+      "operation",
+      "reason",
+    ]);
+
     assert.equal(result.body.result.accounting.used, 9);
     assert.equal(result.body.result.accounting.active, 0);
     await f.mf.unsafeEvictDurableObject(
@@ -2684,7 +2705,8 @@ test("ongoing customer access survives campaign closure and preserves fresh cons
     .toISOString()
     .replace(/\.\d{3}Z$/, "Z");
   let available = true,
-    books = 0;
+    books = 0,
+    comments = 0;
   const f = await fixture({
     full: true,
     end: 0,
@@ -2694,6 +2716,13 @@ test("ongoing customer access survives campaign closure and preserves fresh cons
       SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret",
     },
     respond: (request, body) => {
+      if (request.url.endsWith("/admin/bookings/701/comment")) {
+        assert.equal(request.method, "PUT");
+        assert.match(body.comment, /^Number of players: [1-4]/);
+        assert.match(body.comment, /Preferred communication: /);
+        comments++;
+        return Response.json({ comment: body.comment });
+      }
       if (request.url.endsWith("/admin/invoices/901/payment-link"))
         return Response.json({
           link: "https://soccerbotstudiosg.simplybook.asia/v2/client/pay-later/id/synthetic-id/hash/synthetic-hash",
@@ -2902,9 +2931,11 @@ test("ongoing customer access survives campaign closure and preserves fresh cons
     );
     assert.equal(outcome.paymentAvailable, true);
     assert.equal(books, 1);
+    assert.equal(comments, 1);
     const count = f.calls.length;
     assert.equal((await checkout()).status, 200);
     assert.equal(books, 1);
+    assert.equal(comments, 1);
     assert.equal(
       f.calls.length,
       count,

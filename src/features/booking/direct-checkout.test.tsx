@@ -38,11 +38,12 @@ const draft = {
   ],
 };
 function Seed() {
-  const { update, attempt, action, cancel } = useBooking();
+  const { update, attempt, action, cancel, checkout } = useBooking();
   return (
     <>
       <button onClick={() => update(draft)}>Seed</button>
       <button onClick={cancel}>Cancel</button>
+      <button onClick={() => void checkout()}>Repeat checkout</button>
       <output data-testid="retained">{attempt?.id}</output>
       <output data-testid="action">{action.status}</output>
     </>
@@ -133,9 +134,32 @@ async function directCase(scenario: string) {
   await act(async () =>
     finish({ ...pay.mock.calls[0][0].attempt, status: "checking" }),
   );
-  if (scenario === "success")
+  if (scenario === "success") {
     expect(assign).toHaveBeenCalledExactlyOnceWith(url);
-  else expect(assign).not.toHaveBeenCalled();
+    // assign() starts navigation; the current document can still paint while
+    // the checkout destination loads. Never reveal the review form here.
+    expect(screen.getByTestId("action")).toHaveTextContent("loading");
+    expect(
+      screen.getByRole("status", { name: "Checking your booking…" }),
+    ).toBeInTheDocument();
+    await act(async () => fireEvent.click(screen.getByText("Repeat checkout")));
+    expect(pay).toHaveBeenCalledTimes(1);
+    expect(assign).toHaveBeenCalledTimes(1);
+    expect(
+      screen.getByRole("button", { name: "Checking your booking…" }),
+    ).toBeDisabled();
+    act(() => window.dispatchEvent(new PageTransitionEvent("pageshow")));
+    expect(screen.getByTestId("action")).toHaveTextContent("loading");
+    act(() =>
+      window.dispatchEvent(
+        new PageTransitionEvent("pageshow", { persisted: true }),
+      ),
+    );
+    expect(screen.getByTestId("action")).toHaveTextContent("cancelled");
+    expect(screen.getByTestId("retained")).toHaveTextContent(id);
+    expect(pay).toHaveBeenCalledTimes(1);
+    expect(assign).toHaveBeenCalledTimes(1);
+  } else expect(assign).not.toHaveBeenCalled();
   expect(navigation.push).not.toHaveBeenCalled();
   expect(screen.getByTestId("retained")).toHaveTextContent(id);
 }
@@ -243,6 +267,15 @@ it("holds once before review and starts payment without preparing or checking av
   expect(availability).toHaveBeenCalledTimes(readsAtHold);
   expect(assign).toHaveBeenCalledWith(url);
   expect(navigation.replace).not.toHaveBeenCalledWith("/book/payment/");
+  await act(async () =>
+    window.dispatchEvent(
+      new PageTransitionEvent("pageshow", { persisted: true }),
+    ),
+  );
+  expect(navigation.replace).toHaveBeenCalledWith("/book/payment/");
+  expect(checkout).toHaveBeenCalledTimes(1);
+  expect(pay).toHaveBeenCalledTimes(2);
+  expect(availability).toHaveBeenCalledTimes(readsAtHold);
 });
 
 it("live reservation response distinguishes a rejected selection from an uncertain write", async () => {
