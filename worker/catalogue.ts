@@ -149,8 +149,16 @@ export class CatalogueReads {
     const generation = entry.generation;
     const selected = entry;
     const pending = (async () => {
-      const services = await exchange({ kind: "catalogue-services" });
-      const instructors = await exchange({ kind: "catalogue-instructors" });
+      // Independent reads share the existing admission owner. Drain both before
+      // returning a failure so an in-flight sibling never escapes the scope.
+      const results = await Promise.allSettled([
+        exchange({ kind: "catalogue-services" }),
+        exchange({ kind: "catalogue-instructors" }),
+      ]);
+      if (results[0].status === "rejected") throw results[0].reason;
+      if (results[1].status === "rejected") throw results[1].reason;
+      const services = results[0].value;
+      const instructors = results[1].value;
       freshReceipt(services.receivedAtMs, Date.now());
       freshReceipt(instructors.receivedAtMs, Date.now());
       const value = normalizeCatalogue(

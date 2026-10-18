@@ -188,6 +188,71 @@ test("catalogue shares bounded reads isolates account environment and protects c
   await cache.read(binding, read.exchange);
   assert.equal(read.calls.length, 8);
 });
+test("catalogue overlaps independent reads and waits for both before caching", async () => {
+  const cache = new CatalogueReads(),
+    read = exchangeFor(fixtures());
+  const gates = new Map();
+  const started = [];
+  let draining = false;
+  const exchange = async (request) => {
+    started.push(request.kind);
+    if (!draining)
+      await new Promise((resolve) => gates.set(request.kind, resolve));
+    return read.exchange(request);
+  };
+  const pending = cache.read(binding, exchange);
+  const shared = cache.read(binding, exchange);
+  try {
+    assert.deepEqual(started, ["catalogue-services", "catalogue-instructors"]);
+    gates.get("catalogue-instructors")();
+    await new Promise(setImmediate);
+    assert.equal(read.calls.length, 1);
+    gates.get("catalogue-services")();
+    assert.deepEqual(await pending, await shared);
+    await cache.read(binding, exchange);
+    assert.equal(started.length, 2);
+  } finally {
+    draining = true;
+    for (const release of gates.values()) release();
+    await Promise.allSettled([pending, shared]);
+  }
+});
+test("catalogue drains a failed read sibling and does not cache partial success", async () => {
+  for (const failed of ["catalogue-services", "catalogue-instructors"]) {
+    const cache = new CatalogueReads(),
+      read = exchangeFor(fixtures());
+    let release;
+    const gate = new Promise((resolve) => {
+      release = resolve;
+    });
+    let settled = false;
+    const pending = cache.read(binding, async (request) => {
+      if (request.kind === failed)
+        throw new Error("synthetic catalogue failure");
+      await gate;
+      return read.exchange(request);
+    });
+    const outcome = pending.then(
+      () => {
+        settled = true;
+      },
+      () => {
+        settled = true;
+      },
+    );
+    try {
+      await new Promise(setImmediate);
+      assert.equal(settled, false);
+    } finally {
+      release();
+    }
+    await assert.rejects(pending, /synthetic catalogue failure/);
+    await outcome;
+    const before = read.calls.length;
+    await cache.read(binding, read.exchange);
+    assert.equal(read.calls.length - before, 2);
+  }
+});
 test("catalogue invalidation fences delayed reads and never serves stale fallback", async () => {
   const data = fixtures(),
     cache = new CatalogueReads(),

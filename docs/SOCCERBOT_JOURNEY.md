@@ -1,5 +1,13 @@
 # SoccerBotStudio — Journey
 
+## Final single-booking optimization pass — 19 October 2026 SGT
+
+CatalogueReads overlaps the independent service/instructor reads under the existing ProviderSession and admission owner. Both settle before success or failure; only a complete, fresh, matching-generation pair enters cache. No cache lifetime, token retention, request count, rate/concurrency limit or write-boundary check changes. New deterministic tests prove overlap/coalescing and draining/no partial cache after either read fails; existing stale/superseded/account-isolation tests remain. Live timing improvement is not inferred from concurrency.
+
+Review of the remaining path: public/admin tokens and identity already coalesce and cache within their bounded lifetimes; single booking/invoice readbacks already overlap; Review opens after acknowledged creation/comment; payment remains held until validated readback. Payment recovery's lease and before/after external-payment evidence remain necessary. Confirmation detection can still add its server-directed one-second initial/five-second later poll delay, and foreground work can wait for an already-running account queue job. D1 span totals include network/coordination, so no new index or database replacement is justified by the retained HAR. Further queue scheduling or polling-budget changes require targeted evidence rather than removal of guards.
+
+Next owner acceptance, after exact-source CI and deployment: capture single Details→first Review, hold-ready, payment return→pending layout and authoritative confirmation separately, noting cold/warm state and network. Then resume the documented two-browser batch conflict test, followed by unknown-write/lost-response, abandoned/expired checkout, delayed/duplicate webhook, return/reload/two-tab and failed-dismissal scenarios. Synthetic mechanism coverage does not establish SimplyBook batch atomicity or live payment acceptance. No assistant provider mutation or physical test is performed.
+
 Account secondary actions use the shared outlined button style in one three-column row beneath Continue; confirmed Back to home spans the full two-column action width. Existing real-API browser journeys assert alignment, spacing and width across configured viewports.
 
 ## Three UI follow-ups to PR55 — 19 October 2026 SGT
