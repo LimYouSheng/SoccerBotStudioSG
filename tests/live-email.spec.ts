@@ -437,7 +437,13 @@ async function mechanismTransport(
     }
     const responseBody = await response.text();
     if (dropResponse?.(url.pathname)) {
-      await route.abort("connectionclosed");
+      try {
+        await route.abort("connectionclosed");
+      } catch (error) {
+        // Navigation may already have canceled this request. Preserve real
+        // interception failures; a canceled response is already lost.
+        if (!request.failure() && !page.isClosed()) throw error;
+      }
       return;
     }
     if (

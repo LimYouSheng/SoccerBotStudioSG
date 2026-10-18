@@ -977,6 +977,11 @@ export async function currentCustomerNative(request: Request, env: Env) {
   const cache = z
     .record(z.string(), nativeAvailabilitySchema)
     .parse(JSON.parse(row.availability_json || "{}"));
+  const held = await env.STATE.prepare(
+    "SELECT 1 FROM hitpay_holds h WHERE h.attempt_id=? AND NOT EXISTS(SELECT 1 FROM hitpay_payments p WHERE p.attempt_id=h.attempt_id)",
+  )
+    .bind(row.id)
+    .first();
   const offers = Object.values(cache).flatMap((entry) => entry.offers);
   const sessions = intent.sessions.map((session) => {
     const offer = offers.find(
@@ -986,14 +991,25 @@ export async function currentCustomerNative(request: Request, env: Env) {
         item.startMs === session.startMs &&
         item.priceMinor === session.totalMinor,
     );
+    if (!offer && !held && row.state === "recovery_required") {
+      // A later batch item may fail before its display snapshot is retained.
+      // Restore the immutable request for recovery, never as an available offer
+      // or a payable hold. Labels are deliberately not provider assertions.
+      return {
+        serviceId: session.serviceId,
+        productServiceId: session.serviceId,
+        serviceName: "Requested session",
+        instructorId: session.instructorId,
+        instructorName: "Requested instructor",
+        startMs: session.startMs,
+        priceMinor: session.totalMinor,
+        currency: intent.currency,
+        players: session.players,
+      };
+    }
     if (!offer) throw new ApiError(503, "native_snapshot_unavailable");
     return { ...offer, players: session.players };
   });
-  const held = await env.STATE.prepare(
-    "SELECT 1 FROM hitpay_holds h WHERE h.attempt_id=? AND NOT EXISTS(SELECT 1 FROM hitpay_payments p WHERE p.attempt_id=h.attempt_id)",
-  )
-    .bind(row.id)
-    .first();
   return nativeCurrentSchema.parse({
     attemptId: row.id,
     contact: intent.contact,

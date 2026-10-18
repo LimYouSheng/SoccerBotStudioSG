@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Partial-batch recovery CI repair — 19 October 2026 SGT
+
+PR52 eb4573c passes frontend and backend gates. Live-email passes58/63; later-conflict reload returns native_snapshot_unavailable because the rejected session never acquires a validated offer snapshot. Recovery now restores that session from immutable intent with explicitly requested-session labels, only for recovery_required without a payable hold. Prepared and held snapshots still require validated offers. Actual Worker regression checks all three batch outcomes through the protected current endpoint, retaining original identity and creation counts.
+
+Tablet traces also show independent workerd instances and WebKit competing during calendar setup/recovery until the30-second case limit expires. Live-profile cases now use one CI worker; explicit within-case concurrency remains intact, and all63 runs, assertions, timeouts and zero retries remain. This changes suite scheduling, not provider rate limits. Browser acceptance requires a fresh CI run. Batch optimization and the rate-limit/token/optimistic-UI review are paused while these CI repairs finish.
+
 ## Location dialog focus repair — 19 October 2026 SGT
 
 PR52 candidate179ae0d failed the same desktop Chromium focus-return assertion in both frontend and backend browser gates (71/72 passed in each). Closing the location dialog removed it before passive-effect cleanup could reliably restore native focus. The shared Dialog now closes during layout-effect cleanup, while attached, and restores the connected opener without scrolling. The original browser assertion remains unchanged; no timeout, retry or skip is added. Worker verification passed independently; live-email failures remain separate from this repair. Exact-candidate browser acceptance stays pending CI.

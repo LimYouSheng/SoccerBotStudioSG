@@ -358,6 +358,19 @@ test("combined batch hold uses one validation per item and retains partial or un
         fault === "none" ? 1 : 0,
       );
       const before = books;
+      const restored = await m.mf.dispatchFetch(
+        m.origin + "/api/booking/current",
+        { headers: c.headers },
+      );
+      assert.equal(restored.status, 200, await restored.clone().text());
+      const current = await restored.json();
+      assert.equal(current.attemptId, c.input.key);
+      assert.equal(current.state, fault === "none" ? "held" : "checking");
+      assert.equal(current.sessions.length, 2);
+      assert.equal(current.sessions[1].startMs, m.startMs + 3000000);
+      if (fault === "conflict")
+        assert.equal(current.sessions[1].serviceName, "Requested session");
+      assert.equal(books, before);
       await c.send();
       assert.equal(books, before);
       assert.deepEqual(m.unexpected, []);
