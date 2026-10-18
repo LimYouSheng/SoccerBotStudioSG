@@ -1814,6 +1814,19 @@ async function optimisticHold(page: Page, failReadback: boolean) {
     },
   });
   const transport = await mechanismTransport(page, mechanism);
+  let releaseNavigation!: () => void;
+  let navigationStarted!: () => void;
+  const navigationGate = new Promise<void>((resolve) => {
+    releaseNavigation = resolve;
+  });
+  const navigating = new Promise<void>((resolve) => {
+    navigationStarted = resolve;
+  });
+  await page.route("**/book/review/**", async (route) => {
+    navigationStarted();
+    await navigationGate;
+    await route.continue();
+  });
   try {
     await guestDetails(page, mechanism);
     const result = page.waitForResponse(
@@ -1845,6 +1858,9 @@ async function optimisticHold(page: Page, failReadback: boolean) {
     await expect(
       page.getByRole("link", { name: "Edit selections", exact: true }),
     ).toHaveCount(0);
+    await expect(
+      page.locator(".booking-flow-overlay, .page-loading-emblem"),
+    ).toHaveCount(0);
     expect(
       await mechanism.db
         .prepare("SELECT COUNT(*) AS n FROM hitpay_holds")
@@ -1854,6 +1870,16 @@ async function optimisticHold(page: Page, failReadback: boolean) {
     expect(await (await result).json()).toMatchObject({
       state: failReadback ? "recovery_required" : "associated",
     });
+    if (!failReadback) {
+      await navigating;
+      await expect(
+        page.getByRole("heading", { name: "Review booking", exact: true }),
+      ).toBeVisible();
+      await expect(
+        page.locator(".booking-flow-overlay, .page-loading-emblem"),
+      ).toHaveCount(0);
+      releaseNavigation();
+    }
     await expect(page).toHaveURL(
       failReadback ? /\/book\/payment\/$/ : /\/book\/review\/$/,
     );
@@ -1871,6 +1897,7 @@ async function optimisticHold(page: Page, failReadback: boolean) {
     ).toHaveLength(1);
     await assertNoPaymentOrConfirmation(page, mechanism);
   } finally {
+    releaseNavigation();
     release();
     await stopMechanism(page, mechanism, transport);
   }

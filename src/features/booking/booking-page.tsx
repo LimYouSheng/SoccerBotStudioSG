@@ -80,7 +80,12 @@ export function BookingPage({ step }: { step: BookingStep }) {
     setCalendarBrowsing(["account", "session", "time"].includes(actual));
     return () => setCalendarBrowsing(true);
   }, [actual, setCalendarBrowsing]);
-  if (!ready || actual !== step) return <BrandLoading overlay={false} />;
+  // Review is already mounted after creation. Preserve it while the URL
+  // catches up after verification; routing must not bring the overlay back.
+  const retainingReview =
+    step === "details" && actual === "review" && attempt?.held === true;
+  if (!ready || (actual !== step && !retainingReview))
+    return <BrandLoading overlay={false} />;
   const Screen = screens[step];
   if (step === "payment" || step === "confirmation") return <Screen />;
   return (

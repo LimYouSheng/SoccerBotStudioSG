@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Latest05 duplicated loading and measured delay — 19 October 2026 SGT
+
+The owner reports two loading phases and ineffective optimistic Review. Offline HAR confirms holding14.112s and first verifying response at about12.75s; earlier replies are running. The early status therefore gives only about1.36s in this sample. Cloudflare logs independently show14.098s HTTP /13.802s coordinator,11 provider operations accumulating8.234s and46 D1 operations accumulating5.882s. These spans overlap and cannot be summed into a serial breakdown; no precise creation/comment timestamp is established.
+
+The second full-page loader is a frontend route transition defect: after holding completes, guardedStep selects Review and BookingPage hides its already-mounted Review while navigation finishes. Details also sends a duplicate push beside the page guard replace. Preserve that Review through navigation, retain only the page guard as live routing owner, and show a disabled text payment button during verification instead of another logo. Actual-Worker browser coverage blocks the Review route response and requires visible Review with no spinner both during readback and during navigation; component coverage asserts one navigation owner and unchanged single-create behavior. No provider mutation or browser execution by the assistant. Actual pre-creation latency and broader D1 optimization remain separate measured work.
+
 ## Optimistic Review milestone test — 19 October 2026 SGT
 
 PR53 candidate8d3571b passed frontend/backend and71/72 live browser runs. Offline tablet trace showed two protected progress responses still running, before creation was associated; the test incorrectly started its five-second UI assertion from the Details click, including all preflight/provider setup. The fixture now explicitly signals that booking readback has started, keeps that response gated, then asserts pending Review/payment blocking under the unchanged UI and overall test deadlines. This tests the intended after-creation transition without claiming a five-second end-to-end latency result. No production behavior, timeout, retry, count or assertion was weakened.

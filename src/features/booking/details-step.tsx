@@ -210,8 +210,12 @@ export function DetailsStep({
                 // Preparation validates the selection server-side before the
                 // one-use holding operation; no duplicate browser day read.
                 if (!mounted.current) return;
-                if (bookingService.mode === "live" && !(await reserve()))
+                if (bookingService.mode === "live") {
+                  await reserve();
+                  // BookingPage owns live held/recovery routing. Keep its
+                  // existing Review mounted instead of pushing a second route.
                   return;
+                }
                 if (mounted.current)
                   startNavigation(() => router.push("/book/review/"));
               } finally {

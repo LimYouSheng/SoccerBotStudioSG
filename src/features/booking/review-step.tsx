@@ -1,6 +1,5 @@
 "use client";
 import { BookingLoading as BrandLoading } from "./booking-loading";
-import { BrandLoading as InlineLoading } from "@/components/brand-loading";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -162,7 +161,7 @@ export function ReviewStep({
           }}
         >
           {verifying ? (
-            <InlineLoading compact label="Verifying your reservation…" />
+            "Verifying your reservation…"
           ) : busy ? (
             <BrandLoading compact label="Checking your booking…" />
           ) : (
