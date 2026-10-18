@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## HitPay navigation loading and missing booking comments — 18 October 2026
+
+Keep the full-page SoccerBot loader and duplicate-operation guard active after assigning the trusted HitPay URL, until the document is replaced. Starting browser navigation is not completion; the review form must not reappear during the handoff. Request failures still release loading through the existing error path.
+
+Every intended booking annotation contains that session's player count, optional school/organisation and the approved communication-method label. This is a formatting contract, not evidence of provider delivery. The current adapter never writes booking comments. Preserve the existing requirement to avoid overwriting human comments; no intake fields or speculative extra book parameters are introduced.
+
 ## Completed booking exit and provider diagnostics — 18 October 2026
 
 Explicit Back to home or Make another booking on a verified completed confirmation ends automatic restoration of that attempt. An authenticated, same-origin POST must verify retained complete payment and full saved confirmation before archiving the exact ongoing completed checkout grant and releasing its active slot. Pending, unknown, manual-review and foreign attempts remain protected. Original attempts, payment evidence, deadlines, ownership and confirmation/export access remain unchanged. Ordinary closing/revisiting still restores confirmation until explicit exit.

@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Handoff flash and missing comments — 18 October 2026
+
+Owner reports Review flashing after the spinner before the first HitPay navigation, plus missing players, school and communication method in provider Comments. A focused regression reproduces loading becoming success before navigation completes. Retain loading and the duplicate-operation guard through the external navigation. The strengthened overlay assertion initially used the wrong accessible label; corrected it to the existing Checking your booking label without changing production wording. All six direct-checkout tests then pass, including retained hold, no duplicate effects, no post-hold availability call and browser Back cache restoration to the protected payment route. All27 isolated catalogue tests and Worker TypeScript pass. The first full frontend gate stopped at tooling in the restricted shell without diagnostic output; the supported network-enabled rerun passed tooling127/127. A further handoff regression was added during that run, so final exact-source verification must be rerun after edits settle.
+
+The comment audit establishes an unfinished integration, not lost form input: the helper only builds review text and no provider comment write exists. Add the missing communication label and isolated formatter checks, but do not claim delivery fixed. Current official references do not establish initial-comment or conditional-update semantics needed by the existing human-comment preservation contract. No live booking, payment, comment update or browser test was run. Exact-source CI and comment delivery remain pending.
+
 ## PR46 browser status assertion repair — 18 October 2026
 
 CI39120279412 passed frontend/backend gates and17/18 live-email browser cases. The new completed-exit journey passed desktop Chromium, phone WebKit and tablet WebKit. Phone WebKit's separate saved-contact test matched two status roles during loader teardown: the exact expected success paragraph and Saving contact details. Scope the original exact-text assertion to details-form and explicitly require the named saving status to disappear. Preserve actions, assertions, retry policy and timeouts; no production behavior change. Final exact-source CI remains required. No assistant browser execution.
