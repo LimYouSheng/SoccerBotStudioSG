@@ -1,5 +1,24 @@
 # SoccerBotStudio — Service Contracts
 
+## Browser failure acceptance matrix — 18 October 2026
+
+Browser acceptance must exercise the application API and durable state for backend-dependent failures, with fault injection at provider/transport boundaries. Application-response fixtures remain useful UI checks but are reported separately. The live-profile suite now contains17 scenarios (51 device executions), including13 actual Worker/API scenarios and four older application-response fixture scenarios. The separate legacy suite contains23 scenarios (69 executions).
+
+| Failure journey                      | Required observable result                                                            |
+| ------------------------------------ | ------------------------------------------------------------------------------------- |
+| Selected slot rejected               | Return to selection, retain contact intent, zero booking/payment effects              |
+| Price changes before creation        | Reject old intent; never silently accept a changed total                              |
+| Provider unavailable before creation | Unresolved UI, no booking or payment, retain original intent                          |
+| Creation response unknown            | Preserve attempt across reload; never replay creation or enable payment               |
+| Created booking readback fails       | Retain provider references; no unverified hold or payment                             |
+| Access revoked on Details            | Keep entered form, deny dispatch, zero provider creation                              |
+| Successful hold response lost        | Reload restores the same reservation with one creation                                |
+| Payment creation fails               | Preserve hold on Review; no false confirmation or slot reselection                    |
+| Completed-attempt dismissal fails    | Open first step immediately, retain receipt and exit intent, explicit protected retry |
+| Catalogue unavailable                | Visible retry, no invented sessions and no renewed provider calls during cooldown     |
+
+Existing actual-API journeys additionally cover guest hold/reload, competing tabs and paid return/rebooking. These tests are added, not accepted until CI passes. This is a named regression matrix rather than a claim that every failure branch has browser coverage. Identity delivery/expiry, payment reconciliation variants and batch partial outcomes also retain dedicated mechanism tests; any claim of browser coverage requires a named browser scenario. Future changes must extend this matrix with their new observable failure behavior and assert effect counts/attempt identity as well as UI. No real bookings, email delivery or payments are authorized by synthetic CI tests; no production latency acceptance follows from their duration.
+
 ## Combined holding request — 18 October 2026
 
 POST /api/booking/hold/{attemptId} accepts the existing nativePrepareSchema with holding=true and key equal to the UUID path. It requires ongoing customer access and the existing origin/authentication/account/HitPay gates. Frontend retains that UUID/draft before sending; it sends neither POST /api/booking/prepare nor a subsequent native hold request. The coordinator issues the immutable attempt and bounded checkout grant without fresh calendar preparation reads, then invokes the established executeNativeCheckout owner within one foreground queue entry.

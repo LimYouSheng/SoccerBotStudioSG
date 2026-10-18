@@ -1,5 +1,11 @@
 # SoccerBotStudioSG current progress
 
+## Browser failure coverage expansion — 18 October 2026
+
+The owner explicitly requires browser regression coverage for error handling, not only mechanism tests. The legacy suite remains23 scenarios across3 devices (69 runs). The live-profile suite expands from7 to17 scenarios (21 to51 device runs):13 use actual Worker routes, coordinator and D1 with simulated external providers; four older identity cases use application-response fixtures and must not be represented as real-API acceptance. Ten new journeys cover slot rejection, price drift, pre-creation outage, unknown creation, failed readback, revoked access, lost successful hold response, payment creation failure, failed dismissal/retry and catalogue outage/retry. Each asserts customer-visible state and absence of forbidden effects where applicable. Provider simulation does not establish live provider atomicity or production latency.
+
+The original combined-hold candidate3cb7249 passed359 Worker tests,196 frontend tests and all three CI browser gates (69/21/69). Expanded browser cases are pending exact-candidate CI; no local browser execution. Keep the PR draft until those gates pass. The unchanged legacy count was not evidence that these new failure journeys were already covered.
+
 ## Combined Details-to-Review hold — 18 October 2026
 
 Owner authorizes one request with one authoritative single-session prebooking validation. Branch `perf/combined-booking-hold` starts from owner-merged PR49/main87fde3c. Browser allocates and retains the attempt UUID and immutable draft before POST /api/booking/hold/{id}; it no longer sends a separate prepare request for holding. Coordinator creates the bounded grant/intent without preparation-stage catalogue/range reads, then uses the existing guarded holding executor. Successful validation records provider-derived display evidence; creation references, comments, readback, unpaid hold/deadline and recovery evidence retain their existing owners. No provider effect is undone by deleting D1 history. Legacy split routes remain compatible and still validate at dispatch.

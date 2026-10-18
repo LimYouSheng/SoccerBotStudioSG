@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Browser failure-test ownership — 18 October 2026
+
+Every changed customer-visible failure/recovery path requires a named browser regression, supported by mechanism tests for server invariants. Use the real application Worker/API/coordinator/D1 where the behavior depends on backend state; inject failures at the external-provider or HTTP-transport boundary. Assert retained input, correct destination/loading/error state and original attempt/effect counts. Unknown writes must not be hidden by deleting rows, recreating reservations or enabling another payment. Lost-response cases must distinguish a failed response from a failed effect. Keep application-response UI fixtures explicitly identified; scenario counts and device-expanded run counts are separate. Browser execution stays in owner/CI environments, and simulated provider success never proves live provider atomicity or latency. The current named matrix is maintained in SERVICE_CONTRACTS.md.
+
 ## Combined holding ownership — 18 October 2026
 
 Details → Review uses one authenticated POST /api/booking/hold/{id}. The browser creates and retains a UUID and approved draft before dispatch; the server validates and binds that identity to the owner, immutable intent and bounded grant before provider effects. Mutable lifecycle/evidence does not permit changing intent or deleting uncertain effects. The coordinator serializes through the existing foreground queue and atomic D1 effect claims; SimplyBook remains the scheduling authority.
