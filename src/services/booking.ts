@@ -359,7 +359,10 @@ async function nativeRequest(
         "payment_unavailable",
         "Payment checkout could not be verified. Your booking attempt has been kept. Do not start another booking or payment; contact the studio for help.",
       );
-    if (response.status === 409 && path === "/api/booking/prepare") {
+    if (
+      response.status === 409 &&
+      (path === "/api/booking/prepare" || path.startsWith("/api/booking/hold/"))
+    ) {
       const body = await response.json().catch(() => null);
       if (
         body?.error === "native_selection_changed" ||
@@ -522,6 +525,15 @@ export const liveBookingService: BookingService = defineBookingService({
       );
     const approved = snapshot(draft);
     const key = crypto.randomUUID();
+    if (holding)
+      return {
+        id: key,
+        status: "ready",
+        draft: approved,
+        outcome: "pending",
+        checkUntil: 0,
+        booking: null,
+      };
     const request = nativePrepareSchema.parse({
       key,
       contact: approved.contact,
@@ -571,10 +583,28 @@ export const liveBookingService: BookingService = defineBookingService({
         await nativeRequest(
           attempt.held
             ? `/api/booking/hitpay/${attempt.id}`
-            : `/api/booking/native/${attempt.id}${holding ? "?hold=1" : ""}`,
+            : holding
+              ? `/api/booking/hold/${attempt.id}`
+              : `/api/booking/native/${attempt.id}`,
           "POST",
           signal,
-          attempt.held ? { accepted: attempt.draft.accepted } : undefined,
+          attempt.held
+            ? { accepted: attempt.draft.accepted }
+            : holding
+              ? nativePrepareSchema.parse({
+                  key: attempt.id,
+                  contact: attempt.draft.contact,
+                  accepted: attempt.draft.accepted,
+                  holding: true,
+                  sessions: attempt.draft.slots.map((slot) => ({
+                    serviceId: slot.native?.serviceId,
+                    instructorId: slot.instructor,
+                    startMs: Date.parse(`${slot.date}T${slot.start}:00+08:00`),
+                    players: attempt.draft.players,
+                    totalMinor: slot.native?.priceMinor,
+                  })),
+                })
+              : undefined,
         ),
       );
     if (result.attemptId !== attempt.id) throw invalidResponse();

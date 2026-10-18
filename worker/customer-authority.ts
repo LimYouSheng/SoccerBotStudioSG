@@ -3,7 +3,11 @@ import { authenticate } from "./access";
 import { ApiError, liveCustomerAccess, policy } from "./policy";
 import { nativePrepareSchema } from "../src/domain/native-checkout";
 import { nativeAccountContractSchema } from "./prebooking";
-import { windowAvailability, type ReadOptions } from "./public-calendar";
+import {
+  calendarWindow,
+  windowAvailability,
+  type ReadOptions,
+} from "./public-calendar";
 import { providerSecrets } from "./provider-transport";
 
 // Ordinary customer consent creates one short-lived, immutable checkout grant.
@@ -12,6 +16,7 @@ export async function authorizeCustomerCheckout(
   request: Request,
   value: unknown,
   options: ReadOptions,
+  combinedHold = false,
 ) {
   const { env } = options;
   if (!liveCustomerAccess(env))
@@ -39,11 +44,16 @@ export async function authorizeCustomerCheckout(
     )
   )
     throw new ApiError(409, "native_selection_changed");
+  if (
+    combinedHold &&
+    dates.some((date) => !calendarWindow(options).window.dates.includes(date))
+  )
+    throw new ApiError(409, "native_selection_changed");
   const available: Record<
     string,
     Awaited<ReturnType<typeof windowAvailability>>
   > = {};
-  for (const date of dates) {
+  for (const date of combinedHold ? [] : dates) {
     available[date] = await windowAvailability({
       ...options,
       date,
@@ -52,6 +62,7 @@ export async function authorizeCustomerCheckout(
     });
   }
   if (
+    !combinedHold &&
     input.sessions.some(
       (session) =>
         !Object.values(available).some((day) =>

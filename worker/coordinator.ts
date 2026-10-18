@@ -22,6 +22,7 @@ import {
   customerNativeCalendar,
 } from "./native-checkout";
 import { z } from "zod";
+import { nativePrepareSchema } from "../src/domain/native-checkout";
 import { intentSchema, associationSchema } from "./journal";
 import { runNativeReadback } from "./recovery";
 import {
@@ -722,6 +723,50 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
             this.calendarReadOptions(),
           );
         return prepareCustomerNative(request, this.env, scope.value);
+      }),
+    );
+    return rpcOutcome(() => pending);
+  }
+  async holdCustomer(
+    scope: { attemptId: string; cookie: string; value: unknown },
+    correlationId: string,
+  ) {
+    const attemptId = z.string().uuid().parse(scope.attemptId);
+    const pending = this.providerQueue.run("foreground", () =>
+      traced(correlationId, "coordinator", async () => {
+        const request = new Request(this.env.APP_ORIGIN, {
+          headers: { cookie: scope.cookie },
+        });
+        const input = nativePrepareSchema.parse(scope.value);
+        if (
+          !liveCustomerAccess(this.env) ||
+          !input.holding ||
+          input.key !== attemptId
+        )
+          throw new ApiError(400, "combined_hold_unavailable");
+        const env = {
+          ...this.env,
+          STATE: instrumentStorage(this.env.STATE, "d1"),
+        };
+        await authorizeCustomerCheckout(
+          request,
+          input,
+          { ...this.calendarReadOptions(), env },
+          true,
+        );
+        await prepareCustomerNative(request, env, input, attemptId);
+        this.calendarReads.invalidate();
+        return executeNativeCheckout({
+          request,
+          env,
+          attemptId,
+          holding: true,
+          combinedHold: true,
+          provider: this.provider,
+          control: this.providerControl(false, true),
+          recoveryControl: this.providerControl(true, true),
+          accounting: () => this.providerAccounting(),
+        }).finally(() => this.calendarReads.invalidate());
       }),
     );
     return rpcOutcome(() => pending);

@@ -331,18 +331,14 @@ it("live reservation response distinguishes a rejected selection from an uncerta
 it("HitPay HTTP conflict preserves the hold and shows payment failure without selection recovery", async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-10-15T00:00:00Z"));
+  vi.spyOn(crypto, "randomUUID").mockReturnValue(id);
   const calls: string[] = [];
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
       const path = String(input);
       calls.push(path);
-      if (path === "/api/booking/prepare")
-        return Response.json(
-          { attemptId: id, state: "prepared" },
-          { status: 201 },
-        );
-      if (path === `/api/booking/native/${id}?hold=1`)
+      if (path === `/api/booking/hold/${id}`)
         return Response.json({
           attemptId: id,
           state: "associated",
@@ -406,8 +402,7 @@ it("HitPay HTTP conflict preserves the hold and shows payment failure without se
     screen.queryByText(/This selection has changed/),
   ).not.toBeInTheDocument();
   expect(calls).toEqual([
-    "/api/booking/prepare",
-    `/api/booking/native/${id}?hold=1`,
+    `/api/booking/hold/${id}`,
     `/api/booking/hitpay/${id}`,
   ]);
   expect(navigation.push).not.toHaveBeenCalled();

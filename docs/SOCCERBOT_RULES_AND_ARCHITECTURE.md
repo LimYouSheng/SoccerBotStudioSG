@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Combined holding ownership — 18 October 2026
+
+Details → Review uses one authenticated POST /api/booking/hold/{id}. The browser creates and retains a UUID and approved draft before dispatch; the server validates and binds that identity to the owner, immutable intent and bounded grant before provider effects. Mutable lifecycle/evidence does not permit changing intent or deleting uncertain effects. The coordinator serializes through the existing foreground queue and atomic D1 effect claims; SimplyBook remains the scheduling authority.
+
+Preparation-stage catalogue/availability is removed from this combined path. A single session receives one full authoritative prebooking validation immediately before guarded creation. Multi-session preflight and per-item revalidation remain. Readback of the created booking and unpaid invoice, hold deadline, protected recovery/receipt ownership and payment consent remain mandatory. Validated provider labels/offers are retained for reload without a second calendar fetch. The older split API remains compatible and cannot bypass the same write-boundary validation. Fewer reads are a mechanism claim, not an accepted latency measurement.
+
 ## Immediate explicit rebooking — 18 October 2026
 
 Make another booking on verified confirmation clears the matching client attempt and opens the first booking step immediately using client navigation. Protected completed-grant dismissal runs in the background. Tab-local exit intent is presentation/recovery intent only: it may suppress restoration of the exact exited attempt, never another attempt, and cannot authorize dismissal or bypass server ownership/completion checks. Retain the intent on failure/reload and offer explicit retry. New hold creation waits for successful dismissal; viewing/selecting the next booking does not. Existing unrelated payment/recovery actions remain unaffected.

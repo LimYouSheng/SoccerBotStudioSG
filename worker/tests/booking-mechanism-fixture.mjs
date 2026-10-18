@@ -7,7 +7,7 @@ import { build } from "esbuild";
 import ts from "typescript";
 import { Miniflare, convertV4MiniflareOptions } from "miniflare";
 import { seedFoundation } from "./foundation-fixture.mjs";
-export async function createBookingMechanism() {
+export async function createBookingMechanism(options = {}) {
   const config = ts.parseConfigFileTextToJson(
     "wrangler.jsonc",
     readFileSync("wrangler.jsonc", "utf8"),
@@ -103,7 +103,10 @@ export async function createBookingMechanism() {
           request.method === "POST" || request.method === "PUT"
             ? await request.json()
             : null;
-        calls.push({ url: request.url, method: request.method, body });
+        const call = { url: request.url, method: request.method, body };
+        calls.push(call);
+        const override = await options.respond?.(call);
+        if (override) return override;
         if (
           url.hostname === "api.sandbox.hit-pay.com" &&
           url.pathname === "/v1/payment-requests" &&

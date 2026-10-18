@@ -44,7 +44,7 @@ export function hasPublicCalendarWindow(env: Env) {
     Boolean(Reflect.get(env, "PUBLIC_CALENDAR_WINDOW_JSON"))
   );
 }
-function calendarWindow(options: ReadOptions) {
+export function calendarWindow(options: ReadOptions) {
   const { env } = options;
   const p = policy(env);
   const configured: unknown = Reflect.get(env, "PUBLIC_CALENDAR_WINDOW_JSON");

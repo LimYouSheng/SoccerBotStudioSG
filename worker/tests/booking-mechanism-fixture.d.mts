@@ -1,5 +1,11 @@
 import type { Miniflare } from "miniflare";
-export function createBookingMechanism(): Promise<{
+export function createBookingMechanism(options?: {
+  respond?: (call: {
+    url: string;
+    method: string;
+    body: Record<string, unknown> | null;
+  }) => Promise<Response | undefined>;
+}): Promise<{
   mf: Miniflare;
   db: Awaited<ReturnType<Miniflare["getD1Database"]>>;
   origin: string;

@@ -335,9 +335,19 @@ export class NativePrebooking {
       ],
     };
   }
-  async revalidate(value: Intent, sessionIndex = 0): Promise<Intent> {
+  async revalidate(
+    value: Intent,
+    sessionIndex = 0,
+    onValidated?: (review: {
+      serviceName: string;
+      instructorName: string;
+    }) => Promise<void>,
+  ): Promise<Intent> {
     const result = await this.review(value, sessionIndex);
-    if (result.state === "ready") return result.intent;
+    if (result.state === "ready") {
+      await onValidated?.(result.review);
+      return result.intent;
+    }
     // Missing or expired declarations never open native creation.
     throw new ApiError(
       result.state === "unavailable" ? 503 : 409,
