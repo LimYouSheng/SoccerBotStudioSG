@@ -305,3 +305,64 @@ test("combined hold serializes competing customers and rejects the second slot w
     await m.close();
   }
 });
+
+test("combined batch hold uses one validation per item and retains partial or unknown creation without payment", async () => {
+  for (const fault of ["none", "conflict", "unknown"]) {
+    let books = 0;
+    const m = await createBookingMechanism({
+      batch: true,
+      respond: async (call) => {
+        if (call.body?.method === "book") {
+          books++;
+          if (fault === "unknown" && books === 2)
+            return new Response(null, { status: 503 });
+        }
+        if (
+          fault === "conflict" &&
+          books === 1 &&
+          call.body?.method === "getAvailableUnits"
+        )
+          return Response.json({
+            jsonrpc: "2.0",
+            id: call.body.id,
+            result: [],
+          });
+        return undefined;
+      },
+    });
+    try {
+      const c = await customer(m);
+      c.input.sessions.push({
+        ...c.input.sessions[0],
+        startMs: m.startMs + 3000000,
+      });
+      const response = await c.send();
+      assert.equal(response.status, 200, await response.clone().text());
+      assert.equal(
+        (await response.json()).state,
+        fault === "none" ? "associated" : "recovery_required",
+      );
+      assert.equal(
+        m.calls.filter((call) => call.body?.method === "getAvailableUnits")
+          .length,
+        2,
+      );
+      assert.equal(
+        m.calls.filter((call) => call.body?.method === "closeBatch").length,
+        fault === "none" ? 1 : 0,
+      );
+      assert.equal(books, fault === "conflict" ? 1 : 2);
+      assert.equal(
+        (await m.db.prepare("SELECT COUNT(*) AS n FROM hitpay_holds").first())
+          .n,
+        fault === "none" ? 1 : 0,
+      );
+      const before = books;
+      await c.send();
+      assert.equal(books, before);
+      assert.deepEqual(m.unexpected, []);
+    } finally {
+      await m.close();
+    }
+  }
+});

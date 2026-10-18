@@ -756,70 +756,6 @@
     "title": "website profile save rejects missing or false Remember me without a request"
   },
   {
-    "file": "tests/customer.spec.ts",
-    "title": "50-minute cadence, automatic instructors, contact validation and final-slot conflict"
-  },
-  {
-    "file": "tests/customer.spec.ts",
-    "title": "declined and pending payments remain controlled through retry and refresh"
-  },
-  {
-    "file": "tests/customer.spec.ts",
-    "title": "elapsed selections block checkout on an open page and remain removable before a future multi-session payment"
-  },
-  {
-    "file": "tests/customer.spec.ts",
-    "title": "email verification rejects an incorrect code and continues after correction"
-  },
-  {
-    "file": "tests/customer.spec.ts",
-    "title": "enquiry and assistant work without external submission"
-  },
-  {
-    "file": "tests/customer.spec.ts",
-    "title": "first visit offers the Player App and dismissal persists while the navbar download remains"
-  },
-  {
-    "file": "tests/customer.spec.ts",
-    "title": "guest multi-date booking survives reload and exports calendar and PDF"
-  },
-  {
-    "file": "tests/customer.spec.ts",
-    "title": "header blue and the typography hierarchy stay consistent across every booking step"
-  },
-  {
-    "file": "tests/customer.spec.ts",
-    "title": "hero completes naturally and reduced motion bypasses both transition surfaces"
-  },
-  {
-    "file": "tests/customer.spec.ts",
-    "title": "hero entry restores the arena scene and click-to-skip without a logo overlay"
-  },
-  {
-    "file": "tests/customer.spec.ts",
-    "title": "home navigation offer and studio booking buttons display the branded loader"
-  },
-  {
-    "file": "tests/customer.spec.ts",
-    "title": "late payment has a contact path without another payment"
-  },
-  {
-    "file": "tests/customer.spec.ts",
-    "title": "leave booking uses equal-width sentence-case actions with home left and stay right"
-  },
-  {
-    "file": "tests/customer.spec.ts",
-    "title": "oracle booking sizing and rotation disclaimers persist through checkout"
-  },
-  {
-    "file": "tests/customer.spec.ts",
-    "title": "protected confirmation waits for server evidence and rejects a tampered return"
-  },
-  {
-    "file": "tests/customer.spec.ts",
-    "title": "public routes remove staff access and fit the viewport"
-  },
-  {
     "file": "tests/experiment.spec.ts",
     "title": "checkout binds its server deadline while the first confirmation response is pending"
   },
@@ -874,6 +810,74 @@
   {
     "file": "src/services/async-booking.test.ts",
     "title": "single holding request retains its local identity before dispatch and never makes a separate preparation request"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "public routes remove staff access and fit the viewport"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "guest multi-date booking survives reload and exports calendar and PDF"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "declined and pending payments remain controlled through retry and refresh"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "late payment has a contact path without another payment"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "50-minute cadence, automatic instructors, contact validation and final-slot conflict"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "email verification rejects an incorrect code and continues after correction"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "enquiry and assistant work without external submission"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "hero entry restores the arena scene and click-to-skip without a logo overlay"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "home navigation offer and studio booking buttons display the branded loader"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "hero completes naturally and reduced motion bypasses both transition surfaces"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "oracle booking sizing and rotation disclaimers persist through checkout"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "leave booking uses equal-width sentence-case actions with home left and stay right"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "first visit offers the Player App and dismissal persists while the navbar download remains"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "header blue and the typography hierarchy stay consistent across every booking step"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "elapsed selections block checkout on an open page and remain removable before a future multi-session payment"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "protected confirmation waits for server evidence and rejects a tampered return"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "hero location opens its map only on demand without entering booking and header hover stays navy"
   },
   {
     "file": "tests/live-email.spec.ts",
@@ -942,5 +946,17 @@
   {
     "file": "tests/live-email.spec.ts",
     "title": "real API catalogue outage exposes retry without inventing sessions or renewing provider calls"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "real API batch hold checks each session once and restores one complete unpaid reservation"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "real API later batch conflict retains the first booking without checkout or recreation"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "real API unknown second batch creation retains both effect outcomes across reload without payment"
   }
 ]

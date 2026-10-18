@@ -131,9 +131,13 @@ const harness = {
           break;
         case "/test/orchestrate": {
           const calls: string[] = [];
+          const perSession = input.scenario.startsWith("sequential-");
+          if (perSession)
+            input.scenario = input.scenario.slice("sequential-".length);
           const validations = new Map<number, number>();
           result = {
             result: await orchestrateBooking(request, env, input.id, {
+              ...(perSession ? { validationMode: "per-session" as const } : {}),
               supported: input.scenario !== "unsupported",
               hasRecoveryCapacity: async () => input.scenario !== "budget",
               revalidate: async (intent, context) => {
@@ -177,7 +181,7 @@ const harness = {
                 if (
                   input.scenario === "revoke" &&
                   context.sessionIndex === 1 &&
-                  count === 2
+                  count === (perSession ? 1 : 2)
                 )
                   await env.STATE.prepare(
                     "UPDATE guest_access SET revoked_ms=? WHERE owner_id=?",
@@ -187,13 +191,13 @@ const harness = {
                 if (
                   input.scenario === "fence" &&
                   context.sessionIndex === 1 &&
-                  count === 2
+                  count === (perSession ? 1 : 2)
                 )
                   await requireRecovery(env.STATE, input.id, 1);
                 if (
                   input.scenario === "price" &&
                   context.sessionIndex === 1 &&
-                  count === 2
+                  count === (perSession ? 1 : 2)
                 )
                   return {
                     ...intent,

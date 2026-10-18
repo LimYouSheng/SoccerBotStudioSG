@@ -39,6 +39,33 @@ export async function createBookingMechanism(options = {}) {
     value.lines[0].bookings[0].end_datetime = wall(startMs + 3000000);
   }
   creation.bookings[0].client_hash = "synthetic-client-hash";
+  const secondStartMs = startMs + 3000000;
+  const secondCreation = structuredClone(creation.bookings[0]);
+  const secondBooking = structuredClone(booking);
+  if (options.batch) {
+    for (const item of [secondCreation, secondBooking]) {
+      item.id = "702";
+      item.start_date_time = wall(secondStartMs);
+      item.end_date_time = wall(secondStartMs + 3000000);
+    }
+    secondCreation.hash = "synthetic-second-hash";
+    secondBooking.invoice_line_id = "802";
+    for (const item of [booking, secondBooking])
+      item.invoice_amount = "176.0000";
+    for (const value of [invoice, creation.invoice]) {
+      value.amount = 176;
+      value.deposit = 176;
+      const line = structuredClone(value.lines[0]);
+      line.id = "802";
+      line.booking_ids = [702];
+      line.bookings[0].id = 702;
+      line.bookings[0].start_datetime = wall(secondStartMs);
+      line.bookings[0].end_datetime = wall(secondStartMs + 3000000);
+      value.lines.push(line);
+    }
+    creation.bookings.push(secondCreation);
+  }
+  let batchBooks = 0;
   const requestId = "20000000-0000-4000-8000-000000000002";
   const checkoutUrl = `https://checkout.sandbox.hit-pay.com/payment-request/@soccerbot/${requestId}/checkout`;
   const businessId = "00000000-0000-4000-8000-000000000003";
@@ -207,8 +234,30 @@ export async function createBookingMechanism(options = {}) {
               cursor.setUTCDate(cursor.getUTCDate() + 1)
             ) {
               const key = cursor.toISOString().slice(0, 10);
-              matrix[key] = key === date && !booked ? ["12:10:00"] : [];
+              matrix[key] =
+                key === date
+                  ? options.batch
+                    ? ["12:10:00", "13:00:00"].slice(batchBooks)
+                    : !booked
+                      ? ["12:10:00"]
+                      : []
+                  : [];
             }
+          if (options.batch && body?.method === "book") {
+            assert.ok(batchBooks < 2, "batch creation must not replay");
+            const receipt = creation.bookings[batchBooks++];
+            return Response.json({
+              jsonrpc: "2.0",
+              id: body.id,
+              result: {
+                require_confirm: false,
+                invoice: null,
+                batch_id: 601,
+                batch_hash: "synthetic-batch-hash",
+                bookings: [receipt],
+              },
+            });
+          }
           const results = {
             getToken: "synthetic-public-token",
             getEventList: {
@@ -228,10 +277,22 @@ export async function createBookingMechanism(options = {}) {
               14: { id: 14, name: "Native Trainer", is_active: "1" },
             },
             getAdditionalFields: [],
-            getAvailableUnits: booked ? [] : [14],
+            getAvailableUnits: options.batch
+              ? batchBooks < 2
+                ? [14]
+                : []
+              : booked
+                ? []
+                : [14],
             getStartTimeMatrix: matrix,
             book: creation,
-            getBookingDetails: booking,
+            getBookingDetails:
+              options.batch && String(body?.params?.[0]) === "702"
+                ? secondBooking
+                : booking,
+            ...(options.batch
+              ? { createBatch: 601, closeBatch: creation }
+              : {}),
           };
           if (body && Object.hasOwn(results, body.method)) {
             if (body.method === "book") {

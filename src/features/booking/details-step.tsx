@@ -264,20 +264,29 @@ export function DetailsStep({
               )}
           </div>
         </section>
-        {profileOnly && draft.mode === "member" && remember && (
-          <>
+        {profileOnly && (
+          <div className="profile-actions">
+            {draft.mode === "member" && remember && (
+              <button
+                type="submit"
+                className="button"
+                disabled={saving || checking}
+              >
+                {saving ? (
+                  <BrandLoading compact label="Saving contact details…" />
+                ) : (
+                  "Save contact details"
+                )}
+              </button>
+            )}
             <button
-              type="submit"
-              className="button"
-              disabled={saving || checking}
+              type="button"
+              className="button secondary"
+              onClick={onClose}
             >
-              {saving ? (
-                <BrandLoading compact label="Saving contact details…" />
-              ) : (
-                "Save contact details"
-              )}
+              Back to booking options
             </button>
-          </>
+          </div>
         )}
         {saveMessage && <p role="status">{saveMessage}</p>}
         {!profileOnly && selectionNotice && (
@@ -304,11 +313,6 @@ export function DetailsStep({
           </div>
         )}
       </form>
-      {profileOnly && (
-        <button type="button" className="text-link" onClick={onClose}>
-          Back to booking options
-        </button>
-      )}
     </>
   );
 }

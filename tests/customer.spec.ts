@@ -822,3 +822,54 @@ test("protected confirmation waits for server evidence and rejects a tampered re
     page.getByRole("heading", { name: "Booking confirmed", exact: true }),
   ).toHaveCount(0);
 });
+
+test("hero location opens its map only on demand without entering booking and header hover stays navy", async ({
+  page,
+}) => {
+  let maps = 0;
+  await page.route("https://www.google.com/maps?**", async (route) => {
+    maps++;
+    await route.fulfill({
+      contentType: "text/html",
+      body: "<!doctype html><p>Synthetic satellite map</p>",
+    });
+  });
+  await openSite(page, "/");
+  await expect(page.locator("iframe")).toHaveCount(0);
+  expect(maps).toBe(0);
+  const book = page.locator(".nav-book");
+  await book.hover();
+  await expect(book).toHaveCSS("color", "rgb(5, 10, 47)");
+  const location = page.getByRole("button", {
+    name: "View studio location",
+    exact: true,
+  });
+  await location.click();
+  const dialog = page.getByRole("dialog", {
+    name: "Find the studio",
+    exact: true,
+  });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText("201 Henderson Road");
+  await expect(dialog).toContainText("#05-01");
+  await expect(dialog.locator("iframe")).toHaveAttribute(
+    "title",
+    "Satellite map of Apex at Henderson and surrounding roads",
+  );
+  await expect(
+    page
+      .frameLocator(
+        'iframe[title="Satellite map of Apex at Henderson and surrounding roads"]',
+      )
+      .getByText("Synthetic satellite map"),
+  ).toBeVisible();
+  expect(maps).toBe(1);
+  await expect(
+    dialog.getByRole("link", { name: "Open Google Maps" }),
+  ).toHaveAttribute("target", "_blank");
+  await expect(page).toHaveURL(new RegExp(sitePath("/") + "$"));
+  await dialog.getByRole("button", { name: "Close dialog" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(location).toBeFocused();
+  await expect(page.locator("iframe")).toHaveCount(0);
+});

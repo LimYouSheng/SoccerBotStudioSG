@@ -466,6 +466,8 @@ export async function executeNativeCheckout(options: {
       batchSignature: (id, hash) => nativeBookingSignature(id, hash, secret),
       clientSignature: (id, hash) => nativeBookingSignature(id, hash, secret),
     });
+    if (ongoing && options.combinedHold)
+      operations.validationMode = "per-session";
     operations.onFailure = (error, index) =>
       retainFailure(error, "execution", index);
     result = await orchestrateBooking(request, env, attemptId, operations);

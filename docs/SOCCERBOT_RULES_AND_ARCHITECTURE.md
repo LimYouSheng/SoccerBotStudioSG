@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Combined batch and location UI ownership — 19 October 2026 SGT
+
+The native checkout owner enables per-session validation only for ongoing combined holds. Orchestration validates the first item before its atomic claim and later items once at their write boundary. Keep the historical whole-cart mode for split/finite callers. Partial/unknown effects retain the original attempt and prevent finalization/payment; no automatic rollback, booking replay or claim of SimplyBook atomicity follows. Readback and protected recovery remain authoritative.
+
+Saved-contact actions share a spaced responsive action row; return remains available independently of save permission. Signed-in email uses the central identity colour and section type tokens with wrapping. Header Book now retains navy text on hover. Hero location is a separate accessible button outside the booking link and opens the existing native dialog. External map iframe is mounted only after user action; no initial map request, SDK, invented building geometry or embedded-3D claim. The address and external map query use the central LOCATION/ADDRESS owner.
+
 ## Browser failure-test ownership — 18 October 2026
 
 Every changed customer-visible failure/recovery path requires a named browser regression, supported by mechanism tests for server invariants. Use the real application Worker/API/coordinator/D1 where the behavior depends on backend state; inject failures at the external-provider or HTTP-transport boundary. Assert retained input, correct destination/loading/error state and original attempt/effect counts. Unknown writes must not be hidden by deleting rows, recreating reservations or enabling another payment. Lost-response cases must distinguish a failed response from a failed effect. Keep application-response UI fixtures explicitly identified; scenario counts and device-expanded run counts are separate. Browser execution stays in owner/CI environments, and simulated provider success never proves live provider atomicity or latency. The current named matrix is maintained in SERVICE_CONTRACTS.md.

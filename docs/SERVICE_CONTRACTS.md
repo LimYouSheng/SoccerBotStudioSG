@@ -1,5 +1,20 @@
 # SoccerBotStudio — Service Contracts
 
+## Combined batch validation and owner conflict check — 19 October 2026 SGT
+
+Only ongoing combined customer holding uses per-session validation: session0 is checked before claiming dispatch and sessions1..N immediately before their respective writes. Each still verifies provider identity/allowance, service/instructor relationship, exact price, hours/lead and availability, with unchanged consent, owner/grant, immutable intent, time/deadline and effect fencing. No duplicate whole-cart scan precedes later checks. Historical split and finite paths keep their previous preflight contract. Native batch creation/closure and complete booking/invoice unpaid readback remain required before Review. No post-hold selected-slot query is added.
+
+Later rejection enters recovery with earlier allocation references preserved. Unknown second creation retains an unknown effect, never a retry/replacement. Neither a batch identifier nor fewer calls proves provider atomicity. The synthetic tests prove application sequencing and no payment/finalization on partial results, not the behavior of live SimplyBook under concurrency. New browser matrix rows: complete two-session unpaid hold/reload; later conflict with first reference retained/no checkout; unknown second creation retained across reload/no payment. All use actual Worker/API/D1 with external-provider doubles. The live-profile suite becomes20 scenarios/60 device runs; legacy suite becomes24/72 with the location-popup/hover scenario. Four older identity cases remain application-response fixtures.
+
+After the exact candidate is merged/deployed and its account/settings verified, the owner may perform the requested controlled two-browser check:
+
+1. Use two isolated browser profiles/contexts so ownership and cookies differ. Select one overlapping slot in the single-session browser. In the other select a batch with an earlier non-conflicting session and that overlapping session second. Confirm date, instructor, price and lead requirements before proceeding.
+2. Let the single-session browser create its hold first. Then submit Review booking once in the batch browser. No payment is needed to test holding conflict. Do not add refresh/retry/recreate attempts to hide an uncertain result.
+3. Preserve both HARs and original attempt IDs privately. Check whether the batch reports a first-item refusal or a later unresolved result. For a later failure, verify no usable payment checkout/finalization and retain any first allocation/reference; do not assume rollback or manually delete D1 evidence.
+4. Stop on unknown or partial state. The owner checks SimplyBook records for both original attempts; any cleanup/cancellation is a separately considered action. Record actual effects and deadlines, not only browser messages.
+
+This sequence tests application conflict handling. Since the application checks availability before each write, it may reject before the provider receives the conflicting book call; that outcome cannot prove provider-level batch atomicity. Do not label it an atomicity pass. A separate directly concurrent provider-write experiment would need its own bounded design and authority.
+
 ## Browser failure acceptance matrix — 18 October 2026
 
 Browser acceptance must exercise the application API and durable state for backend-dependent failures, with fault injection at provider/transport boundaries. Application-response fixtures remain useful UI checks but are reported separately. The live-profile suite now contains17 scenarios (51 device executions), including13 actual Worker/API scenarios and four older application-response fixture scenarios. The separate legacy suite contains23 scenarios (69 executions).

@@ -49,6 +49,7 @@ const finalizedInvoice = z.strictObject({
 // The native adapter supplies this contract only through finite server-owned
 // admission. It does not establish provider acceptance or production readiness.
 export type BookingOperations = {
+  validationMode?: "per-session";
   onFailure?: (error: unknown, sessionIndex?: number) => void;
   supported: boolean;
   hasRecoveryCapacity: (sessions: number) => Promise<boolean>;
@@ -102,13 +103,17 @@ export async function orchestrateBooking(
     !(await operations.hasRecoveryCapacity(intent.sessions.length))
   )
     return { state: "prerequisites_unavailable", paymentAvailable: false };
-  // Validate the whole selection before claiming dispatch. For a single
-  // session this is also its write-boundary validation: only the local atomic
-  // claim and effect reservation follow. Multi-session carts revalidate each
-  // item again below because earlier provider writes can change availability.
+  // Combined customer holds validate each session once, at its write boundary.
+  // Check the first before claiming dispatch so a definite initial conflict has
+  // no effects. Later rejection retains earlier effects under recovery.
+  // Historical split/finite paths retain their complete-cart preflight.
   let checkedSessionIndex = 0;
   try {
-    for (const [sessionIndex] of intent.sessions.entries()) {
+    const preflight =
+      operations.validationMode === "per-session"
+        ? intent.sessions.slice(0, 1)
+        : intent.sessions;
+    for (const [sessionIndex] of preflight.entries()) {
       checkedSessionIndex = sessionIndex;
       const fresh = intentSchema.parse(
         await operations.revalidate(intent, { attemptId: id, sessionIndex }),
@@ -199,7 +204,8 @@ export async function orchestrateBooking(
       // provider operation. Do not repeat the same provider reads. The intent,
       // time, access, dispatch fence and durable effect guards still apply.
       const fresh =
-        intent.sessions.length === 1
+        intent.sessions.length === 1 ||
+        (operations.validationMode === "per-session" && sessionIndex === 0)
           ? intent
           : intentSchema.parse(await operations.revalidate(intent, context));
       if (

@@ -1,5 +1,13 @@
 # SoccerBotStudio — Journey
 
+## Latest04 and batch sequencing — 19 October 2026 SGT
+
+Owner supplies latest04, requests contact spacing, signed-in email prominence, header hover repair, studio-location popup and batch duplicate removal. Map preference: lowest latency. Implement immediate dialog with on-demand satellite iframe and Google Maps link; no map SDK or initial external map load. Embedded 3D is not configured or claimed.
+
+Latest04 combined hold16.172s versus latest03 split24.675s is about34.5% shorter across different runs; contact save0.167s, HitPay preparation5.437s, return-to-receipt about16.105s. No80% acceptance claim. Dismissal5.571s runs alongside next-page reads. Customer details and capability-bearing HAR values remain private.
+
+New combined ongoing batch mode checks each item once immediately before creation; first-item check remains before dispatch claim. Later rejection now occurs after any earlier accepted allocation, so partial references/unknown effects must be retained with payment blocked. Legacy split/finite complete-cart preflight remains. Focused backend checks pass for complete, conflict, price/outage/revocation/fence and unknown-write cases; new browser cases pending CI. The owner two-browser procedure and limits are recorded in SERVICE_CONTRACTS.md; it demonstrates application behavior, not provider atomicity when a local pre-write check rejects first. Rate-limit necessity, token reuse and further optimistic UI remain a later discussion after batch behavior settles.
+
 ## Browser failure regression expansion — 18 October 2026
 
 Owner challenged the unchanged69 browser runs and requested comprehensive failure coverage. That number is23 legacy scenarios across3 devices; it did not include new failure journeys. Added10 live-profile scenarios, increasing that suite from7 to17 (21 to51 device runs). Thirteen now run actual application Worker/API/D1 paths with provider doubles; four older identity scenarios mock application responses. Added coverage: changed slot/price, provider outage, unknown creation, readback failure, revoked access, lost successful response, payment failure, dismissal failure/retry and catalogue retry/cooldown. Assertions pair visible recovery with original attempt identity and forbidden-effect checks. No new provider/browser actions are performed locally. Original combined-hold candidate passed all CI gates; expanded cases await exact-candidate CI and are not yet claimed as accepted coverage. SERVICE_CONTRACTS.md owns the named matrix and remaining distinctions.
