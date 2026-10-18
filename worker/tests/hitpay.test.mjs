@@ -1006,6 +1006,36 @@ test("HitPay protected confirmation queues stale booking proof without resetting
     attemptId,
   );
   assert.equal(outbound, callsBefore);
+  // A delayed duplicate exit for the old booking must not clear its successor.
+  const nextGrant = {
+    ...originalGrant,
+    attempt_id: null,
+    intent_hash: null,
+    state: "granted",
+    result_json: null,
+  };
+  await db
+    .prepare(
+      `INSERT INTO native_checkout_grants(${Object.keys(nextGrant).join(",")}) VALUES(${Object.keys(
+        nextGrant,
+      )
+        .map(() => "?")
+        .join(",")})`,
+    )
+    .bind(...Object.values(nextGrant))
+    .run();
+  assert.equal(
+    (await mf.dispatchFetch(exitUrl, { method: "POST", headers: exitHeaders }))
+      .status,
+    200,
+  );
+  assert.deepEqual(
+    await db
+      .prepare("SELECT * FROM native_checkout_grants WHERE capability_hash=?")
+      .bind(originalGrant.capability_hash)
+      .first(),
+    nextGrant,
+  );
   await assert.rejects(
     db
       .prepare(

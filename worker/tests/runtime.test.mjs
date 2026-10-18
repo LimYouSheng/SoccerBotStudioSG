@@ -1332,6 +1332,11 @@ test("receipt export rechecks ownership paid evidence and revocation without pro
       .replace(/^--.*$/gm, "")
       .replace(/\n/g, " "),
   );
+  await db.exec(
+    readFileSync("migrations/0032_completed_checkout_history.sql", "utf8")
+      .replace(/^--.*$/gm, "")
+      .replace(/\n/g, " "),
+  );
   const approved = {
     ...intent(),
     contact: {
