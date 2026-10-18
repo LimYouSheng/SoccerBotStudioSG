@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## Browser failure regression expansion — 18 October 2026
+
+Owner challenged the unchanged69 browser runs and requested comprehensive failure coverage. That number is23 legacy scenarios across3 devices; it did not include new failure journeys. Added10 live-profile scenarios, increasing that suite from7 to17 (21 to51 device runs). Thirteen now run actual application Worker/API/D1 paths with provider doubles; four older identity scenarios mock application responses. Added coverage: changed slot/price, provider outage, unknown creation, readback failure, revoked access, lost successful response, payment failure, dismissal failure/retry and catalogue retry/cooldown. Assertions pair visible recovery with original attempt identity and forbidden-effect checks. No new provider/browser actions are performed locally. Original combined-hold candidate passed all CI gates; expanded cases await exact-candidate CI and are not yet claimed as accepted coverage. SERVICE_CONTRACTS.md owns the named matrix and remaining distinctions.
+
 ## Owner-approved combined hold — 18 October 2026
 
 Source review of merged PR49/main87fde3c found Details → Review still performed preparation-stage fresh calendar reads followed by authoritative prebooking reads. latest03 measured8.691s preparation plus15.984s holding. Owner requested removal of that sequential duplication and initially proposed deleting mutable D1 rows on failure. Agreed implementation instead fixes attempt identity/intent before creation, accumulates results, and retains unknown/partial effects for recovery. A lost response does not prove a provider booking did not happen.

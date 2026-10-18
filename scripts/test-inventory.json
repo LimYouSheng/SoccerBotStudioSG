@@ -848,30 +848,6 @@
     "title": "the Payment preview entry and temporary checking failure retain customer selections and contact"
   },
   {
-    "file": "tests/live-email.spec.ts",
-    "title": "live email requires the supplied widget proof before protected requests"
-  },
-  {
-    "file": "tests/live-email.spec.ts",
-    "title": "live guest denial stays on account without Preview fallback"
-  },
-  {
-    "file": "tests/live-email.spec.ts",
-    "title": "native guest journey preserves players contact and one checkout across refresh"
-  },
-  {
-    "file": "tests/live-email.spec.ts",
-    "title": "real payment recovery confirms the browser return from verified provider state"
-  },
-  {
-    "file": "tests/live-email.spec.ts",
-    "title": "remembered live account edits and rereads contact while native booking stays unavailable"
-  },
-  {
-    "file": "tests/live-email.spec.ts",
-    "title": "synthetic live verification reads server identity and keeps native booking unavailable"
-  },
-  {
     "file": "src/features/booking/booking-loading.test.tsx",
     "title": "overlapping booking reads share one full-page loader and preserve the mounted form"
   },
@@ -896,11 +872,75 @@
     "title": "reopening an expired paid booking shows the saved full confirmation without polling or granting exports"
   },
   {
+    "file": "src/services/async-booking.test.ts",
+    "title": "single holding request retains its local identity before dispatch and never makes a separate preparation request"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "live guest denial stays on account without Preview fallback"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "live email requires the supplied widget proof before protected requests"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "synthetic live verification reads server identity and keeps native booking unavailable"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "remembered live account edits and rereads contact while native booking stays unavailable"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "native guest journey preserves players contact and one checkout across refresh"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "real payment recovery confirms the browser return from verified provider state"
+  },
+  {
     "file": "tests/live-email.spec.ts",
     "title": "concurrent browser tabs reuse one hold and payment and reject revoked access"
   },
   {
-    "file": "src/services/async-booking.test.ts",
-    "title": "single holding request retains its local identity before dispatch and never makes a separate preparation request"
+    "file": "tests/live-email.spec.ts",
+    "title": "real API rejected slot returns to selection and retains contact without creating a booking"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "real API price drift rejects review before creation instead of silently changing the total"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "real API provider outage before creation shows unresolved state and cannot create a payment"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "real API unknown creation response retains one attempt across reload without replay"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "real API failed booking readback retains created references and blocks checkout"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "real API revoked access during Details keeps the form and prevents provider creation"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "real API lost successful hold response restores the existing reservation without recreating it"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "real API payment creation failure preserves the hold and never returns to slot selection"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "real API failed completed dismissal opens the first step and explicit retry retains the saved receipt"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "real API catalogue outage exposes retry without inventing sessions or renewing provider calls"
   }
 ]
