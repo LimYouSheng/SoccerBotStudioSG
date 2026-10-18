@@ -365,6 +365,7 @@ export function BookingProvider({
         return false;
       const request = { controller: new AbortController(), operation };
       let checkoutNavigationStarted = false;
+      let holdDispatched = false;
       active.current = request; // Synchronous guard also catches same-turn double clicks.
       setAction({ status: "loading", operation });
       if (operation === "reserve" || operation === "checkout")
@@ -436,11 +437,21 @@ export function BookingProvider({
         ) {
           // Retain the prepared attempt before the one-use provider write.
           // A missing reply must never cause a new preparation or payment.
+          holdDispatched = operation === "reserve";
           attempt = await service.pay({
             attempt,
             outcome: "pending",
             signal,
             holding: operation === "reserve",
+            onHoldCreated:
+              operation === "reserve"
+                ? () => {
+                    if (!isCurrent()) return;
+                    attempt = { ...attempt, verifying: true };
+                    commit({ ...latest.current, attempt });
+                    current = latest.current;
+                  }
+                : undefined,
           });
           if (!isCurrent()) return false;
           commit({ ...current, attempt });
@@ -473,6 +484,42 @@ export function BookingProvider({
         return true;
       } catch (error) {
         if (!isCurrent()) return false;
+        // A lost write response is not permission to create another booking.
+        // Resolve it once through the protected current-attempt read, accepting
+        // only the exact original attempt with a fully verified hold.
+        if (
+          holdDispatched &&
+          service.restore &&
+          (!(error instanceof BookingServiceError) ||
+            error.code === "invalid_response" ||
+            error.code === "temporarily_unavailable")
+        ) {
+          const originalId = latest.current.attempt?.id;
+          const restored = await service
+            .restore(request.controller.signal)
+            .catch(() => null);
+          if (!isCurrent()) return false;
+          if (
+            restored?.id === originalId &&
+            restored?.held &&
+            restored.status === "ready"
+          ) {
+            commit({ ...latest.current, attempt: restored });
+            setAction({ status: "success", operation });
+            return true;
+          }
+        }
+        if (latest.current.attempt?.verifying) {
+          commit({
+            ...latest.current,
+            attempt: {
+              ...latest.current.attempt,
+              verifying: undefined,
+              status: "checking",
+            },
+          });
+          current = latest.current;
+        }
         const known =
           error instanceof BookingServiceError
             ? error

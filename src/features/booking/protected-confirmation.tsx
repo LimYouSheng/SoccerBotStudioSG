@@ -1,6 +1,7 @@
 "use client";
 import { isHitpayCheckoutUrl } from "@/domain/native-checkout";
 import { BookingLoading as BrandLoading } from "./booking-loading";
+import { BrandLoading as InlineLoading } from "@/components/brand-loading";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BookingConfirmation } from "./confirmation-step";
@@ -202,15 +203,23 @@ export function ProtectedConfirmation({
       !receiptUnavailable)
   )
     return (
-      <BrandLoading
-        label={
-          view === "confirmed"
-            ? "Preparing your confirmation…"
-            : checkoutMode && preparation === "loading"
-              ? "Preparing checkout…"
-              : "Checking your payment and booking…"
-        }
-      />
+      <div className="status-shell">
+        <section className="surface confirmation-card" aria-busy="true">
+          <h1>Booking confirmation</h1>
+          <InlineLoading
+            overlay={false}
+            label={
+              view === "confirmed"
+                ? "Preparing your confirmation…"
+                : checkoutMode && preparation === "loading"
+                  ? "Preparing checkout…"
+                  : "Checking your payment and booking…"
+            }
+            message="Please don’t close or refresh this page while we finish."
+          />
+          {current && <ConfirmationSummary summary={current.summary} />}
+        </section>
+      </div>
     );
   return (
     <div className="status-shell">
@@ -286,31 +295,7 @@ export function ProtectedConfirmation({
             </button>
           </div>
         )}
-        {current && (
-          <section aria-label="Current booking summary">
-            <h2 className="section-title">Your booking</h2>
-            <p>
-              {current.summary.players} players ·{" "}
-              {current.summary.sessions.length} session
-              {current.summary.sessions.length === 1 ? "" : "s"}
-            </p>
-            <ul>
-              {current.summary.sessions.map((session, index) => (
-                <li key={index}>
-                  {new Intl.DateTimeFormat("en-SG", {
-                    timeZone: "Asia/Singapore",
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                  }).format(session.startMs)}{" "}
-                  · {session.players} players
-                </li>
-              ))}
-            </ul>
-            <p className="line-item total">
-              Total <strong>{money(current.summary.totalMinor)}</strong>
-            </p>
-          </section>
-        )}
+        {current && <ConfirmationSummary summary={current.summary} />}
         {checkoutMode &&
           !recordedPayment &&
           !(link && isHitpayCheckoutUrl(link.url)) && (
@@ -364,5 +349,36 @@ export function ProtectedConfirmation({
         )}
       </section>
     </div>
+  );
+}
+
+function ConfirmationSummary({
+  summary,
+}: {
+  summary: CheckoutContext["summary"];
+}) {
+  return (
+    <section aria-label="Current booking summary">
+      <h2 className="section-title">Your booking</h2>
+      <p>
+        {summary.players} players · {summary.sessions.length} session
+        {summary.sessions.length === 1 ? "" : "s"}
+      </p>
+      <ul>
+        {summary.sessions.map((session, index) => (
+          <li key={index}>
+            {new Intl.DateTimeFormat("en-SG", {
+              timeZone: "Asia/Singapore",
+              dateStyle: "medium",
+              timeStyle: "short",
+            }).format(session.startMs)}{" "}
+            · {session.players} players
+          </li>
+        ))}
+      </ul>
+      <p className="line-item total">
+        Total <strong>{money(summary.totalMinor)}</strong>
+      </p>
+    </section>
   );
 }

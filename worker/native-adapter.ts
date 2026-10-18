@@ -377,6 +377,7 @@ export function nativeBookingOperations(options: {
 // authenticated exchange, not by provider entity timestamps or browser polling.
 export async function readNativeAttempt(options: {
   scope: NativeScope;
+  parallelSingle?: boolean;
   paymentProcessor?: string;
   association: unknown;
   exchange: NativeExchange;
@@ -388,25 +389,46 @@ export async function readNativeAttempt(options: {
   if (refs.bookingIds.length !== options.scope.intent.sessions.length)
     throw new ApiError(503, "native_association_missing");
   providerId(refs.invoiceId);
-  const bookings: unknown[] = [];
-  let observedAtMs = Number.MAX_SAFE_INTEGER;
-  for (const bookingId of refs.bookingIds) {
+  const readBooking = async (bookingId: string) => {
     providerId(bookingId);
     options.signal.throwIfAborted();
     const signature = await options.signature(bookingId);
     options.signal.throwIfAborted();
-    const booking = await options.exchange(
+    return options.exchange(
       { kind: "booking-read", bookingId, signature },
       options.signal,
     );
-    bookings.push(booking.body);
-    observedAtMs = Math.min(observedAtMs, booking.receivedAtMs);
+  };
+  const readInvoice = () => {
+    options.signal.throwIfAborted();
+    return options.exchange(
+      { kind: "invoice-read", invoiceId: refs.invoiceId },
+      options.signal,
+    );
+  };
+  const bookings: unknown[] = [];
+  let observedAtMs = Number.MAX_SAFE_INTEGER;
+  let invoice: Awaited<ReturnType<typeof readInvoice>>;
+  if (options.parallelSingle && refs.bookingIds.length === 1) {
+    // Both independent reads must settle. No provider write is parallelized,
+    // retried or authorized by either response on its own.
+    const [booking, bill] = await Promise.allSettled([
+      readBooking(refs.bookingIds[0]),
+      readInvoice(),
+    ]);
+    if (booking.status === "rejected") throw booking.reason;
+    if (bill.status === "rejected") throw bill.reason;
+    bookings.push(booking.value.body);
+    observedAtMs = booking.value.receivedAtMs;
+    invoice = bill.value;
+  } else {
+    for (const bookingId of refs.bookingIds) {
+      const booking = await readBooking(bookingId);
+      bookings.push(booking.body);
+      observedAtMs = Math.min(observedAtMs, booking.receivedAtMs);
+    }
+    invoice = await readInvoice();
   }
-  options.signal.throwIfAborted();
-  const invoice = await options.exchange(
-    { kind: "invoice-read", invoiceId: refs.invoiceId },
-    options.signal,
-  );
   options.signal.throwIfAborted();
   return {
     kind: "observation" as const,

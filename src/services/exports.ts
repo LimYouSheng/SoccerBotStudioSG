@@ -97,7 +97,16 @@ export async function downloadBooking(
   line("SOCCERBOTSTUDIO Singapore", 19);
   line(preview ? "Booking preview - no money charged" : "Verified booking", 10);
   y += 6;
-  line(booking.reference, 15);
+  line(
+    `${preview ? "Booking reference" : "SoccerBot reference"}: ${booking.reference}`,
+    15,
+  );
+  if (booking.providerReferences) {
+    line(
+      `SimplyBook booking IDs: ${booking.providerReferences.bookingIds.join(", ")}`,
+    );
+    line(`SimplyBook invoice ID: ${booking.providerReferences.invoiceId}`);
+  }
   line(booking.slots[0]?.native?.serviceName ?? SERVICE_NAME);
   line(`${booking.draft.players} players per session`);
   line(ADDRESS);

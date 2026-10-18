@@ -1,3 +1,4 @@
+import { providerReferencesSchema } from "./provider-references";
 // Initial sandbox checkout URL only; the server binds merchant and request ID.
 export function isHitpayCheckoutUrl(value: string): boolean {
   return (
@@ -119,6 +120,7 @@ export const nativeCurrentSchema = z.union([
 
 export const receiptSchema = z
   .strictObject({
+    providerReferences: providerReferencesSchema.optional(),
     attemptId: z.string().uuid(),
     verifiedAtMs: z.number().int().nonnegative().safe(),
     createdAtMs: z.number().int().nonnegative().safe(),

@@ -1,3 +1,4 @@
+import { providerReferencesSchema } from "./provider-references";
 import { z } from "zod";
 import {
   contactSchema,
@@ -60,6 +61,7 @@ export const draftSchema = z.object({
 });
 export type BookingDraft = z.infer<typeof draftSchema>;
 export const bookingSchema = z.object({
+  providerReferences: providerReferencesSchema.optional(),
   reference: z.string(),
   createdAt: z.string(),
   draft: draftSchema,
@@ -70,6 +72,7 @@ export type Booking = z.infer<typeof bookingSchema>;
 export const outcomeSchema = z.enum(["success", "declined", "pending", "late"]);
 export type Outcome = z.infer<typeof outcomeSchema>;
 export const attemptSchema = z.object({
+  verifying: z.literal(true).optional(),
   held: z.literal(true).optional(),
   id: z.string(),
   status: z.enum(["ready", "checking", "declined", "pending", "late", "paid"]),

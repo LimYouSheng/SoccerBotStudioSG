@@ -1611,7 +1611,7 @@ test("native forward reads refresh expired identity within accounting and fail c
       return standard(request, body);
     };
     try {
-      // Four identity/auth requests, then the service read crosses the five-second identity TTL.
+      // Four identity/auth requests, then the service read crosses the thirty-second identity TTL.
       const response = await call("finite-checkout", {
         ...data,
         fixtureExpireAfter: 5,
@@ -3639,7 +3639,7 @@ test("HitPay hold rejection retains redacted creation flags and invoice joins be
   }
 });
 
-test("HitPay hold readback evidence is durable before the next provider read and survives invoice rejection", async () => {
+test("HitPay parallel hold readbacks retain both observations durably despite invoice rejection", async () => {
   const data = await prepared(false, true, true);
   await grantNative(data);
   data.invoice.status = "pending";
@@ -3659,8 +3659,10 @@ test("HitPay hold readback evidence is durable before the next provider read and
         .bind(data.scope.attemptId)
         .first();
       assert.deepEqual(
-        JSON.parse(row.result_json).holdEvidence.map((e) => e.operation),
-        ["book", "booking-read"],
+        JSON.parse(row.result_json)
+          .holdEvidence.filter((e) => e.operation === "book")
+          .map((e) => e.operation),
+        ["book"],
       );
       witnessed = true;
     }
@@ -3679,7 +3681,11 @@ test("HitPay hold readback evidence is durable before the next provider read and
       )
       .bind(data.scope.attemptId)
       .first();
-    const evidence = JSON.parse(row.result_json).holdEvidence;
+    const evidence = JSON.parse(row.result_json).holdEvidence.sort(
+      (a, b) =>
+        ["book", "booking-read", "invoice-read"].indexOf(a.operation) -
+        ["book", "booking-read", "invoice-read"].indexOf(b.operation),
+    );
     assert.deepEqual(
       evidence.map((e) => e.operation),
       ["book", "booking-read", "invoice-read"],

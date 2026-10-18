@@ -1,5 +1,6 @@
 "use client";
 import { BookingLoading as BrandLoading } from "./booking-loading";
+import { BrandLoading as InlineLoading } from "@/components/brand-loading";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
@@ -49,7 +50,9 @@ export function Arrival() {
     </section>
   );
 }
-export function ReviewStep() {
+export function ReviewStep({
+  verifying = false,
+}: { verifying?: boolean } = {}) {
   const { draft, attempt, update, checkout, now, action, cancel } =
       useBooking(),
     router = useRouter();
@@ -65,6 +68,7 @@ export function ReviewStep() {
   const error = action.error;
   const [navigating, startNavigation] = useTransition();
   const busy = action.status === "loading" || navigating;
+  const locked = verifying || attempt?.held;
   return (
     <>
       <h1 className="page-title">Review booking</h1>
@@ -73,7 +77,7 @@ export function ReviewStep() {
         <div className="review-block">
           <div className="review-head">
             <h2>Your sessions</h2>
-            {!attempt?.held && (
+            {!locked && (
               <Link className="text-link" href="/book/session/">
                 Edit players
               </Link>
@@ -92,7 +96,7 @@ export function ReviewStep() {
         <div className="review-block">
           <div className="review-head">
             <h2>Dates &amp; times</h2>
-            {!attempt?.held && (
+            {!locked && (
               <Link className="text-link" href="/book/time/">
                 Edit selections
               </Link>
@@ -103,7 +107,7 @@ export function ReviewStep() {
         <div className="review-block">
           <div className="review-head">
             <h2>Booking contact</h2>
-            {!attempt?.held && (
+            {!locked && (
               <Link className="text-link" href="/book/details/">
                 Edit details
               </Link>
@@ -122,6 +126,7 @@ export function ReviewStep() {
           type="checkbox"
 
           checked={draft.accepted}
+          disabled={verifying}
           onChange={(e) => update({ accepted: e.target.checked })}
         />
         <span>
@@ -146,6 +151,7 @@ export function ReviewStep() {
         <button
           className="button"
           disabled={
+            verifying ||
             busy ||
             !draft.accepted ||
             selectionErrors(draft.slots, now).length > 0
@@ -155,7 +161,9 @@ export function ReviewStep() {
               startNavigation(() => router.push("/book/payment/"));
           }}
         >
-          {busy ? (
+          {verifying ? (
+            <InlineLoading compact label="Verifying your reservation…" />
+          ) : busy ? (
             <BrandLoading compact label="Checking your booking…" />
           ) : (
             "Continue to payment"
@@ -163,6 +171,12 @@ export function ReviewStep() {
           {!busy && <Icon name="arrow" />}
         </button>
       </div>
+      {verifying && (
+        <p role="status">
+          Please don’t close or refresh. Payment becomes available after your
+          reservation is verified.
+        </p>
+      )}
       {policy && (
         <Dialog title="Booking information" onClose={() => setPolicy(false)}>
           <div className="space-y-4">

@@ -98,9 +98,26 @@ export function BookingConfirmation({
           </p>
         )}
         <p className="reference">
-          Booking reference{" "}
+          {preview ? "Booking reference" : "SoccerBot reference"}{" "}
           <strong className="text-ink">{booking.reference}</strong>
         </p>
+        {booking.providerReferences && (
+          <div className="reference">
+            <p>
+              SimplyBook booking ID
+              {booking.providerReferences.bookingIds.length > 1
+                ? "s"
+                : ""}:{" "}
+              <strong>
+                {booking.providerReferences.bookingIds.join(", ")}
+              </strong>
+            </p>
+            <p>
+              SimplyBook invoice ID:{" "}
+              <strong>{booking.providerReferences.invoiceId}</strong>
+            </p>
+          </div>
+        )}
       </div>
       <section className="surface confirmation-card">
         <section

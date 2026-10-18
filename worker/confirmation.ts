@@ -15,7 +15,7 @@ import {
 } from "../src/domain/confirmation";
 import { authenticate, type Access } from "./access";
 import { intentSchema, associationSchema } from "./journal";
-import { ApiError, policy } from "./policy";
+import { ApiError, policy, liveCustomerAccess } from "./policy";
 export type StoredAttempt = {
   id: string;
   created_ms: number;
@@ -56,9 +56,16 @@ export async function confirmation(
     );
   }
   const quota = await env.STATE.prepare(
-    "UPDATE attempts SET confirmation_next_ms=?,confirmation_checks=confirmation_checks+1 WHERE id=? AND owner_id=? AND confirmation_next_ms<=? AND confirmation_checks<120 RETURNING confirmation_next_ms,confirmation_checks",
+    "UPDATE attempts SET confirmation_next_ms=? + CASE WHEN confirmation_checks<5 THEN ? ELSE ? END,confirmation_checks=confirmation_checks+1 WHERE id=? AND owner_id=? AND confirmation_next_ms<=? AND confirmation_checks<120 RETURNING confirmation_next_ms,confirmation_checks",
   )
-    .bind(now + p.POLL_INTERVAL_MS, row.id, access.owner_id, now)
+    .bind(
+      now,
+      liveCustomerAccess(env) ? 1000 : p.POLL_INTERVAL_MS,
+      p.POLL_INTERVAL_MS,
+      row.id,
+      access.owner_id,
+      now,
+    )
     .first<{ confirmation_next_ms: number; confirmation_checks: number }>();
   if (!quota) {
     const saved = await env.STATE.withSession("first-primary")

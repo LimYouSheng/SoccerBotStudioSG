@@ -431,3 +431,70 @@ test("single holding request retains its local identity before dispatch and neve
   });
   expect(fetch).toHaveBeenCalledTimes(1);
 });
+
+test("holding progress only accepts the matching server milestone and stops without replaying the write", async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-10-09T00:00:00Z"));
+  const data = {
+    ...draft(),
+    nativeServiceId: "2",
+    slots: [
+      {
+        date: "2026-10-15",
+        start: "12:00",
+        instructor: "14",
+        native: {
+          serviceId: "2",
+          serviceName: "Session",
+          instructorName: "Trainer",
+          priceMinor: 8800,
+          currency: "SGD" as const,
+        },
+      },
+    ],
+  };
+  const attempt = await liveBookingService.checkout({
+    draft: data,
+    previous: null,
+    holding: true,
+  });
+  const completion = deferred<Response>();
+  let matching = false;
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockImplementation(async (_url, init) => {
+      if (init?.method === "POST") return completion.promise;
+      return Response.json({
+        attemptId: matching
+          ? attempt.id
+          : "00000000-0000-4000-8000-000000000099",
+        state: "verifying",
+      });
+    });
+  const progress = vi.fn();
+  const holding = liveBookingService.pay({
+    attempt,
+    holding: true,
+    outcome: "pending",
+    onHoldCreated: progress,
+  });
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(progress).not.toHaveBeenCalled();
+  matching = true;
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(progress).toHaveBeenCalledTimes(1);
+  completion.resolve(
+    Response.json({
+      attemptId: attempt.id,
+      state: "recovery_required",
+      paymentAvailable: false,
+    }),
+  );
+  expect(await holding).toMatchObject({ id: attempt.id, status: "checking" });
+  const count = fetch.mock.calls.length;
+  await vi.advanceTimersByTimeAsync(30000);
+  expect(fetch).toHaveBeenCalledTimes(count);
+  expect(
+    fetch.mock.calls.filter(([, init]) => init?.method === "POST"),
+  ).toHaveLength(1);
+});

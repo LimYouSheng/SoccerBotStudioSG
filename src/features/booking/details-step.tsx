@@ -10,6 +10,7 @@ import {
   type ContactErrors,
 } from "@/domain/contact";
 import { useBooking } from "./provider";
+import { ReviewStep } from "./review-step";
 type TextKey = {
   [K in keyof ContactDetails]: ContactDetails[K] extends string ? K : never;
 }[keyof ContactDetails];
@@ -19,6 +20,7 @@ export function DetailsStep({
 }: { profileOnly?: boolean; onClose?: () => void } = {}) {
   const {
       draft,
+      attempt,
       update,
       identityService,
       bookingService,
@@ -174,6 +176,8 @@ export function DetailsStep({
       </div>
     );
   }
+  if (!profileOnly && (attempt?.verifying || attempt?.held))
+    return <ReviewStep verifying={attempt.verifying === true} />;
   return (
     <>
       <h1 className="page-title">

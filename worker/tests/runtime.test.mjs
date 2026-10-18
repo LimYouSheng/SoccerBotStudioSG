@@ -1409,6 +1409,10 @@ test("receipt export rechecks ownership paid evidence and revocation without pro
   assert.equal(response.headers.get("cache-control"), "no-store");
   const receipt = await response.json();
   assert.equal(receipt.totalMinor, 8800);
+  assert.deepEqual(receipt.providerReferences, {
+    bookingIds: ["booking-1"],
+    invoiceId: "invoice-1",
+  });
   assert.equal(receipt.sessions[0].serviceName, "Native Session");
   assert.equal(JSON.stringify(receipt).includes("capability"), false);
   evidence.invoice.paymentReceived = false;

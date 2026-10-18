@@ -1,5 +1,21 @@
 # SoccerBotStudio — Journey
 
+## Optimistic Review milestone test — 19 October 2026 SGT
+
+PR53 candidate8d3571b passed frontend/backend and71/72 live browser runs. Offline tablet trace showed two protected progress responses still running, before creation was associated; the test incorrectly started its five-second UI assertion from the Details click, including all preflight/provider setup. The fixture now explicitly signals that booking readback has started, keeps that response gated, then asserts pending Review/payment blocking under the unchanged UI and overall test deadlines. This tests the intended after-creation transition without claiming a five-second end-to-end latency result. No production behavior, timeout, retry, count or assertion was weakened.
+
+## Pending-checkout accessible status repair — 19 October 2026 SGT
+
+PR52 main39149579852 passed all three gates and deployed verified692cf92 to the developer Worker. PR53 CI39151457912 passed Worker verification; frontend/backend each passed69/72 browser runs, failing the same pending-checkout status assertion on three devices. The neutral confirmation layout accidentally replaced the preparing-checkout accessible label before protected context settled. Restore the original state-specific label, keep checkout unavailable, and add a component regression. Existing browser assertions, counts and timeouts remain unchanged. Live-email passed69/72 and exposed the lost successful holding response on all devices. One protected current-attempt read now restores only the original verified hold; mismatched/unverified/failed recovery cannot enable payment or replay creation. The existing real-API browser scenario requires immediate restored Review and subsequent reload, retaining one-write and no-payment assertions. Pending Review also retains its final layout and disables backward navigation until holding completes. Repair candidate CI is pending.
+
+## Latency review, main failure and comment reconciliation — 19 October 2026 SGT
+
+PR51/52 exact PR gates passed and both were owner-authorized merged. PR51 main39149518497 subsequently failed one tablet dismissal-retry case:53/54 live runs passed, both other gates passed, Cloudflare skipped. Offline trace shows the retry click began at the end of the30-second case budget; it did not reach a second dismissal request. Preserve this failure while validating the faster path on fresh CI.
+
+The optimization candidate initially failed17/365 Worker tests. Parallel read admission exposed an actual race: two waiters observed the same latest start and exceeded pacing. Reservation pacing now queues independently of physical responses. Expiry fixtures now cross the actual30-second identity boundary; hold-evidence tests assert both durable observations without assuming their response order. No production limits or test timeouts were raised.
+
+Owner reported repeated comments and irreconcilable references. Bounded read-only D1 showed four separately claimed comments for four bookings; SimplyBook booking-specific reads returned distinct correct comments. Owner confirmed expanded comments displays all booking history, so no remote/source comment mutation is needed. Receipt presentation now distinguishes the internal UUID and stored provider booking/invoice IDs; provider booking codes and invoice display numbers remain separate identifiers. No browser, booking, payment or historical cleanup performed by Codex.
+
 ## Partial-batch recovery CI repair — 19 October 2026 SGT
 
 PR52 eb4573c passes frontend and backend gates. Live-email passes58/63; later-conflict reload returns native_snapshot_unavailable because the rejected session never acquires a validated offer snapshot. Recovery now restores that session from immutable intent with explicitly requested-session labels, only for recovery_required without a payable hold. Prepared and held snapshots still require validated offers. Actual Worker regression checks all three batch outcomes through the protected current endpoint, retaining original identity and creation counts.

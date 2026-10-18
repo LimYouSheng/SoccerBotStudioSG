@@ -71,12 +71,26 @@ export async function nativeCheckoutStatus(
   const access = await authenticate(request, env, Date.now());
   const grant = await env.STATE.withSession("first-primary")
     .prepare(
-      "SELECT g.state,g.result_json FROM native_checkout_grants g JOIN attempts a ON a.id=g.attempt_id WHERE g.attempt_id=? AND g.capability_hash=? AND a.owner_id=?",
+      "SELECT g.state,g.result_json,a.association_json,a.intent_json FROM native_checkout_grants g JOIN attempts a ON a.id=g.attempt_id WHERE g.attempt_id=? AND g.capability_hash=? AND a.owner_id=?",
     )
     .bind(attemptId, access.capability_hash, access.owner_id)
-    .first<{ state: string; result_json: string | null }>();
+    .first<{
+      state: string;
+      result_json: string | null;
+      association_json: string | null;
+      intent_json: string;
+    }>();
   if (!grant) throw new ApiError(404, "native_checkout_unavailable");
-  return { attemptId, state: grant.state, paymentAvailable: false };
+  return {
+    attemptId,
+    state:
+      grant.state === "running" &&
+      grant.association_json &&
+      intentSchema.parse(JSON.parse(grant.intent_json)).sessions.length === 1
+        ? "verifying"
+        : grant.state,
+    paymentAvailable: false,
+  };
 }
 export async function executeNativeCheckout(options: {
   request: Request;
@@ -492,6 +506,7 @@ export async function executeNativeCheckout(options: {
       const timer = setTimeout(() => controller.abort(), 15000);
       try {
         const observed = await readNativeAttempt({
+          parallelSingle: true,
           scope,
           association: refs,
           signal: controller.signal,

@@ -52,6 +52,11 @@ export function BookingPage({ step }: { step: BookingStep }) {
     step === "details" &&
     action.operation === "reserve" &&
     action.status === "loading";
+  const pendingReview = step === "details" && attempt?.verifying === true;
+  const displayStep =
+    step === "details" && (attempt?.verifying || attempt?.held)
+      ? "review"
+      : step;
   const actual =
       step === "details" && action.returnToCalendar
         ? "time"
@@ -67,7 +72,7 @@ export function BookingPage({ step }: { step: BookingStep }) {
                 ["review", "payment"].includes(step)
               ? "time"
               : guardedStep(step, draft, attempt, now),
-    current = progress.findIndex(([id]) => id === step);
+    current = progress.findIndex(([id]) => id === displayStep);
   useEffect(() => {
     if (ready && actual !== step) router.replace(`/book/${actual}/`);
   }, [actual, step, ready, router]);
@@ -80,18 +85,25 @@ export function BookingPage({ step }: { step: BookingStep }) {
   if (step === "payment" || step === "confirmation") return <Screen />;
   return (
     <div
-      className={`booking-shell ${["account", "session", "review"].includes(step) ? "session-shell" : ""}`}
+      className={`booking-shell ${["account", "session", "review"].includes(displayStep) ? "session-shell" : ""}`}
     >
       {current >= 0 && (
         <>
           <div className="booking-top">
-            <Link
-              className="back"
-              href={current > 0 ? `/book/${progress[current - 1][0]}/` : "/"}
-            >
-              <Icon name="back" />
-              {current ? "Back" : "Back to home"}
-            </Link>
+            {pendingReview ? (
+              <span className="back" aria-disabled="true">
+                <Icon name="back" />
+                Back
+              </span>
+            ) : (
+              <Link
+                className="back"
+                href={current > 0 ? `/book/${progress[current - 1][0]}/` : "/"}
+              >
+                <Icon name="back" />
+                {current ? "Back" : "Back to home"}
+              </Link>
+            )}
             <span className="eyebrow text-muted">Booking</span>
           </div>
           <ol className="progress" aria-label="Booking progress">
@@ -110,7 +122,7 @@ export function BookingPage({ step }: { step: BookingStep }) {
                     index + 1
                   )}
                 </span>
-                {index < current ? (
+                {index < current && !pendingReview ? (
                   <Link href={`/book/${id}/`} className="hover:underline">
                     {label}
                   </Link>
@@ -124,7 +136,7 @@ export function BookingPage({ step }: { step: BookingStep }) {
       )}
       <div
         className={
-          ["time", "details"].includes(step)
+          ["time", "details"].includes(displayStep)
             ? "booking-layout"
             : "booking-layout session-layout"
         }
@@ -132,7 +144,7 @@ export function BookingPage({ step }: { step: BookingStep }) {
         <section className="booking-main min-w-0">
           <Screen />
         </section>
-        {["time", "details"].includes(step) && (
+        {["time", "details"].includes(displayStep) && (
           <Summary basket={step === "time"} />
         )}
       </div>
