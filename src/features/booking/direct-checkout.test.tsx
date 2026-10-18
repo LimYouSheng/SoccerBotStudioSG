@@ -456,6 +456,8 @@ it("created single hold shows Review before readback and keeps payment disabled 
   ).not.toBeInTheDocument();
   expect(pay).toHaveBeenCalledTimes(1);
   expect(screen.queryByRole("link", { name: "Back" })).not.toBeInTheDocument();
+  expect(document.querySelector(".booking-flow-overlay")).toBeNull();
+  expect(document.querySelector(".page-loading-emblem")).toBeNull();
   expect(screen.getByText("Review", { selector: "li" })).toHaveAttribute(
     "aria-current",
     "step",
@@ -465,6 +467,10 @@ it("created single hold shows Review before readback and keeps payment disabled 
     screen.queryByRole("button", { name: "Review booking" }),
   ).not.toBeInTheDocument();
   expect(navigation.replace).toHaveBeenCalledWith("/book/review/");
+  expect(navigation.push).not.toHaveBeenCalled();
+  expect(screen.getByRole("heading", { name: "Review booking" })).toBeVisible();
+  expect(document.querySelector(".booking-flow-overlay")).toBeNull();
+  expect(document.querySelector(".page-loading-emblem")).toBeNull();
   expect(pay).toHaveBeenCalledTimes(1);
 });
 

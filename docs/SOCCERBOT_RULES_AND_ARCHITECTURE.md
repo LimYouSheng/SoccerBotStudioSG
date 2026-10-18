@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Review route continuity — 19 October 2026 SGT
+
+BookingPage owns live held/recovery routing. When Details has already rendered pending Review and the hold becomes verified, retain that component while the URL catches up instead of replacing it with the shared full-page loader. Details only dispatches the reservation; it does not also navigate. Review renders a disabled text label while verifying, with no second spinning emblem. Existing server authority, failed-write evidence, original attempt identity and payment gating remain unchanged.
+
 ## Verification latency ownership — 19 October 2026 SGT
 
 ProviderSession owns bounded public-token and identity reuse, refresh coalescing and authentication invalidation. The account coordinator serializes admission pacing/reservation only; the native adapter may overlap the two independent reads for a single booking while retaining both observations and all authority checks. Existing admission limits, unknown-write evidence and original attempt identity remain unchanged.

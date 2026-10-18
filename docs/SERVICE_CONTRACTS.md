@@ -1,5 +1,9 @@
 # SoccerBotStudio — Service Contracts
 
+## Review presentation continuity — 19 October 2026 SGT
+
+Once the protected creation milestone opens pending Review, retain that view through authoritative hold completion and the Details-to-Review URL transition. The live page guard is the only navigation owner; Details does not send a second push. Pending payment remains disabled with a text label and the do-not-close/refresh message. No second full-page or inline logo is shown on this successful transition. Rejected/unknown outcomes retain existing protected recovery routing. This UI change does not advance the server creation milestone or authorize payment before readback.
+
 ## Single-booking latency contract — 19 October 2026 SGT
 
 Owner requests4–5 seconds for Details→Review and payment confirmation; this remains an acceptance target, not an achieved result. Public token retention is50 minutes against SimplyBook's documented one-hour public-token lifetime (https://help.simplybook.me/wiki/User_API_guide). Admin retention remains60 seconds pending account-specific expiry evidence. Account identity/plan reads may be reused for30 seconds, capped by both token expiries. Concurrent refreshes coalesce; observed authentication rejection invalidates cached identity/tokens without replaying a read or write. Credentials/tokens remain only in the account coordinator's memory.

@@ -1,5 +1,12 @@
 # SoccerBotStudioSG current progress
 
+## Latest05 Review transition repair — 19 October 2026 SGT
+
+Owner HAR latest05 records a14.112s combined hold; first verifying reply is visible about12.75s after dispatch, leaving only about1.36s before completion. Main/deployed baseline836a5c4 is confirmed by the preceding successful PR53/main deployment. Bounded Cloudflare trace matches14.098s HTTP /13.802s coordinator, with11 provider spans totalling8.234s and46 D1 spans totalling5.882s; overlapping span totals are not additive wall time. No creation/comment completion timestamp is inferred from the browser polling sample.
+
+Source exposes a second overlay when the already-rendered Review becomes the guarded destination but the URL still says Details; Details also pushes while BookingPage replaces that URL. Keep Review mounted through the route change, use only BookingPage for live routing, and replace the pending button logo with a disabled text label. Tests retain payment protection and gate the actual Review route response to assert no overlay after readback. Backend guards/creation milestones remain unchanged. This fixes presentation continuity, not the4–5-second latency target. Exact-source CI remains pending.
+
+
 ## Single-booking verification latency and reference clarity — 19 October 2026 SGT
 
 PR51 merged as abad20d and PR52 as 692cf92 after their exact PR gates passed. PR51's subsequent main run39149518497 failed one tablet live-email dismissal-retry case (53/54); frontend/backend passed and Cloudflare deployment was skipped. Its trace shows setup consumed the case deadline before the retry click could complete, not evidence of a server retry rejection. PR52 main39149579852 subsequently passed all three gates and Cloudflare deployment verified692cf92. Owner authorizes this optimization, tests, merging after green CI and follow-through until main accepts it. Batch physical acceptance remains on hold.
