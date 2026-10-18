@@ -780,6 +780,15 @@ test("protected confirmation waits for server evidence and rejects a tampered re
       body: JSON.stringify({ status: "confirmed", reason: "verified" }),
     });
   });
+  // This UI fixture must control the receipt read after confirmed evidence too.
+  // Otherwise the static preview's unrelated missing route can remain pending.
+  await page.route(`**/api/attempts/${attempt}/receipt`, (route) =>
+    route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "receipt_unavailable" }),
+    }),
+  );
   await openSite(page, `/confirmation/?attempt=${attempt}&paid=true`);
   await expect(
     page.getByRole("status", { name: "Checking your payment and booking…" }),
@@ -790,6 +799,12 @@ test("protected confirmation waits for server evidence and rejects a tampered re
   release();
   await expect(
     page.getByRole("heading", { name: "Booking confirmed", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("main").getByRole("alert")).toContainText(
+    "Your booking is confirmed, but its details could not be loaded.",
+  );
+  await expect(
+    page.getByRole("button", { name: "Load booking details", exact: true }),
   ).toBeVisible();
   await page.unroute(`**/api/attempts/${attempt}/confirmation`);
   await page.route(`**/api/attempts/${attempt}/confirmation`, (route) =>
