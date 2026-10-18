@@ -958,5 +958,9 @@
   {
     "file": "tests/live-email.spec.ts",
     "title": "real API unknown second batch creation retains both effect outcomes across reload without payment"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "real API exhausted browser checking window retains the original deadline and uncertain booking without payment"
   }
 ]

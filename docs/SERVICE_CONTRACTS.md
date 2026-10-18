@@ -4,7 +4,7 @@
 
 Only ongoing combined customer holding uses per-session validation: session0 is checked before claiming dispatch and sessions1..N immediately before their respective writes. Each still verifies provider identity/allowance, service/instructor relationship, exact price, hours/lead and availability, with unchanged consent, owner/grant, immutable intent, time/deadline and effect fencing. No duplicate whole-cart scan precedes later checks. Historical split and finite paths keep their previous preflight contract. Native batch creation/closure and complete booking/invoice unpaid readback remain required before Review. No post-hold selected-slot query is added.
 
-Later rejection enters recovery with earlier allocation references preserved. Unknown second creation retains an unknown effect, never a retry/replacement. Neither a batch identifier nor fewer calls proves provider atomicity. The synthetic tests prove application sequencing and no payment/finalization on partial results, not the behavior of live SimplyBook under concurrency. New browser matrix rows: complete two-session unpaid hold/reload; later conflict with first reference retained/no checkout; unknown second creation retained across reload/no payment. All use actual Worker/API/D1 with external-provider doubles. The live-profile suite becomes20 scenarios/60 device runs; legacy suite becomes24/72 with the location-popup/hover scenario. Four older identity cases remain application-response fixtures.
+Later rejection enters recovery with earlier allocation references preserved. Unknown second creation retains an unknown effect, never a retry/replacement. Neither a batch identifier nor fewer calls proves provider atomicity. The synthetic tests prove application sequencing and no payment/finalization on partial results, not the behavior of live SimplyBook under concurrency. New browser matrix rows: complete two-session unpaid hold/reload; later conflict with first reference retained/no checkout; unknown second creation retained across reload/no payment. All use actual Worker/API/D1 with external-provider doubles. The live-profile suite becomes21 scenarios/63 device runs; legacy suite becomes24/72 with the location-popup/hover scenario. Four older identity cases remain application-response fixtures.
 
 After the exact candidate is merged/deployed and its account/settings verified, the owner may perform the requested controlled two-browser check:
 
@@ -14,6 +14,10 @@ After the exact candidate is merged/deployed and its account/settings verified, 
 4. Stop on unknown or partial state. The owner checks SimplyBook records for both original attempts; any cleanup/cancellation is a separately considered action. Record actual effects and deadlines, not only browser messages.
 
 This sequence tests application conflict handling. Since the application checks availability before each write, it may reject before the provider receives the conflicting book call; that outcome cannot prove provider-level batch atomicity. Do not label it an atomicity pass. A separate directly concurrent provider-write experiment would need its own bounded design and authority.
+
+## Independent checking-window regression — 19 October 2026 SGT
+
+The repaired dismissal journey passes all3 devices on4fc8ce3. Two tablet cases timed out when combining full guest selection, uncertain holding, reload and checking-window exhaustion. Keep the original outage/unknown/readback reload assertions and move the shared exhausted-window behavior into one dedicated actual-Worker browser scenario. Its setup uses real API preparation/holding, then asserts unresolved UI, immutable server deadline, retained unknown effect and no payment. No timeout increase, retry, skip or product guard change. Live-profile inventory is now18 scenarios/54 device runs,14 actual-Worker and four older application-response fixtures. CI acceptance remains pending.
 
 ## Browser failure acceptance matrix — 18 October 2026
 
