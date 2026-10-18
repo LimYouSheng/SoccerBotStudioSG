@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## Circular mouse cursor — 18 October 2026
+
+Owner requests a circular cursor with a lagging centre dot. Added one root-level pointer decoration with bounded dot travel and an animation loop that stops when settled. Native controls, keyboard use, touch and accessibility preferences retain normal cursor behaviour. Owner/CI visual acceptance remains pending; no assistant browser execution. The supplied latest.har contains calendar503/provider_transport_uncertain after30.262s and catalogue200 after5.688s, but no booking submission, so it cannot measure the single-session optimization. Raw HAR remains private; no provider or payment changes.
+
 ## Single-session booking validation optimization — 18 October 2026
 
 Owner chooses single-session optimization first; multi-session atomicity testing remains deferred. Refreshed main6b8555a includes merged PR43. New isolated branch preserves all confirmation/loading work. A new workerd regression against unchanged orchestration reproduces validate:0 twice before create:0/finalize. Consolidate the first full validation and singleton write validation, retaining the atomic dispatch claim and local authority/time/effect guards between validation and creation. For multiple sessions no validation sequence changes.
