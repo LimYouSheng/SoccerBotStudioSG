@@ -1215,7 +1215,9 @@ async function uncertainHolding(
     ).toBeVisible();
     await assertNoPaymentOrConfirmation(page, mechanism);
     const row = await mechanism.db
-      .prepare("SELECT id,intent_hash,association_json FROM attempts")
+      .prepare(
+        "SELECT id,intent_hash,association_json,deadline_ms FROM attempts",
+      )
       .first();
     expect(row).toBeTruthy();
     expect(Boolean(row!.association_json)).toBe(fault === "readback");
@@ -1232,7 +1234,9 @@ async function uncertainHolding(
     ).toHaveCount(0);
     expect(
       await mechanism.db
-        .prepare("SELECT id,intent_hash,association_json FROM attempts")
+        .prepare(
+          "SELECT id,intent_hash,association_json,deadline_ms FROM attempts",
+        )
         .first(),
     ).toEqual(row);
     expect(
@@ -1243,11 +1247,20 @@ async function uncertainHolding(
         .prepare("SELECT COUNT(*) AS n FROM hitpay_holds")
         .first<{ n: number }>())!.n,
     ).toBe(0);
-    // Expire only this synthetic fixture's checking window; do not wait in real time.
-    await mechanism.db
-      .prepare("UPDATE attempts SET deadline_ms=? WHERE id=?")
-      .bind(Date.now() - 1, row!.id)
-      .run();
+    // Exhaust this browser's checking allowance, never mutate the immutable
+    // server deadline or reinterpret exhaustion as cancellation.
+    await page.evaluate((id) => {
+      localStorage.setItem(
+        `soccerbot-checking:${id}`,
+        JSON.stringify({ deadline: Date.now() - 1, next: 0, count: 120 }),
+      );
+    }, row!.id);
+    expect(
+      await mechanism.db
+        .prepare("SELECT deadline_ms FROM attempts WHERE id=?")
+        .bind(row!.id)
+        .first(),
+    ).toEqual({ deadline_ms: row!.deadline_ms });
     await page.goto(`/confirmation/?attempt=${row!.id}`);
     await expect(
       page.getByRole("heading", {
@@ -1293,7 +1306,7 @@ test("real API revoked access during Details keeps the form and prevents provide
       .run();
     const response = await reviewResponse(page);
     expect(response.status()).toBe(401);
-    await expect(page.getByRole("alert")).toContainText(
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
       "Online booking is unavailable. Your selections have been kept.",
     );
     await expect(page.getByLabel("Full name", { exact: false })).toHaveValue(
@@ -1333,7 +1346,7 @@ test("real API lost successful hold response restores the existing reservation w
     await page
       .getByRole("button", { name: "Review booking", exact: true })
       .click();
-    await expect(page.getByRole("alert")).toContainText(
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
       "We couldn’t complete that request. Please try again.",
     );
     expect(dropped).toBe(true);
@@ -1388,7 +1401,7 @@ test("real API payment creation failure preserves the hold and never returns to 
     await page
       .getByRole("button", { name: "Continue to payment", exact: true })
       .click();
-    await expect(page.getByRole("alert")).toContainText(
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
       "Payment checkout could not be verified",
     );
     await expect(page).toHaveURL(/\/book\/review\/$/);
@@ -1441,11 +1454,28 @@ test("real API failed completed dismissal opens the first step and explicit retr
     );
     expect(await payment.json()).toMatchObject({ paymentAvailable: true });
     expect((await mechanism.completePayment()).status).toBe(202);
+    const savedConfirmation = page.waitForResponse(async (response) => {
+      const path = new URL(response.url()).pathname;
+      if (
+        response.status() !== 200 ||
+        ![
+          `/api/attempts/${attemptId}/checkout`,
+          `/api/attempts/${attemptId}/confirmation`,
+        ].includes(path)
+      )
+        return false;
+      const body = await response.json();
+      return (
+        body.confirmation?.attemptId === attemptId ||
+        body.status === "confirmed"
+      );
+    });
     await page.goto(`/confirmation/?attempt=${attemptId}`);
     await page
       .getByRole("dialog", { name: "Get the SoccerBot Player App" })
       .getByRole("button", { name: "Not now", exact: true })
       .click();
+    await savedConfirmation;
     await expect(
       page.getByRole("heading", { name: "Booking confirmed", exact: true }),
     ).toBeVisible();
@@ -1459,7 +1489,7 @@ test("real API failed completed dismissal opens the first step and explicit retr
     await expect(
       page.getByRole("button", { name: "Continue as guest", exact: true }),
     ).toBeVisible();
-    await expect(page.getByRole("alert")).toContainText(
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
       "Your confirmation is saved",
     );
     expect(
@@ -1478,7 +1508,7 @@ test("real API failed completed dismissal opens the first step and explicit retr
     );
     await page.getByRole("button", { name: "Try again", exact: true }).click();
     await dismissed;
-    await expect(page.getByRole("alert")).toHaveCount(0);
+    await expect(page.getByRole("main").getByRole("alert")).toHaveCount(0);
     expect(
       await page.evaluate(() =>
         sessionStorage.getItem("soccerbot.completed-exit"),
