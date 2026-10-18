@@ -521,3 +521,53 @@ it("reopening an expired paid booking shows the saved full confirmation without 
   await waitFor(() => expect(assign).toHaveBeenCalledTimes(2));
   expect(fetch.mock.calls.at(-1)?.[0]).toBe(`/api/attempts/${first}/dismiss`);
 });
+
+it("pending checkout context retains preparation status and exposes no checkout or confirmation", async () => {
+  let finish!: (response: Response) => void;
+  const context = new Promise<Response>((resolve) => {
+    finish = resolve;
+  });
+  const fetch = vi.fn((url: string) =>
+    url.endsWith("/checkout")
+      ? context
+      : Promise.resolve(
+          Response.json({ status: "pending", reason: "missing_evidence" }),
+        ),
+  );
+  vi.stubGlobal("fetch", fetch);
+  render(<ProtectedConfirmation attemptId={first} checkoutMode="live" />);
+  expect(
+    screen.getByRole("status", { name: "Preparing checkout…" }),
+  ).toBeVisible();
+  expect(
+    screen.queryByRole("link", { name: /Open checkout/ }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("heading", { name: "Booking confirmed" }),
+  ).not.toBeInTheDocument();
+  expect(fetch).toHaveBeenCalledTimes(1);
+  finish(
+    Response.json({
+      attemptId: first,
+      mode: "live",
+      checkout: { state: "unavailable" },
+      summary: {
+        players: 2,
+        totalMinor: 8800,
+        currency: "SGD",
+        sessions: [{ startMs: 1, players: 2 }],
+      },
+      checking: {
+        deadlineMs: Date.now() + 600000,
+        nextCheckMs: 0,
+        pollAfterMs: 5000,
+      },
+    }),
+  );
+  expect(
+    await screen.findByRole("region", { name: "Current booking summary" }),
+  ).toBeVisible();
+  expect(
+    screen.queryByRole("link", { name: /Open checkout/ }),
+  ).not.toBeInTheDocument();
+});

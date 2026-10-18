@@ -12,6 +12,8 @@ Payment return uses a neutral Booking confirmation layout with protected summary
 
 Protected receipt metadata adds SimplyBook booking IDs and invoice ID from the immutable attempt association with matching session count; old saved receipts without these optional display fields remain readable. The customer-facing UUID is labelled SoccerBot reference. Do not equate provider numeric IDs with booking codes/formatted invoice numbers or fabricate absent values. No extra provider lookup is added to receipt rendering.
 
+A lost or malformed holding response permits one protected current-attempt read. Only the same attempt with a verified held state may reopen Review; no automatic write retry is permitted. A failed read, different attempt or unverified state preserves the original recovery identity. Pending Review disables backward navigation and maintains its final layout while readback completes.
+
 ## Combined batch validation and owner conflict check — 19 October 2026 SGT
 
 Only ongoing combined customer holding uses per-session validation: session0 is checked before claiming dispatch and sessions1..N immediately before their respective writes. Each still verifies provider identity/allowance, service/instructor relationship, exact price, hours/lead and availability, with unchanged consent, owner/grant, immutable intent, time/deadline and effect fencing. No duplicate whole-cart scan precedes later checks. Historical split and finite paths keep their previous preflight contract. Native batch creation/closure and complete booking/invoice unpaid readback remain required before Review. No post-hold selected-slot query is added.

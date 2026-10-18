@@ -455,10 +455,132 @@ it("created single hold shows Review before readback and keeps payment disabled 
     screen.queryByRole("link", { name: "Edit selections" }),
   ).not.toBeInTheDocument();
   expect(pay).toHaveBeenCalledTimes(1);
+  expect(screen.queryByRole("link", { name: "Back" })).not.toBeInTheDocument();
+  expect(screen.getByText("Review", { selector: "li" })).toHaveAttribute(
+    "aria-current",
+    "step",
+  );
   await act(async () => complete({ ...created!, held: true, status: "ready" }));
   expect(
     screen.queryByRole("button", { name: "Review booking" }),
   ).not.toBeInTheDocument();
   expect(navigation.replace).toHaveBeenCalledWith("/book/review/");
   expect(pay).toHaveBeenCalledTimes(1);
+});
+
+it("lost hold response restores only the same verified attempt without repeating the write", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-15T00:00:00Z"));
+  const attempt: Attempt = {
+    id,
+    draft,
+    status: "ready",
+    outcome: "pending",
+    checkUntil: 0,
+    booking: null,
+  };
+  let restoreResult: Attempt | null = null;
+  const restore = vi.fn(async () => restoreResult);
+  const pay = vi.fn<BookingService["pay"]>(async ({ onHoldCreated }) => {
+    onHoldCreated?.();
+    throw new TypeError("Failed to fetch");
+  });
+  function Reserve() {
+    const { reserve, ready, attempt } = useBooking();
+    return (
+      <>
+        <button disabled={!ready} onClick={() => void reserve()}>
+          Reserve test
+        </button>
+        <output data-testid="restored-state">
+          {attempt?.id}:{String(attempt?.held)}:{attempt?.status}
+        </output>
+      </>
+    );
+  }
+  const view = render(
+    <BookingProvider
+      bookingService={{
+        ...liveBookingService,
+        restore,
+        pay,
+        checkout: async () => attempt,
+        publicCalendar: undefined,
+        calendar: undefined,
+        availability: async () => [],
+      }}
+    >
+      <Seed />
+      <Reserve />
+    </BookingProvider>,
+  );
+  await act(async () => {});
+  fireEvent.click(screen.getByText("Seed"));
+  restoreResult = { ...attempt, held: true };
+  await act(async () => fireEvent.click(screen.getByText("Reserve test")));
+  expect(screen.getByTestId("restored-state")).toHaveTextContent(
+    `${id}:true:ready`,
+  );
+  expect(pay).toHaveBeenCalledTimes(1);
+  expect(restore).toHaveBeenCalledTimes(1); // one protected recovery read
+  view.unmount();
+});
+
+it("lost hold response cannot adopt a different attempt returned by recovery", async () => {
+  const attempt: Attempt = {
+    id,
+    draft,
+    status: "ready",
+    outcome: "pending",
+    checkUntil: 0,
+    booking: null,
+  };
+  const restore = vi
+    .fn<NonNullable<BookingService["restore"]>>()
+    .mockResolvedValue({
+      ...attempt,
+      id: "00000000-0000-4000-8000-000000000002",
+      held: true,
+    });
+  const pay = vi.fn<BookingService["pay"]>(async ({ onHoldCreated }) => {
+    onHoldCreated?.();
+    throw new TypeError("Failed to fetch");
+  });
+  function Reserve() {
+    const { reserve, ready, attempt } = useBooking();
+    return (
+      <>
+        <button disabled={!ready} onClick={() => void reserve()}>
+          Reserve test
+        </button>
+        <output data-testid="restored-state">
+          {attempt?.id}:{String(attempt?.held)}:{attempt?.status}
+        </output>
+      </>
+    );
+  }
+  render(
+    <BookingProvider
+      bookingService={{
+        ...liveBookingService,
+        restore,
+        pay,
+        checkout: async () => attempt,
+        publicCalendar: undefined,
+        calendar: undefined,
+        availability: async () => [],
+      }}
+    >
+      <Seed />
+      <Reserve />
+    </BookingProvider>,
+  );
+  await act(async () => {});
+  fireEvent.click(screen.getByText("Seed"));
+  await act(async () => fireEvent.click(screen.getByText("Reserve test")));
+  expect(screen.getByTestId("restored-state")).toHaveTextContent(
+    `${id}:undefined:checking`,
+  );
+  expect(pay).toHaveBeenCalledTimes(1);
+  expect(restore).toHaveBeenCalledTimes(1);
 });

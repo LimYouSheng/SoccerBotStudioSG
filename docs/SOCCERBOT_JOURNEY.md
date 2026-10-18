@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## Pending-checkout accessible status repair — 19 October 2026 SGT
+
+PR52 main39149579852 passed all three gates and deployed verified692cf92 to the developer Worker. PR53 CI39151457912 passed Worker verification; frontend/backend each passed69/72 browser runs, failing the same pending-checkout status assertion on three devices. The neutral confirmation layout accidentally replaced the preparing-checkout accessible label before protected context settled. Restore the original state-specific label, keep checkout unavailable, and add a component regression. Existing browser assertions, counts and timeouts remain unchanged. Live-email passed69/72 and exposed the lost successful holding response on all devices. One protected current-attempt read now restores only the original verified hold; mismatched/unverified/failed recovery cannot enable payment or replay creation. The existing real-API browser scenario requires immediate restored Review and subsequent reload, retaining one-write and no-payment assertions. Pending Review also retains its final layout and disables backward navigation until holding completes. Repair candidate CI is pending.
+
 ## Latency review, main failure and comment reconciliation — 19 October 2026 SGT
 
 PR51/52 exact PR gates passed and both were owner-authorized merged. PR51 main39149518497 subsequently failed one tablet dismissal-retry case:53/54 live runs passed, both other gates passed, Cloudflare skipped. Offline trace shows the retry click began at the end of the30-second case budget; it did not reach a second dismissal request. Preserve this failure while validating the faster path on fresh CI.

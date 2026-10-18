@@ -1362,9 +1362,10 @@ test("real API lost successful hold response restores the existing reservation w
     await page
       .getByRole("button", { name: "Review booking", exact: true })
       .click();
-    await expect(page.getByRole("main").getByRole("alert")).toContainText(
-      "We couldn’t complete that request. Please try again.",
-    );
+    await expect(page).toHaveURL(/\/book\/review\/$/);
+    await expect(
+      page.getByRole("heading", { name: "Review booking", exact: true }),
+    ).toBeVisible();
     expect(dropped).toBe(true);
     const held = await mechanism.db
       .prepare("SELECT attempt_id FROM hitpay_holds")
@@ -1824,6 +1825,15 @@ async function optimisticHold(page: Page, failReadback: boolean) {
     await expect(
       page.getByRole("button", { name: "Verifying your reservation…" }),
     ).toBeDisabled();
+    await expect(
+      page
+        .getByRole("list", { name: "Booking progress" })
+        .getByRole("listitem")
+        .filter({ hasText: "Review" }),
+    ).toHaveAttribute("aria-current", "step");
+    await expect(
+      page.getByRole("link", { name: "Back", exact: true }),
+    ).toHaveCount(0);
     await expect(
       page.getByRole("link", { name: "Edit selections", exact: true }),
     ).toHaveCount(0);

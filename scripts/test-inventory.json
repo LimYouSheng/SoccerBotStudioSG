@@ -986,5 +986,17 @@
   {
     "file": "src/features/booking/confirmation-checking.test.tsx",
     "title": "uses a server-granted early check without extending the deadline or resetting the shared count"
+  },
+  {
+    "file": "src/features/booking/protected-confirmation.test.tsx",
+    "title": "pending checkout context retains preparation status and exposes no checkout or confirmation"
+  },
+  {
+    "file": "src/features/booking/direct-checkout.test.tsx",
+    "title": "lost hold response restores only the same verified attempt without repeating the write"
+  },
+  {
+    "file": "src/features/booking/direct-checkout.test.tsx",
+    "title": "lost hold response cannot adopt a different attempt returned by recovery"
   }
 ]

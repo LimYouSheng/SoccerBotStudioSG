@@ -211,7 +211,9 @@ export function ProtectedConfirmation({
             label={
               view === "confirmed"
                 ? "Preparing your confirmation…"
-                : "Checking your payment and booking…"
+                : checkoutMode && preparation === "loading"
+                  ? "Preparing checkout…"
+                  : "Checking your payment and booking…"
             }
             message="Please don’t close or refresh this page while we finish."
           />
