@@ -305,7 +305,7 @@
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",
-    "title": "Details pauses future month prefetch and calendar return reuses the loaded month"
+    "title": "Details aborts an explicitly opened month and calendar return retains loaded months"
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",
@@ -317,7 +317,7 @@
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",
-    "title": "calendar prefetch publishes the first month before sequential background months and discards an old scope reply"
+    "title": "calendar loads only the displayed month and discards an old scope reply"
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",

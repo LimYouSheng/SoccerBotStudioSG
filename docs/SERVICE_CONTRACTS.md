@@ -1,5 +1,9 @@
 # SoccerBotStudio — Service Contracts
 
+## One-month calendar preload — 19 October 2026 SGT
+
+Owner reduces eager calendar loading from four months to the displayed month only. Homepage preloads the current Singapore calendar month; another month is fetched only when opened. The existing four-month navigation horizon is unchanged. Empty results are cached, cache expiry does not poll, fresh entries are reused, and Details/Review/payment still abort or pause calendar work. This reduces eager month requests from four to one, not a measured end-to-end latency claim. Update component call-count expectations, preserve stale-reply/expiry/conflict assertions and explicitly test next-month loading, abort and return reuse. Actual-Worker browser setup now waits for one preload rather than warming all four months.
+
 ## Final single-booking optimization pass — 19 October 2026 SGT
 
 CatalogueReads overlaps the independent service/instructor reads only for ongoing customer access under the existing ProviderSession and serialized admission owner. The initial full runtime run exposed three finite-path rate rejections; finite/historical reads retain their original sequential dispatch. Both settle before success or failure; only a complete, fresh, matching-generation pair enters cache. No cache lifetime, token retention, request count, rate/concurrency limit or write-boundary check changes. New deterministic tests prove overlap/coalescing and draining/no partial cache after either read fails; existing stale/superseded/account-isolation tests remain. Live timing improvement is not inferred from concurrency.

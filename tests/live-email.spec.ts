@@ -1073,7 +1073,7 @@ async function guestDetails(
     const path = new URL(response.url()).pathname;
     if (path.startsWith("/api/calendar/") && response.status() === 200)
       months.add(path);
-    return months.size === 4;
+    return months.size === 1;
   });
   await page.goto("/");
   await page

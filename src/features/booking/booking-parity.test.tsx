@@ -69,7 +69,7 @@ function CalendarProbe({
     </output>
   );
 }
-test("calendar prefetch publishes the first month before sequential background months and discards an old scope reply", async () => {
+test("calendar loads only the displayed month and discards an old scope reply", async () => {
   vi.spyOn(Date, "now").mockReturnValue(Date.parse("2027-01-01T00:00:00Z"));
   let finish!: (value: CalendarAvailability) => void;
   const first = {
@@ -95,12 +95,9 @@ test("calendar prefetch publishes the first month before sequential background m
   expect(first.calendar).toHaveBeenCalledTimes(1);
   view.rerender(<CalendarProbe service={next} now={Date.now() + 1000} />);
   expect(await screen.findByText("2027-01-05")).toBeInTheDocument();
-  await waitFor(() => expect(next.calendar).toHaveBeenCalledTimes(4));
+  await waitFor(() => expect(next.calendar).toHaveBeenCalledTimes(1));
   expect(next.calendar.mock.calls.map(([input]) => input.month)).toEqual([
     "2027-01",
-    "2027-02",
-    "2027-03",
-    "2027-04",
   ]);
   await act(async () =>
     finish({
@@ -330,15 +327,15 @@ test("homepage prefetch starts without a booking identity and never creates gues
       <Entry />
     </BookingProvider>,
   );
-  await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(4));
+  await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(1));
   expect(screen.getByText("Homepage")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Guest entry" }));
   await act(async () => {});
   fireEvent.click(screen.getByRole("button", { name: "Email entry" }));
   await act(async () => {});
-  expect(publicCalendar).toHaveBeenCalledTimes(4);
+  expect(publicCalendar).toHaveBeenCalledTimes(1);
   expect(publicCalendar.mock.calls.map(([input]) => input.month)).toHaveLength(
-    4,
+    1,
   );
 });
 
@@ -450,7 +447,7 @@ test("preloaded browser slots survive date and player changes and Continue refre
       <DetailsStep />
     </BookingProvider>,
   );
-  await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(4));
+  await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(1));
   fireEvent.click(screen.getByRole("button", { name: "Choose test session" }));
   await act(async () => {});
   availability.mockClear();
@@ -471,7 +468,7 @@ test("preloaded browser slots survive date and player changes and Continue refre
   fireEvent.click(screen.getByRole("button", { name: "Inspect past day" }));
   await act(async () => {});
   expect(availability).not.toHaveBeenCalled();
-  expect(publicCalendar).toHaveBeenCalledTimes(4);
+  expect(publicCalendar).toHaveBeenCalledTimes(1);
   expect(screen.getByRole("link", { name: "Continue" })).toHaveAttribute(
     "href",
     "/book/details",
@@ -499,7 +496,7 @@ test("preloaded browser slots survive date and player changes and Continue refre
       within(region).getByRole("button", { name: dateLabel(slot.date) }),
     ).toBeDisabled(),
   );
-  expect(publicCalendar).toHaveBeenCalledTimes(4);
+  expect(publicCalendar).toHaveBeenCalledTimes(1);
   expect(availability).not.toHaveBeenCalled();
 });
 
@@ -612,7 +609,7 @@ test("Details accepts input before checking the complete selection on submission
     </BookingProvider>
   );
   const view = render(tree("time"));
-  await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(4));
+  await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(1));
   fireEvent.click(screen.getByRole("button", { name: "Choose test session" }));
   expect(screen.getByRole("link", { name: "Continue" })).toHaveAttribute(
     "href",
@@ -667,7 +664,7 @@ test("Details accepts input before checking the complete selection on submission
   expect(availability).not.toHaveBeenCalled();
   expect(service.checkout).toHaveBeenCalledTimes(2);
   // A failed read retains the existing display cache.
-  expect(publicCalendar).toHaveBeenCalledTimes(4);
+  expect(publicCalendar).toHaveBeenCalledTimes(1);
 });
 
 test("failed preparation releases cached calendar without removing the selection or refetching", async () => {
@@ -743,7 +740,7 @@ test("failed preparation releases cached calendar without removing the selection
   const view = render(tree("time"));
   await act(async () => {});
   fireEvent.click(screen.getByText("Choose test session"));
-  await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(4));
+  await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(1));
   view.rerender(tree("details"));
   fireEvent.click(screen.getByRole("button", { name: "Review booking" }));
   await waitFor(() => expect(checkout).toHaveBeenCalledTimes(1));
@@ -757,7 +754,7 @@ test("failed preparation releases cached calendar without removing the selection
   expect(screen.getByTestId("selected-count")).toHaveTextContent("1");
   view.rerender(tree("details"));
   expect(screen.getByLabelText(/Full name/)).toHaveValue("Test Customer");
-  expect(publicCalendar).toHaveBeenCalledTimes(4);
+  expect(publicCalendar).toHaveBeenCalledTimes(1);
   expect(availability).not.toHaveBeenCalled();
 });
 
@@ -854,7 +851,7 @@ test("reservation conflict removes its session locally and returns to calendar w
   const view = render(tree("time"));
   await act(async () => {});
   fireEvent.click(screen.getByText("Choose test session"));
-  await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(4));
+  await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(1));
   view.rerender(tree("details"));
   fireEvent.click(screen.getByRole("button", { name: "Review booking" }));
   await waitFor(() => expect(pay).toHaveBeenCalledTimes(1));
@@ -869,7 +866,7 @@ test("reservation conflict removes its session locally and returns to calendar w
   expect(screen.getByTestId("notice")).toHaveTextContent(
     "The selected session is no longer available",
   );
-  expect(publicCalendar).toHaveBeenCalledTimes(4);
+  expect(publicCalendar).toHaveBeenCalledTimes(1);
   expect(availability).not.toHaveBeenCalled();
   fireEvent.click(screen.getByText("Choose replacement"));
   view.rerender(tree("details"));
@@ -879,7 +876,7 @@ test("reservation conflict removes its session locally and returns to calendar w
   );
 });
 
-test("Details pauses future month prefetch and calendar return reuses the loaded month", async () => {
+test("Details aborts an explicitly opened month and calendar return retains loaded months", async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2027-01-01T00:00:00Z"));
   let finish!: (
@@ -912,6 +909,8 @@ test("Details pauses future month prefetch and calendar return reuses the loaded
   );
   const view = render(tree("time"));
   fireEvent.click(screen.getByText("Choose test session"));
+  await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(1));
+  fireEvent.click(screen.getByRole("button", { name: "Next month" }));
   await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(2));
   const pending = publicCalendar.mock.calls[1][0];
   expect(pending.month).toBe("2027-02");
@@ -927,6 +926,9 @@ test("Details pauses future month prefetch and calendar return reuses the loaded
   );
   expect(publicCalendar).toHaveBeenCalledTimes(2);
   view.rerender(tree("time"));
+  await act(async () => {});
+  expect(publicCalendar).toHaveBeenCalledTimes(2);
+  fireEvent.click(screen.getByRole("button", { name: "Next month" }));
   await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(3));
   expect(publicCalendar.mock.calls.map(([input]) => input.month)).toEqual([
     "2027-01",
@@ -989,11 +991,11 @@ test("cached calendar offers obey opening hours and the four-hour cutoff without
     );
   }
   const view = render(<Probe now={initial} />);
-  await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(4));
+  await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(1));
   expect(screen.getByTestId("eligible")).toHaveTextContent("12:00,19:20");
   view.rerender(<Probe now={initial + 1} />);
   expect(screen.getByTestId("eligible")).toHaveTextContent(/^19:20$/);
-  expect(publicCalendar).toHaveBeenCalledTimes(4);
+  expect(publicCalendar).toHaveBeenCalledTimes(1);
 });
 
 test("failed public calendar releases full-page loading and leaves refresh available", async () => {
