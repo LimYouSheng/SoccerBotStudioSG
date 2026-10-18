@@ -93,6 +93,7 @@ export async function payHitpayHold(
   const timer = setTimeout(() => controller.abort(), 20000);
   try {
     const read = await readNativeAttempt({
+      parallelSingle: true,
       scope,
       association: associationSchema.parse(JSON.parse(row.association_json)),
       signal: controller.signal,

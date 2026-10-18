@@ -1,5 +1,15 @@
 # SoccerBotStudioSG current progress
 
+## Single-booking verification latency and reference clarity — 19 October 2026 SGT
+
+PR51 merged as abad20d and PR52 as 692cf92 after their exact PR gates passed. PR51's subsequent main run39149518497 failed one tablet live-email dismissal-retry case (53/54); frontend/backend passed and Cloudflare deployment was skipped. Its trace shows setup consumed the case deadline before the retry click could complete, not evidence of a server retry rejection. PR52 main acceptance is still being checked. Owner authorizes this optimization, tests, merging after green CI and follow-through until main accepts it. Batch physical acceptance remains on hold.
+
+Local code verification passed199 unit/component cases, lint/types/build/source/policy/tooling/export. Worker runtime passed365/365; the inventory gate exposed only ordering of the two new combined-hold titles, now corrected to the runner order with no additions/removals. Exact-source CI remains required.
+
+Current feat/verification-latency candidate reuses public authentication within a50-minute ceiling and identity for30 seconds (bounded by token expiry), overlaps independent single-booking/invoice reads, presents payment-disabled Review after server creation, and uses a neutral confirmation layout during paid-state verification. First five ongoing confirmation polls have a server-granted1-second interval, then5 seconds, retaining original count/deadline. No live4–5-second acceptance claim. Verify exact-source code/Worker/browser gates before merge; investigate failures rather than retries or relaxed assertions.
+
+Reference inspection found the website labelled its internal UUID as Booking reference. Protected receipts now additionally expose stored SimplyBook booking IDs/invoice ID; the UUID is labelled SoccerBot reference. These IDs are not the separate searchable booking code or formatted invoice number. Comment investigation found one journalled write each for four bookings and correct distinct booking-specific readbacks. Owner confirms the expanded SimplyBook panel aggregates comments: no comment fix or historical rewrite is needed.
+
 ## Latest04 UI and combined batch follow-up — 19 October 2026 SGT
 
 Owner requests contact-action spacing, more prominent signed-in email, navy Book now hover text, an on-demand studio location popup, and removal of duplicate batch checks before an owner-operated two-browser conflict test. Branch feat/batch-preflight-location-ui builds on PR51's browser failures repair (4fc8ce3); do not confuse that pending parent PR with main. The map choice is lowest latency: no map request or SDK on initial load; click opens a dialog with satellite iframe and external Google Maps link for available street-level/3D views. This is not an embedded 3D model or a claim about provider imagery availability.

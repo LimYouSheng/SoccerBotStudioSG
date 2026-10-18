@@ -155,7 +155,9 @@ export function useConfirmationChecking(
           budget.deadline,
           response.checking.deadlineMs ?? budget.deadline,
         );
-        budget.next = Math.max(budget.next, response.checking.nextCheckMs ?? 0);
+        // A successful authenticated response may grant an earlier status
+        // read. This never resets the shared count or the original deadline.
+        budget.next = response.checking.nextCheckMs ?? budget.next;
         save(attemptId, budget);
         paymentReceived =
           response.reason === "payment_received_booking_pending" ||

@@ -441,6 +441,15 @@ export function BookingProvider({
             outcome: "pending",
             signal,
             holding: operation === "reserve",
+            onHoldCreated:
+              operation === "reserve"
+                ? () => {
+                    if (!isCurrent()) return;
+                    attempt = { ...attempt, verifying: true };
+                    commit({ ...latest.current, attempt });
+                    current = latest.current;
+                  }
+                : undefined,
           });
           if (!isCurrent()) return false;
           commit({ ...current, attempt });
@@ -473,6 +482,17 @@ export function BookingProvider({
         return true;
       } catch (error) {
         if (!isCurrent()) return false;
+        if (latest.current.attempt?.verifying) {
+          commit({
+            ...latest.current,
+            attempt: {
+              ...latest.current.attempt,
+              verifying: undefined,
+              status: "checking",
+            },
+          });
+          current = latest.current;
+        }
         const known =
           error instanceof BookingServiceError
             ? error

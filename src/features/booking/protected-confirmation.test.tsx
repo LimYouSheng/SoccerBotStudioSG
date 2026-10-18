@@ -212,7 +212,13 @@ it("access denial hides a previously loaded checkout context", async () => {
 
 it("verified live receipt uses demo sections and refuses exports after access is revoked", async () => {
   const now = Date.now();
-  const receipt = receiptFixture(now + 120000);
+  const receipt = {
+    ...receiptFixture(now + 120000),
+    providerReferences: {
+      bookingIds: ["701"],
+      invoiceId: "901",
+    },
+  };
   let reads = 0;
   vi.stubGlobal(
     "fetch",
@@ -235,6 +241,9 @@ it("verified live receipt uses demo sections and refuses exports after access is
   for (const name of ["Session Details", "Location", "Amount", "Disclaimers"])
     expect(screen.getByRole("heading", { name })).toBeInTheDocument();
   expect(screen.getByText("Native Trainer")).toBeInTheDocument();
+  expect(screen.getByText("701")).toBeInTheDocument();
+  expect(screen.getByText("901")).toBeInTheDocument();
+  expect(screen.getByText(/SoccerBot reference/)).toHaveTextContent(first);
   expect(screen.queryByText("Paid · Preview")).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Add to calendar" }));
   expect(await screen.findByRole("alert")).toHaveTextContent(

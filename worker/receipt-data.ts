@@ -1,13 +1,18 @@
 import { z } from "zod";
 import { ApiError } from "./policy";
-import { intentSchema } from "./journal";
+import { associationSchema, intentSchema } from "./journal";
 import {
   nativeAvailabilitySchema,
   receiptSchema,
 } from "../src/domain/native-checkout";
 export async function receiptData(
   env: Env,
-  row: { id: string; intent_json: string; created_ms: number },
+  row: {
+    id: string;
+    intent_json: string;
+    created_ms: number;
+    association_json: string | null;
+  },
   now: number,
 ) {
   const intent = intentSchema.parse(JSON.parse(row.intent_json));
@@ -34,7 +39,16 @@ export async function receiptData(
     if (!offer) throw new ApiError(503, "receipt_details_unavailable");
     return { ...offer, players: session.players };
   });
+  const association = associationSchema.parse(
+    JSON.parse(row.association_json || "null"),
+  );
+  if (association.bookingIds.length !== slots.length)
+    throw new ApiError(503, "receipt_details_unavailable");
   return receiptSchema.parse({
+    providerReferences: {
+      bookingIds: association.bookingIds,
+      invoiceId: association.invoiceId,
+    },
     attemptId: row.id,
     verifiedAtMs: now,
     createdAtMs: row.created_ms,

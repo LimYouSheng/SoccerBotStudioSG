@@ -379,3 +379,135 @@ test("combined batch hold uses one validation per item and retains partial or un
     }
   }
 });
+
+test("single hold exposes creation progress while independent readbacks are pending and payment remains blocked", async () => {
+  let release;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  let both;
+  const entered = new Promise((resolve) => {
+    both = resolve;
+  });
+  const reads = new Set();
+  const m = await createBookingMechanism({
+    respond: async (call) => {
+      const kind =
+        call.body?.method === "getBookingDetails"
+          ? "booking"
+          : call.url.endsWith("/admin/invoices/901")
+            ? "invoice"
+            : null;
+      if (kind) {
+        reads.add(kind);
+        if (reads.size === 2) both();
+        await gate;
+      }
+    },
+  });
+  let holding;
+  try {
+    const c = await customer(m);
+    holding = c.send();
+    await entered;
+    const progress = await m.mf.dispatchFetch(
+      m.origin + `/api/booking/native/${c.input.key}`,
+      { headers: c.headers },
+    );
+    assert.deepEqual(await progress.json(), {
+      attemptId: c.input.key,
+      state: "verifying",
+      paymentAvailable: false,
+    });
+    assert.equal(
+      (await m.db.prepare("SELECT COUNT(*) AS n FROM hitpay_holds").first()).n,
+      0,
+    );
+    const checkout = await m.mf.dispatchFetch(
+      m.origin + `/api/attempts/${c.input.key}/checkout`,
+      { headers: c.headers },
+    );
+    assert.notEqual((await checkout.json()).checkout?.state, "available");
+    release();
+    assert.equal((await (await holding).json()).state, "associated");
+    assert.equal(
+      m.calls.filter((call) => call.body?.method === "book").length,
+      1,
+    );
+    assert.equal(
+      m.calls.filter((call) => call.url.includes("hit-pay.com")).length,
+      0,
+    );
+  } finally {
+    release();
+    await holding;
+    await m.close();
+  }
+});
+
+test("ongoing confirmation grants five fast stored-status checks while retaining the shared cap and deadline", async () => {
+  const m = await createBookingMechanism();
+  try {
+    const c = await customer(m);
+    await c.send();
+    const original = await m.db
+      .prepare("SELECT deadline_ms,intent_hash FROM attempts WHERE id=?")
+      .bind(c.input.key)
+      .first();
+    const calls = m.calls.length;
+    for (let i = 0; i < 6; i++) {
+      await m.db
+        .prepare("UPDATE attempts SET confirmation_next_ms=0 WHERE id=?")
+        .bind(c.input.key)
+        .run();
+      const start = Date.now();
+      const response = await m.mf.dispatchFetch(
+        m.origin + `/api/attempts/${c.input.key}/confirmation`,
+        { headers: c.headers },
+      );
+      assert.equal(response.status, 200);
+      const next = Number(response.headers.get("X-Next-Check"));
+      const delay = i < 5 ? 1000 : 5000;
+      assert.ok(next >= start + delay && next <= Date.now() + delay);
+      const repeated = await m.mf.dispatchFetch(
+        m.origin + `/api/attempts/${c.input.key}/confirmation`,
+        { headers: c.headers },
+      );
+      assert.equal(repeated.status, 429);
+    }
+    assert.equal(
+      m.calls.length,
+      calls,
+      "status checks do not read the provider",
+    );
+    assert.deepEqual(
+      await m.db
+        .prepare("SELECT deadline_ms,intent_hash FROM attempts WHERE id=?")
+        .bind(c.input.key)
+        .first(),
+      original,
+    );
+    assert.equal(
+      (
+        await m.db
+          .prepare("SELECT confirmation_checks AS n FROM attempts WHERE id=?")
+          .bind(c.input.key)
+          .first()
+      ).n,
+      6,
+    );
+    await m.db
+      .prepare(
+        "UPDATE attempts SET confirmation_checks=120,confirmation_next_ms=0 WHERE id=?",
+      )
+      .bind(c.input.key)
+      .run();
+    const exhausted = await m.mf.dispatchFetch(
+      m.origin + `/api/attempts/${c.input.key}/confirmation`,
+      { headers: c.headers },
+    );
+    assert.equal(exhausted.status, 429);
+  } finally {
+    await m.close();
+  }
+});

@@ -149,6 +149,9 @@ export function bookingFromReceipt(receipt: z.infer<typeof receiptSchema>) {
   });
   const booking: Booking = {
     reference: receipt.attemptId,
+    ...(receipt.providerReferences
+      ? { providerReferences: receipt.providerReferences }
+      : {}),
     createdAt: new Date(receipt.createdAtMs).toISOString(),
     totalCents: receipt.totalMinor,
     slots,

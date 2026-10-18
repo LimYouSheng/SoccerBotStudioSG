@@ -1,5 +1,17 @@
 # SoccerBotStudio — Service Contracts
 
+## Single-booking latency contract — 19 October 2026 SGT
+
+Owner requests4–5 seconds for Details→Review and payment confirmation; this remains an acceptance target, not an achieved result. Public token retention is50 minutes against SimplyBook's documented one-hour public-token lifetime (https://help.simplybook.me/wiki/User_API_guide). Admin retention remains60 seconds pending account-specific expiry evidence. Account identity/plan reads may be reused for30 seconds, capped by both token expiries. Concurrent refreshes coalesce; observed authentication rejection invalidates cached identity/tokens without replaying a read or write. Credentials/tokens remain only in the account coordinator's memory.
+
+After single booking creation/comment handling binds its association, the authenticated native-status endpoint may report verifying while the original holding POST continues. The browser polls this D1-only milestone at most30 times, one second apart, stops at the milestone/completion/abort, and opens read-only Review with payment disabled. It never creates a second booking request. Only successful authoritative booking/invoice verification enables payment. Failure retains the same attempt and recovery evidence. Batch retains existing behavior and is not declared atomic.
+
+Independent single-booking and invoice reads overlap; both must settle and validate. Each hold observation is atomically appended as it arrives, irrespective of order. Admission pacing is serialized at reservation time to avoid simultaneous waiters admitting together; physical requests can overlap within the unchanged two-request/four-start limits. No provider retry, rate-limit increase, shared15-minute cache, or removed write-boundary check.
+
+Payment return uses a neutral Booking confirmation layout with protected summary and loading indicator. Webhook receipt or recorded payment alone never means Booking confirmed. The first five eligible ongoing confirmation checks schedule their next check after1 second; subsequent checks use the existing5 seconds. The server's120-check cap and original deadline remain authoritative and shared across reloads/tabs. No provider call is added by a confirmation poll. Saved confirmed receipts retain their original verification time and fresh export authorization.
+
+Protected receipt metadata adds SimplyBook booking IDs and invoice ID from the immutable attempt association with matching session count; old saved receipts without these optional display fields remain readable. The customer-facing UUID is labelled SoccerBot reference. Do not equate provider numeric IDs with booking codes/formatted invoice numbers or fabricate absent values. No extra provider lookup is added to receipt rendering.
+
 ## Combined batch validation and owner conflict check — 19 October 2026 SGT
 
 Only ongoing combined customer holding uses per-session validation: session0 is checked before claiming dispatch and sessions1..N immediately before their respective writes. Each still verifies provider identity/allowance, service/instructor relationship, exact price, hours/lead and availability, with unchanged consent, owner/grant, immutable intent, time/deadline and effect fencing. No duplicate whole-cart scan precedes later checks. Historical split and finite paths keep their previous preflight contract. Native batch creation/closure and complete booking/invoice unpaid readback remain required before Review. No post-hold selected-slot query is added.

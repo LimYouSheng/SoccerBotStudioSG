@@ -1,5 +1,13 @@
 # SoccerBotStudio — Journey
 
+## Latency review, main failure and comment reconciliation — 19 October 2026 SGT
+
+PR51/52 exact PR gates passed and both were owner-authorized merged. PR51 main39149518497 subsequently failed one tablet dismissal-retry case:53/54 live runs passed, both other gates passed, Cloudflare skipped. Offline trace shows the retry click began at the end of the30-second case budget; it did not reach a second dismissal request. Preserve this failure while validating the faster path on fresh CI.
+
+The optimization candidate initially failed17/365 Worker tests. Parallel read admission exposed an actual race: two waiters observed the same latest start and exceeded pacing. Reservation pacing now queues independently of physical responses. Expiry fixtures now cross the actual30-second identity boundary; hold-evidence tests assert both durable observations without assuming their response order. No production limits or test timeouts were raised.
+
+Owner reported repeated comments and irreconcilable references. Bounded read-only D1 showed four separately claimed comments for four bookings; SimplyBook booking-specific reads returned distinct correct comments. Owner confirmed expanded comments displays all booking history, so no remote/source comment mutation is needed. Receipt presentation now distinguishes the internal UUID and stored provider booking/invoice IDs; provider booking codes and invoice display numbers remain separate identifiers. No browser, booking, payment or historical cleanup performed by Codex.
+
 ## Partial-batch recovery CI repair — 19 October 2026 SGT
 
 PR52 eb4573c passes frontend and backend gates. Live-email passes58/63; later-conflict reload returns native_snapshot_unavailable because the rejected session never acquires a validated offer snapshot. Recovery now restores that session from immutable intent with explicitly requested-session labels, only for recovery_required without a payable hold. Prepared and held snapshots still require validated offers. Actual Worker regression checks all three batch outcomes through the protected current endpoint, retaining original identity and creation counts.

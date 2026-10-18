@@ -248,7 +248,7 @@ export class ProviderSession {
       control,
       request,
       signal,
-    );
+    ).catch((error: unknown) => this.rejectAuthentication(error));
     return { body, receivedAtMs: Date.now() };
   }
 
@@ -333,8 +333,16 @@ export class ProviderSession {
           }
         : control,
       request,
-    );
+    ).catch((error: unknown) => this.rejectAuthentication(error));
     return { body, receivedAtMs: Date.now() };
+  }
+
+  private rejectAuthentication(error: unknown): never {
+    if (error instanceof ApiError && error.code === "provider_auth_failed") {
+      this.tokens.clear();
+      this.cachedIdentity = undefined;
+    }
+    throw error;
   }
 
   private async token(
@@ -369,8 +377,13 @@ export class ProviderSession {
         throw new ApiError(503, "provider_auth_representation_unknown");
       if (!control.complete(family, claim.claim, claim.generation))
         throw new ApiError(503, "provider_auth_stale");
-      // Local conservative retention, not an assertion of provider expiry.
-      this.tokens.set(family, { value, until: Date.now() + 60000 });
+      // Public tokens have a documented one-hour lifetime; retain for 50
+      // minutes. Admin lifetime can be account-configured, so keep its
+      // conservative minute until an explicit expiry contract is verified.
+      this.tokens.set(family, {
+        value,
+        until: Date.now() + (family === "public" ? 50 * 60000 : 60000),
+      });
       return value;
     };
     const pending = authenticate();
@@ -441,7 +454,7 @@ export class ProviderSession {
       this.cachedIdentity = {
         value,
         until: Math.min(
-          Date.now() + 5000,
+          Date.now() + 30000,
           this.tokens.get("public")!.until,
           this.tokens.get("admin")!.until,
         ),

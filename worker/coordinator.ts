@@ -50,6 +50,20 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
   private provider = new ProviderSession();
   private calendarReads = new NativeCalendarReads();
   private providerQueue = new ProviderQueue();
+  private admissionTurn: Promise<void> = Promise.resolve();
+  private async reserveInOrder<T>(reserve: () => Promise<T>): Promise<T> {
+    const previous = this.admissionTurn;
+    let release!: () => void;
+    this.admissionTurn = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await previous;
+    try {
+      return await reserve();
+    } finally {
+      release();
+    }
+  }
   private get sql() {
     return instrumentStorage(this.ctx.storage.sql);
   }
@@ -173,30 +187,32 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         });
       },
       reserve: async () =>
-        measure("coordinator", async () => {
-          if (
-            (customer && liveCustomerAccess(this.env)) ||
-            (financial && recovery && hitpayRecoveryEnabled(this.env))
-          ) {
-            const last =
-              this.sql
-                .exec<{ latest: number | null }>(
-                  "SELECT MAX(started_ms) AS latest FROM admissions",
-                )
-                .one().latest ?? 0;
-            const delay = Math.max(0, last + 300 - Date.now());
-            if (delay)
-              await new Promise((resolve) => setTimeout(resolve, delay));
-          }
-          const admitted = this.admit(recovery, customer, financial);
-          if (!admitted.allowed || !admitted.id)
-            throw new ApiError(
-              503,
-              admitted.reason || "provider_admission_denied",
-            );
-          await measure("storage", () => this.ctx.storage.sync());
-          return admitted.id;
-        }),
+        this.reserveInOrder(() =>
+          measure("coordinator", async () => {
+            if (
+              (customer && liveCustomerAccess(this.env)) ||
+              (financial && recovery && hitpayRecoveryEnabled(this.env))
+            ) {
+              const last =
+                this.sql
+                  .exec<{ latest: number | null }>(
+                    "SELECT MAX(started_ms) AS latest FROM admissions",
+                  )
+                  .one().latest ?? 0;
+              const delay = Math.max(0, last + 300 - Date.now());
+              if (delay)
+                await new Promise((resolve) => setTimeout(resolve, delay));
+            }
+            const admitted = this.admit(recovery, customer, financial);
+            if (!admitted.allowed || !admitted.id)
+              throw new ApiError(
+                503,
+                admitted.reason || "provider_admission_denied",
+              );
+            await measure("storage", () => this.ctx.storage.sync());
+            return admitted.id;
+          }),
+        ),
       finish: (id, cooldown, reason) => this.finish(id, cooldown, reason),
       claim: (family) => {
         const row = this.sql

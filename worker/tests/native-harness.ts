@@ -94,7 +94,7 @@ const harness = {
       },
       finish: () => {
         finished++;
-        if (finished === input.fixtureExpireAfter) clockOffset += 6000;
+        if (finished === input.fixtureExpireAfter) clockOffset += 31000;
       },
       claim: () => ({ claim: "synthetic-claim", generation: 1 }),
       complete: () => true,
@@ -440,7 +440,7 @@ const harness = {
           if (input.action === "session-expired") {
             const provider = new ProviderSession();
             await provider.identity(admittedEnv, control);
-            clockOffset += 6000;
+            clockOffset += 31000;
             result = await provider.nativeRead(admittedEnv, control, {
               kind: "catalogue-services",
             });

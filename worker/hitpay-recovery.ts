@@ -122,6 +122,7 @@ export async function recoverHitpay(
       try {
         return (
           await readNativeAttempt({
+            parallelSingle: true,
             paymentProcessor: scope.externalProcessor,
             scope: {
               attemptId: id,

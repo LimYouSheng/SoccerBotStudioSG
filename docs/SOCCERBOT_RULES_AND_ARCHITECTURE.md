@@ -1,5 +1,13 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Verification latency ownership — 19 October 2026 SGT
+
+ProviderSession owns bounded public-token and identity reuse, refresh coalescing and authentication invalidation. The account coordinator serializes admission pacing/reservation only; the native adapter may overlap the two independent reads for a single booking while retaining both observations and all authority checks. Existing admission limits, unknown-write evidence and original attempt identity remain unchanged.
+
+The holding POST remains the single creation owner. A bounded protected D1 status read exposes creation progress only after an association exists for one session. BookingProvider may render locked Review during that original request; payment is disabled until authoritative hold completion. A failed readback goes to recovery under the same attempt, never another create. Payment return's pending confirmation layout makes no verified-booking claim until canonical evidence passes.
+
+Confirmation owns the shared first-five fast polling allowance and unchanged global cap/deadline. Receipt-data owns provider ID display from stored associations; presentation distinguishes SoccerBot UUID from SimplyBook IDs. Comment writes retain their existing per-attempt/session effect claims; the owner's apparent duplication was the expanded provider comment-history panel, not duplicated writes.
+
 ## Combined batch and location UI ownership — 19 October 2026 SGT
 
 The native checkout owner enables per-session validation only for ongoing combined holds. Orchestration validates the first item before its atomic claim and later items once at their write boundary. Keep the historical whole-cart mode for split/finite callers. Partial/unknown effects retain the original attempt and prevent finalization/payment; no automatic rollback, booking replay or claim of SimplyBook atomicity follows. Readback and protected recovery remain authoritative.

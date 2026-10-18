@@ -1593,6 +1593,7 @@ test("provider identity renewal keeps native reads valid across token retention 
     SIMPLYBOOK_DEV_ADMIN_API_USER_KEY: "synthetic-admin-key",
   };
   for (const crossesDuringIdentity of [false, true]) {
+    env.CAMPAIGN_END_MS = String(now + 3600000);
     const start = now;
     const calls = [];
     let reserved = 0;
@@ -1625,6 +1626,16 @@ test("provider identity renewal keeps native reads valid across token retention 
     const session = new ProviderSession();
     await session.identity(env, control);
     assert.equal(calls.length, 4);
+    now = start + 6000;
+    await Promise.all([
+      session.identity(env, control),
+      session.identity(env, control),
+    ]);
+    assert.equal(
+      calls.length,
+      4,
+      "reuse identity beyond five seconds without provider calls",
+    );
     now = start + 59000;
     slowIdentity = crossesDuringIdentity;
     await session.identity(env, control);
@@ -1636,7 +1647,7 @@ test("provider identity renewal keeps native reads valid across token retention 
       kind: "catalogue-services",
     });
     assert.deepEqual(response.body, fixtures().services);
-    assert.equal(calls.filter((path) => path === "/login").length, 2);
+    assert.equal(calls.filter((path) => path === "/login").length, 1);
     assert.equal(calls.filter((path) => path === "/admin/auth").length, 2);
     assert.equal(reserved, calls.length);
     assert.equal(finished, calls.length);
@@ -1650,6 +1661,29 @@ test("provider identity renewal keeps native reads valid across token retention 
       calls.length,
       before,
       "nativeRead never reauthenticates implicitly",
+    );
+    now = start + 50 * 60000 + 1;
+    slowIdentity = false;
+    await session.identity(env, control);
+    assert.equal(calls.filter((path) => path === "/login").length, 2);
+    const beforeRejection = calls.length;
+    t.mock.method(
+      globalThis,
+      "fetch",
+      async () => new Response(null, { status: 401 }),
+    );
+    await assert.rejects(
+      session.nativeRead(env, control, { kind: "catalogue-services" }),
+      /provider_auth_failed/,
+    );
+    await assert.rejects(
+      session.nativeRead(env, control, { kind: "catalogue-services" }),
+      /provider_identity_expired/,
+    );
+    assert.equal(
+      reserved,
+      beforeRejection + 1,
+      "rejected auth invalidates cache without an implicit retry",
     );
   }
 });

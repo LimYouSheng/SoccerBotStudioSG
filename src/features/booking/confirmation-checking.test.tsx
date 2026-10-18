@@ -196,3 +196,30 @@ it("hides the native payment capability at its expiry without claiming payment c
     screen.getByRole("status", { name: "Checking your payment and booking…" }),
   ).toBeVisible();
 });
+
+it("uses a server-granted early check without extending the deadline or resetting the shared count", async () => {
+  vi.useFakeTimers();
+  const deadline = Date.now() + 600000;
+  const fetch = vi.fn(async () =>
+    Response.json(
+      { status: "pending", reason: "payment_verification_pending" },
+      {
+        headers: {
+          "X-Next-Check": String(Date.now() + 1000),
+          "X-Checking-Deadline": String(deadline),
+        },
+      },
+    ),
+  );
+  vi.stubGlobal("fetch", fetch);
+  const hook = renderHook(() => useConfirmationChecking(id));
+  await act(async () => {});
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1000);
+  });
+  expect(fetch).toHaveBeenCalledTimes(2);
+  const saved = JSON.parse(localStorage.getItem(`soccerbot-checking:${id}`)!);
+  expect(saved.deadline).toBe(deadline);
+  expect(saved.count).toBe(2);
+  hook.unmount();
+});

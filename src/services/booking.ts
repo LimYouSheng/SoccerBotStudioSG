@@ -287,7 +287,11 @@ export function defineBookingService(adapter: BookingService): BookingService {
         supported("pay");
         const request = decode(payInput, input, true);
         const previous = structuredClone(request.attempt);
-        const result = await adapter.pay({ ...request, signal: input.signal });
+        const result = await adapter.pay({
+          ...request,
+          signal: input.signal,
+          onHoldCreated: input.onHoldCreated,
+        });
         if (request.holding && adapter.mode === "live") {
           const held = resultAttempt(result, previous.draft, previous.id);
           if (!(
@@ -564,7 +568,7 @@ export const liveBookingService: BookingService = defineBookingService({
       booking: null,
     };
   },
-  async pay({ attempt, signal, holding }) {
+  async pay({ attempt, signal, holding, onHoldCreated }) {
     if (attempt.draft.slots.some((slot) => !slot.native)) return unavailable();
     nativeAttemptId.parse(attempt.id);
     if (
@@ -572,6 +576,70 @@ export const liveBookingService: BookingService = defineBookingService({
       attempt.draft.slots.some((slot) => !slot.native)
     )
       throw invalidResponse();
+    const progress = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const stop = () => {
+      clearTimeout(timer);
+      progress.abort();
+    };
+    signal?.addEventListener("abort", stop, { once: true });
+    let checks = 0;
+    const inspect = async () => {
+      if (progress.signal.aborted || signal?.aborted) return;
+      try {
+        const status = z
+          .object({ attemptId: nativeAttemptId, state: z.string() })
+          .parse(
+            await nativeRequest(
+              `/api/booking/native/${attempt.id}`,
+              "GET",
+              progress.signal,
+            ),
+          );
+        if (status.attemptId === attempt.id && status.state === "verifying") {
+          if (!progress.signal.aborted) onHoldCreated?.();
+          return;
+        }
+      } catch {
+        /* Optional progress never changes the original write outcome. */
+      }
+      if (!progress.signal.aborted && ++checks < 30)
+        timer = setTimeout(() => void inspect(), 1000);
+    };
+    if (holding && attempt.draft.slots.length === 1 && onHoldCreated)
+      timer = setTimeout(() => void inspect(), 1000);
+    let raw: unknown;
+    try {
+      raw = await nativeRequest(
+        attempt.held
+          ? `/api/booking/hitpay/${attempt.id}`
+          : holding
+            ? `/api/booking/hold/${attempt.id}`
+            : `/api/booking/native/${attempt.id}`,
+        "POST",
+        signal,
+        attempt.held
+          ? { accepted: attempt.draft.accepted }
+          : holding
+            ? nativePrepareSchema.parse({
+                key: attempt.id,
+                contact: attempt.draft.contact,
+                accepted: attempt.draft.accepted,
+                holding: true,
+                sessions: attempt.draft.slots.map((slot) => ({
+                  serviceId: slot.native?.serviceId,
+                  instructorId: slot.instructor,
+                  startMs: Date.parse(`${slot.date}T${slot.start}:00+08:00`),
+                  players: attempt.draft.players,
+                  totalMinor: slot.native?.priceMinor,
+                })),
+              })
+            : undefined,
+      );
+    } finally {
+      stop();
+      signal?.removeEventListener("abort", stop);
+    }
     const result = z
       .object({
         attemptId: nativeAttemptId,
@@ -579,34 +647,7 @@ export const liveBookingService: BookingService = defineBookingService({
         paymentAvailable: z.boolean(),
         rejectedSessionIndex: z.number().int().min(0).max(11).optional(),
       })
-      .parse(
-        await nativeRequest(
-          attempt.held
-            ? `/api/booking/hitpay/${attempt.id}`
-            : holding
-              ? `/api/booking/hold/${attempt.id}`
-              : `/api/booking/native/${attempt.id}`,
-          "POST",
-          signal,
-          attempt.held
-            ? { accepted: attempt.draft.accepted }
-            : holding
-              ? nativePrepareSchema.parse({
-                  key: attempt.id,
-                  contact: attempt.draft.contact,
-                  accepted: attempt.draft.accepted,
-                  holding: true,
-                  sessions: attempt.draft.slots.map((slot) => ({
-                    serviceId: slot.native?.serviceId,
-                    instructorId: slot.instructor,
-                    startMs: Date.parse(`${slot.date}T${slot.start}:00+08:00`),
-                    players: attempt.draft.players,
-                    totalMinor: slot.native?.priceMinor,
-                  })),
-                })
-              : undefined,
-        ),
-      );
+      .parse(raw);
     if (result.attemptId !== attempt.id) throw invalidResponse();
     if (
       result.state === "restart_required" ||
@@ -626,11 +667,12 @@ export const liveBookingService: BookingService = defineBookingService({
       );
     }
     if (holding && result.state === "associated")
-      return { ...attempt, held: true, status: "ready" };
+      return { ...attempt, verifying: undefined, held: true, status: "ready" };
     // A response can never mark the browser paid. All ambiguous writes remain
     // under this attempt and the protected confirmation/recovery owner.
     return {
       ...attempt,
+      verifying: undefined,
       status: "checking",
       outcome: "pending",
       booking: null,

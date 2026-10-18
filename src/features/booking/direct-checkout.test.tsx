@@ -407,3 +407,58 @@ it("HitPay HTTP conflict preserves the hold and shows payment failure without se
   ]);
   expect(navigation.push).not.toHaveBeenCalled();
 });
+
+it("created single hold shows Review before readback and keeps payment disabled until verified", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-15T00:00:00Z"));
+  let complete!: (attempt: Attempt) => void;
+  let created: Attempt;
+  const pay = vi.fn<BookingService["pay"]>(({ attempt, onHoldCreated }) => {
+    created = attempt;
+    onHoldCreated?.();
+    return new Promise((resolve) => {
+      complete = resolve;
+    });
+  });
+  render(
+    <BookingProvider
+      bookingService={{
+        ...liveBookingService,
+        restore: undefined,
+        checkout: async ({ draft }) => ({
+          id,
+          draft,
+          status: "ready",
+          outcome: "pending",
+          checkUntil: 0,
+          booking: null,
+        }),
+        pay,
+        availability: async () => [],
+      }}
+    >
+      <Seed />
+      <BookingPage step="details" />
+    </BookingProvider>,
+  );
+  fireEvent.click(screen.getByText("Seed"));
+  await act(async () =>
+    fireEvent.click(screen.getByRole("button", { name: "Review booking" })),
+  );
+  expect(
+    screen.getByRole("heading", { name: "Review booking" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Verifying your reservation…" }),
+  ).toBeDisabled();
+  expect(
+    screen.queryByRole("link", { name: "Edit selections" }),
+  ).not.toBeInTheDocument();
+  expect(pay).toHaveBeenCalledTimes(1);
+  await act(async () => complete({ ...created!, held: true, status: "ready" }));
+  expect(
+    screen.queryByRole("button", { name: "Review booking" }),
+  ).not.toBeInTheDocument();
+  expect(navigation.replace).toHaveBeenCalledWith("/book/review/");
+  expect(pay).toHaveBeenCalledTimes(1);
+});

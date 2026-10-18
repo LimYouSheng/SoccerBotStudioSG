@@ -962,5 +962,29 @@
   {
     "file": "tests/live-email.spec.ts",
     "title": "real API exhausted browser checking window retains the original deadline and uncertain booking without payment"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "real API created hold opens pending Review before readback and enables payment only after verification"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "real API optimistic Review preserves the original attempt when booking readback fails"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "real API unpaid return shows the pending confirmation layout without claiming payment or allowing downloads"
+  },
+  {
+    "file": "src/services/async-booking.test.ts",
+    "title": "holding progress only accepts the matching server milestone and stops without replaying the write"
+  },
+  {
+    "file": "src/features/booking/direct-checkout.test.tsx",
+    "title": "created single hold shows Review before readback and keeps payment disabled until verified"
+  },
+  {
+    "file": "src/features/booking/confirmation-checking.test.tsx",
+    "title": "uses a server-granted early check without extending the deadline or resetting the shared count"
   }
 ]

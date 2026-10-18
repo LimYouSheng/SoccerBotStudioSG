@@ -1792,3 +1792,120 @@ test("real API exhausted browser checking window retains the original deadline a
     await stopMechanism(page, mechanism, transport);
   }
 });
+
+async function optimisticHold(page: Page, failReadback: boolean) {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const mechanism = await createBookingMechanism({
+    respond: async (call) => {
+      if (call.body?.method === "getBookingDetails") {
+        await gate;
+        if (failReadback) return new Response(null, { status: 503 });
+      }
+      return undefined;
+    },
+  });
+  const transport = await mechanismTransport(page, mechanism);
+  try {
+    await guestDetails(page, mechanism);
+    const result = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname.startsWith("/api/booking/hold/") &&
+        response.status() === 200,
+    );
+    await page
+      .getByRole("button", { name: "Review booking", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Review booking", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Verifying your reservation…" }),
+    ).toBeDisabled();
+    await expect(
+      page.getByRole("link", { name: "Edit selections", exact: true }),
+    ).toHaveCount(0);
+    expect(
+      await mechanism.db
+        .prepare("SELECT COUNT(*) AS n FROM hitpay_holds")
+        .first(),
+    ).toEqual({ n: 0 });
+    release();
+    expect(await (await result).json()).toMatchObject({
+      state: failReadback ? "recovery_required" : "associated",
+    });
+    await expect(page).toHaveURL(
+      failReadback ? /\/book\/payment\/$/ : /\/book\/review\/$/,
+    );
+    if (!failReadback) {
+      await page.getByRole("checkbox").check();
+      await expect(
+        page.getByRole("button", { name: "Continue to payment", exact: true }),
+      ).toBeEnabled();
+    } else
+      await expect(
+        page.getByRole("button", { name: "Continue to payment", exact: true }),
+      ).toHaveCount(0);
+    expect(
+      mechanism.calls.filter((call) => call.body?.method === "book"),
+    ).toHaveLength(1);
+    await assertNoPaymentOrConfirmation(page, mechanism);
+  } finally {
+    release();
+    await stopMechanism(page, mechanism, transport);
+  }
+}
+test("real API created hold opens pending Review before readback and enables payment only after verification", async ({
+  page,
+}) => {
+  await optimisticHold(page, false);
+});
+test("real API optimistic Review preserves the original attempt when booking readback fails", async ({
+  page,
+}) => {
+  await optimisticHold(page, true);
+});
+
+test("real API unpaid return shows the pending confirmation layout without claiming payment or allowing downloads", async ({
+  page,
+}) => {
+  const mechanism = await createBookingMechanism();
+  const transport = await mechanismTransport(page, mechanism);
+  try {
+    const { headers, attemptId } = await prepareBrowserAttempt(page, mechanism);
+    const held = await mechanism.mf.dispatchFetch(
+      mechanism.origin + `/api/booking/native/${attemptId}?hold=1`,
+      { method: "POST", headers },
+    );
+    expect(await held.json()).toMatchObject({ state: "associated" });
+    await page.goto(`/confirmation/?attempt=${attemptId}`);
+    await page
+      .getByRole("dialog", { name: "Get the SoccerBot Player App" })
+      .getByRole("button", { name: "Not now", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Booking confirmation", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("region", { name: "Current booking summary" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("status", {
+        name: "Checking your payment and booking…",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Booking confirmed", exact: true }),
+    ).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Download/ })).toHaveCount(0);
+    expect(
+      mechanism.calls.filter((call) => call.body?.method === "book"),
+    ).toHaveLength(1);
+    await assertNoPaymentOrConfirmation(page, mechanism);
+  } finally {
+    await stopMechanism(page, mechanism, transport);
+  }
+});
