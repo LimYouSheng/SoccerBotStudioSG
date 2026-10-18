@@ -50,6 +50,8 @@ const finalizedInvoice = z.strictObject({
 // admission. It does not establish provider acceptance or production readiness.
 export type BookingOperations = {
   validationMode?: "per-session";
+  // Native creation retains the raw receipt before normalization can fail.
+  retainsSessionReferences?: boolean;
   onFailure?: (error: unknown, sessionIndex?: number) => void;
   supported: boolean;
   hasRecoveryCapacity: (sessions: number) => Promise<boolean>;
@@ -173,16 +175,19 @@ export async function orchestrateBooking(
       throw new ApiError(409, "effect_not_claimed");
   };
   const observed = async (step: string, referenceId: string) => {
-    const result = await env.STATE.prepare(
-      "UPDATE session_effects SET outcome='observed',reference_id=? WHERE attempt_id=? AND step=? AND outcome='unknown' AND EXISTS (SELECT 1 FROM attempts WHERE id=? AND version=? AND state='dispatching')",
-    )
-      .bind(referenceId, id, step, id, fence)
-      .run();
+    const result =
+      operations.retainsSessionReferences && step.startsWith("session:")
+        ? undefined
+        : await env.STATE.prepare(
+            "UPDATE session_effects SET outcome='observed',reference_id=? WHERE attempt_id=? AND step=? AND outcome='unknown' AND EXISTS (SELECT 1 FROM attempts WHERE id=? AND version=? AND state='dispatching')",
+          )
+            .bind(referenceId, id, step, id, fence)
+            .run();
     // The native adapter can retain a receipt before business validation.
     // Observed effects are immutable: acknowledge the exact same reference
     // under the current fence, without rewriting or replacing that receipt.
     const retained =
-      result.meta.changes === 1 ||
+      result?.meta.changes === 1 ||
       (await env.STATE.withSession("first-primary")
         .prepare(
           "SELECT 1 FROM session_effects e JOIN attempts a ON a.id=e.attempt_id WHERE e.attempt_id=? AND e.step=? AND e.outcome='observed' AND e.reference_id=? AND a.version=? AND a.state='dispatching'",

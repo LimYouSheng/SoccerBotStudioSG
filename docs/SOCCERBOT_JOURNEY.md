@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Follow-up latency review and earlier Review — 19 October 2026 SGT
+
+Owner requests a full bottleneck pass together with duplicate reference acknowledgement removal, then explicitly asks to show Review after step3 of8 (comment), while readback continues. Source confirms progress previously waited for association persistence after comment handling. Reuse the existing observed comment receipt in the protected status query rather than adding another milestone write. Native raw-reference retention remains; remove the redundant orchestration update and retain exact-reference/fence acknowledgement. Join confirmation route/payment reads without changing the confirmation decision.
+
+Add a Worker regression for the pre-association comment milestone, unknown/mismatched comments, recovery, batch exclusion, ownership and payment blocking. Extend both actual-Worker browser optimistic Review cases to hold the comment response first and assert no premature Review, then retain readback-failure, disabled payment and no second-loader assertions. Browser execution remains CI/owner-operated. Initial default-sandbox Worker test exited before running cases; rerun using documented local-workerd network permission, preserving the original receipt. The initial snapshot fixture correctly hit immutable-association protection; seed independent snapshots instead of mutating prior evidence, and keep batch fixture totals consistent. The corrected focused regression passes. An isolated mutation restoring association-only progress fails with running instead of verifying, proving the regression detects the requested transition. Full verification and exact-source CI remain pending at this checkpoint; no provider booking/payment or deployment performed.
+
 ## Latest05 duplicated loading and measured delay — 19 October 2026 SGT
 
 The owner reports two loading phases and ineffective optimistic Review. Offline HAR confirms holding14.112s and first verifying response at about12.75s; earlier replies are running. The early status therefore gives only about1.36s in this sample. Cloudflare logs independently show14.098s HTTP /13.802s coordinator,11 provider operations accumulating8.234s and46 D1 operations accumulating5.882s. These spans overlap and cannot be summed into a serial breakdown; no precise creation/comment timestamp is established.

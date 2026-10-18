@@ -1803,8 +1803,20 @@ async function optimisticHold(page: Page, failReadback: boolean) {
   const created = new Promise<void>((resolve) => {
     readbackStarted = resolve;
   });
+  let releaseComment!: () => void;
+  let commentStarted!: () => void;
+  const commentGate = new Promise<void>((resolve) => {
+    releaseComment = resolve;
+  });
+  const commenting = new Promise<void>((resolve) => {
+    commentStarted = resolve;
+  });
   const mechanism = await createBookingMechanism({
     respond: async (call) => {
+      if (call.url.endsWith("/admin/bookings/701/comment")) {
+        commentStarted();
+        await commentGate;
+      }
       if (call.body?.method === "getBookingDetails") {
         readbackStarted();
         await gate;
@@ -1837,6 +1849,11 @@ async function optimisticHold(page: Page, failReadback: boolean) {
     await page
       .getByRole("button", { name: "Review booking", exact: true })
       .click();
+    await commenting;
+    await expect(
+      page.getByRole("heading", { name: "Review booking", exact: true }),
+    ).toHaveCount(0);
+    releaseComment();
     // Assert the creation milestone, not a five-second budget for preflight.
     // The original request stays blocked at readback throughout UI assertions.
     await created;
@@ -1897,6 +1914,7 @@ async function optimisticHold(page: Page, failReadback: boolean) {
     ).toHaveLength(1);
     await assertNoPaymentOrConfirmation(page, mechanism);
   } finally {
+    releaseComment();
     releaseNavigation();
     release();
     await stopMechanism(page, mechanism, transport);

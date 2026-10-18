@@ -34,6 +34,7 @@
   "combined batch hold uses one validation per item and retains partial or unknown creation without payment",
   "single hold exposes creation progress while independent readbacks are pending and payment remains blocked",
   "ongoing confirmation grants five fast stored-status checks while retaining the shared cap and deadline",
+  "single hold progress exposes the matched comment receipt before association without granting payment",
   "foundation valid bindings emit correlated storage evidence without secret markers",
   "foundation missing and malformed configuration denies before protected reads",
   "foundation foreign database and coordinator namespace identities fail closed",

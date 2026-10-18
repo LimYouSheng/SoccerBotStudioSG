@@ -92,6 +92,7 @@ export function nativeBookingOperations(options: {
   };
   return {
     supported: true,
+    retainsSessionReferences: true,
     hasRecoveryCapacity: options.hasRecoveryCapacity,
     async revalidate(value, context) {
       await matches(value, context.attemptId);
