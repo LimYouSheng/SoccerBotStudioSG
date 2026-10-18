@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## PR46 browser status assertion repair — 18 October 2026
+
+CI39120279412 passed frontend/backend gates and17/18 live-email browser cases. The new completed-exit journey passed desktop Chromium, phone WebKit and tablet WebKit. Phone WebKit's separate saved-contact test matched two status roles during loader teardown: the exact expected success paragraph and Saving contact details. Scope the original exact-text assertion to details-form and explicitly require the named saving status to disappear. Preserve actions, assertions, retry policy and timeouts; no production behavior change. Final exact-source CI remains required. No assistant browser execution.
+
 ## Completed booking exit and provider diagnostics — 18 October 2026
 
 Owner reports Make another booking returns to confirmation after successful payment and requests both explicit exit actions deactivate that routing. Source reset rejects restored checking attempts; hard navigation restores the same server-bound grant. Implement authenticated completed-grant archival, preserve original receipt snapshots and await success before navigation. A concurrent-exit regression exposed receipt details reading only active grants; extend the canonical receipt snapshot lookup to immutable completed history. Full frontend verification passed193 tests and build. The first full Worker run passed347/348: the isolated receipt fixture explicitly installed an older grant schema without the new history table. Apply0032 in that fixture; retain all paid evidence/ownership/revocation assertions. Focused exit and timeout diagnostics passed. Final Worker verification and CI remain pending.
