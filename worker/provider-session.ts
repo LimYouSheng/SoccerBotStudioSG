@@ -200,6 +200,7 @@ export class ProviderSession {
       throw new ApiError(503, "provider_access_disabled");
     if (
       request.kind === "invoice-external-payment" ||
+      request.kind === "booking-comment" ||
       request.kind === "book" ||
       request.kind === "payment-link" ||
       request.kind === "batch-create" ||
@@ -261,6 +262,7 @@ export class ProviderSession {
     if (
       ![
         "invoice-external-payment",
+        "booking-comment",
         "book",
         "batch-create",
         "batch-close",
@@ -286,6 +288,7 @@ export class ProviderSession {
     const secrets = this.bindScope(env);
     const family = [
       "invoice-external-payment",
+      "booking-comment",
       "payment-link",
       "webhook-create",
       "webhook-delete",

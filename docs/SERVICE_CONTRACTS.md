@@ -1,5 +1,11 @@
 # SoccerBotStudio — Service Contracts
 
+## Initial comments enabled in source — 18 October 2026
+
+Owner explicitly authorizes direct initial comment delivery, superseding the earlier conditional-write prerequisite for new bookings. After the current attempt's complete new booking/invoice set is validated, nativeBookingOperations claims native-comment:index and sends PUT /admin/bookings/{id}/comment with JSON comment through the existing admitted admin transport. The body comes only from the approved intent: Number of players, optional School / organisation, Preferred communication. The native studio count remains1.
+
+Each session adds one provider write; there is no preliminary comment read or automatic retry. An exact returned comment marks the annotation observed; rejection, lost response or mismatched echo leaves its independent effect unknown without changing the accepted booking/invoice. No new public mutation route, historical edits or payment/booking recreation. Read grants and financial-recovery scope cannot dispatch this operation. Existing identity/account/consent/price/capacity/deadline guards remain. No latency improvement or live permission/UI acceptance is claimed from isolated tests.
+
 ## Comment-delivery audit and HitPay handoff — 18 October 2026
 
 Owner reports all three booking details absent in SimplyBook Comments. Source confirms nativeBookingComment is used only for prebooking review; native-adapter and provider-transport never dispatch a comment write. Player/school were already formatted, but communication method was omitted. Add the immutable contact's Email/Phone call/WhatsApp label to the formatter and test all labels, optional school, player range and injection rejection. This does not fix delivery and must not be presented as live acceptance.

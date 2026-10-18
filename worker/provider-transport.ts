@@ -191,6 +191,7 @@ export type NativeRequest =
       evidenceObservedAtMs: number;
     }
   | { kind: "invoice-external-payment"; invoiceId: string; processor: string }
+  | { kind: "booking-comment"; bookingId: string; comment: string }
   | { kind: "invoice-read"; invoiceId: string }
   | { kind: "payment-link"; invoiceId: string };
 export type ProviderSecrets = {
@@ -299,6 +300,22 @@ export async function providerRequest(
       break;
     case "native": {
       if (!native) throw new ApiError(503, "provider_operation_unavailable");
+      if (native.kind === "booking-comment") {
+        url =
+          "https://user-api-v2.simplybook.me/admin/bookings/" +
+          providerId(native.bookingId) +
+          "/comment";
+        method = "PUT";
+        body = JSON.stringify({
+          comment: z
+            .string()
+            .min(1)
+            .max(512)
+            .refine((value) => !/[\x00-\x09\x0b-\x1f\x7f]/.test(value))
+            .parse(native.comment),
+        });
+        break;
+      }
       if (native.kind === "webhook-create") {
         const origin = z
           .literal("https://soccerbot-dev.limyousheng-94.workers.dev")

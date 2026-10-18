@@ -51,7 +51,9 @@ before(async () => {
       },
       serviceBindings: { ASSETS: () => new Response("synthetic") },
       outboundService: async (request) => {
-        const body = request.method === "POST" ? await request.json() : null;
+        const body = ["POST", "PUT"].includes(request.method)
+          ? await request.json()
+          : null;
         calls.push({ url: request.url, method: request.method, body });
         return reply
           ? reply(request, body)
@@ -147,7 +149,12 @@ function runtimeSlot(data, startMs) {
     invoice.lines[0].bookings[0].end_datetime = wall(startMs + 50 * 60000);
   }
 }
-async function prepared(multi = false, guest = false, finite = false) {
+async function prepared(
+  multi = false,
+  guest = false,
+  finite = false,
+  contact = {},
+) {
   const res = await mf.dispatchFetch(origin + "/api/access", {
     method: "POST",
     headers: { origin },
@@ -161,6 +168,7 @@ async function prepared(multi = false, guest = false, finite = false) {
       .first()
   ).owner_id;
   const data = input(false);
+  Object.assign(data.scope.intent.contact, contact);
   data.now = Date.now();
   runtimeSlot(
     data,
@@ -483,6 +491,39 @@ test("native fixed requests reserve each dispatch and reject malformed signature
     );
     assert.equal(calls.at(-1).method, "GET");
   }
+  const comment =
+    "Number of players: 3\nSchool / organisation: Synthetic School\nPreferred communication: WhatsApp";
+  reply = () => Response.json({ comment });
+  assert.equal(
+    (
+      await call("transport", {
+        operation: { kind: "booking-comment", bookingId: "701", comment },
+      })
+    ).status,
+    200,
+  );
+  assert.deepEqual(calls.at(-1), {
+    url: "https://user-api-v2.simplybook.me/admin/bookings/701/comment",
+    method: "PUT",
+    body: { comment },
+  });
+  for (const patch of [
+    { bookingId: "../701" },
+    { comment: "bad\u0000comment" },
+  ]) {
+    const before = calls.length;
+    const invalid = await call("transport", {
+      operation: {
+        kind: "booking-comment",
+        bookingId: "701",
+        comment,
+        ...patch,
+      },
+    });
+    assert.equal(invalid.reserved, 0);
+    assert.equal(calls.length, before);
+  }
+  reply = undefined;
   const bad = await call("transport", {
     operation: { kind: "booking-read", bookingId: "701", signature: "invalid" },
   });
@@ -524,7 +565,11 @@ test("native orchestration consumes one booking response and cannot replay lost 
   const data = await prepared();
   const result = await call("orchestrate", data);
   assert.equal(result.result.state, "associated");
-  assert.equal(result.requests, 1);
+  assert.equal(result.requests, 2);
+  assert.deepEqual(
+    result.sent.map((x) => x.kind),
+    ["book", "booking-comment"],
+  );
   assert.deepEqual(result.sent[0].client, {
     name: data.scope.intent.contact.name,
     email: data.scope.intent.contact.email,
@@ -849,7 +894,14 @@ test("native batch closure validates the complete invoice independently of alloc
     assert.equal(first.result.state, "associated", JSON.stringify(first));
     assert.deepEqual(
       first.sent.map((x) => x.kind),
-      ["batch-create", "book", "book", "batch-close"],
+      [
+        "batch-create",
+        "book",
+        "book",
+        "batch-close",
+        "booking-comment",
+        "booking-comment",
+      ],
     );
     const row = await db
       .prepare("SELECT association_json FROM attempts WHERE id=?")
@@ -934,7 +986,14 @@ test("native batch reserves once finalizes all sessions and cannot repeat across
   assert.equal(first.result.state, "associated");
   assert.deepEqual(
     first.sent.map((x) => x.kind),
-    ["batch-create", "book", "book", "batch-close"],
+    [
+      "batch-create",
+      "book",
+      "book",
+      "batch-close",
+      "booking-comment",
+      "booking-comment",
+    ],
   );
   assert.equal(first.sent[1].batchId, "601");
   assert.equal(first.sent[2].batchId, "601");
@@ -953,6 +1012,8 @@ test("native batch reserves once finalizes all sessions and cannot repeat across
       "native-batch",
       "native-booking-key:0",
       "native-booking-key:1",
+      "native-comment:0",
+      "native-comment:1",
       "session:0",
       "session:1",
     ],
@@ -960,6 +1021,37 @@ test("native batch reserves once finalizes all sessions and cannot repeat across
   assert.ok(effects.every((x) => x.outcome === "observed"));
   assert.equal((await call("orchestrate", data)).requests, 0);
   assert.equal((await call("stored-signature", data)).status, 200);
+  assert.deepEqual(
+    first.sent
+      .filter((x) => x.kind === "booking-comment")
+      .map((x) => x.bookingId),
+    ["701", "702"],
+  );
+  for (const comment of first.sent.filter(
+    (x) => x.kind === "booking-comment",
+  )) {
+    assert.match(comment.comment, /Number of players: /);
+    assert.match(comment.comment, /Preferred communication: Email/);
+  }
+  const lost = await prepared();
+  const uncertain = await call("orchestrate", {
+    ...lost,
+    scenario: "comment-lost",
+  });
+  assert.equal(uncertain.result.state, "associated");
+  assert.equal(uncertain.sent.filter((x) => x.kind === "book").length, 1);
+  assert.equal(
+    uncertain.sent.filter((x) => x.kind === "booking-comment").length,
+    1,
+  );
+  const retained = await db
+    .prepare(
+      "SELECT outcome FROM session_effects WHERE attempt_id=? AND step='native-comment:0'",
+    )
+    .bind(lost.scope.attemptId)
+    .first();
+  assert.equal(retained.outcome, "unknown");
+  assert.equal((await call("orchestrate", lost)).requests, 0);
 });
 test("native batch receipts select the unique new booking from the complete unordered retained set", async () => {
   for (const reverse of [false, true]) {
@@ -975,7 +1067,14 @@ test("native batch receipts select the unique new booking from the complete unor
     assert.equal(result.result.state, "associated", JSON.stringify(result));
     assert.deepEqual(
       result.sent.map((request) => request.kind),
-      ["batch-create", "book", "book", "batch-close"],
+      [
+        "batch-create",
+        "book",
+        "book",
+        "batch-close",
+        "booking-comment",
+        "booking-comment",
+      ],
     );
     const row = await db
       .prepare("SELECT association_json FROM attempts WHERE id=?")
@@ -1111,7 +1210,15 @@ test("native missing batch echoes retain the created ID signature and exact fina
       const result = await call("orchestrate", { ...data, batchReceipts });
       assert.deepEqual(
         result.sent.map((r) => r.kind),
-        ["batch-create", "book", "book", "batch-close"],
+        [
+          "batch-create",
+          "book",
+          "book",
+          "batch-close",
+          ...(finalState === "valid"
+            ? ["booking-comment", "booking-comment"]
+            : []),
+        ],
         JSON.stringify(result),
       );
       for (const request of result.sent.filter(
@@ -1119,7 +1226,7 @@ test("native missing batch echoes retain the created ID signature and exact fina
       ))
         assert.equal(request.batchId, "601");
       assert.equal(
-        result.sent.at(-1).signature,
+        result.sent.find((r) => r.kind === "batch-close").signature,
         createHash("md5")
           .update("601synthetic-batch-hashsynthetic-signing-secret")
           .digest("hex"),
@@ -1208,7 +1315,14 @@ test("native guest batch binds only the new client receipt and signs later sessi
   assert.equal(JSON.parse(row.association_json).nativeCustomerId, "51");
   assert.deepEqual(
     first.sent.map((x) => x.kind),
-    ["batch-create", "book", "book", "batch-close"],
+    [
+      "batch-create",
+      "book",
+      "book",
+      "batch-close",
+      "booking-comment",
+      "booking-comment",
+    ],
   );
   assert.equal(
     (await call("normalize", data)).result.observation.invoice.customerId,
@@ -1298,6 +1412,11 @@ test("native finite grant rejects absent wrong revision changed intent and expir
 
 function nativeProviderReply(data, wall) {
   return async (request, body) => {
+    if (/\/admin\/bookings\/\d+\/comment$/.test(request.url)) {
+      assert.equal(request.method, "PUT");
+      assert.equal(request.headers.get("X-Token"), "synthetic-admin-token");
+      return Response.json({ comment: body.comment });
+    }
     if (request.url.endsWith("/admin/auth"))
       return Response.json({ token: "synthetic-admin-token" });
     if (request.url.endsWith("/admin/company/info"))
@@ -1346,7 +1465,10 @@ function nativeProviderReply(data, wall) {
 }
 
 test("native finite checkout composes fresh checks one booking protected payment and replay prevention", async () => {
-  const data = await prepared(false, true, true);
+  const data = await prepared(false, true, true, {
+    academy: "Synthetic School",
+    contactMethod: "whatsapp",
+  });
   await grantNative(data);
   const wall = new Date(
     data.scope.intent.sessions[0].startMs + 8 * 3600000,
@@ -1363,6 +1485,12 @@ test("native finite checkout composes fresh checks one booking protected payment
     assert.equal(result.result.paymentAvailable, true);
     const sent = calls.slice(before);
     assert.equal(sent.filter((call) => call.body?.method === "book").length, 1);
+    const comments = sent.filter((call) => call.url.endsWith("/comment"));
+    assert.equal(comments.length, 1);
+    assert.equal(
+      comments[0].body.comment,
+      "Number of players: 1\nSchool / organisation: Synthetic School\nPreferred communication: WhatsApp",
+    );
     assert.equal(
       sent.filter((call) => call.url.endsWith("/payment-link")).length,
       1,
@@ -1683,7 +1811,15 @@ test("native batch accepts pending cart receipts but requires a complete invoice
     });
     assert.deepEqual(
       result.sent.map((r) => r.kind),
-      ["batch-create", "book", "book", "batch-close"],
+      [
+        "batch-create",
+        "book",
+        "book",
+        "batch-close",
+        ...(finalState === "valid"
+          ? ["booking-comment", "booking-comment"]
+          : []),
+      ],
       JSON.stringify(result),
     );
     assert.equal(
@@ -1739,7 +1875,15 @@ test("native batch permits unavailable interim payment flags only with strict fi
       const result = await call("orchestrate", { ...data, batchReceipts });
       assert.deepEqual(
         result.sent.map((r) => r.kind),
-        ["batch-create", "book", "book", "batch-close"],
+        [
+          "batch-create",
+          "book",
+          "book",
+          "batch-close",
+          ...(finalState === "valid"
+            ? ["booking-comment", "booking-comment"]
+            : []),
+        ],
         JSON.stringify(result),
       );
       assert.equal(

@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## New-booking comment delivery — 18 October 2026
+
+Owner explicitly directs sending the comment without the earlier conditional-update prerequisite. For each newly created validated booking, write the immutable session player count, optional school/organisation and approved communication label once through the supported admin comment endpoint. This decision supersedes the earlier preservation-based delivery block for initial comments. No historical backfill, intake fields or booking/payment replay. The annotation has its own durable effect and remains non-blocking; uncertain writes are retained, never resent automatically.
+
 ## HitPay navigation loading and missing booking comments — 18 October 2026
 
 Keep the full-page SoccerBot loader and duplicate-operation guard active after assigning the trusted HitPay URL, until the document is replaced. Starting browser navigation is not completion; the review form must not reappear during the handoff. Request failures still release loading through the existing error path.

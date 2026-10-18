@@ -159,6 +159,14 @@ export async function createBookingMechanism() {
             url.hostname,
           )
         ) {
+          if (
+            /^\/admin\/bookings\/\d+\/comment$/.test(url.pathname) &&
+            request.method === "PUT"
+          ) {
+            assert.match(body.comment, /^Number of players: [1-4]/);
+            assert.match(body.comment, /Preferred communication: /);
+            return Response.json({ comment: body.comment });
+          }
           if (url.pathname === "/admin/auth")
             return Response.json({ token: "synthetic-admin-token" });
           if (url.pathname === "/admin/company/info")
