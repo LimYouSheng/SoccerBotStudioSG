@@ -320,6 +320,7 @@
   "shared refresh and token generation claims reject stale completion",
   "orchestration withholds all writes when native contracts or recovery capacity are unavailable",
   "orchestration preflights the complete cart before any effect and preserves selection on failure",
+  "single-session orchestration validates once and preserves conflict fencing and unknown effects",
   "orchestration associates every session and invoice once without enabling payment",
   "orchestration retains partial accepted and unknown sessions without replacement or finalization",
   "orchestration rechecks exact price and revoked access before each session write",

@@ -872,6 +872,61 @@ test("orchestration preflights the complete cart before any effect and preserves
     );
   }
 });
+test("single-session orchestration validates once and preserves conflict fencing and unknown effects", async () => {
+  const a = await prepared();
+  const success = await orchestrate(a, "complete");
+  assert.deepEqual(success.calls, ["validate:0", "create:0", "finalize"]);
+  assert.equal(success.result.state, "associated");
+  assert.deepEqual((await orchestrate(a, "complete")).calls, []);
+  for (const [scenario, state] of [
+    ["single-conflict", "selection_unavailable"],
+    ["single-price", "restart_required"],
+    ["single-unavailable", "prerequisites_unavailable"],
+  ]) {
+    const b = await prepared();
+    const rejected = await orchestrate(b, scenario);
+    assert.deepEqual(rejected.calls, ["validate:0"]);
+    assert.deepEqual(rejected.result, {
+      state,
+      rejectedSessionIndex: 0,
+      paymentAvailable: false,
+    });
+    assert.deepEqual(await effects(b), []);
+    assert.equal(
+      (
+        await db
+          .prepare("SELECT state FROM attempts WHERE id=?")
+          .bind(b.id)
+          .first()
+      ).state,
+      "prepared",
+    );
+  }
+  const revoked = await prepared();
+  const denied = await orchestrate(revoked, "single-revoke");
+  assert.equal(denied.result.state, "recovery_required");
+  assert.deepEqual(denied.calls, ["validate:0"]);
+  assert.deepEqual(await effects(revoked), []);
+  const concurrent = await prepared();
+  const outcomes = await Promise.all([
+    orchestrate(concurrent, "complete"),
+    orchestrate(concurrent, "complete"),
+  ]);
+  assert.equal(
+    outcomes.flatMap((x) => x.calls).filter((x) => x === "create:0").length,
+    1,
+  );
+  assert.equal((await effects(concurrent)).length, 2);
+  const unknown = await prepared();
+  assert.equal(
+    (await orchestrate(unknown, "single-unknown")).result.state,
+    "recovery_required",
+  );
+  assert.deepEqual(await effects(unknown), [
+    { step: "session:0", outcome: "unknown", reference_id: null },
+  ]);
+  assert.deepEqual((await orchestrate(unknown, "complete")).calls, []);
+});
 test("orchestration associates every session and invoice once without enabling payment", async () => {
   const a = await multiAttempt(),
     r = await orchestrate(a, "complete");

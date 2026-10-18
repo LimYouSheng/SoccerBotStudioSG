@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Single-session booking validation optimization — 18 October 2026
+
+Owner chooses single-session optimization first; multi-session atomicity testing remains deferred. Refreshed main6b8555a includes merged PR43. New isolated branch preserves all confirmation/loading work. A new workerd regression against unchanged orchestration reproduces validate:0 twice before create:0/finalize. Consolidate the first full validation and singleton write validation, retaining the atomic dispatch claim and local authority/time/effect guards between validation and creation. For multiple sessions no validation sequence changes.
+
+The first new price fixture changed only aggregate money and was correctly rejected as malformed input; repair the fixture to change the single line and matching aggregate so it exercises immutable-price mismatch. Preserve both failure logs. The regression also covers selection conflicts, unavailable validation, revocation, concurrent requests and unknown-effect non-replay. The full frontend gate also exposed a pre-existing deferred-response test race: its shared resolver could settle confirmation twice before the receipt effect installed the second resolver. Give confirmation and receipt independent promises, preserving every assertion and timeout. Full non-browser checks and exact-head CI remain pending. No provider requests, bookings/payments, cancellations, deployment, cache warm-up or batch experiment accompany this work. Removing one validation pass is not a measured latency result.
+
 ## Full confirmation, return continuity and transition loading — 17 October 2026
 
 Owner HAR captured two sessions: prepare5.311s, hold44.370s, payment creation8.483s and checkout context0.737s. Return polling starts18:37:52SGT, first reports payment received at18:38:38 and confirmed at18:38:49; receipt200 completes around18:38:51. Approximately58seconds from first status request to its confirmed response is observed, not a general latency target or controlled comparison with the earlier one-session hold. The receipt verifiedAtMs is17milliseconds later than the browser-recorded response completion, supporting device/server clock skew as the cause of the strict future-time rejection. Preserve the HAR privately; do not copy contact details, cookies or capabilities.

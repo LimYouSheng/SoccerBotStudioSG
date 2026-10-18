@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Single-session holding validation — 18 October 2026
+
+For exactly one selected session, the complete fresh validation immediately before the atomic dispatch claim also serves as the session's write-boundary validation. No provider operation intervenes before its creation; do not repeat the same validation reads. Preserve immutable intent/hash, access/fence, deadline, effect reservation, association readback and original unknown-write recovery. Multi-session carts retain complete preflight plus per-session revalidation because earlier provider writes intervene. Preparation and all post-hold no-recreation/no-selected-availability rules remain unchanged. This is source optimization, not measured live latency acceptance.
+
 ## Confirmation return presentation — 17 October 2026
 
 Owner approves the full saved confirmation with its original verification time on later visits. Authenticated checkout context may present a historical receipt only when complete verified HitPay payment, current company/account/merchant/key scope, immutable intent/association and the full booking/invoice/money proof agree at the recorded observation time. Current access is validated at the actual current time. Historical presentation never authorizes exports or claims a new provider read. Fresh receipt/export policy remains unchanged. Reuse retained evidence and snapshots; no additional database, polling reset, provider write or extended deadline. Missing/invalid/cancelled evidence stays unavailable rather than fabricating a saved confirmation.
