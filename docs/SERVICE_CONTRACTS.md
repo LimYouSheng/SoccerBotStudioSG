@@ -1,5 +1,11 @@
 # SoccerBotStudio — Service Contracts
 
+## Rebooking background dismissal and latest03 evidence — 18 October 2026
+
+`restartAfterConfirmation(id)` clears only the matching local attempt, starts one pending `dismissCompletedBooking` request and navigates to `/book/account/`. POST dismissal retains server completion/ownership checks and uses keepalive. A sessionStorage UUID records only the tab’s exit intent, with no contact/payment credentials; failure to persist it does not weaken server authority. Reload resumes the idempotent operation and suppresses only the exact exited attempt from automatic restoration. Other attempts remain recoverable. New reserve/checkout waits for dismissal; explicit retry is required after failure and drafts remain intact. Back to home retains its existing completed-dismissal behaviour.
+
+Latest03: email verify200, identity/contact200; initial remembered restore401 then successful code verification is not evidence that email delivery failed. Both catalogue200 payloads pass the current strict public schema and arrive7.120s/17.370s after observation, within60s transport freshness. The supplied unavailable-session screenshot cannot be attributed to a failed recorded catalogue request. Details→Review is8.691s preparation+15.984s hold; confirmation return to receipt completion is about15.97s. Dismissal takes13.031s before the old full navigation. These are observations, not controlled acceptance of an80% target.
+
 ## Latest02 latency and email repair — 18 October 2026
 
 Worker45ec58c served the owner run. HAR Details → Review measured6.784s preparation plus14.879s hold (21.663s); returning at21:25:51SGT to receipt completion took about62.5s. An80% reduction from this run means about4.3s and12.5s respectively; these are owner targets, not accepted results. Hold coordinator trace:13 provider calls/9.141s,34 D1 terminal calls/4.451s,local SQLite429ms (nested admission spans must not be added twice). Preparation adds7 provider calls/4.459s. Fewer grant checks improved the previous27.271s path by about20.6%, not80%. Remaining provider work alone exceeds the4.3s target; no availability/price/identity guard is removed to manufacture acceptance.

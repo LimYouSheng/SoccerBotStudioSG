@@ -244,6 +244,7 @@ it("verified live receipt uses demo sections and refuses exports after access is
 });
 
 vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
   useSearchParams: () =>
     new URLSearchParams("attempt=00000000-0000-4000-8000-000000000001"),
 }));

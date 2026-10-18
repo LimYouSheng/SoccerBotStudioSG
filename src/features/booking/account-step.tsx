@@ -10,7 +10,8 @@ import { useBooking } from "./provider";
 import { EmailBotProof } from "./email-bot-proof";
 import { DetailsStep } from "./details-step";
 export function AccountStep() {
-  const { update, identityService } = useBooking(),
+  const { update, identityService, rebookingError, retryRebooking } =
+      useBooking(),
     router = useRouter();
   const [view, setView] = useState<"choice" | "email" | "code" | "profile">(
       "choice",
@@ -112,6 +113,14 @@ export function AccountStep() {
     return (
       <>
         <h1 className="page-title">Start your booking</h1>
+        {rebookingError && (
+          <div role="alert">
+            <p>{rebookingError}</p>
+            <button className="button secondary" onClick={retryRebooking}>
+              Try again
+            </button>
+          </div>
+        )}
         {error && <p role="alert">{error}</p>}
         {busy && <BrandLoading compact label="Preparing your booking…" />}
         <div className="access-options">

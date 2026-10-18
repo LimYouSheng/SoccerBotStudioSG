@@ -1,5 +1,11 @@
 # SoccerBotStudioSG current progress
 
+## Latest03 immediate rebooking — 18 October 2026
+
+Current branch `fix/returning-session-rebooking` starts from refreshed merged main d89ad5e (PR48). Latest03 shows successful email verification/contact reads, valid catalogue responses and a13.031s completed-attempt dismissal before navigation. Change Make another booking to client navigation and a fresh draft immediately; finish the protected dismissal in the background. A tab-local exit intent resumes interrupted dismissal on reload, excludes only that exact attempt from automatic restoration, and never authorizes a booking. New hold creation awaits successful dismissal; failure retains selections and offers explicit retry. Historical evidence, payment effects and server guards are unchanged.
+
+Focused component regressions pass for pending dismissal, failure/retry and same-versus-other attempt restoration. CI browser paid-return test now holds the actual dismissal request until the first booking screen is visible, then releases it and retains reload/receipt assertions. Full non-browser/CI evidence pending. The reported unavailable-session popup is not reproduced by this HAR: both catalogue payloads validate and were7.1s/17.4s old on completion, within60s transport freshness. Await owner correlation of screenshot versus recording; do not claim its cause fixed. No assistant browser/provider mutations, merge or deployment.
+
 ## Latest02 performance and email access — 18 October 2026
 
 Branch `perf/payment-recovery-wakeup` starts from refreshed main45ec58c. Source adds durable webhook-triggered payment recovery, coordinator recovery D1 timing and the ongoing contact authority repair. Focused alarm/cron-race and intervening-webhook tests passed. Email contact401 was reproduced with closed historical proof and fixed; read/save/revocation regression passed. Browser paid-return test now requires automatic webhook recovery without manually invoking cron. Full Worker checks and exact-source CI are pending.

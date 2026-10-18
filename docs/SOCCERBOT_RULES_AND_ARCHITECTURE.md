@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Immediate explicit rebooking — 18 October 2026
+
+Make another booking on verified confirmation clears the matching client attempt and opens the first booking step immediately using client navigation. Protected completed-grant dismissal runs in the background. Tab-local exit intent is presentation/recovery intent only: it may suppress restoration of the exact exited attempt, never another attempt, and cannot authorize dismissal or bypass server ownership/completion checks. Retain the intent on failure/reload and offer explicit retry. New hold creation waits for successful dismissal; viewing/selecting the next booking does not. Existing unrelated payment/recovery actions remain unaffected.
+
 ## Immediate payment recovery and ongoing contact access — 18 October 2026
 
 An authenticated, exact-account HitPay receipt durably queues a coordinator alarm after receipt persistence. The alarm invokes the existing leased recovery operation; it never trusts callback paid status, resets deadlines or creates a new payment. Wake-up generations retain callbacks received during processing. Alarm retries and the unchanged minute cron provide recovery; original payment claims/effect guards remain authoritative. Only minimal attempt/correlation identifiers enter the local wake-up queue.

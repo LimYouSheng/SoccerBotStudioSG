@@ -292,6 +292,14 @@
     "title": "unsupported live mode exposes unavailable state and cannot restore a paid demo receipt"
   },
   {
+    "file": "src/features/booking/async-booking.test.tsx",
+    "title": "rebooking clears the view immediately but gates new checkout on background dismissal and preserves failures"
+  },
+  {
+    "file": "src/features/booking/async-booking.test.tsx",
+    "title": "reload resumes an interrupted completed exit without restoring that confirmation or suppressing another attempt"
+  },
+  {
     "file": "src/features/booking/booking-parity.test.tsx",
     "title": "Details accepts input before checking the complete selection on submission"
   },

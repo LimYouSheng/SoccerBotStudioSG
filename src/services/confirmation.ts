@@ -211,6 +211,7 @@ export async function dismissCompletedBooking(attemptId: string) {
   const response = await fetch(`/api/attempts/${id}/dismiss`, {
     method: "POST",
     credentials: "same-origin",
+    keepalive: true,
     redirect: "error",
     headers: { Accept: "application/json" },
   });
@@ -218,4 +219,28 @@ export async function dismissCompletedBooking(attemptId: string) {
     throw new Error(
       "Your booking could not be closed on this device. Please try again.",
     );
+}
+
+// Tab-local navigation intent only; the server still verifies completion and
+// ownership before releasing anything. Retain interrupted exits across reload.
+const exitKey = "soccerbot.completed-exit";
+export function completedExitIntent() {
+  try {
+    const value = idSchema.safeParse(sessionStorage.getItem(exitKey));
+    return value.success ? value.data : null;
+  } catch {
+    return null;
+  }
+}
+export function rememberCompletedExit(id: string) {
+  try {
+    sessionStorage.setItem(exitKey, idSchema.parse(id));
+  } catch {
+    // Current-page work remains protected if browser storage is unavailable.
+  }
+}
+export function forgetCompletedExit(id: string) {
+  try {
+    if (completedExitIntent() === id) sessionStorage.removeItem(exitKey);
+  } catch {}
 }
