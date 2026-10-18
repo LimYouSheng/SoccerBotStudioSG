@@ -1423,3 +1423,81 @@ test("receipt export rechecks ownership paid evidence and revocation without pro
     .run();
   assert.equal((await readReceipt()).status, 401);
 });
+
+test("combined batch validates each session once before its effect and never repeats a completed attempt", async () => {
+  const a = await multiAttempt();
+  const r = await orchestrate(a, "sequential-complete");
+  assert.deepEqual(r.calls, [
+    "validate:0",
+    "create:0",
+    "validate:1",
+    "create:1",
+    "finalize",
+  ]);
+  assert.deepEqual(r.result, { state: "associated", paymentAvailable: false });
+  assert.equal((await effects(a)).length, 3);
+  assert.deepEqual((await orchestrate(a, "sequential-complete")).calls, []);
+});
+test("combined batch later conflict price or outage retains the first reference and blocks finalization without replay", async () => {
+  for (const scenario of [
+    "preflight-unavailable",
+    "preflight-price",
+    "preflight-unknown",
+    "revoke",
+    "fence",
+    "price",
+  ]) {
+    const a = await multiAttempt();
+    const before = await db
+      .prepare("SELECT intent_hash,deadline_ms FROM attempts WHERE id=?")
+      .bind(a.id)
+      .first();
+    const r = await orchestrate(a, `sequential-${scenario}`);
+    assert.deepEqual(r.calls, ["validate:0", "create:0", "validate:1"]);
+    assert.deepEqual(r.result, {
+      state: "recovery_required",
+      paymentAvailable: false,
+    });
+    assert.deepEqual(await effects(a), [
+      {
+        step: "session:0",
+        outcome: "observed",
+        reference_id: "synthetic-booking-0",
+      },
+    ]);
+    assert.deepEqual(
+      await db
+        .prepare("SELECT intent_hash,deadline_ms FROM attempts WHERE id=?")
+        .bind(a.id)
+        .first(),
+      before,
+    );
+    if (scenario !== "revoke")
+      assert.deepEqual((await orchestrate(a, "sequential-complete")).calls, []);
+  }
+});
+test("combined batch first conflict creates nothing and a later unknown creation is retained without finalization", async () => {
+  const first = await multiAttempt();
+  const rejected = await orchestrate(first, "sequential-single-conflict");
+  assert.deepEqual(rejected.calls, ["validate:0"]);
+  assert.equal(rejected.result.state, "selection_unavailable");
+  assert.deepEqual(await effects(first), []);
+  const later = await multiAttempt();
+  const result = await orchestrate(later, "sequential-partial");
+  assert.deepEqual(result.calls, [
+    "validate:0",
+    "create:0",
+    "validate:1",
+    "create:1",
+  ]);
+  assert.equal(result.result.state, "recovery_required");
+  assert.deepEqual(await effects(later), [
+    {
+      step: "session:0",
+      outcome: "observed",
+      reference_id: "synthetic-booking-0",
+    },
+    { step: "session:1", outcome: "unknown", reference_id: null },
+  ]);
+  assert.deepEqual((await orchestrate(later, "sequential-complete")).calls, []);
+});

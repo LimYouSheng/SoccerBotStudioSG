@@ -260,6 +260,16 @@ test("remembered live account edits and rereads contact while native booking sta
   await expect(
     page.getByRole("button", { name: "Continue signed in", exact: true }),
   ).toBeVisible();
+  const signedInEmail = page.getByText("synthetic@example.test", {
+    exact: true,
+  });
+  await expect(signedInEmail).toHaveCSS("font-weight", "700");
+  await expect(signedInEmail).toHaveCSS("color", "rgb(23, 96, 120)");
+  expect(
+    await signedInEmail.evaluate((node) =>
+      parseFloat(getComputedStyle(node).fontSize),
+    ),
+  ).toBeGreaterThanOrEqual(18);
   const after = await guest.boundingBox();
   expect(after).toEqual(before);
   await page
@@ -268,6 +278,25 @@ test("remembered live account edits and rereads contact while native booking sta
   await expect(
     page.getByRole("heading", { name: "Saved contact details", exact: true }),
   ).toBeVisible();
+  const saveButton = await page
+    .getByRole("button", { name: "Save contact details", exact: true })
+    .boundingBox();
+  const backButton = await page
+    .getByRole("button", { name: "Back to booking options", exact: true })
+    .boundingBox();
+  const profile = await page.locator("#details-form .surface").boundingBox();
+  expect(saveButton).not.toBeNull();
+  expect(backButton).not.toBeNull();
+  expect(profile).not.toBeNull();
+  expect(saveButton!.y - (profile!.y + profile!.height)).toBeGreaterThanOrEqual(
+    27,
+  );
+  expect(
+    Math.max(
+      backButton!.x - (saveButton!.x + saveButton!.width),
+      backButton!.y - (saveButton!.y + saveButton!.height),
+    ),
+  ).toBeGreaterThanOrEqual(15);
   await page
     .getByLabel("Full name", { exact: false })
     .fill("Synthetic Contact");
@@ -999,6 +1028,7 @@ test("concurrent browser tabs reuse one hold and payment and reject revoked acce
 async function guestDetails(
   page: Page,
   mechanism: Awaited<ReturnType<typeof createBookingMechanism>>,
+  batch = false,
 ) {
   const months = new Set<string>();
   const warmed = page.waitForResponse((response) => {
@@ -1045,6 +1075,11 @@ async function guestDetails(
     .getByRole("group", { name: "Session times" })
     .getByRole("button", { name: /12:10–12:50/ })
     .click();
+  if (batch)
+    await page
+      .getByRole("group", { name: "Session times" })
+      .getByRole("button", { name: /13:00–13:40/ })
+      .click();
   await page.getByRole("link", { name: "Continue", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Your details", exact: true }),
@@ -1565,6 +1600,133 @@ test("real API catalogue outage exposes retry without inventing sessions or rene
   } finally {
     await stopMechanism(page, mechanism, transport);
   }
+});
+
+test("real API batch hold checks each session once and restores one complete unpaid reservation", async ({
+  page,
+}) => {
+  const mechanism = await createBookingMechanism({ batch: true });
+  const transport = await mechanismTransport(page, mechanism);
+  try {
+    await guestDetails(page, mechanism, true);
+    const before = mechanism.calls.length;
+    expect(await (await reviewResponse(page)).json()).toMatchObject({
+      state: "associated",
+      paymentAvailable: false,
+    });
+    await expect(page).toHaveURL(/\/book\/review\/$/);
+    const methods = mechanism.calls
+      .slice(before)
+      .map((call) => call.body?.method)
+      .filter(Boolean);
+    expect(
+      methods.filter((method) => method === "getAvailableUnits"),
+    ).toHaveLength(2);
+    expect(
+      methods.filter((method) => method === "getStartTimeMatrix"),
+    ).toHaveLength(2);
+    expect(methods.filter((method) => method === "book")).toHaveLength(2);
+    expect(methods.filter((method) => method === "createBatch")).toHaveLength(
+      1,
+    );
+    expect(methods.filter((method) => method === "closeBatch")).toHaveLength(1);
+    const held = await mechanism.db
+      .prepare("SELECT attempt_id FROM hitpay_holds")
+      .first();
+    expect(held).toBeTruthy();
+    await page.reload();
+    await expect(
+      page.getByRole("heading", { name: "Review booking", exact: true }),
+    ).toBeVisible();
+    expect(
+      await mechanism.db.prepare("SELECT attempt_id FROM hitpay_holds").first(),
+    ).toEqual(held);
+    expect(
+      mechanism.calls.filter((call) => call.body?.method === "book"),
+    ).toHaveLength(2);
+    await assertNoPaymentOrConfirmation(page, mechanism);
+  } finally {
+    await stopMechanism(page, mechanism, transport);
+  }
+});
+
+async function failedBatch(page: Page, unknown: boolean) {
+  let creations = 0;
+  const mechanism = await createBookingMechanism({
+    batch: true,
+    respond: async (call) => {
+      if (call.body?.method === "book") {
+        creations++;
+        if (unknown && creations === 2)
+          return new Response(null, { status: 503 });
+      }
+      if (
+        !unknown &&
+        creations === 1 &&
+        call.body?.method === "getAvailableUnits"
+      )
+        return Response.json({ jsonrpc: "2.0", id: call.body.id, result: [] });
+      return undefined;
+    },
+  });
+  const transport = await mechanismTransport(page, mechanism);
+  try {
+    await guestDetails(page, mechanism, true);
+    expect(await (await reviewResponse(page)).json()).toMatchObject({
+      state: "recovery_required",
+      paymentAvailable: false,
+    });
+    await expect(page).toHaveURL(/\/book\/payment\/$/);
+    const rows = await mechanism.db
+      .prepare(
+        "SELECT step,outcome,reference_id FROM session_effects WHERE step LIKE 'session:%' ORDER BY step",
+      )
+      .all();
+    expect(rows.results).toEqual(
+      unknown
+        ? [
+            { step: "session:0", outcome: "observed", reference_id: "701" },
+            { step: "session:1", outcome: "unknown", reference_id: null },
+          ]
+        : [{ step: "session:0", outcome: "observed", reference_id: "701" }],
+    );
+    expect(
+      mechanism.calls.filter((call) => call.body?.method === "closeBatch"),
+    ).toHaveLength(0);
+    expect(
+      await mechanism.db
+        .prepare("SELECT COUNT(*) AS n FROM hitpay_holds")
+        .first(),
+    ).toEqual({ n: 0 });
+    await page.reload();
+    await expect(
+      page.getByRole("status", {
+        name: "Checking your payment and booking…",
+        exact: true,
+      }),
+    ).toBeVisible();
+    expect(creations).toBe(unknown ? 2 : 1);
+    expect(
+      await mechanism.db
+        .prepare(
+          "SELECT step,outcome,reference_id FROM session_effects WHERE step LIKE 'session:%' ORDER BY step",
+        )
+        .all(),
+    ).toMatchObject({ results: rows.results });
+    await assertNoPaymentOrConfirmation(page, mechanism);
+  } finally {
+    await stopMechanism(page, mechanism, transport);
+  }
+}
+test("real API later batch conflict retains the first booking without checkout or recreation", async ({
+  page,
+}) => {
+  await failedBatch(page, false);
+});
+test("real API unknown second batch creation retains both effect outcomes across reload without payment", async ({
+  page,
+}) => {
+  await failedBatch(page, true);
 });
 
 test("real API exhausted browser checking window retains the original deadline and uncertain booking without payment", async ({

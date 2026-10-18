@@ -143,7 +143,11 @@ export function AccountStep() {
               <Icon name="mail" />
             </span>
             <h2>{identity ? "Welcome back" : "Continue with email"}</h2>
-            <p className="break-words text-muted">
+            <p
+              className={
+                identity ? "signed-in-email" : "break-words text-muted"
+              }
+            >
               {identity
                 ? identity.email
                 : "Verify your email to prefill your name and phone number."}

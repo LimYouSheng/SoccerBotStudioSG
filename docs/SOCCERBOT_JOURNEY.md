@@ -1,5 +1,23 @@
 # SoccerBotStudio — Journey
 
+## Partial-batch recovery CI repair — 19 October 2026 SGT
+
+PR52 eb4573c passes frontend and backend gates. Live-email passes58/63; later-conflict reload returns native_snapshot_unavailable because the rejected session never acquires a validated offer snapshot. Recovery now restores that session from immutable intent with explicitly requested-session labels, only for recovery_required without a payable hold. Prepared and held snapshots still require validated offers. Actual Worker regression checks all three batch outcomes through the protected current endpoint, retaining original identity and creation counts.
+
+Tablet traces also show independent workerd instances and WebKit competing during calendar setup/recovery until the30-second case limit expires. Live-profile cases now use one CI worker; explicit within-case concurrency remains intact, and all63 runs, assertions, timeouts and zero retries remain. This changes suite scheduling, not provider rate limits. Browser acceptance requires a fresh CI run. Batch optimization and the rate-limit/token/optimistic-UI review are paused while these CI repairs finish.
+
+## Location dialog focus repair — 19 October 2026 SGT
+
+PR52 candidate179ae0d failed the same desktop Chromium focus-return assertion in both frontend and backend browser gates (71/72 passed in each). Closing the location dialog removed it before passive-effect cleanup could reliably restore native focus. The shared Dialog now closes during layout-effect cleanup, while attached, and restores the connected opener without scrolling. The original browser assertion remains unchanged; no timeout, retry or skip is added. Worker verification passed independently; live-email failures remain separate from this repair. Exact-candidate browser acceptance stays pending CI.
+
+## Latest04 and batch sequencing — 19 October 2026 SGT
+
+Owner supplies latest04, requests contact spacing, signed-in email prominence, header hover repair, studio-location popup and batch duplicate removal. Map preference: lowest latency. Implement immediate dialog with on-demand satellite iframe and Google Maps link; no map SDK or initial external map load. Embedded 3D is not configured or claimed.
+
+Latest04 combined hold16.172s versus latest03 split24.675s is about34.5% shorter across different runs; contact save0.167s, HitPay preparation5.437s, return-to-receipt about16.105s. No80% acceptance claim. Dismissal5.571s runs alongside next-page reads. Customer details and capability-bearing HAR values remain private.
+
+New combined ongoing batch mode checks each item once immediately before creation; first-item check remains before dispatch claim. Later rejection now occurs after any earlier accepted allocation, so partial references/unknown effects must be retained with payment blocked. Legacy split/finite complete-cart preflight remains. Focused backend checks pass for complete, conflict, price/outage/revocation/fence and unknown-write cases; new browser cases pending CI. The owner two-browser procedure and limits are recorded in SERVICE_CONTRACTS.md; it demonstrates application behavior, not provider atomicity when a local pre-write check rejects first. Rate-limit necessity, token reuse and further optimistic UI remain a later discussion after batch behavior settles.
+
 ## Independent checking-window regression — 19 October 2026 SGT
 
 The repaired dismissal journey passes all3 devices on4fc8ce3. Two tablet cases timed out when combining full guest selection, uncertain holding, reload and checking-window exhaustion. Keep the original outage/unknown/readback reload assertions and move the shared exhausted-window behavior into one dedicated actual-Worker browser scenario. Its setup uses real API preparation/holding, then asserts unresolved UI, immutable server deadline, retained unknown effect and no payment. No timeout increase, retry, skip or product guard change. Live-profile inventory is now18 scenarios/54 device runs,14 actual-Worker and four older application-response fixtures. CI acceptance remains pending.
