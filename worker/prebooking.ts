@@ -175,6 +175,7 @@ export class NativePrebooking {
     private catalogue: CatalogueReads,
     private exchange: NativeExchange,
     private accountContract?: NativeAccountContract,
+    private parallelCatalogue = false,
   ) {}
   invalidate() {
     this.catalogue.invalidate(this.binding);
@@ -204,6 +205,7 @@ export class NativePrebooking {
       this.binding,
       this.exchange,
       true,
+      this.parallelCatalogue,
     );
     const selected = catalogueSelection(current, sessionSelection(session));
     if (!selected) return { state: "selection_unavailable" as const, intent };

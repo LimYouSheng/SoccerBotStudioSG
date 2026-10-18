@@ -200,8 +200,8 @@ test("catalogue overlaps independent reads and waits for both before caching", a
       await new Promise((resolve) => gates.set(request.kind, resolve));
     return read.exchange(request);
   };
-  const pending = cache.read(binding, exchange);
-  const shared = cache.read(binding, exchange);
+  const pending = cache.read(binding, exchange, false, true);
+  const shared = cache.read(binding, exchange, false, true);
   try {
     assert.deepEqual(started, ["catalogue-services", "catalogue-instructors"]);
     gates.get("catalogue-instructors")();
@@ -209,7 +209,7 @@ test("catalogue overlaps independent reads and waits for both before caching", a
     assert.equal(read.calls.length, 1);
     gates.get("catalogue-services")();
     assert.deepEqual(await pending, await shared);
-    await cache.read(binding, exchange);
+    await cache.read(binding, exchange, false, true);
     assert.equal(started.length, 2);
   } finally {
     draining = true;
@@ -226,12 +226,17 @@ test("catalogue drains a failed read sibling and does not cache partial success"
       release = resolve;
     });
     let settled = false;
-    const pending = cache.read(binding, async (request) => {
-      if (request.kind === failed)
-        throw new Error("synthetic catalogue failure");
-      await gate;
-      return read.exchange(request);
-    });
+    const pending = cache.read(
+      binding,
+      async (request) => {
+        if (request.kind === failed)
+          throw new Error("synthetic catalogue failure");
+        await gate;
+        return read.exchange(request);
+      },
+      false,
+      true,
+    );
     const outcome = pending.then(
       () => {
         settled = true;
