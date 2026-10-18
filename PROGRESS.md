@@ -10,6 +10,8 @@ CI on8fdd6f4: Worker verification and the backend browser gate passed; frontend 
 
 Expanded live-profile first run:30/51 passed. Remaining failures exposed ambiguous alert selectors matching Next's route announcer, the fixture's forbidden attempt to mutate an immutable deadline, and a dismissal setup asserting confirmation before asynchronous recovery responded. Scope alerts to the main content, preserve the server deadline while exhausting only the browser checking allowance, and await the actual verified recovery response. All original effect and UI assertions remain; no product guards, timeouts or retries changed. Follow-up CI pending.
 
+Second CI candidate5d96da8 passes frontend196/69 and backend gates; expanded live-profile48/51 passes. The remaining dismissal test revoked its owner, causing normal new-guest issuance; restoring the old database row could not restore ownership under the new cookie, correctly yielding404. Change that fixture to drop the already-successful dismissal response, then prove same-owner idempotent retry and retained receipt. Revoked dispatch remains a separate browser case; no ownership guard is relaxed.
+
 Next owner-requested discussion is after batch booking settles: assess SimplyBook rate limits and necessity of current limiting, token reuse/invalidation versus repeated authentication, and safe optimistic UI opportunities. Inspect current implementation and provider evidence before proposing changes; no new cache/retry behavior is authorized merely by this discussion request.
 
 ## Combined Details-to-Review hold — 18 October 2026

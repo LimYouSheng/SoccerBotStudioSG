@@ -1434,13 +1434,18 @@ test("real API failed completed dismissal opens the first step and explicit retr
 }) => {
   let failDismissal = true;
   const mechanism = await createBookingMechanism();
-  const transport = await mechanismTransport(page, mechanism, async (path) => {
-    if (failDismissal && path.endsWith("/dismiss"))
-      await mechanism.db
-        .prepare("UPDATE guest_access SET revoked_ms=?")
-        .bind(Date.now())
-        .run();
-  });
+  const transport = await mechanismTransport(
+    page,
+    mechanism,
+    undefined,
+    (path) => {
+      if (failDismissal && path.endsWith("/dismiss")) {
+        failDismissal = false;
+        return true;
+      }
+      return false;
+    },
+  );
   try {
     const { headers, attemptId } = await prepareBrowserAttempt(page, mechanism);
     const held = await mechanism.mf.dispatchFetch(
@@ -1497,10 +1502,9 @@ test("real API failed completed dismissal opens the first step and explicit retr
         sessionStorage.getItem("soccerbot.completed-exit"),
       ),
     ).toBe(attemptId);
-    // Restore the isolated fixture's access after proving real authentication
-    // rejected dismissal; no application response or success is fabricated.
-    failDismissal = false;
-    await mechanism.db.prepare("UPDATE guest_access SET revoked_ms=NULL").run();
+    // The first dismissal completed on the server, but its HTTP response was
+    // lost. Retry under the same owner must acknowledge the archived result.
+    expect(failDismissal).toBe(false);
     const dismissed = page.waitForResponse(
       (response) =>
         new URL(response.url()).pathname.endsWith("/dismiss") &&
