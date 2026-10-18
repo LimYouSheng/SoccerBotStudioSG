@@ -47,12 +47,16 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 it("shows checking before the protected server result and confirms only verified evidence", async () => {
-  let finish: (response: Response) => void = () => {};
-  const fetch = vi.fn(
-    () =>
-      new Promise<Response>((resolve) => {
-        finish = resolve;
-      }),
+  let finish!: (response: Response) => void;
+  let finishReceipt!: (response: Response) => void;
+  const confirmation = new Promise<Response>((resolve) => {
+    finish = resolve;
+  });
+  const receipt = new Promise<Response>((resolve) => {
+    finishReceipt = resolve;
+  });
+  const fetch = vi.fn((url: string) =>
+    url.endsWith("/receipt") ? receipt : confirmation,
   );
   vi.stubGlobal("fetch", fetch);
   render(<ProtectedConfirmation attemptId={first} />);
@@ -64,7 +68,7 @@ it("shows checking before the protected server result and confirms only verified
   expect(
     screen.queryByRole("heading", { name: "Booking confirmed" }),
   ).not.toBeInTheDocument();
-  finish(Response.json(receiptFixture()));
+  finishReceipt(Response.json(receiptFixture()));
   expect(
     await screen.findByRole("heading", { name: "Booking confirmed" }),
   ).toBeInTheDocument();

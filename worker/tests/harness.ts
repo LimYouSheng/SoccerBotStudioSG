@@ -138,6 +138,25 @@ const harness = {
               hasRecoveryCapacity: async () => input.scenario !== "budget",
               revalidate: async (intent, context) => {
                 calls.push(`validate:${context.sessionIndex}`);
+                if (input.scenario === "single-conflict")
+                  throw new ApiError(409, "native_selection_changed");
+                if (input.scenario === "single-price")
+                  return {
+                    ...intent,
+                    totalMinor: intent.totalMinor + 1,
+                    sessions: intent.sessions.map((session) => ({
+                      ...session,
+                      totalMinor: session.totalMinor + 1,
+                    })),
+                  };
+                if (input.scenario === "single-unavailable")
+                  throw new Error("Synthetic validation failure");
+                if (input.scenario === "single-revoke")
+                  await env.STATE.prepare(
+                    "UPDATE guest_access SET revoked_ms=? WHERE owner_id=?",
+                  )
+                    .bind(Date.now(), input.owner)
+                    .run();
                 const count = (validations.get(context.sessionIndex) ?? 0) + 1;
                 validations.set(context.sessionIndex, count);
                 if (
@@ -194,7 +213,10 @@ const harness = {
                   .first<{ outcome: string }>();
                 if (reserved?.outcome !== "unknown")
                   throw new Error("Missing durable reservation");
-                if (input.scenario === "partial" && context.sessionIndex === 1)
+                if (
+                  input.scenario === "single-unknown" ||
+                  (input.scenario === "partial" && context.sessionIndex === 1)
+                )
                   throw new Error("Unknown provider outcome");
                 if (input.scenario === "late-effect")
                   await claimRecovery(

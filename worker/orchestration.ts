@@ -102,8 +102,10 @@ export async function orchestrateBooking(
     !(await operations.hasRecoveryCapacity(intent.sessions.length))
   )
     return { state: "prerequisites_unavailable", paymentAvailable: false };
-  // Validate the whole selected cart before creating its first native booking.
-  // This is not a reservation; each write still revalidates below.
+  // Validate the whole selection before claiming dispatch. For a single
+  // session this is also its write-boundary validation: only the local atomic
+  // claim and effect reservation follow. Multi-session carts revalidate each
+  // item again below because earlier provider writes can change availability.
   let checkedSessionIndex = 0;
   try {
     for (const [sessionIndex] of intent.sessions.entries()) {
@@ -193,9 +195,13 @@ export async function orchestrateBooking(
       const context = { attemptId: id, sessionIndex };
       // The eventual live adapter must verify identity, eligible instructor,
       // timetable, shared slot, exact price/tax. Player information is a non-blocking annotation.
-      const fresh = intentSchema.parse(
-        await operations.revalidate(intent, context),
-      );
+      // A single session was just fully validated above, with no intervening
+      // provider operation. Do not repeat the same provider reads. The intent,
+      // time, access, dispatch fence and durable effect guards still apply.
+      const fresh =
+        intent.sessions.length === 1
+          ? intent
+          : intentSchema.parse(await operations.revalidate(intent, context));
       if (
         (await digest(JSON.stringify(fresh))) !== row.intent_hash ||
         session.startMs <= Date.now() ||

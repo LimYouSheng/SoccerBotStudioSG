@@ -603,7 +603,7 @@ test("late effect completion after recovery ownership cannot bind references or 
     a.cookie,
   );
   assert.equal(r.result.state, "recovery_required");
-  assert.deepEqual(r.calls, ["validate:0", "validate:0", "create:0"]);
+  assert.deepEqual(r.calls, ["validate:0", "create:0"]);
   const effects = await db
     .prepare("SELECT * FROM session_effects WHERE attempt_id=?")
     .bind(a.id)

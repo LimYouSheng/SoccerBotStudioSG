@@ -1,5 +1,11 @@
 # SoccerBotStudio — Service Contracts
 
+## Single-session validation consolidation — 18 October 2026
+
+The Details Review booking operation retains fresh preparation, one attempt identity and holding creation. For one session, orchestration calls the full adapter revalidate once before its atomic dispatch claim. The validated intent is hash-compared before claim and again before creation; current deadline/session-time checks, authenticated effect reservation and native assertCurrent remain. No browser cache, shared TTL extension or provider validation bypass is introduced. Validation failures retain the original prepared attempt and error mapping with no dispatch/effect; uncertain provider writes retain recovery_required under the original identity. Multiple sessions continue preflight(0..n) then validate/create each item sequentially.
+
+Mechanism acceptance requires one validation/create/finalize for a successful singleton, no writes on unavailable/changed-price/failed validation, revoked access blocking effect reservation, one winner under concurrent requests, and no replay after an unknown creation. Existing multi-session preflight, per-write validation and partial-failure assertions remain unchanged. Provider call savings beyond the removed validation pass and customer latency require actual measured evidence from an owner-authorized trial.
+
 ## Saved confirmation and current receipt — 17 October 2026
 
 GET /api/attempts/{id}/checkout adds optional confirmation with the existing receipt shape. It is a protected historical display result from retained complete verified HitPay payment and the exact original attempt/intent/association; all current payment scope guards apply. recordedAt is the latest retained booking/invoice observation time. The full evidence verifier still enforces complete booking sets, customer/scope/relationship, amounts, paid state and the original observation freshness interval at that time, while authenticating access now. The returned verifiedAtMs is the historical time, never request time. Missing detail snapshots omit confirmation while retaining separately qualified payment metadata. No provider calls or writes are dispatched.
