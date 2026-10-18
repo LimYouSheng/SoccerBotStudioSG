@@ -374,3 +374,60 @@ test("native restore reads the authenticated snapshot and cannot manufacture a p
   });
   expect(restored?.draft.slots[0].instructor).toBe("33");
 });
+
+test("single holding request retains its local identity before dispatch and never makes a separate preparation request", async () => {
+  const data = {
+    ...draft(),
+    accepted: false,
+    nativeServiceId: "2",
+    slots: [
+      {
+        date: "2026-10-15",
+        start: "12:00",
+        instructor: "14",
+        native: {
+          serviceId: "2",
+          serviceName: "Native Session",
+          instructorName: "Native Trainer",
+          priceMinor: 8800,
+          currency: "SGD" as const,
+        },
+      },
+    ],
+  };
+  const response = deferred<Response>();
+  const fetch = vi.spyOn(globalThis, "fetch").mockReturnValue(response.promise);
+  const pending = await liveBookingService.checkout({
+    draft: data,
+    previous: null,
+    holding: true,
+  });
+  expect(pending.id).toMatch(/^[a-f0-9-]{36}$/);
+  expect(fetch).not.toHaveBeenCalled();
+  const holding = liveBookingService.pay({
+    attempt: pending,
+    holding: true,
+    outcome: "pending",
+  });
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(fetch.mock.calls[0][0]).toBe(`/api/booking/hold/${pending.id}`);
+  expect(JSON.parse(String(fetch.mock.calls[0][1]?.body))).toMatchObject({
+    key: pending.id,
+    holding: true,
+    accepted: false,
+    contact: data.contact,
+  });
+  response.resolve(
+    Response.json({
+      attemptId: pending.id,
+      state: "associated",
+      paymentAvailable: false,
+    }),
+  );
+  expect(await holding).toMatchObject({
+    id: pending.id,
+    held: true,
+    status: "ready",
+  });
+  expect(fetch).toHaveBeenCalledTimes(1);
+});

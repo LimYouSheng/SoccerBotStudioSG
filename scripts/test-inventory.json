@@ -898,5 +898,9 @@
   {
     "file": "tests/live-email.spec.ts",
     "title": "concurrent browser tabs reuse one hold and payment and reject revoked access"
+  },
+  {
+    "file": "src/services/async-booking.test.ts",
+    "title": "single holding request retains its local identity before dispatch and never makes a separate preparation request"
   }
 ]

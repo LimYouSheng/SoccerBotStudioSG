@@ -406,7 +406,10 @@ async function mechanismTransport(
       ]);
     }
     const responseBody = await response.text();
-    if (url.pathname === "/api/booking/prepare" && response.status === 201)
+    if (
+      (url.pathname === "/api/booking/prepare" && response.status === 201) ||
+      (url.pathname.startsWith("/api/booking/hold/") && response.status === 200)
+    )
       attemptId = JSON.parse(responseBody).attemptId;
     // Always settle the intercepted route, even when navigation canceled it.
     // Returning without a route action leaves Playwright cleanup waiting.
@@ -547,8 +550,8 @@ test("native guest journey preserves players contact and one checkout across ref
     const holdResponse = page.waitForResponse((response) => {
       const url = new URL(response.url());
       return (
-        url.pathname.startsWith("/api/booking/native/") &&
-        url.search === "?hold=1" &&
+        url.pathname.startsWith("/api/booking/hold/") &&
+        url.search === "" &&
         response.request().method() === "POST"
       );
     });
@@ -564,7 +567,7 @@ test("native guest journey preserves players contact and one checkout across ref
     ).toHaveLength(0);
     expect(
       calls.filter(
-        (c) => c.path === `/api/booking/native/${transport.attemptId()}`,
+        (c) => c.path === `/api/booking/hold/${transport.attemptId()}`,
       ),
     ).toHaveLength(1);
     expect(
@@ -572,6 +575,9 @@ test("native guest journey preserves players contact and one checkout across ref
         (c) => c.path === `/api/booking/hitpay/${transport.attemptId()}`,
       ),
     ).toHaveLength(0);
+    expect(calls.filter((c) => c.path === "/api/booking/prepare")).toHaveLength(
+      0,
+    );
     const displayReadsBeforeRestore = calls.filter(
       (call) =>
         call.path.startsWith("/api/calendar/") ||
@@ -602,7 +608,9 @@ test("native guest journey preserves players contact and one checkout across ref
       page.getByRole("heading", { name: "Synthetic HitPay checkout" }),
     ).toBeVisible();
     expect(
-      calls.filter((c) => c.path === "/api/booking/prepare")[0].body,
+      calls.filter(
+        (c) => c.path === `/api/booking/hold/${transport.attemptId()}`,
+      )[0].body,
     ).toMatchObject({
       accepted: false,
       holding: true,
@@ -645,7 +653,7 @@ test("native guest journey preserves players contact and one checkout across ref
     expect(
       calls.filter(
         (c) =>
-          c.path === `/api/booking/native/${transport.attemptId()}` &&
+          c.path === `/api/booking/hold/${transport.attemptId()}` &&
           c.method === "POST",
       ),
     ).toHaveLength(1);

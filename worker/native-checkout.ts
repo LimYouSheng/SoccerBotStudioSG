@@ -87,6 +87,7 @@ export async function executeNativeCheckout(options: {
   recoveryControl: ProviderControl;
   accounting: () => { used: number; active: number };
   holding?: boolean;
+  combinedHold?: boolean;
 }) {
   const { request, env, attemptId, provider } = options;
   z.string().uuid().parse(attemptId);
@@ -390,6 +391,10 @@ export async function executeNativeCheckout(options: {
       contract,
       observeResponse,
     );
+    const validatedDates: Record<
+      string,
+      z.infer<typeof nativeAvailabilitySchema>
+    > = {};
     const operations = nativeBookingOperations({
       scope,
       exchange,
@@ -417,7 +422,41 @@ export async function executeNativeCheckout(options: {
             )
               throw new ApiError(503, "native_booking_allowance_unavailable");
             stage = "prebooking";
-            return await prebooking.revalidate(value, index);
+            return await prebooking.revalidate(
+              value,
+              index,
+              options.combinedHold
+                ? async (review) => {
+                    const session = value.sessions[index ?? 0];
+                    const date = new Date(session.startMs + 28800000)
+                      .toISOString()
+                      .slice(0, 10);
+                    const day = (validatedDates[date] ??= {
+                      date,
+                      observedAtMs: Date.now(),
+                      offers: [],
+                    });
+                    day.offers = day.offers.filter(
+                      (offer) => offer.startMs !== session.startMs,
+                    );
+                    day.offers.push({
+                      serviceId: session.serviceId,
+                      productServiceId: contract.serviceId,
+                      serviceName: review.serviceName,
+                      instructorId: session.instructorId,
+                      instructorName: review.instructorName,
+                      startMs: session.startMs,
+                      priceMinor: session.totalMinor,
+                      currency: value.currency,
+                    });
+                    await env.STATE.prepare(
+                      "UPDATE native_checkout_grants SET availability_json=? WHERE attempt_id=? AND state='running'",
+                    )
+                      .bind(JSON.stringify(validatedDates), attemptId)
+                      .run();
+                  }
+                : undefined,
+            );
           } catch (error) {
             retainFailure(error, stage, index);
             throw error;
@@ -562,7 +601,11 @@ export async function executeNativeCheckout(options: {
   return { attemptId, ...result };
 }
 
-async function customerNativeWindow(request: Request, env: Env) {
+async function customerNativeWindow(
+  request: Request,
+  env: Env,
+  attemptId?: string,
+) {
   const p = policy(env),
     now = Date.now();
   const access = await authenticate(request, env, now);
@@ -573,7 +616,9 @@ async function customerNativeWindow(request: Request, env: Env) {
   if (!grant) throw new ApiError(503, "native_customer_window_unavailable");
   const ongoing = grant.ongoing === 1 && liveCustomerAccess(env);
   const failedChecks = Object.entries({
-    state: grant.state === "granted",
+    state:
+      grant.state === "granted" ||
+      (attemptId !== undefined && grant.attempt_id === attemptId),
     mode: grant.ongoing !== 1 || ongoing,
     access: p.PROVIDER_ACCESS === "trusted-reads",
     source:
@@ -636,9 +681,10 @@ export async function prepareCustomerNative(
   request: Request,
   env: Env,
   value: unknown,
+  attemptId?: string,
 ) {
   const { p, access, grant, contract, dates, binding } =
-    await customerNativeWindow(request, env);
+    await customerNativeWindow(request, env, attemptId);
   const input = nativePrepareSchema.parse(value);
   if (
     input.holding &&
@@ -687,6 +733,7 @@ export async function prepareCustomerNative(
       .parse(JSON.parse(grant.availability_json || "{}")),
   ).flatMap((entry) => entry.offers);
   if (
+    attemptId === undefined &&
     input.sessions.some(
       (session) =>
         !offers.some(
@@ -715,7 +762,10 @@ export async function prepareCustomerNative(
   });
   const hash = await digest(JSON.stringify(intent));
   if (grant.attempt_id) {
-    if (grant.intent_hash !== hash)
+    if (
+      grant.intent_hash !== hash ||
+      (attemptId !== undefined && grant.attempt_id !== attemptId)
+    )
       throw new ApiError(409, "native_attempt_already_bound");
     return { attemptId: grant.attempt_id, state: "prepared" as const };
   }
@@ -726,6 +776,7 @@ export async function prepareCustomerNative(
     intent,
     now,
     grant.expires_ms - now,
+    attemptId,
   );
   const bound = await env.STATE.prepare(
     "UPDATE native_checkout_grants SET attempt_id=?,intent_hash=? WHERE capability_hash=? AND state='granted' AND source_revision=? AND expires_ms>? AND ((attempt_id IS NULL AND intent_hash IS NULL) OR (attempt_id=? AND intent_hash=?))",

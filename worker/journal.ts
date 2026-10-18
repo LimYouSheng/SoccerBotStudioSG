@@ -68,6 +68,7 @@ export async function prepareAttempt(
   intent: unknown,
   now: number,
   deadlineMs: number,
+  requestedId?: string,
 ) {
   if (!/^[A-Za-z0-9_-]{16,128}$/.test(key))
     throw new ApiError(400, "invalid_idempotency_key");
@@ -76,11 +77,14 @@ export async function prepareAttempt(
     throw new ApiError(409, "elapsed_selection");
   const json = JSON.stringify(parsed),
     hash = await digest(json),
-    id = crypto.randomUUID();
+    id =
+      requestedId === undefined
+        ? crypto.randomUUID()
+        : z.string().uuid().parse(requestedId);
   const session = db.withSession("first-primary");
   await session
     .prepare(
-      "INSERT INTO attempts(id,owner_id,idempotency_key,intent_json,intent_hash,created_ms,deadline_ms,state) VALUES(?,?,?,?,?,?,?,'prepared') ON CONFLICT(owner_id,idempotency_key) DO NOTHING",
+      "INSERT INTO attempts(id,owner_id,idempotency_key,intent_json,intent_hash,created_ms,deadline_ms,state) VALUES(?,?,?,?,?,?,?,'prepared') ON CONFLICT DO NOTHING",
     )
     .bind(id, owner, key, json, hash, now, now + deadlineMs)
     .run();

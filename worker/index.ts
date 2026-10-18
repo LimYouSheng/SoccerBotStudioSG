@@ -161,6 +161,26 @@ export default {
           await assertIdentityProofOpen(env);
           return json(result);
         }
+        const holdMatch = /^\/api\/booking\/hold\/([a-f0-9-]{36})$/.exec(
+          url.pathname,
+        );
+        if (holdMatch) {
+          if (request.method !== "POST")
+            throw new ApiError(405, "operation_unavailable");
+          await verifyBindings(env);
+          return json(
+            unwrapRpcOutcome(
+              await env.COORDINATOR.getByName(coordinatorName).holdCustomer(
+                {
+                  attemptId: holdMatch[1],
+                  cookie: request.headers.get("cookie") || "",
+                  value: await inputBody(request),
+                },
+                correlationId,
+              ),
+            ),
+          );
+        }
         if (url.pathname === "/api/booking/prepare") {
           if (request.method !== "POST")
             throw new ApiError(405, "operation_unavailable");

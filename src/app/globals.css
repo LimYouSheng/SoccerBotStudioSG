@@ -88,34 +88,52 @@
     --space-panel: 20px;
   }
 }
-/* Mouse-only decoration; native cursor remains until pointer activation. */
-@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) and (forced-colors: none) {
-  html.circle-cursor-active,
-  html.circle-cursor-active * {
-    cursor: none !important;
+/* Browser-rendered pointer: no mouse listeners, animation or trailing delay. */
+@media (hover: hover) and (pointer: fine) and (forced-colors: none) {
+  html,
+  body,
+  body * {
+    cursor:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Ccircle cx='14' cy='14' r='10' fill='%23050a2f' fill-opacity='.85' stroke='white' stroke-opacity='.9' stroke-width='1.5'/%3E%3C/svg%3E")
+        14 14,
+      auto;
   }
-}
-.circle-cursor-ring,
-.circle-cursor-dot {
-  position: fixed;
-  top: 0;
-  left: 0;
-  pointer-events: none;
-  z-index: 10000;
-  border-radius: 50%;
-  mix-blend-mode: difference;
-}
-.circle-cursor-ring {
-  width: 28px;
-  height: 28px;
-  margin: -14px;
-  border: 1px solid white;
-}
-.circle-cursor-dot {
-  width: 5px;
-  height: 5px;
-  margin: -2.5px;
-  background: white;
+  input,
+  textarea,
+  [contenteditable],
+  [contenteditable] * {
+    cursor: text;
+  }
+  select {
+    cursor: auto;
+  }
+  body
+    :where(
+      a[href],
+      button:not(:disabled),
+      [role="button"]:not([aria-disabled="true"]),
+      summary,
+      input[type="checkbox"],
+      input[type="radio"]
+    ),
+  body
+    :where(
+      a[href],
+      button:not(:disabled),
+      [role="button"]:not([aria-disabled="true"]),
+      summary
+    )
+    * {
+    cursor:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='28' height='28' viewBox='0 0 28 28'%3E%3Ccircle cx='14' cy='14' r='10' fill='%2300c7ed' stroke='white' stroke-opacity='.9' stroke-width='1.5'/%3E%3C/svg%3E")
+        14 14,
+      pointer;
+  }
+  body :disabled,
+  body [aria-disabled="true"],
+  body [aria-disabled="true"] * {
+    cursor: not-allowed;
+  }
 }
 @layer base {
   body {
