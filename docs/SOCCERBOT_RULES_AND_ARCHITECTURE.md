@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Comment-complete Review and D1 round trips — 19 October 2026 SGT
+
+For a single booking, protected progress may expose payment-disabled Review as soon as the successfully acknowledged comment matches the retained booking reference and the attempt is still dispatching. It need not wait for association persistence. The existing association milestone remains a fallback when annotation fails, because comments are non-blocking and unknown comment writes must not be replayed. Progress is display-only: original holding execution still owns booking/invoice readback, matching and unpaid checks, hold evidence and expiry. Payment requires that completed hold. Batch progress is unchanged. The existing one-second polling transport adds detection latency; this is not an instantaneous server-push contract or a measured4–5-second result.
+
+Native creation owns raw reference retention before normalization. Orchestration acknowledges the exact immutable reference under its current dispatch fence with one read, without first attempting a redundant update. Generic adapters retain the original update/fallback behavior. Confirmation joins its immutable payment route and payment state in one fresh-primary query; payment evidence requirements, ownership, quotas and deadlines remain unchanged.
+
 ## Review route continuity — 19 October 2026 SGT
 
 BookingPage owns live held/recovery routing. When Details has already rendered pending Review and the hold becomes verified, retain that component while the URL catches up instead of replacing it with the shared full-page loader. Details only dispatches the reservation; it does not also navigate. Review renders a disabled text label while verifying, with no second spinning emblem. Existing server authority, failed-write evidence, original attempt identity and payment gating remain unchanged.

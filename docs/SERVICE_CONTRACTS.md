@@ -1,5 +1,13 @@
 # SoccerBotStudio — Service Contracts
 
+## Latest05 latency pass and comment milestone — 19 October 2026 SGT
+
+GET /api/booking/native/{id} remains owner-authenticated and returns no provider capability. For one session in a running grant it returns verifying when either association exists or a dispatching attempt has an observed native-comment:0 referencing the same observed session:0. Unknown/mismatched comments and pre-association recovery do not qualify; batch creation does not qualify. This signal enables only locked Review. The holding POST remains the sole creation owner and must finish all authoritative readback and hold persistence before payment. Comment failure stays non-blocking, with existing association fallback and no resend.
+
+Full-pass evidence: latest05 holding14.112s; coordinator trace46 D1 operations accumulating5.882s and11 provider operations accumulating8.234s. Accumulated spans overlap and include transport; neither is a pure SQL execution total or a serial wall-time decomposition. This candidate removes one redundant native-reference update per session and one route/payment round trip per HitPay confirmation check; measured live savings remain pending.
+
+Further candidates, not implemented here: combine repeated request-entry authentication/attempt/grant snapshots without caching write authority; overlap independent service/instructor catalogue reads under existing admission; consolidate recovery lease reads at the final dispatch boundary; measure foreground queue entry separately from execution; measure terminal-state-to-browser delay before changing the one-second-then-five-second confirmation schedule. Whole display jobs currently share the account queue and cannot be preempted, so background completion can still delay foreground work. No evidence currently justifies new SQLite indexes, replacing D1, relaxing first-primary consistency, extending admin-token lifetime or skipping before/after external-payment evidence.
+
 ## Review presentation continuity — 19 October 2026 SGT
 
 Once the protected creation milestone opens pending Review, retain that view through authoritative hold completion and the Details-to-Review URL transition. The live page guard is the only navigation owner; Details does not send a second push. Pending payment remains disabled with a text label and the do-not-close/refresh message. No second full-page or inline logo is shown on this successful transition. Rejected/unknown outcomes retain existing protected recovery routing. This UI change does not advance the server creation milestone or authorize payment before readback.

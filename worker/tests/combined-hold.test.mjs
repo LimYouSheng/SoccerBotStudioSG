@@ -511,3 +511,133 @@ test("ongoing confirmation grants five fast stored-status checks while retaining
     await m.close();
   }
 });
+
+test("single hold progress exposes the matched comment receipt before association without granting payment", async () => {
+  const m = await createBookingMechanism();
+  try {
+    const c = await customer(m);
+    assert.equal((await c.send()).status, 200);
+    const saved = await m.db
+      .prepare("SELECT * FROM attempts WHERE id=?")
+      .bind(c.input.key)
+      .first();
+    const cases = [
+      {
+        outcome: "observed",
+        reference: "701",
+        state: "dispatching",
+        batch: false,
+        expected: "verifying",
+      },
+      {
+        outcome: "unknown",
+        reference: "701",
+        state: "dispatching",
+        batch: false,
+        expected: "running",
+      },
+      {
+        outcome: "observed",
+        reference: "wrong",
+        state: "dispatching",
+        batch: false,
+        expected: "running",
+      },
+      {
+        outcome: "observed",
+        reference: "701",
+        state: "recovery_required",
+        batch: false,
+        expected: "running",
+      },
+      {
+        outcome: "observed",
+        reference: "701",
+        state: "dispatching",
+        batch: true,
+        expected: "running",
+      },
+    ];
+    // Seed independent intermediate snapshots; never rewrite immutable evidence.
+    for (const scenario of cases) {
+      const id = crypto.randomUUID();
+      const intent = JSON.parse(saved.intent_json);
+      if (scenario.batch)
+        intent.sessions.push({
+          ...intent.sessions[0],
+          startMs: intent.sessions[0].startMs + 3000000,
+        });
+      if (scenario.batch) intent.totalMinor *= 2;
+      const json = JSON.stringify(intent);
+      const hash = Buffer.from(
+        await crypto.subtle.digest("SHA-256", new TextEncoder().encode(json)),
+      ).toString("hex");
+      await m.db
+        .prepare(
+          "INSERT INTO attempts(id,owner_id,idempotency_key,intent_json,intent_hash,created_ms,deadline_ms,state) VALUES(?,?,?,?,?,?,?,?)",
+        )
+        .bind(
+          id,
+          saved.owner_id,
+          id,
+          json,
+          hash,
+          saved.created_ms,
+          saved.deadline_ms,
+          scenario.state,
+        )
+        .run();
+      await m.db
+        .prepare(
+          "UPDATE native_checkout_grants SET attempt_id=?,intent_hash=?,state='running' WHERE capability_hash=(SELECT capability_hash FROM guest_access WHERE owner_id=?)",
+        )
+        .bind(id, hash, saved.owner_id)
+        .run();
+      await m.db
+        .prepare(
+          "INSERT INTO session_effects VALUES(?,'session:0','observed','701')",
+        )
+        .bind(id)
+        .run();
+      await m.db
+        .prepare("INSERT INTO session_effects VALUES(?,'native-comment:0',?,?)")
+        .bind(id, scenario.outcome, scenario.reference)
+        .run();
+      const response = await m.mf.dispatchFetch(
+        m.origin + `/api/booking/native/${id}`,
+        { headers: c.headers },
+      );
+      assert.equal(response.status, 200, await response.clone().text());
+      assert.deepEqual(await response.json(), {
+        attemptId: id,
+        state: scenario.expected,
+        paymentAvailable: false,
+      });
+      const anonymous = await m.mf.dispatchFetch(
+        m.origin + `/api/booking/native/${id}`,
+      );
+      assert.equal(anonymous.status, 401);
+      if (scenario.expected === "verifying") {
+        const denied = await m.mf.dispatchFetch(
+          m.origin + `/api/booking/hitpay/${id}`,
+          {
+            method: "POST",
+            headers: c.headers,
+            body: JSON.stringify({ accepted: true }),
+          },
+        );
+        assert.notEqual(denied.status, 200);
+      }
+    }
+    assert.equal(
+      m.calls.some((call) => call.url.includes("hit-pay.com")),
+      false,
+    );
+    assert.equal(
+      m.calls.filter((call) => call.body?.method === "book").length,
+      1,
+    );
+  } finally {
+    await m.close();
+  }
+});

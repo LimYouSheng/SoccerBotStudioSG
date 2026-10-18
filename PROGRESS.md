@@ -1,11 +1,14 @@
 # SoccerBotStudioSG current progress
 
+## Comment milestone and D1 latency pass — 19 October 2026 SGT
+
+Source baseline origin/main40e735e (PR54); isolated branch perf/review-comment-milestone. Single-booking Review now qualifies from its matched acknowledged comment before association persistence, with payment still gated by all completed hold checks. Native reference acknowledgement drops its redundant update; confirmation joins route/payment status. Further latency candidates are recorded in Service Contracts, including repeated request snapshots, catalogue concurrency, recovery-lease reads, account queue waits and terminal polling delay. No unmeasured4–5-second claim. Added pre-association negative mechanism coverage and strengthened the two actual-Worker browser transition/failure cases. Focused milestone regression passes and the isolated old-behavior mutant is detected. Full verification/CI evidence belongs to the exact candidate PR; no provider mutations, batch acceptance or deployment.
+
 ## Latest05 Review transition repair — 19 October 2026 SGT
 
 Owner HAR latest05 records a14.112s combined hold; first verifying reply is visible about12.75s after dispatch, leaving only about1.36s before completion. Main/deployed baseline836a5c4 is confirmed by the preceding successful PR53/main deployment. Bounded Cloudflare trace matches14.098s HTTP /13.802s coordinator, with11 provider spans totalling8.234s and46 D1 spans totalling5.882s; overlapping span totals are not additive wall time. No creation/comment completion timestamp is inferred from the browser polling sample.
 
 Source exposes a second overlay when the already-rendered Review becomes the guarded destination but the URL still says Details; Details also pushes while BookingPage replaces that URL. Keep Review mounted through the route change, use only BookingPage for live routing, and replace the pending button logo with a disabled text label. Tests retain payment protection and gate the actual Review route response to assert no overlay after readback. Backend guards/creation milestones remain unchanged. This fixes presentation continuity, not the4–5-second latency target. Exact-source CI remains pending.
-
 
 ## Single-booking verification latency and reference clarity — 19 October 2026 SGT
 
