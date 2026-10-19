@@ -82,23 +82,26 @@ export async function prepareAttempt(
         ? crypto.randomUUID()
         : z.string().uuid().parse(requestedId);
   const session = db.withSession("first-primary");
-  await session
-    .prepare(
-      "INSERT INTO attempts(id,owner_id,idempotency_key,intent_json,intent_hash,created_ms,deadline_ms,state) VALUES(?,?,?,?,?,?,?,'prepared') ON CONFLICT DO NOTHING",
-    )
-    .bind(id, owner, key, json, hash, now, now + deadlineMs)
-    .run();
-  const row = await session
-    .prepare(
-      "SELECT id,intent_hash,version,state FROM attempts WHERE owner_id=? AND idempotency_key=?",
-    )
-    .bind(owner, key)
-    .first<{
-      id: string;
-      intent_hash: string;
-      version: number;
-      state: string;
-    }>();
+  const results = await session.batch([
+    session
+      .prepare(
+        "INSERT INTO attempts(id,owner_id,idempotency_key,intent_json,intent_hash,created_ms,deadline_ms,state) VALUES(?,?,?,?,?,?,?,'prepared') ON CONFLICT DO NOTHING",
+      )
+      .bind(id, owner, key, json, hash, now, now + deadlineMs),
+    session
+      .prepare(
+        "SELECT id,intent_hash,version,state FROM attempts WHERE owner_id=? AND idempotency_key=?",
+      )
+      .bind(owner, key),
+  ]);
+  const row = results[1].results[0] as
+    | {
+        id: string;
+        intent_hash: string;
+        version: number;
+        state: string;
+      }
+    | undefined;
   if (!row || row.intent_hash !== hash)
     throw new ApiError(409, "idempotency_conflict");
   return row;

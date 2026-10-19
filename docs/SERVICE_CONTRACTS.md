@@ -1,5 +1,11 @@
 # SoccerBotStudio — Service Contracts
 
+## Pre-creation read concurrency — 19 October 2026 SGT
+
+Ongoing customer preparation validates authentication, contract, selection, price and immutable attempt binding before speculative identity reads. New attempt persistence and provider identity preparation then overlap; both settle before execution. Existing/split preparation callers retain their contract. Attempt insert/readback share one D1 session batch and retain conflicting-intent rejection. No dispatch reservation or creation runs before preparation succeeds.
+
+Public/admin token acquisition may overlap for ongoing access, retaining family-specific refresh claims and shared promises; a failed group drains before token invalidation. Prebooking requires fresh catalogue and then runs required-fields, instructor eligibility and availability through at most two read lanes. A failed lane stops queued work and all started siblings settle before failure returns. Validation/freshness runs after results join; final write authority, provider admission and durable no-replay effects remain ordered. Physical limits remain two active requests,300ms start pacing and four starts per rolling second. No new retries, longer timeouts, token retention or relaxed cache freshness.
+
 ## Checkout progress, expiry and customer success — 19 October 2026 SGT
 
 `checkout_progress` (migration0033) retains the first validated booking creation clock and an immutable customer-confirmation snapshot. New HitPay holds use min(existing authoritative deadline, creation+600000ms); payment requests use min(hold deadline, creation+300000ms). Legacy holds retain their original deadlines. The original payment request is reused, never renewed. A matching verified payment received under a valid hold records customer success before accounting; this does not grant receipt/export authority. The timestamp is server verification time because the integration does not yet validate a provider completion-time field. Delayed verification after expiry remains conservative/manual review.

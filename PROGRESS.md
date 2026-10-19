@@ -1,5 +1,12 @@
 # SoccerBotStudioSG current progress
 
+## Bounded pre-creation concurrency — 19 October 2026 SGT
+
+Owner authorizes concurrency after HAR06/07 analysis: booking response arrived11.19/11.33seconds after coordinator start, while first Review-eligible browser response improved14.51→13.64seconds and full hold worsened15.73→16.68seconds. Implement within one serialized booking job: overlap public/admin authentication for ongoing customers; run required-fields, eligibility and availability through two drained read lanes after fresh catalogue; overlap validated local attempt persistence with provider identity preparation. Batch attempt insertion/readback while preserving immutable idempotency checks. Preserve finite paths, fresh pre-write validation, admission pacing/limits, reference retention and single booking effects. Provider account identity still gates tariff; no broader cross-customer runner/cache-policy change.
+
+Test-impact pass covers catalogue/provider/native/combined-hold tests, shared simulated Worker setup, standalone preparation callers and live-email browser request counts. Barrier regressions prove authentication/preflight overlap, failure draining, no premature creation and revocation rejection. Existing invalid-price test retains zero provider calls. Verification in progress; no live provider writes, browser execution, merge or deployment. Simulated overlap is not a measured live4–5second result.
+
+
 ## Shared checkout expiry and payment-first confirmation — 19 October 2026 SGT
 
 Owner authorizes implementing a five-minute payment deadline from successful booking creation, expiry return to calendar with contact retained, customer confirmation after verified matching HitPay payment, download-only waiting for reconciliation, and CI repair. This supersedes the earlier requirement to hide all success/actions until SimplyBook accounting finishes. The deadline is immutable across Review, checkout, refresh and retry and remains capped by the earlier provider/supervision expiry. Migration0033 adds creation/confirmation evidence and an immutable expired-grant archive; old attempts and financial records remain unchanged.

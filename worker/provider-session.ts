@@ -1,3 +1,4 @@
+import { parallelReads } from "./parallel-reads";
 import { hitpayRecoveryEnabled } from "./hitpay-contract";
 import { discoveryFields } from "./field-discovery";
 import { CatalogueReads } from "./catalogue";
@@ -119,6 +120,7 @@ export class ProviderSession {
       },
       contract,
       !!control.liveCustomer && liveCustomerAccess(env),
+      (operation, body) => observe?.(operation, body),
     );
   }
   // One named discovery only. Caller supplies the existing durable admission owner,
@@ -412,8 +414,17 @@ export class ProviderSession {
       if (secrets.company.toLowerCase() === "soccerbotstudio")
         throw new ApiError(503, "client_account_forbidden");
       const start = performance.now();
-      await this.token("public", env, control);
-      const admin = await this.token("admin", env, control);
+      const concurrent = !!control.liveCustomer && liveCustomerAccess(env);
+      const tokens = concurrent
+        ? await parallelReads([
+            () => this.token("public", env, control),
+            () => this.token("admin", env, control),
+          ])
+        : [
+            await this.token("public", env, control),
+            await this.token("admin", env, control),
+          ];
+      const admin = tokens[1];
       const authMs = performance.now() - start;
       const info = object(
         await providerRequest("identity", secrets, admin, control),

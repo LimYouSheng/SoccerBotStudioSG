@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## Pre-creation concurrency implementation — 19 October 2026 SGT
+
+Owner requests implementing all safe independent pre-creation overlap. Source audit found sequential token acquisition, independent preflight reads and provider identity preparation after local persistence. Implement bounded overlap with barrier-based simulated provider tests; preserve serialized booking writes and existing recovery/consent/freshness rules. Initial review caught that starting identity before local preparation validation would make invalid price input consume provider calls. Move the overlap boundary after local validation; retain the existing zero-provider-call assertion. Failure diagnostics select the failed operation after siblings drain rather than retaining another read's last completion. Live latency acceptance remains pending; source concurrency does not prove a4–5second journey.
+
 ## Payment-first confirmation and expiry implementation — 19 October 2026 SGT
 
 Owner clarified that verified matching payment should immediately complete the customer-facing booking when the existing hold remains valid; SimplyBook reconciliation must continue regardless of the page. A clicked download may wait, but confirmation must stay usable. Owner then requested a fixed five-minute payment deadline from creation, preserving contact when unpaid expired Review/checkout returns to calendar, and authorized implementation plus CI repair. This supersedes earlier pending-success UI instructions.

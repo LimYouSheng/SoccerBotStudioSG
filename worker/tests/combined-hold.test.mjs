@@ -743,3 +743,173 @@ test("single hold progress requires validated retained creation before comments 
     await m.close();
   }
 });
+
+test(
+  "combined preflight overlaps independent reads and drains them before one booking write",
+  { timeout: 15000 },
+  async () => {
+    const fields = Promise.withResolvers();
+    const slotEntered = Promise.withResolvers();
+    let fieldsPending = false;
+    const m = await createBookingMechanism({
+      respond: async (call) => {
+        if (call.body?.method === "getAdditionalFields") {
+          fieldsPending = true;
+          await fields.promise;
+          fieldsPending = false;
+        }
+        if (call.body?.method === "getStartTimeMatrix") slotEntered.resolve();
+        if (call.body?.method === "book") assert.equal(fieldsPending, false);
+      },
+    });
+    let pending;
+    try {
+      const c = await customer(m);
+      pending = c.send();
+      await slotEntered.promise;
+      assert.equal(
+        fieldsPending,
+        true,
+        "availability starts while required fields are blocked",
+      );
+      assert.equal(
+        m.calls.some((call) => call.body?.method === "book"),
+        false,
+      );
+      fields.resolve();
+      const response = await pending;
+      assert.equal(response.status, 200, await response.clone().text());
+      assert.equal((await response.json()).state, "associated");
+      assert.equal(
+        m.calls.filter((call) => call.body?.method === "book").length,
+        1,
+      );
+      assert.deepEqual(m.unexpected, []);
+    } finally {
+      fields.resolve();
+      await pending;
+      await m.close();
+    }
+  },
+);
+
+test(
+  "concurrent preflight drains siblings and rejects revocation before creation",
+  { timeout: 15000 },
+  async () => {
+    const fields = Promise.withResolvers();
+    const slotEntered = Promise.withResolvers();
+    const m = await createBookingMechanism({
+      respond: async (call) => {
+        if (call.body?.method === "getAdditionalFields") await fields.promise;
+        if (call.body?.method === "getStartTimeMatrix") slotEntered.resolve();
+      },
+    });
+    let pending;
+    try {
+      const c = await customer(m);
+      pending = c.send();
+      await slotEntered.promise;
+      await m.db
+        .prepare("UPDATE guest_access SET revoked_ms=?")
+        .bind(Date.now())
+        .run();
+      fields.resolve();
+      await pending;
+      assert.equal(
+        m.calls.some((call) => call.body?.method === "book"),
+        false,
+      );
+      assert.equal(
+        (await m.db.prepare("SELECT COUNT(*) AS n FROM attempts").first()).n,
+        1,
+      );
+    } finally {
+      fields.resolve();
+      await pending;
+      await m.close();
+    }
+  },
+);
+
+test(
+  "combined preparation overlaps public and admin authentication without premature booking",
+  { timeout: 15000 },
+  async () => {
+    const publicToken = Promise.withResolvers();
+    const adminEntered = Promise.withResolvers();
+    let publicPending = false;
+    const m = await createBookingMechanism({
+      respond: async (call) => {
+        if (call.body?.method === "getToken") {
+          publicPending = true;
+          await publicToken.promise;
+          publicPending = false;
+        }
+        if (call.url.endsWith("/admin/auth")) adminEntered.resolve();
+      },
+    });
+    let pending;
+    try {
+      const c = await customer(m);
+      pending = c.send();
+      await adminEntered.promise;
+      assert.equal(publicPending, true);
+      assert.equal(
+        m.calls.some((call) => call.body?.method === "book"),
+        false,
+      );
+      publicToken.resolve();
+      const response = await pending;
+      assert.equal(response.status, 200, await response.clone().text());
+      assert.equal((await response.json()).state, "associated");
+      assert.equal(
+        m.calls.filter((call) => call.body?.method === "getToken").length,
+        1,
+      );
+      assert.equal(
+        m.calls.filter((call) => call.url.endsWith("/admin/auth")).length,
+        1,
+      );
+      assert.equal(
+        m.calls.filter((call) => call.body?.method === "book").length,
+        1,
+      );
+    } finally {
+      publicToken.resolve();
+      await pending;
+      await m.close();
+    }
+  },
+);
+
+test("concurrent preflight attributes invalid fields correctly and creates no booking", async () => {
+  const m = await createBookingMechanism({
+    respond: async (call) =>
+      call.body?.method === "getAdditionalFields"
+        ? Response.json({ jsonrpc: "2.0", id: call.body.id, result: [{}] })
+        : undefined,
+  });
+  try {
+    const c = await customer(m);
+    const response = await c.send();
+    assert.equal(response.status, 200, await response.clone().text());
+    assert.equal((await response.json()).state, "prerequisites_unavailable");
+    assert.equal(
+      m.calls.some((call) => call.body?.method === "book"),
+      false,
+    );
+    const row = await m.db
+      .prepare(
+        "SELECT result_json FROM native_checkout_grants WHERE attempt_id=?",
+      )
+      .bind(c.input.key)
+      .first();
+    assert.equal(
+      JSON.parse(row.result_json).diagnostic.operation,
+      "required-fields",
+    );
+  } finally {
+    await m.close();
+  }
+});

@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Pre-creation concurrency ownership — 19 October 2026 SGT
+
+parallel-reads owns bounded two-lane joining and deterministic drained failure, not physical provider admission. ProviderSession owns ongoing token concurrency; NativePrebooking owns independent validation reads and resets failure-operation diagnostics after draining. prepareCustomerNative owns the validation-before-overlap boundary between immutable D1 preparation and provider warm-up. Journal batches dependent preparation SQL to reduce round trips without pretending writes are independent. The account queue continues serializing booking jobs, and provider transport/admission remain the sole physical-call owner. Cross-customer scheduling and payment fairness remain the separately recorded pending task.
+
 ## Customer confirmation and shared checkout deadline — 19 October 2026 SGT
 
 Current owner instruction supersedes the earlier all-reconciliation-before-success UI rule. A server-verified matching HitPay payment against the original verified, unexpired hold may show Booking confirmed and Paid immediately. Accounting reconciliation continues durably; downloads wait locally for the original reconciliation and then obtain fresh protected authorization. Customer success evidence is distinct from the reconciled receipt/export decision. Known conflicts/manual review must not gain confirmation.
