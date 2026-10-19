@@ -1,3 +1,4 @@
+import { retainCustomerConfirmation } from "./checkout-progress";
 import { ApiError, digest, policy } from "./policy";
 import {
   hitpayRecoveryEnabled,
@@ -60,7 +61,7 @@ export async function recoverHitpay(
     await assertPaymentScope(env, scope);
     const attempt = await env.STATE.withSession("first-primary")
       .prepare(
-        "SELECT intent_json,intent_hash,association_json,version FROM attempts WHERE id=?",
+        "SELECT a.intent_json,a.intent_hash,a.association_json,a.version,h.expires_ms AS hold_expires_ms FROM attempts a LEFT JOIN hitpay_holds h ON h.attempt_id=a.id WHERE a.id=?",
       )
       .bind(id)
       .first<{
@@ -68,6 +69,7 @@ export async function recoverHitpay(
         intent_hash: string;
         association_json: string;
         version: number;
+        hold_expires_ms: number | null;
       }>();
     if (
       !attempt ||
@@ -102,14 +104,18 @@ export async function recoverHitpay(
       }
       return;
     }
+    const paidAtMs = row.paid_ms ?? Date.now();
     // Monotonic evidence: later failed callbacks cannot erase a verified payment.
     await env.STATE.prepare(
       "UPDATE hitpay_payments SET paid_ms=COALESCE(paid_ms,?),payment_id=COALESCE(payment_id,?) WHERE attempt_id=? AND state='claimed' AND generation=?",
     )
-      .bind(Date.now(), verified.paymentId, id, row.generation)
+      .bind(paidAtMs, verified.paymentId, id, row.generation)
       .run();
     if (row.payment_id !== null && row.payment_id !== verified.paymentId)
       throw new ApiError(409, "hitpay_payment_identity_changed");
+    // Persist customer success before slow accounting. Failure retains payment
+    // evidence and the existing recovery claim; it never replays creation.
+    await retainCustomerConfirmation(env, row, paidAtMs);
     const secret = hitpaySetting(env, "SIMPLYBOOK_DEV_SIGNING_SECRET");
     if (!secret) throw new ApiError(503, "native_signing_unavailable");
     const read = async () => {
@@ -154,13 +160,17 @@ export async function recoverHitpay(
       throw new ApiError(409, "hitpay_paid_booking_invalid");
     if (observation.invoice.status === "paid" && row.external_state === "none")
       throw new ApiError(409, "invoice_already_paid_review");
-    if (observation.invoice.status !== "paid") {
-      // Expired holds and past sessions never gain capacity by receiving money.
+    const assertLiveHold = () => {
+      // On-time payment may reconcile only while the original hold remains live.
       if (
-        Date.now() >= row.expires_ms ||
+        paidAtMs >= row.expires_ms ||
+        Date.now() >= (attempt.hold_expires_ms ?? row.expires_ms) ||
         intent.sessions.some((s) => s.startMs <= Date.now())
       )
         throw new ApiError(409, "hitpay_late_payment_review");
+    };
+    if (observation.invoice.status !== "paid") {
+      assertLiveHold();
       if (row.external_state !== "none") {
         reason = "external_write_unknown";
         return;
@@ -188,7 +198,10 @@ export async function recoverHitpay(
           invoiceId: refs.invoiceId,
           processor,
         },
-        assertClaim,
+        async () => {
+          await assertClaim();
+          assertLiveHold();
+        },
         async (reservationId) => {
           const stored = await env.STATE.prepare(
             "UPDATE hitpay_payments SET external_reservation=? WHERE attempt_id=? AND state='claimed' AND generation=? AND external_reservation IS NULL RETURNING attempt_id",

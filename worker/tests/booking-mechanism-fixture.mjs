@@ -7,6 +7,9 @@ import { build } from "esbuild";
 import ts from "typescript";
 import { Miniflare, convertV4MiniflareOptions } from "miniflare";
 import { seedFoundation } from "./foundation-fixture.mjs";
+// Cache only immutable compiled source within this test process. Every call
+// still owns a new runtime, database, provider state and effect history.
+let compiledWorker;
 export async function createBookingMechanism(options = {}) {
   const config = ts.parseConfigFileTextToJson(
     "wrangler.jsonc",
@@ -75,14 +78,14 @@ export async function createBookingMechanism(options = {}) {
   let booked = false,
     reference;
   const script = (
-    await build({
+    await (compiledWorker ??= build({
       entryPoints: ["worker/index.ts"],
       bundle: true,
       write: false,
       format: "esm",
       platform: "browser",
       external: ["cloudflare:workers", "node:async_hooks"],
-    })
+    }))
   ).outputFiles[0].text;
   const mf = new Miniflare(
     convertV4MiniflareOptions({
@@ -314,14 +317,19 @@ export async function createBookingMechanism(options = {}) {
   try {
     await mf.ready;
     const db = await mf.getD1Database("STATE");
-    for (const name of readdirSync("migrations")
-      .sort()
-      .filter((n) => !n.startsWith("0005")))
-      await db.exec(
-        readFileSync(`migrations/${name}`, "utf8")
-          .replace(/^--.*$/gm, "")
-          .replace(/\n/g, " "),
-      );
+    // Preserve migration order and every statement while avoiding one host/RPC
+    // round trip per migration for each independent browser fixture.
+    await db.exec(
+      readdirSync("migrations")
+        .sort()
+        .filter((name) => !name.startsWith("0005"))
+        .map((name) =>
+          readFileSync(`migrations/${name}`, "utf8")
+            .replace(/^--.*$/gm, "")
+            .replace(/\n/g, " "),
+        )
+        .join(" "),
+    );
     await seedFoundation(mf, db);
     return {
       mf,

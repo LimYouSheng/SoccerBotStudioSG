@@ -52,6 +52,7 @@ export type BookingOperations = {
   validationMode?: "per-session";
   // Native creation retains the raw receipt before normalization can fail.
   retainsSessionReferences?: boolean;
+  onCreated?: (receivedAtMs: number) => Promise<void>;
   onFailure?: (error: unknown, sessionIndex?: number) => void;
   supported: boolean;
   hasRecoveryCapacity: (sessions: number) => Promise<boolean>;
@@ -225,6 +226,7 @@ export async function orchestrateBooking(
         ...context,
         assertCurrent,
       });
+      const receivedAtMs = Date.now();
       // Preserve an observed reference even if its association is invalid.
       if (
         raw &&
@@ -255,6 +257,7 @@ export async function orchestrateBooking(
           throw new ApiError(409, "booking_customer_mismatch");
         nativeCustomerId = accepted.nativeCustomerId;
       }
+      if (sessionIndex === 0) await operations.onCreated?.(receivedAtMs);
       ids.push(accepted.bookingId);
     }
     failedSessionIndex = undefined;

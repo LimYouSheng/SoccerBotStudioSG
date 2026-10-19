@@ -1,6 +1,5 @@
 "use client";
 import { BrandLoading as InlineLoading } from "@/components/brand-loading";
-import { BookingLoading as BrandLoading } from "./booking-loading";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -88,11 +87,7 @@ export function BookingConfirmation({
     <div className="status-shell">
       <div className="status-heading">
         {pending ? (
-          <InlineLoading
-            overlay={false}
-            label={pendingLabel}
-            message="Please don’t close or refresh this page while we finish."
-          />
+          <InlineLoading compact label={pendingLabel} />
         ) : (
           <>
             <span className="status-icon">
@@ -254,7 +249,7 @@ export function BookingConfirmation({
             <Icon name="download" />
             <span>
               {downloading ? (
-                <BrandLoading compact label="Preparing download…" />
+                <InlineLoading compact label="Preparing download…" />
               ) : (
                 "Download booking details"
               )}

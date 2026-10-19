@@ -22,6 +22,7 @@ export function PaymentStep() {
     revision,
     reset,
     restartAfterConfirmation,
+    restartAfterExpiry,
   } = useBooking();
   const [method, setMethod] = useState("card");
   useEffect(() => () => cancel(), [cancel]);
@@ -35,6 +36,7 @@ export function PaymentStep() {
           attemptId={attempt.id}
           checkoutMode="live"
           sessionRevision={revision}
+          onExpired={restartAfterExpiry}
           onAgain={reset}
           onRestart={restartAfterConfirmation}
         />

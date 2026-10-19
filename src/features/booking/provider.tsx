@@ -2,6 +2,7 @@
 import { BookingLoadingProvider } from "./booking-loading";
 import {
   protectedCheckoutService,
+  expireBooking,
   dismissCompletedBooking,
   completedExitIntent,
   rememberCompletedExit,
@@ -73,6 +74,7 @@ interface BookingContextValue extends StoredBooking {
   check: () => Promise<boolean>;
   resolve: () => Promise<boolean>;
   reset: () => void;
+  restartAfterExpiry: (attemptId: string) => void;
   restartAfterConfirmation: (attemptId: string) => void;
   rebookingError: string | null;
   retryRebooking: () => void;
@@ -527,6 +529,34 @@ export function BookingProvider({
                 "temporarily_unavailable",
                 "We couldn’t complete that request. Please try again.",
               );
+        if (known.code === "reservation_expired" && latest.current.attempt) {
+          try {
+            await expireBooking(latest.current.attempt.id);
+            if (!isCurrent()) return false;
+            commit({
+              ...latest.current,
+              attempt: null,
+              draft: { ...latest.current.draft, accepted: false, slots: [] },
+            });
+            pauseCalendar(false);
+            setSelectionNotice(known.message);
+            setAction({
+              status: "failure",
+              operation,
+              error: known.message,
+              returnToCalendar: true,
+            });
+          } catch {
+            if (isCurrent())
+              setAction({
+                status: "failure",
+                operation,
+                error:
+                  "Payment status is still being checked. Your original booking has been kept.",
+              });
+          }
+          return false;
+        }
         const selectionRejected =
           operation === "reserve" &&
           (known.code === "selection_unavailable" ||
@@ -604,6 +634,25 @@ export function BookingProvider({
         rebookingError,
         retryRebooking() {
           if (exitWork.current) void finishExit(exitWork.current.id);
+        },
+        restartAfterExpiry(id) {
+          if (
+            active.current ||
+            (latest.current.attempt && latest.current.attempt.id !== id)
+          )
+            return;
+          cancel();
+          setRestoredOwner({ service, identityService });
+          commit({
+            ...latest.current,
+            attempt: null,
+            draft: { ...latest.current.draft, accepted: false, slots: [] },
+          });
+          pauseCalendar(false);
+          setSelectionNotice(
+            "Your reservation expired. Please choose a time again. Your contact details have been kept.",
+          );
+          setAction({ status: "idle", returnToCalendar: true });
         },
         restartAfterConfirmation(id) {
           if (

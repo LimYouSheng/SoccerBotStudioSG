@@ -44,7 +44,7 @@ export function BookingPage({ step }: { step: BookingStep }) {
     router = useRouter();
   const handingOff =
     bookingService.mode === "live" &&
-    step === "review" &&
+    (step === "review" || (step === "details" && attempt?.held)) &&
     !!attempt &&
     (action.status === "loading" || action.status === "success") &&
     action.operation === "checkout";
@@ -59,7 +59,7 @@ export function BookingPage({ step }: { step: BookingStep }) {
       ? "review"
       : step;
   const actual =
-      step === "details" && action.returnToCalendar
+      action.returnToCalendar && ["details", "review", "payment"].includes(step)
         ? "time"
         : handingOff || reserving
           ? step

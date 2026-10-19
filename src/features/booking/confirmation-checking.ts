@@ -39,6 +39,8 @@ export function useConfirmationChecking(
     revision: number;
     view: View;
     paymentReceived: boolean;
+    customerConfirmation?: import("@/services/contracts").CheckoutContext["customerConfirmation"];
+    expired?: boolean;
     busy: boolean;
     next: number;
   } | null>(null);
@@ -65,12 +67,16 @@ export function useConfirmationChecking(
           revision: sessionRevision,
           view,
           paymentReceived,
+          customerConfirmation,
+          expired,
           busy,
           next: budget.next,
         });
     };
     let terminal = false;
     let paymentReceived = false;
+    let customerConfirmation: import("@/services/contracts").CheckoutContext["customerConfirmation"];
+    let expired = false;
     function schedule() {
       clearTimeout(timer);
       if (!active || terminal || document.hidden) return;
@@ -159,6 +165,11 @@ export function useConfirmationChecking(
         // read. This never resets the shared count or the original deadline.
         budget.next = response.checking.nextCheckMs ?? budget.next;
         save(attemptId, budget);
+        customerConfirmation =
+          "customerConfirmation" in response
+            ? response.customerConfirmation
+            : undefined;
+        expired = "expired" in response && response.expired === true;
         paymentReceived =
           response.reason === "payment_received_booking_pending" ||
           response.status === "confirmed";
@@ -253,6 +264,14 @@ export function useConfirmationChecking(
     };
   }, [attemptId, sessionRevision, enabled]);
   return {
+    customerConfirmation:
+      result?.id === attemptId && result.revision === sessionRevision
+        ? result.customerConfirmation
+        : undefined,
+    expired:
+      result?.id === attemptId &&
+      result.revision === sessionRevision &&
+      result.expired === true,
     paymentReceived:
       result?.id === attemptId && result.revision === sessionRevision
         ? result.paymentReceived

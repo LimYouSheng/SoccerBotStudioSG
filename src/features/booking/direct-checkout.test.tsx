@@ -37,11 +37,11 @@ const draft = {
     },
   ],
 };
-function Seed() {
+function Seed({ accepted = true }: { accepted?: boolean }) {
   const { update, attempt, action, cancel, checkout } = useBooking();
   return (
     <>
-      <button onClick={() => update(draft)}>Seed</button>
+      <button onClick={() => update({ ...draft, accepted })}>Seed</button>
       <button onClick={cancel}>Cancel</button>
       <button onClick={() => void checkout()}>Repeat checkout</button>
       <output data-testid="retained">{attempt?.id}</output>
@@ -380,7 +380,7 @@ it("HitPay HTTP conflict preserves the hold and shows payment failure without se
       }}
     >
       <Hold />
-      <ReviewStep />
+      <BookingPage step="details" />
     </BookingProvider>,
   );
   fireEvent.click(screen.getByText("Fill details"));
@@ -413,13 +413,33 @@ it("created single hold shows Review before readback and keeps payment disabled 
   vi.setSystemTime(new Date("2026-10-15T00:00:00Z"));
   let complete!: (attempt: Attempt) => void;
   let created: Attempt;
-  const pay = vi.fn<BookingService["pay"]>(({ attempt, onHoldCreated }) => {
-    created = attempt;
-    onHoldCreated?.();
-    return new Promise((resolve) => {
-      complete = resolve;
+  const assign = vi.fn();
+  const originalLocation = window.location;
+  vi.stubGlobal("location", {
+    assign,
+    get pathname() {
+      return originalLocation.pathname;
+    },
+  });
+  let finishContext!: (response: Response) => void;
+  let contextSignal: AbortSignal | undefined;
+  const fetchContext = vi.fn((_input: unknown, init?: RequestInit) => {
+    contextSignal = init?.signal ?? undefined;
+    return new Promise<Response>((resolve) => {
+      finishContext = resolve;
     });
   });
+  vi.stubGlobal("fetch", fetchContext);
+  const pay = vi.fn<BookingService["pay"]>(
+    ({ attempt, onHoldCreated, holding }) => {
+      if (!holding) return Promise.resolve({ ...attempt, status: "checking" });
+      created = attempt;
+      onHoldCreated?.();
+      return new Promise((resolve) => {
+        complete = resolve;
+      });
+    },
+  );
   render(
     <BookingProvider
       bookingService={{
@@ -437,7 +457,7 @@ it("created single hold shows Review before readback and keeps payment disabled 
         availability: async () => [],
       }}
     >
-      <Seed />
+      <Seed accepted={false} />
       <BookingPage step="details" />
     </BookingProvider>,
   );
@@ -484,6 +504,44 @@ it("created single hold shows Review before readback and keeps payment disabled 
   expect(document.querySelector(".booking-flow-overlay")).toBeNull();
   expect(document.querySelector(".page-loading-emblem")).toBeNull();
   expect(pay).toHaveBeenCalledTimes(1);
+  fetchContext.mockClear();
+  fireEvent.click(screen.getByRole("checkbox"));
+  await act(async () =>
+    fireEvent.click(
+      screen.getByRole("button", { name: "Continue to payment" }),
+    ),
+  );
+  expect(fetchContext).toHaveBeenCalledTimes(1);
+  expect(contextSignal?.aborted).toBe(false);
+  expect(navigation.replace).not.toHaveBeenCalledWith("/book/payment/");
+  expect(screen.queryByRole("heading", { name: "Client Details" })).toBeNull();
+  expect(screen.getByTestId("action")).toHaveTextContent("loading");
+  await act(async () =>
+    finishContext(
+      Response.json({
+        attemptId: id,
+        mode: "live",
+        checkout: { state: "available", url, expiresAtMs: Date.now() + 60000 },
+        summary: {
+          players: 1,
+          totalMinor: 8800,
+          currency: "SGD",
+          sessions: [{ startMs: 1, players: 1 }],
+        },
+        checking: {
+          deadlineMs: Date.now() + 120000,
+          nextCheckMs: 0,
+          pollAfterMs: 5000,
+        },
+      }),
+    ),
+  );
+  expect(assign).toHaveBeenCalledExactlyOnceWith(url);
+  await act(async () => fireEvent.click(screen.getByText("Repeat checkout")));
+  expect(pay).toHaveBeenCalledTimes(2);
+  expect(fetchContext).toHaveBeenCalledTimes(1);
+  expect(screen.getByTestId("retained")).toHaveTextContent(id);
+  expect(screen.getByTestId("action")).toHaveTextContent("loading");
 });
 
 it("lost hold response restores only the same verified attempt without repeating the write", async () => {
@@ -601,4 +659,92 @@ it("lost hold response cannot adopt a different attempt returned by recovery", a
   );
   expect(pay).toHaveBeenCalledTimes(1);
   expect(restore).toHaveBeenCalledTimes(1);
+});
+
+it("expired Review releases only an authoritatively unpaid attempt and preserves contact on calendar return", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-15T00:00:00Z"));
+  vi.spyOn(crypto, "randomUUID").mockReturnValue(id);
+  let uncertain = true;
+  const calls: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      calls.push(path);
+      if (path === `/api/booking/hold/${id}`)
+        return Response.json({
+          attemptId: id,
+          state: "associated",
+          paymentAvailable: false,
+        });
+      if (path === `/api/booking/hitpay/${id}`)
+        return Response.json({ error: "hitpay_hold_expired" }, { status: 409 });
+      if (path === `/api/attempts/${id}/expire`)
+        return uncertain
+          ? Response.json(
+              { error: "checkout_expiry_unresolved" },
+              { status: 409 },
+            )
+          : Response.json({ expired: true });
+      throw new Error("Unexpected request " + path);
+    }),
+  );
+  function State() {
+    const { update, reserve, attempt, draft: current } = useBooking();
+    return (
+      <>
+        <button
+          onClick={() =>
+            update({ ...draft, nativeServiceId: "2", accepted: false })
+          }
+        >
+          Fill details
+        </button>
+        <button onClick={() => void reserve()}>Reserve</button>
+        <output data-testid="attempt">
+          {attempt?.id ?? "none"}:{current.contact.email}:{current.slots.length}
+        </output>
+      </>
+    );
+  }
+  render(
+    <BookingProvider
+      bookingService={{
+        ...liveBookingService,
+        restore: undefined,
+        publicCalendar: undefined,
+        calendar: undefined,
+      }}
+    >
+      <State />
+      <BookingPage step="details" />
+    </BookingProvider>,
+  );
+  fireEvent.click(screen.getByText("Fill details"));
+  await act(async () => fireEvent.click(screen.getByText("Reserve")));
+  fireEvent.click(screen.getByRole("checkbox"));
+  await act(async () =>
+    fireEvent.click(
+      screen.getByRole("button", { name: "Continue to payment" }),
+    ),
+  );
+  expect(screen.getByTestId("attempt")).toHaveTextContent(id);
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "Your original booking has been kept",
+  );
+  uncertain = false;
+  await act(async () =>
+    fireEvent.click(
+      screen.getByRole("button", { name: "Continue to payment" }),
+    ),
+  );
+  expect(screen.getByTestId("attempt")).toHaveTextContent(
+    `none:${draft.contact.email}:0`,
+  );
+  expect(navigation.replace).toHaveBeenCalledWith("/book/time/");
+  expect(
+    calls.filter((path) => path.startsWith("/api/booking/hold/")),
+  ).toHaveLength(1);
+  expect(calls.filter((path) => path.endsWith("/expire"))).toHaveLength(2);
 });

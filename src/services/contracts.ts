@@ -67,6 +67,7 @@ export type BookingErrorCode =
   | "invalid_response"
   | "selection_unavailable"
   | "selection_changed"
+  | "reservation_expired"
   | "payment_unavailable"
   | "conflict"
   | "unavailable"
@@ -124,6 +125,8 @@ export interface AssistantService {
 }
 
 export type CheckoutContext = {
+  customerConfirmation?: z.infer<typeof receiptSchema>;
+  expired?: boolean;
   details?: z.infer<typeof bookingDetailsSchema>;
   confirmation?: z.infer<typeof receiptSchema>;
   payment?: { status: "recorded"; paidAtMs: number };

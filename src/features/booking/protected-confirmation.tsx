@@ -2,7 +2,7 @@
 import { isHitpayCheckoutUrl } from "@/domain/native-checkout";
 import { BookingLoading as BrandLoading } from "./booking-loading";
 import { BrandLoading as InlineLoading } from "@/components/brand-loading";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BookingConfirmation } from "./confirmation-step";
 import { downloadBooking, downloadCalendar } from "@/services/exports";
@@ -11,6 +11,7 @@ import { sitePath } from "@/content/site-path";
 import {
   readBookingReceipt,
   dismissCompletedBooking,
+  expireBooking,
   bookingFromReceipt,
   protectedCheckoutService,
 } from "@/services/confirmation";
@@ -23,11 +24,13 @@ export function ProtectedConfirmation({
   sessionRevision = 0,
   onAgain,
   onRestart,
+  onExpired,
 }: {
   attemptId: string;
   checkoutMode?: "synthetic" | "live";
   sessionRevision?: number;
   onAgain?: () => void;
+  onExpired?: (attemptId: string) => void;
   onRestart?: (attemptId: string) => void;
 }) {
   const router = useRouter();
@@ -48,12 +51,19 @@ export function ProtectedConfirmation({
     contextMatches ||
     (contextFailure?.id === attemptId &&
       contextFailure.revision === sessionRevision);
-  const { view, busy, check, bindWindow, paymentReceived } =
-    useConfirmationChecking(
-      attemptId,
-      sessionRevision,
-      (!checkoutMode || contextSettled) && !saved,
-    );
+  const {
+    view,
+    busy,
+    check,
+    bindWindow,
+    paymentReceived,
+    customerConfirmation,
+    expired,
+  } = useConfirmationChecking(
+    attemptId,
+    sessionRevision,
+    (!checkoutMode || contextSettled) && !saved,
+  );
   const [receipt, setReceipt] = useState<{
     value: BookingReceipt;
     revision: number;
@@ -64,6 +74,58 @@ export function ProtectedConfirmation({
     revision: number;
   } | null>(null);
   const [receiptRead, setReceiptRead] = useState(0);
+  const exportWaiter = useRef<{
+    resolve: () => void;
+    reject: () => void;
+  } | null>(null);
+  useEffect(() => {
+    if (
+      receipt?.value.attemptId === attemptId &&
+      receipt.revision === sessionRevision
+    ) {
+      exportWaiter.current?.resolve();
+      exportWaiter.current = null;
+    } else if (
+      ["denied", "unresolved", "unavailable"].includes(view) ||
+      receiptFailure
+    ) {
+      exportWaiter.current?.reject();
+      exportWaiter.current = null;
+    }
+  }, [receipt, receiptFailure, view, attemptId, sessionRevision]);
+  useEffect(
+    () => () => {
+      exportWaiter.current?.reject();
+      exportWaiter.current = null;
+    },
+    [attemptId, sessionRevision],
+  );
+  const finishExpiry = useEffectEvent(() => {
+    onExpired?.(attemptId);
+    router.replace("/book/time/");
+  });
+  const expiryWork = useRef<{ id: string; work: Promise<void> } | null>(null);
+  const wantsExpiry =
+    expired || (contextMatches && context.value.expired === true);
+  const [expiryFailure, setExpiryFailure] = useState(false);
+  useEffect(() => {
+    if (!wantsExpiry) return;
+    if (expiryWork.current?.id !== attemptId)
+      expiryWork.current = { id: attemptId, work: expireBooking(attemptId) };
+    let active = true;
+    void expiryWork.current.work.then(
+      () => {
+        if (!active) return;
+        finishExpiry();
+      },
+      () => {
+        if (active) setExpiryFailure(true);
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [wantsExpiry, attemptId, sessionRevision]);
   useEffect(() => {
     if (view !== "confirmed" || checkoutMode === "synthetic") return;
     const controller = new AbortController();
@@ -140,13 +202,19 @@ export function ProtectedConfirmation({
     current?.checkout.state === "available" &&
     current.checkout.url !== expiredLink &&
     !["confirmed", "denied", "unresolved"].includes(view);
+  const customerProof = !["denied", "unresolved"].includes(view)
+    ? (customerConfirmation ??
+      (contextMatches ? context.value.customerConfirmation : undefined))
+    : undefined;
   const displayedReceipt = saved
     ? bookingFromReceipt(saved)
     : view === "confirmed" &&
         receipt?.value.attemptId === attemptId &&
         receipt.revision === sessionRevision
       ? receipt.value
-      : null;
+      : customerProof
+        ? bookingFromReceipt(customerProof)
+        : null;
   if (displayedReceipt && checkoutMode !== "synthetic") {
     const exportReceipt = async (format: "calendar" | "details") => {
       const controller =
@@ -156,6 +224,16 @@ export function ProtectedConfirmation({
       receiptWork.current = controller;
       if (!controller || controller.signal.aborted)
         throw new Error("receipt_unavailable");
+      if (customerProof && view !== "confirmed" && !saved) {
+        if (["unresolved", "unavailable", "denied"].includes(view))
+          throw new Error("receipt_unavailable");
+        await new Promise<void>((resolve, reject) => {
+          exportWaiter.current = {
+            resolve,
+            reject: () => reject(new Error("receipt_unavailable")),
+          };
+        });
+      }
       const current = await readBookingReceipt(attemptId, controller.signal);
       if (controller.signal.aborted) throw new Error("receipt_unavailable");
       if (format === "calendar") downloadCalendar(current.booking, false);
@@ -171,7 +249,7 @@ export function ProtectedConfirmation({
       <BookingConfirmation
         booking={displayedReceipt.booking}
         taxMinor={displayedReceipt.taxMinor}
-        verifiedAtMs={saved?.verifiedAtMs}
+        verifiedAtMs={customerProof?.verifiedAtMs ?? saved?.verifiedAtMs}
         onAgain={async () => {
           if (onRestart) {
             onRestart(attemptId);
@@ -197,6 +275,13 @@ export function ProtectedConfirmation({
       />
     );
   }
+  if (expiryFailure)
+    return (
+      <p role="alert">
+        Payment status is still being checked. Your original booking has been
+        kept.
+      </p>
+    );
   const receiptUnavailable =
     receiptFailure?.id === attemptId &&
     receiptFailure.revision === sessionRevision;
@@ -230,7 +315,7 @@ export function ProtectedConfirmation({
         <section className="surface confirmation-card" aria-busy="true">
           <h1>Booking confirmation</h1>
           <InlineLoading
-            overlay={false}
+            compact
             label={
               view === "confirmed"
                 ? "Preparing your confirmation…"
@@ -238,7 +323,6 @@ export function ProtectedConfirmation({
                   ? "Preparing checkout…"
                   : "Checking your payment and booking…"
             }
-            message="Please don’t close or refresh this page while we finish."
           />
           {current && <ConfirmationSummary summary={current.summary} />}
         </section>

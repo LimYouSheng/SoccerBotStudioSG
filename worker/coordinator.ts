@@ -1,3 +1,4 @@
+import { expireCheckout } from "./checkout-progress";
 import { dismissCompletedCheckout } from "./completed-checkout";
 import { ProviderQueue } from "./provider-queue";
 import { payHitpayHold } from "./hitpay-hold";
@@ -653,6 +654,19 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           )
           .one().latest ?? 0,
     };
+  }
+  async expireCheckout(scope: { attemptId: string; cookie: string }) {
+    return rpcOutcome(() =>
+      this.providerQueue.run("foreground", () =>
+        expireCheckout(
+          new Request(this.env.APP_ORIGIN, {
+            headers: { cookie: scope.cookie },
+          }),
+          this.env,
+          scope.attemptId,
+        ),
+      ),
+    );
   }
   async dismissCompleted(
     scope: { attemptId: string; cookie: string },

@@ -821,7 +821,23 @@ async function prepareBrowserAttempt(
 test("real payment recovery confirms the browser return from verified provider state", async ({
   page,
 }) => {
-  const mechanism = await createBookingMechanism();
+  let releaseAccounting!: () => void;
+  const accountingGate = new Promise<void>((resolve) => {
+    releaseAccounting = resolve;
+  });
+  let accountingStarted!: () => void;
+  const accounting = new Promise<void>((resolve) => {
+    accountingStarted = resolve;
+  });
+  const mechanism = await createBookingMechanism({
+    respond: async (call) => {
+      if (call.url.endsWith("/accept-payment")) {
+        accountingStarted();
+        await accountingGate;
+      }
+      return undefined;
+    },
+  });
   let releaseDismiss!: () => void;
   let dismissGate = new Promise<void>((resolve) => {
     releaseDismiss = resolve;
@@ -871,6 +887,31 @@ test("real payment recovery confirms the browser return from verified provider s
       .getByRole("dialog", { name: "Get the SoccerBot Player App" })
       .getByRole("button", { name: "Not now", exact: true })
       .click();
+    await expect(
+      page.getByRole("heading", { name: "Booking confirmed", exact: true }),
+    ).toBeVisible();
+    await accounting;
+    expect(
+      await mechanism.db
+        .prepare(
+          "SELECT state,external_state FROM hitpay_payments WHERE attempt_id=?",
+        )
+        .bind(attemptId)
+        .first(),
+    ).toMatchObject({ state: "claimed", external_state: "unknown" });
+    const download = page.waitForEvent("download");
+    await page
+      .getByRole("button", { name: "Download booking details", exact: true })
+      .click();
+    await expect(
+      page.getByRole("status", { name: "Preparing download…" }),
+    ).toBeVisible();
+    await expect(page.locator(".booking-flow-overlay")).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { name: "Booking confirmed", exact: true }),
+    ).toBeVisible();
+    releaseAccounting();
+    await download;
     const verifiedResponse = await (await savedConfirmation).json();
     expect(
       verifiedResponse.confirmation?.attemptId === attemptId ||
@@ -967,6 +1008,7 @@ test("real payment recovery confirms the browser return from verified provider s
     ).toHaveLength(1);
     expect(mechanism.unexpected).toEqual([]);
   } finally {
+    releaseAccounting();
     releaseDismiss();
     try {
       // Stop polling and cache warming before draining intercepted requests.
@@ -1871,7 +1913,20 @@ async function optimisticHold(page: Page, failReadback: boolean) {
       return undefined;
     },
   });
-  const transport = await mechanismTransport(page, mechanism);
+  let releaseCheckout!: () => void;
+  const checkoutGate = new Promise<void>((resolve) => {
+    releaseCheckout = resolve;
+  });
+  let checkoutStarted!: () => void;
+  const preparingCheckout = new Promise<void>((resolve) => {
+    checkoutStarted = resolve;
+  });
+  const transport = await mechanismTransport(page, mechanism, async (path) => {
+    if (path.endsWith("/checkout")) {
+      checkoutStarted();
+      await checkoutGate;
+    }
+  });
   let reviewRequests = 0;
   await page.route("**/book/review/**", async (route) => {
     reviewRequests++;
@@ -1888,13 +1943,8 @@ async function optimisticHold(page: Page, failReadback: boolean) {
       .getByRole("button", { name: "Review booking", exact: true })
       .click();
     await commenting;
-    await expect(
-      page.getByRole("heading", { name: "Review booking", exact: true }),
-    ).toHaveCount(0);
-    releaseComment();
-    // Assert the creation milestone, not a five-second budget for preflight.
-    // The original request stays blocked at readback throughout UI assertions.
-    await created;
+    // Creation is validated and retained; the comment response stays blocked.
+    // Review must appear now, before either comment completion or readback.
     await expect(
       page.getByRole("heading", { name: "Review booking", exact: true }),
     ).toBeVisible();
@@ -1924,6 +1974,12 @@ async function optimisticHold(page: Page, failReadback: boolean) {
     const review = await page
       .getByRole("heading", { name: "Review booking", exact: true })
       .elementHandle();
+    releaseComment();
+    await created;
+    expect(await review?.evaluate((element) => element.isConnected)).toBe(true);
+    await expect(
+      page.getByRole("button", { name: "Verifying your reservation…" }),
+    ).toBeDisabled();
     release();
     expect(await (await result).json()).toMatchObject({
       state: failReadback ? "recovery_required" : "associated",
@@ -1957,7 +2013,40 @@ async function optimisticHold(page: Page, failReadback: boolean) {
       mechanism.calls.filter((call) => call.body?.method === "book"),
     ).toHaveLength(1);
     await assertNoPaymentOrConfirmation(page, mechanism);
+    if (!failReadback) {
+      await page
+        .getByRole("button", { name: "Continue to payment", exact: true })
+        .click();
+      await preparingCheckout;
+      await expect(page.locator(".booking-flow-overlay")).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "Client Details", exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByRole("heading", { name: "Booking confirmed", exact: true }),
+      ).toHaveCount(0);
+      expect(await review?.evaluate((element) => element.isConnected)).toBe(
+        true,
+      );
+      expect(
+        transport.calls.filter((call) => call.path.endsWith("/confirmation")),
+      ).toHaveLength(0);
+      releaseCheckout();
+      await expect(page).toHaveURL(mechanism.checkoutUrl);
+      expect(
+        transport.calls.filter((call) =>
+          call.path.startsWith("/api/booking/hitpay/"),
+        ),
+      ).toHaveLength(1);
+      expect(
+        transport.calls.filter((call) => call.path.endsWith("/checkout")),
+      ).toHaveLength(1);
+      expect(
+        mechanism.calls.filter((call) => call.body?.method === "book"),
+      ).toHaveLength(1);
+    }
   } finally {
+    releaseCheckout();
     releaseComment();
     release();
     await stopMechanism(page, mechanism, transport);
@@ -2012,10 +2101,118 @@ test("real API unpaid return shows the pending confirmation layout without claim
       page.getByRole("link", { name: "Back to home", exact: true }),
     ).toHaveCount(0);
     await expect(page.getByText("Paid", { exact: true })).toHaveCount(0);
+    await expect(
+      page.locator(".booking-loading, .booking-flow-overlay"),
+    ).toHaveCount(0);
+    const loader = page.getByRole("status", {
+      name: "Checking your payment and booking…",
+      exact: true,
+    });
+    expect(
+      await loader.evaluate(
+        (element) => element.getBoundingClientRect().height,
+      ),
+    ).toBeLessThan(180);
+    await expect(loader.locator(".page-loading-orbit")).toHaveCSS(
+      "animation-name",
+      "page-loading-orbit",
+    );
     expect(
       mechanism.calls.filter((call) => call.body?.method === "book"),
     ).toHaveLength(1);
     await assertNoPaymentOrConfirmation(page, mechanism);
+  } finally {
+    await stopMechanism(page, mechanism, transport);
+  }
+});
+
+test("real API expired unpaid Review returns to calendar without recreating the booking or losing contact", async ({
+  page,
+}) => {
+  const mechanism = await createBookingMechanism();
+  const transport = await mechanismTransport(page, mechanism);
+  try {
+    const { headers, attemptId } = await prepareBrowserAttempt(page, mechanism);
+    // Simulate the retained server creation clock already being five minutes old.
+    // The production owner must not replace it during resumed preparation.
+    const created = Date.now() - 300001;
+    await mechanism.db
+      .prepare(
+        "INSERT INTO checkout_progress(attempt_id,booking_created_ms) VALUES(?,?)",
+      )
+      .bind(attemptId, created)
+      .run();
+    const held = await mechanism.mf.dispatchFetch(
+      mechanism.origin + `/api/booking/native/${attemptId}?hold=1`,
+      { method: "POST", headers },
+    );
+    expect(await held.json()).toMatchObject({
+      state: "associated",
+      paymentAvailable: false,
+    });
+    await page.goto("/book/review/");
+    await page
+      .getByRole("dialog", { name: "Get the SoccerBot Player App" })
+      .getByRole("button", { name: "Not now", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Review booking", exact: true }),
+    ).toBeVisible();
+    const contact = await mechanism.db
+      .prepare("SELECT intent_json FROM attempts WHERE id=?")
+      .bind(attemptId)
+      .first<{ intent_json: string }>();
+    await page.getByRole("checkbox").check();
+    await page
+      .getByRole("button", { name: "Continue to payment", exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/book\/time\/$/);
+    await expect(
+      page.getByText(
+        "Your reservation expired. Please choose a time again. Your contact details have been kept.",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    expect(
+      await mechanism.db
+        .prepare("SELECT 1 FROM native_checkout_grants WHERE attempt_id=?")
+        .bind(attemptId)
+        .first(),
+    ).toBeNull();
+    expect(
+      await mechanism.db
+        .prepare(
+          "SELECT 1 FROM expired_native_checkout_grants WHERE attempt_id=?",
+        )
+        .bind(attemptId)
+        .first(),
+    ).not.toBeNull();
+    expect(
+      await mechanism.db
+        .prepare("SELECT intent_json FROM attempts WHERE id=?")
+        .bind(attemptId)
+        .first(),
+    ).toEqual(contact);
+    expect(
+      (
+        await mechanism.db
+          .prepare(
+            "SELECT booking_created_ms FROM checkout_progress WHERE attempt_id=?",
+          )
+          .bind(attemptId)
+          .first<{ booking_created_ms: number }>()
+      )?.booking_created_ms,
+    ).toBe(created);
+    expect(
+      mechanism.calls.filter((call) => call.body?.method === "book"),
+    ).toHaveLength(1);
+    expect(
+      await mechanism.db
+        .prepare("SELECT 1 FROM hitpay_payments WHERE attempt_id=?")
+        .bind(attemptId)
+        .first(),
+    ).toBeNull();
+    expect(mechanism.unexpected).toEqual([]);
   } finally {
     await stopMechanism(page, mechanism, transport);
   }

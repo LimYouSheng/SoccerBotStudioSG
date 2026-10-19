@@ -17,6 +17,13 @@ export async function retainHitpayHold(
   hash: string,
   expires: number,
 ) {
+  const progress = await env.STATE.prepare(
+    "SELECT booking_created_ms FROM checkout_progress WHERE attempt_id=?",
+  )
+    .bind(scope.attemptId)
+    .first<{ booking_created_ms: number }>();
+  if (progress)
+    expires = Math.min(expires, progress.booking_created_ms + 600000);
   await env.STATE.prepare(
     "INSERT INTO hitpay_holds(attempt_id,scope_json,association_json,intent_hash,expires_ms) VALUES(?,?,?,?,?)",
   )
@@ -47,7 +54,7 @@ export async function payHitpayHold(
   const access = await authenticate(request, env, Date.now());
   const row = await env.STATE.withSession("first-primary")
     .prepare(
-      "SELECT h.scope_json,h.association_json,h.intent_hash,h.expires_ms,a.intent_json FROM hitpay_holds h JOIN attempts a ON a.id=h.attempt_id JOIN checkout_payment_routes r ON r.attempt_id=a.id WHERE a.id=? AND a.owner_id=? AND r.route='hitpay' AND a.association_json=h.association_json AND a.intent_hash=h.intent_hash",
+      "SELECT h.scope_json,h.association_json,h.intent_hash,h.expires_ms,a.intent_json,c.booking_created_ms FROM hitpay_holds h JOIN attempts a ON a.id=h.attempt_id JOIN checkout_payment_routes r ON r.attempt_id=a.id LEFT JOIN checkout_progress c ON c.attempt_id=a.id WHERE a.id=? AND a.owner_id=? AND r.route='hitpay' AND a.association_json=h.association_json AND a.intent_hash=h.intent_hash",
     )
     .bind(id, access.owner_id)
     .first<{
@@ -56,6 +63,7 @@ export async function payHitpayHold(
       intent_hash: string;
       expires_ms: number;
       intent_json: string;
+      booking_created_ms: number | null;
     }>();
   if (!row) throw new ApiError(404, "hitpay_hold_unavailable");
   const intent = intentSchema.parse(JSON.parse(row.intent_json));
@@ -75,10 +83,16 @@ export async function payHitpayHold(
     }) !== row.scope_json
   )
     throw new ApiError(409, "hitpay_scope_mismatch");
+  const paymentDeadline = Math.min(
+    row.expires_ms,
+    row.booking_created_ms === null
+      ? row.expires_ms
+      : row.booking_created_ms + 300000,
+  );
   const assertHeld = async () => {
     await authenticate(request, env, Date.now());
     assertHitpayCreation(env);
-    if (Date.now() + 80000 >= row.expires_ms)
+    if (Date.now() + 80000 >= paymentDeadline)
       throw new ApiError(409, "hitpay_hold_expired");
   };
   await assertHeld();
@@ -120,7 +134,7 @@ export async function payHitpayHold(
       scope,
       row.association_json,
       row.intent_hash,
-      row.expires_ms,
+      paymentDeadline,
       assertHeld,
     );
     return { attemptId: id, state: "associated", paymentAvailable: true };
