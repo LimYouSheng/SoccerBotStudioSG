@@ -1,5 +1,28 @@
 # SoccerBotStudioSG current progress
 
+## Email-code browser interaction repair — 19 October 2026 SGT
+
+Final-policy CI39200175005 frontend passed74/75 browser cases. Tablet WebKit filled the code while main was still inert during the loading transition; the trace retained an empty input, so native required validation prevented the expected incorrect-code response. Wait for the code heading and removal of main inertness, then assert entered values before submitting. Apply the same readiness milestone to the live-email helper. Preserve invalid-code rejection, corrected-code navigation, existing timeout and every case; no forced interaction, sleeps, retries or production behavior change. Final successor CI is required before the owner-authorized PR59 merge.
+
+
+## Fifteen-minute hold and eight-minute payment policy — 19 October 2026 SGT
+
+Owner authorizes adding this policy to PR59 and merging only after final-commit required CI passes. Owner reports SimplyBook's timeout changed to15minutes; provider behavior is not independently verified. New creation records retain immutable hold/payment windows of900000/480000ms, anchored to original successful booking creation. Earlier provider/supervision expiry always caps the hold/payment deadline. Review, navigation and checkout consume the same eight-minute window; no renewal on restore/retry. HitPay's existing20-second margin, whole-minute rounding and80-second minimum preparation allowance remain. The shared due-time parser retains its30-second provider margin; only HitPay uses a15-minute handoff ceiling, while historical native-link behavior stays10minutes.
+
+Additive migration0034 defaults existing creation records to their original600000/300000ms policy; existing holds/payment requests are not extended. Policy columns are immutable. Reconciliation, late settlement/manual review, unknown-write evidence and duplicate-effect protections remain. Browser expiry coverage uses an eight-minute-old new-policy creation; combined-hold tests verify policy, anchored expiry and one payment effect; legacy coverage asserts old defaults. The synthetic provider fixture now models a15-minute invoice deadline. No assistant provider setting/write/browser run or deployment; final CI pending.
+
+
+## Completed-dismissal CI setup repair — 19 October 2026 SGT
+
+Merged-main50656c9 CI39198249437 passed74/75 live-email cases; phone WebKit timed out before reaching dismissal. Trace shows about22seconds spent creating the synthetic hold/payment before navigation, then waiting for fully reconciled confirmation. Customer confirmation was visible, but the completed-dismissal contract correctly requires full reconciliation. Retain that response wait and all lost-response/retry/receipt/single-effect assertions. Use the current combined hold route for this test setup instead of legacy split preparation/native execution, and assert one preflight. Other standalone setup callers keep their existing contracts. No timeout, retry, provider-limit or production-authority change. Exact-head CI remains required; HitPay upstream rejection and live latency remain unresolved.
+
+
+## Bounded pre-creation concurrency — 19 October 2026 SGT
+
+Owner authorizes concurrency after HAR06/07 analysis: booking response arrived11.19/11.33seconds after coordinator start, while first Review-eligible browser response improved14.51→13.64seconds and full hold worsened15.73→16.68seconds. Implement within one serialized booking job: overlap public/admin authentication for ongoing customers; run required-fields, eligibility and availability through two drained read lanes after fresh catalogue; overlap validated local attempt persistence with provider identity preparation. Batch attempt insertion/readback while preserving immutable idempotency checks. Preserve finite paths, fresh pre-write validation, admission pacing/limits, reference retention and single booking effects. Provider account identity still gates tariff; no broader cross-customer runner/cache-policy change.
+
+Test-impact pass covers catalogue/provider/native/combined-hold tests, shared simulated Worker setup, standalone preparation callers and live-email browser request counts. Barrier regressions prove authentication/preflight overlap, failure draining, no premature creation and revocation rejection. Existing invalid-price test retains zero provider calls. Verification in progress; no live provider writes, browser execution, merge or deployment. Simulated overlap is not a measured live4–5second result.
+
 ## HAR07 payment transport investigation — 19 October 2026 SGT
 
 Owner HAR07 at11:38SGT shows hold200 in16.678seconds, first verifying reply beginning13.295seconds after hold dispatch, then HitPay preparation503 hitpay_transport_unknown in3.262seconds. No checkout URL reached the browser. The exact-window Worker logs carry version4acf4e0f, matching deployed merged sourcef966884. Hold coordinator duration16.309seconds includes13 provider spans totaling9.867seconds and47 D1 spans totaling7.136seconds; span totals overlap and are not additive critical-path measurements. Recorded creation is11.715seconds after coordinator start, so this run does not establish a4–5second optimistic Review transition.

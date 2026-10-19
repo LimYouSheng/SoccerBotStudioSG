@@ -1,5 +1,23 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Email-code browser interaction repair — 19 October 2026 SGT
+
+Final-policy CI39200175005 frontend passed74/75 browser cases. Tablet WebKit filled the code while main was still inert during the loading transition; the trace retained an empty input, so native required validation prevented the expected incorrect-code response. Wait for the code heading and removal of main inertness, then assert entered values before submitting. Apply the same readiness milestone to the live-email helper. Preserve invalid-code rejection, corrected-code navigation, existing timeout and every case; no forced interaction, sleeps, retries or production behavior change. Final successor CI is required before the owner-authorized PR59 merge.
+
+## Fifteen-minute hold and eight-minute payment policy — 19 October 2026 SGT
+
+Owner authorizes adding this policy to PR59 and merging only after final-commit required CI passes. Owner reports SimplyBook's timeout changed to15minutes; provider behavior is not independently verified. New creation records retain immutable hold/payment windows of900000/480000ms, anchored to original successful booking creation. Earlier provider/supervision expiry always caps the hold/payment deadline. Review, navigation and checkout consume the same eight-minute window; no renewal on restore/retry. HitPay's existing20-second margin, whole-minute rounding and80-second minimum preparation allowance remain. The shared due-time parser retains its30-second provider margin; only HitPay uses a15-minute handoff ceiling, while historical native-link behavior stays10minutes.
+
+Additive migration0034 defaults existing creation records to their original600000/300000ms policy; existing holds/payment requests are not extended. Policy columns are immutable. Reconciliation, late settlement/manual review, unknown-write evidence and duplicate-effect protections remain. Browser expiry coverage uses an eight-minute-old new-policy creation; combined-hold tests verify policy, anchored expiry and one payment effect; legacy coverage asserts old defaults. The synthetic provider fixture now models a15-minute invoice deadline. No assistant provider setting/write/browser run or deployment; final CI pending.
+
+## Completed-dismissal CI setup repair — 19 October 2026 SGT
+
+Merged-main50656c9 CI39198249437 passed74/75 live-email cases; phone WebKit timed out before reaching dismissal. Trace shows about22seconds spent creating the synthetic hold/payment before navigation, then waiting for fully reconciled confirmation. Customer confirmation was visible, but the completed-dismissal contract correctly requires full reconciliation. Retain that response wait and all lost-response/retry/receipt/single-effect assertions. Use the current combined hold route for this test setup instead of legacy split preparation/native execution, and assert one preflight. Other standalone setup callers keep their existing contracts. No timeout, retry, provider-limit or production-authority change. Exact-head CI remains required; HitPay upstream rejection and live latency remain unresolved.
+
+## Pre-creation concurrency ownership — 19 October 2026 SGT
+
+parallel-reads owns bounded two-lane joining and deterministic drained failure, not physical provider admission. ProviderSession owns ongoing token concurrency; NativePrebooking owns independent validation reads and resets failure-operation diagnostics after draining. prepareCustomerNative owns the validation-before-overlap boundary between immutable D1 preparation and provider warm-up. Journal batches dependent preparation SQL to reduce round trips without pretending writes are independent. The account queue continues serializing booking jobs, and provider transport/admission remain the sole physical-call owner. Cross-customer scheduling and payment fairness remain the separately recorded pending task.
+
 ## Payment failure diagnostic boundary — 19 October 2026 SGT
 
 HAR07 exposes an upstream transport failure whose status was discarded. Keep diagnostic classification in provider-transport and structured emission in diagnostics; retain the original creation reservation in hitpay-journal. Fixed metadata must never contain upstream bodies/URLs, headers, credentials or customer data. A clearer diagnostic does not prove non-creation, permit another POST, authorize releasing the attempt, or establish a checkout repair. Preserve the existing503/customer recovery contract. Journey owns incident evidence; Service Contracts owns fields and behavior.

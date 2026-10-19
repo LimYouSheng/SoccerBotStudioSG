@@ -784,7 +784,9 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           { ...this.calendarReadOptions(), env },
           true,
         );
-        await prepareCustomerNative(request, env, input, attemptId);
+        await prepareCustomerNative(request, env, input, attemptId, () =>
+          this.provider.identity(env, this.providerControl(false, true)),
+        );
         this.calendarReads.invalidate();
         return executeNativeCheckout({
           request,

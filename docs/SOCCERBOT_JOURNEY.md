@@ -1,5 +1,23 @@
 # SoccerBotStudio — Journey
 
+## Email-code browser interaction repair — 19 October 2026 SGT
+
+Final-policy CI39200175005 frontend passed74/75 browser cases. Tablet WebKit filled the code while main was still inert during the loading transition; the trace retained an empty input, so native required validation prevented the expected incorrect-code response. Wait for the code heading and removal of main inertness, then assert entered values before submitting. Apply the same readiness milestone to the live-email helper. Preserve invalid-code rejection, corrected-code navigation, existing timeout and every case; no forced interaction, sleeps, retries or production behavior change. Final successor CI is required before the owner-authorized PR59 merge.
+
+## Fifteen-minute hold and eight-minute payment policy — 19 October 2026 SGT
+
+Owner authorizes adding this policy to PR59 and merging only after final-commit required CI passes. Owner reports SimplyBook's timeout changed to15minutes; provider behavior is not independently verified. New creation records retain immutable hold/payment windows of900000/480000ms, anchored to original successful booking creation. Earlier provider/supervision expiry always caps the hold/payment deadline. Review, navigation and checkout consume the same eight-minute window; no renewal on restore/retry. HitPay's existing20-second margin, whole-minute rounding and80-second minimum preparation allowance remain. The shared due-time parser retains its30-second provider margin; only HitPay uses a15-minute handoff ceiling, while historical native-link behavior stays10minutes.
+
+Additive migration0034 defaults existing creation records to their original600000/300000ms policy; existing holds/payment requests are not extended. Policy columns are immutable. Reconciliation, late settlement/manual review, unknown-write evidence and duplicate-effect protections remain. Browser expiry coverage uses an eight-minute-old new-policy creation; combined-hold tests verify policy, anchored expiry and one payment effect; legacy coverage asserts old defaults. The synthetic provider fixture now models a15-minute invoice deadline. No assistant provider setting/write/browser run or deployment; final CI pending.
+
+## Completed-dismissal CI setup repair — 19 October 2026 SGT
+
+Merged-main50656c9 CI39198249437 passed74/75 live-email cases; phone WebKit timed out before reaching dismissal. Trace shows about22seconds spent creating the synthetic hold/payment before navigation, then waiting for fully reconciled confirmation. Customer confirmation was visible, but the completed-dismissal contract correctly requires full reconciliation. Retain that response wait and all lost-response/retry/receipt/single-effect assertions. Use the current combined hold route for this test setup instead of legacy split preparation/native execution, and assert one preflight. Other standalone setup callers keep their existing contracts. No timeout, retry, provider-limit or production-authority change. Exact-head CI remains required; HitPay upstream rejection and live latency remain unresolved.
+
+## Pre-creation concurrency implementation — 19 October 2026 SGT
+
+Owner requests implementing all safe independent pre-creation overlap. Source audit found sequential token acquisition, independent preflight reads and provider identity preparation after local persistence. Implement bounded overlap with barrier-based simulated provider tests; preserve serialized booking writes and existing recovery/consent/freshness rules. Initial review caught that starting identity before local preparation validation would make invalid price input consume provider calls. Move the overlap boundary after local validation; retain the existing zero-provider-call assertion. Failure diagnostics select the failed operation after siblings drain rather than retaining another read's last completion. Live latency acceptance remains pending; source concurrency does not prove a4–5second journey.
+
 ## HAR07 upstream failure and measured hold delay — 19 October 2026 SGT
 
 HAR07's11:38SGT trial used Worker version4acf4e0f, correlated with deployed sourcef966884. Holding succeeded in16.678seconds; the first verifying poll began13.295seconds after dispatch. Payment preparation then returned503 hitpay_transport_unknown in3.262seconds without a browser checkout URL. The hold coordinator recorded16.309seconds with13 provider spans(total9.867seconds),47 D1 spans(total7.136seconds), and no coordinator queue-wait span; these overlapping totals cannot be added as a critical path. Persisted creation was11.715seconds after coordinator start. The4–5second target remains unmet/unverified.

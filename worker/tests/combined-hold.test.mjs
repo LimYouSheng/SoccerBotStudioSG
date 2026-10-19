@@ -61,14 +61,25 @@ test("combined hold performs one preflight and preserves immutable identity acro
     assert.ok(results.some((result) => result.state === "associated"));
     const timing = await m.db
       .prepare(
-        "SELECT c.booking_created_ms,h.expires_ms FROM checkout_progress c JOIN hitpay_holds h USING(attempt_id) WHERE attempt_id=?",
+        "SELECT c.booking_created_ms,c.payment_window_ms,c.hold_window_ms,h.expires_ms FROM checkout_progress c JOIN hitpay_holds h USING(attempt_id) WHERE attempt_id=?",
       )
       .bind(c.input.key)
       .first();
+    assert.equal(timing.payment_window_ms, 480000);
+    assert.equal(timing.hold_window_ms, 900000);
+    await assert.rejects(
+      m.db
+        .prepare(
+          "UPDATE checkout_progress SET payment_window_ms=300000 WHERE attempt_id=?",
+        )
+        .bind(c.input.key)
+        .run(),
+      /checkout_windows_immutable/,
+    );
     assert.ok(timing.booking_created_ms <= Date.now());
-    assert.ok(timing.expires_ms <= timing.booking_created_ms + 600000);
+    assert.ok(timing.expires_ms <= timing.booking_created_ms + 900000);
     assert.ok(timing.expires_ms > timing.booking_created_ms);
-    assert.ok(timing.expires_ms > timing.booking_created_ms + 300000);
+    assert.ok(timing.expires_ms > timing.booking_created_ms + 840000);
 
     assert.ok(results.every((result) => result.attemptId === c.input.key));
     for (const method of [
@@ -148,14 +159,14 @@ test("combined hold performs one preflight and preserves immutable identity acro
       .first();
     assert.equal(
       payment.expires_ms,
-      Math.min(timing.expires_ms, timing.booking_created_ms + 300000),
+      Math.min(timing.expires_ms, timing.booking_created_ms + 480000),
     );
     const creates = m.calls.filter(
       (call) =>
         call.url.endsWith("/v1/payment-requests") && call.method === "POST",
     );
     assert.equal(creates.length, 1);
-    assert.match(creates[0].body.expires_after, /^[1-4] mins$/);
+    assert.match(creates[0].body.expires_after, /^[1-7] mins$/);
     assert.deepEqual(m.unexpected, []);
   } finally {
     await m.close();
@@ -738,6 +749,176 @@ test("single hold progress requires validated retained creation before comments 
     assert.equal(
       m.calls.filter((call) => call.body?.method === "book").length,
       1,
+    );
+  } finally {
+    await m.close();
+  }
+});
+
+test(
+  "combined preflight overlaps independent reads and drains them before one booking write",
+  { timeout: 15000 },
+  async () => {
+    const fields = Promise.withResolvers();
+    const slotEntered = Promise.withResolvers();
+    let fieldsPending = false;
+    const m = await createBookingMechanism({
+      respond: async (call) => {
+        if (call.body?.method === "getAdditionalFields") {
+          fieldsPending = true;
+          await fields.promise;
+          fieldsPending = false;
+        }
+        if (call.body?.method === "getStartTimeMatrix") slotEntered.resolve();
+        if (call.body?.method === "book") assert.equal(fieldsPending, false);
+      },
+    });
+    let pending;
+    try {
+      const c = await customer(m);
+      pending = c.send();
+      await slotEntered.promise;
+      assert.equal(
+        fieldsPending,
+        true,
+        "availability starts while required fields are blocked",
+      );
+      assert.equal(
+        m.calls.some((call) => call.body?.method === "book"),
+        false,
+      );
+      fields.resolve();
+      const response = await pending;
+      assert.equal(response.status, 200, await response.clone().text());
+      assert.equal((await response.json()).state, "associated");
+      assert.equal(
+        m.calls.filter((call) => call.body?.method === "book").length,
+        1,
+      );
+      assert.deepEqual(m.unexpected, []);
+    } finally {
+      fields.resolve();
+      await pending;
+      await m.close();
+    }
+  },
+);
+
+test(
+  "concurrent preflight drains siblings and rejects revocation before creation",
+  { timeout: 15000 },
+  async () => {
+    const fields = Promise.withResolvers();
+    const slotEntered = Promise.withResolvers();
+    const m = await createBookingMechanism({
+      respond: async (call) => {
+        if (call.body?.method === "getAdditionalFields") await fields.promise;
+        if (call.body?.method === "getStartTimeMatrix") slotEntered.resolve();
+      },
+    });
+    let pending;
+    try {
+      const c = await customer(m);
+      pending = c.send();
+      await slotEntered.promise;
+      await m.db
+        .prepare("UPDATE guest_access SET revoked_ms=?")
+        .bind(Date.now())
+        .run();
+      fields.resolve();
+      await pending;
+      assert.equal(
+        m.calls.some((call) => call.body?.method === "book"),
+        false,
+      );
+      assert.equal(
+        (await m.db.prepare("SELECT COUNT(*) AS n FROM attempts").first()).n,
+        1,
+      );
+    } finally {
+      fields.resolve();
+      await pending;
+      await m.close();
+    }
+  },
+);
+
+test(
+  "combined preparation overlaps public and admin authentication without premature booking",
+  { timeout: 15000 },
+  async () => {
+    const publicToken = Promise.withResolvers();
+    const adminEntered = Promise.withResolvers();
+    let publicPending = false;
+    const m = await createBookingMechanism({
+      respond: async (call) => {
+        if (call.body?.method === "getToken") {
+          publicPending = true;
+          await publicToken.promise;
+          publicPending = false;
+        }
+        if (call.url.endsWith("/admin/auth")) adminEntered.resolve();
+      },
+    });
+    let pending;
+    try {
+      const c = await customer(m);
+      pending = c.send();
+      await adminEntered.promise;
+      assert.equal(publicPending, true);
+      assert.equal(
+        m.calls.some((call) => call.body?.method === "book"),
+        false,
+      );
+      publicToken.resolve();
+      const response = await pending;
+      assert.equal(response.status, 200, await response.clone().text());
+      assert.equal((await response.json()).state, "associated");
+      assert.equal(
+        m.calls.filter((call) => call.body?.method === "getToken").length,
+        1,
+      );
+      assert.equal(
+        m.calls.filter((call) => call.url.endsWith("/admin/auth")).length,
+        1,
+      );
+      assert.equal(
+        m.calls.filter((call) => call.body?.method === "book").length,
+        1,
+      );
+    } finally {
+      publicToken.resolve();
+      await pending;
+      await m.close();
+    }
+  },
+);
+
+test("concurrent preflight attributes invalid fields correctly and creates no booking", async () => {
+  const m = await createBookingMechanism({
+    respond: async (call) =>
+      call.body?.method === "getAdditionalFields"
+        ? Response.json({ jsonrpc: "2.0", id: call.body.id, result: [{}] })
+        : undefined,
+  });
+  try {
+    const c = await customer(m);
+    const response = await c.send();
+    assert.equal(response.status, 200, await response.clone().text());
+    assert.equal((await response.json()).state, "prerequisites_unavailable");
+    assert.equal(
+      m.calls.some((call) => call.body?.method === "book"),
+      false,
+    );
+    const row = await m.db
+      .prepare(
+        "SELECT result_json FROM native_checkout_grants WHERE attempt_id=?",
+      )
+      .bind(c.input.key)
+      .first();
+    assert.equal(
+      JSON.parse(row.result_json).diagnostic.operation,
+      "required-fields",
     );
   } finally {
     await m.close();

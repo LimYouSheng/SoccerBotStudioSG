@@ -1539,6 +1539,15 @@ test("verified HitPay payment confirms the retained live hold before accounting 
 test("expired unpaid hold releases only its active grant and retains immutable creation and booking history", async () => {
   const options = await seedHold(Date.now() - 1000);
   await seedCustomerProgress();
+  assert.deepEqual(
+    await db
+      .prepare(
+        "SELECT payment_window_ms,hold_window_ms FROM checkout_progress WHERE attempt_id=?",
+      )
+      .bind(attemptId)
+      .first(),
+    { payment_window_ms: 300000, hold_window_ms: 600000 },
+  );
   const endpoint = origin + `/api/attempts/${attemptId}/expire`;
   assert.equal(
     (await mf.dispatchFetch(endpoint, { method: "POST", headers: { origin } }))

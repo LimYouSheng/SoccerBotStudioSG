@@ -1,3 +1,4 @@
+import { parallelReads } from "./parallel-reads";
 import { z } from "zod";
 import { sessionRate } from "../src/domain/session-pricing";
 import {
@@ -176,6 +177,10 @@ export class NativePrebooking {
     private exchange: NativeExchange,
     private accountContract?: NativeAccountContract,
     private parallelCatalogue = false,
+    private observeRead?: (
+      operation: Parameters<NativeExchange>[0]["kind"],
+      body?: unknown,
+    ) => void,
   ) {}
   invalidate() {
     this.catalogue.invalidate(this.binding);
@@ -224,22 +229,48 @@ export class NativePrebooking {
     const wall = new Date(session.startMs + 8 * 3600000).toISOString();
     const date = wall.slice(0, 10),
       time = wall.slice(11, 19);
-    const fields = await this.exchange({
-      kind: "required-fields",
-      serviceId: service.id,
-    });
+    const readFields = () =>
+      this.exchange({
+        kind: "required-fields" as const,
+        serviceId: service.id,
+      });
+    const readEligible = () =>
+      this.exchange({
+        kind: "eligible-instructors" as const,
+        serviceId: service.id,
+        date,
+        time,
+      });
+    const readSlot = () =>
+      this.exchange({
+        kind: "availability" as const,
+        serviceId: service.id,
+        instructorId: instructor.id,
+        date,
+      });
+    const parallel = this.parallelCatalogue
+      ? await parallelReads([readFields, readEligible, readSlot], (index) =>
+          this.observeRead?.(
+            (
+              [
+                "required-fields",
+                "eligible-instructors",
+                "availability",
+              ] as const
+            )[index],
+          ),
+        )
+      : undefined;
+    const fields = parallel ? parallel[0] : await readFields();
+    if (parallel) this.observeRead?.("required-fields", fields.body);
     if (!Array.isArray(fields.body) || fields.body.length !== 0)
       return {
         state: "unavailable" as const,
         reasons: ["native_required_fields_unsupported"],
         intent,
       };
-    const eligible = await this.exchange({
-      kind: "eligible-instructors",
-      serviceId: service.id,
-      date,
-      time,
-    });
+    const eligible = parallel ? parallel[1] : await readEligible();
+    if (parallel) this.observeRead?.("eligible-instructors", eligible.body);
     const ids = eligibleInstructors(eligible.body);
     if (
       ids.some(
@@ -258,12 +289,8 @@ export class NativePrebooking {
         reasons: ["native_provider_schedule_overlap"],
         intent,
       };
-    const slot = await this.exchange({
-      kind: "availability",
-      serviceId: service.id,
-      instructorId: instructor.id,
-      date,
-    });
+    const slot = parallel ? parallel[2] : await readSlot();
+    if (parallel) this.observeRead?.("availability", slot.body);
     const completed = Date.now();
     for (const receipt of [
       current.observedAtMs,

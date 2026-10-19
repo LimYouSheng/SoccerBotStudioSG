@@ -491,7 +491,7 @@ export async function executeNativeCheckout(options: {
     if (paymentRoute === "hitpay")
       operations.onCreated = async (createdAtMs) => {
         await env.STATE.prepare(
-          "INSERT INTO checkout_progress(attempt_id,booking_created_ms) VALUES(?,?) ON CONFLICT(attempt_id) DO NOTHING",
+          "INSERT INTO checkout_progress(attempt_id,booking_created_ms,payment_window_ms,hold_window_ms) VALUES(?,?,480000,900000) ON CONFLICT(attempt_id) DO NOTHING",
         )
           .bind(attemptId, createdAtMs)
           .run();
@@ -560,7 +560,7 @@ export async function executeNativeCheckout(options: {
           scope,
           associated.association_json,
           row.intent_hash,
-          nativeCheckoutDeadline(timing, Date.now()),
+          nativeCheckoutDeadline(timing, Date.now(), 900000),
         );
       } else await prepareNativeLink(env.STATE, scope, exchange, true, timing);
       await recordObservation(
@@ -713,6 +713,7 @@ export async function prepareCustomerNative(
   env: Env,
   value: unknown,
   attemptId?: string,
+  prepareProvider?: () => Promise<unknown>,
 ) {
   const { p, access, grant, contract, dates, binding } =
     await customerNativeWindow(request, env, attemptId);
@@ -800,32 +801,45 @@ export async function prepareCustomerNative(
       throw new ApiError(409, "native_attempt_already_bound");
     return { attemptId: grant.attempt_id, state: "prepared" as const };
   }
-  const attempt = await prepareAttempt(
-    env.STATE,
-    access.owner_id,
-    input.key,
-    intent,
-    now,
-    grant.expires_ms - now,
-    attemptId,
-  );
-  const bound = await env.STATE.prepare(
-    "UPDATE native_checkout_grants SET attempt_id=?,intent_hash=? WHERE capability_hash=? AND state='granted' AND source_revision=? AND expires_ms>? AND ((attempt_id IS NULL AND intent_hash IS NULL) OR (attempt_id=? AND intent_hash=?))",
-  )
-    .bind(
-      attempt.id,
-      hash,
-      access.capability_hash,
-      p.SOURCE_REVISION,
-      Date.now() + 180000,
-      attempt.id,
-      hash,
+  // All customer/selection checks above precede speculative provider reads.
+  // Persist the immutable attempt while warming provider identity; both must
+  // settle before execution inspects active admissions or creates a booking.
+  const persist = async () => {
+    const attempt = await prepareAttempt(
+      env.STATE,
+      access.owner_id,
+      input.key,
+      intent,
+      now,
+      grant.expires_ms - now,
+      attemptId,
+    );
+    const bound = await env.STATE.prepare(
+      "UPDATE native_checkout_grants SET attempt_id=?,intent_hash=? WHERE capability_hash=? AND state='granted' AND source_revision=? AND expires_ms>? AND ((attempt_id IS NULL AND intent_hash IS NULL) OR (attempt_id=? AND intent_hash=?))",
     )
-    .run();
-  if (bound.meta.changes !== 1)
-    throw new ApiError(409, "native_attempt_already_bound");
-  await authenticate(request, env, Date.now());
-  return { attemptId: attempt.id, state: "prepared" as const };
+      .bind(
+        attempt.id,
+        hash,
+        access.capability_hash,
+        p.SOURCE_REVISION,
+        Date.now() + 180000,
+        attempt.id,
+        hash,
+      )
+      .run();
+    if (bound.meta.changes !== 1)
+      throw new ApiError(409, "native_attempt_already_bound");
+    await authenticate(request, env, Date.now());
+    return { attemptId: attempt.id, state: "prepared" as const };
+  };
+  if (!prepareProvider) return persist();
+  const results = await Promise.allSettled([
+    persist(),
+    prepareProvider(),
+  ] as const);
+  if (results[0].status === "rejected") throw results[0].reason;
+  if (results[1].status === "rejected") throw results[1].reason;
+  return results[0].value;
 }
 export async function customerNativeAvailability(options: {
   request: Request;

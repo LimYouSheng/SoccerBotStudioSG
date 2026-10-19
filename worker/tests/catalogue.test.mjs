@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import ts from "typescript";
 const bundle = await build({
   stdin: {
-    contents: `export * from './worker/customer-catalogue'; export * from './worker/public-calendar'; export * from './worker/native-calendar'; export * from './worker/catalogue'; export * from './worker/prebooking'; export * from './worker/provider-session'; export * from './worker/provider-transport';`,
+    contents: `export * from './worker/parallel-reads'; export * from './worker/customer-catalogue'; export * from './worker/public-calendar'; export * from './worker/native-calendar'; export * from './worker/catalogue'; export * from './worker/prebooking'; export * from './worker/provider-session'; export * from './worker/provider-transport';`,
     resolveDir: process.cwd(),
   },
   bundle: true,
@@ -14,6 +14,7 @@ const bundle = await build({
   format: "esm",
 });
 const {
+  parallelReads,
   customerCatalogue,
   publicCalendar,
   windowCatalogue,
@@ -1757,4 +1758,41 @@ test("provider identity renewal keeps native reads valid across token retention 
       "rejected auth invalidates cache without an implicit retry",
     );
   }
+});
+
+test("bounded read groups reuse two lanes and drain failure without starting queued work", async () => {
+  const first = Promise.withResolvers();
+  const second = Promise.withResolvers();
+  const entered = [];
+  let settled = false;
+  const failure = new Error("synthetic read failure");
+  const result = parallelReads([
+    async () => {
+      entered.push(0);
+      return first.promise;
+    },
+    async () => {
+      entered.push(1);
+      return second.promise;
+    },
+    async () => {
+      entered.push(2);
+      return 3;
+    },
+  ]).finally(() => {
+    settled = true;
+  });
+  const rejection = assert.rejects(result, (error) => error === failure);
+  assert.deepEqual(entered, [0, 1]);
+  first.reject(failure);
+  await new Promise(setImmediate);
+  assert.equal(settled, false);
+  assert.deepEqual(entered, [0, 1]);
+  second.resolve(2);
+  await rejection;
+  assert.deepEqual(entered, [0, 1]);
+  assert.deepEqual(
+    await parallelReads([async () => 1, async () => 2, async () => 3]),
+    [1, 2, 3],
+  );
 });

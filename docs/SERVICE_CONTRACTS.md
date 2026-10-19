@@ -1,5 +1,25 @@
 # SoccerBotStudio — Service Contracts
 
+## Email-code browser interaction repair — 19 October 2026 SGT
+
+Final-policy CI39200175005 frontend passed74/75 browser cases. Tablet WebKit filled the code while main was still inert during the loading transition; the trace retained an empty input, so native required validation prevented the expected incorrect-code response. Wait for the code heading and removal of main inertness, then assert entered values before submitting. Apply the same readiness milestone to the live-email helper. Preserve invalid-code rejection, corrected-code navigation, existing timeout and every case; no forced interaction, sleeps, retries or production behavior change. Final successor CI is required before the owner-authorized PR59 merge.
+
+## Fifteen-minute hold and eight-minute payment policy — 19 October 2026 SGT
+
+Owner authorizes adding this policy to PR59 and merging only after final-commit required CI passes. Owner reports SimplyBook's timeout changed to15minutes; provider behavior is not independently verified. New creation records retain immutable hold/payment windows of900000/480000ms, anchored to original successful booking creation. Earlier provider/supervision expiry always caps the hold/payment deadline. Review, navigation and checkout consume the same eight-minute window; no renewal on restore/retry. HitPay's existing20-second margin, whole-minute rounding and80-second minimum preparation allowance remain. The shared due-time parser retains its30-second provider margin; only HitPay uses a15-minute handoff ceiling, while historical native-link behavior stays10minutes.
+
+Additive migration0034 defaults existing creation records to their original600000/300000ms policy; existing holds/payment requests are not extended. Policy columns are immutable. Reconciliation, late settlement/manual review, unknown-write evidence and duplicate-effect protections remain. Browser expiry coverage uses an eight-minute-old new-policy creation; combined-hold tests verify policy, anchored expiry and one payment effect; legacy coverage asserts old defaults. The synthetic provider fixture now models a15-minute invoice deadline. No assistant provider setting/write/browser run or deployment; final CI pending.
+
+## Completed-dismissal CI setup repair — 19 October 2026 SGT
+
+Merged-main50656c9 CI39198249437 passed74/75 live-email cases; phone WebKit timed out before reaching dismissal. Trace shows about22seconds spent creating the synthetic hold/payment before navigation, then waiting for fully reconciled confirmation. Customer confirmation was visible, but the completed-dismissal contract correctly requires full reconciliation. Retain that response wait and all lost-response/retry/receipt/single-effect assertions. Use the current combined hold route for this test setup instead of legacy split preparation/native execution, and assert one preflight. Other standalone setup callers keep their existing contracts. No timeout, retry, provider-limit or production-authority change. Exact-head CI remains required; HitPay upstream rejection and live latency remain unresolved.
+
+## Pre-creation read concurrency — 19 October 2026 SGT
+
+Ongoing customer preparation validates authentication, contract, selection, price and immutable attempt binding before speculative identity reads. New attempt persistence and provider identity preparation then overlap; both settle before execution. Existing/split preparation callers retain their contract. Attempt insert/readback share one D1 session batch and retain conflicting-intent rejection. No dispatch reservation or creation runs before preparation succeeds.
+
+Public/admin token acquisition may overlap for ongoing access, retaining family-specific refresh claims and shared promises; a failed group drains before token invalidation. Prebooking requires fresh catalogue and then runs required-fields, instructor eligibility and availability through at most two read lanes. A failed lane stops queued work and all started siblings settle before failure returns. Validation/freshness runs after results join; final write authority, provider admission and durable no-replay effects remain ordered. Physical limits remain two active requests,300ms start pacing and four starts per rolling second. No new retries, longer timeouts, token retention or relaxed cache freshness.
+
 ## HitPay transport failure diagnostics — 19 October 2026 SGT
 
 Non-success or non-JSON/empty upstream responses remain503 and unknown payment outcomes. The transport emits hitpay_transport_failure with only correlationId, operation(create/read/search), numeric HTTP status and fixed representation(json/html/other/missing). Error codes use hitpay_http_{status}_{representation}. Existing first-generation creation reason retention now covers transport failures as well as association validation. No response body, URL, headers, credentials or customer fields are logged. Recovery may subsequently update the current reason; correlated logs preserve the original transport classification. No retry, automatic recreation or release authority is added.
