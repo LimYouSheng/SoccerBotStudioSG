@@ -236,6 +236,7 @@ it("verified live receipt uses demo sections and refuses exports after access is
     ),
   );
   render(<ProtectedConfirmation attemptId={first} />);
+  fireEvent.click(await screen.findByText("View full details"));
   expect(
     await screen.findByRole("heading", { name: "Client Details" }),
   ).toBeInTheDocument();
@@ -471,11 +472,13 @@ it("reopening an expired paid booking shows the saved full confirmation without 
   const page = render(
     <ProtectedConfirmation attemptId={first} checkoutMode="live" />,
   );
+  fireEvent.click(await screen.findByText("View full details"));
   await screen.findByRole("heading", { name: "Client Details" });
   expect(screen.getByText(/Saved confirmation · Verified/)).toBeInTheDocument();
   expect(fetch).toHaveBeenCalledTimes(1);
   page.unmount();
   render(<ProtectedConfirmation attemptId={first} checkoutMode="live" />);
+  fireEvent.click(await screen.findByText("View full details"));
   await screen.findByRole("heading", { name: "Client Details" });
   expect(fetch).toHaveBeenCalledTimes(2);
   fireEvent.click(screen.getByRole("button", { name: "Add to calendar" }));
@@ -611,6 +614,7 @@ it("pending confirmation retains the final detail layout while hiding success an
     }),
   );
   render(<ProtectedConfirmation attemptId={first} checkoutMode="live" />);
+  fireEvent.click(await screen.findByText("View full details"));
   await screen.findByRole("heading", { name: "Client Details" });
   expect(
     screen.getByText(

@@ -446,10 +446,30 @@ test("oracle booking sizing and rotation disclaimers persist through checkout", 
   await expect(
     page.getByRole("heading", { name: "Booking confirmed", exact: true }),
   ).toBeVisible();
+  await expect(page.locator(".confirmation-full-details")).not.toHaveAttribute(
+    "open",
+    "",
+  );
+  const confirmationLayout = await page
+    .locator(".confirmation-shell")
+    .evaluate((shell) => ({
+      actionsBottom: shell
+        .querySelector(".confirmation-actions")!
+        .getBoundingClientRect().bottom,
+      summaryTop: shell
+        .querySelector(".confirmation-card")!
+        .getBoundingClientRect().top,
+      actions: shell.querySelectorAll(".confirmation-actions .button").length,
+    }));
+  expect(confirmationLayout.actions).toBe(5);
+  expect(confirmationLayout.actionsBottom).toBeLessThanOrEqual(
+    confirmationLayout.summaryTop,
+  );
+  await page.getByText("View full details", { exact: true }).click();
   await expect(
     page.locator(".confirmation-card .rotation-notice"),
   ).toContainText("stays for the full session");
-  await expect(page.locator("main details")).toHaveCount(0);
+  await expect(page.locator("main details[open]")).toHaveCount(1);
   await expect(page.locator(".confirmation-section > h2")).toHaveText([
     "Client Details",
     "Session Details",
@@ -680,6 +700,7 @@ test("header blue and the typography hierarchy stay consistent across every book
   );
   await payAttempt(page);
   await pageHeading("Booking confirmed");
+  await page.getByText("View full details", { exact: true }).click();
   await sectionType(".confirmation-section > h2");
   await expect(page.locator(".confirmation-card .paid strong")).toHaveCSS(
     "font-size",
@@ -689,7 +710,7 @@ test("header blue and the typography hierarchy stay consistent across every book
     "color",
     brand,
   );
-  await expect(page.locator("main details")).toHaveCount(0);
+  await expect(page.locator("main details[open]")).toHaveCount(1);
 });
 
 test("elapsed selections block checkout on an open page and remain removable before a future multi-session payment", async ({

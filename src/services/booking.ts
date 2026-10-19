@@ -43,6 +43,7 @@ const checkoutInput = z.object({
 });
 const attemptInput = z.object({ attempt: attemptSchema });
 const payInput = attemptInput.extend({
+  startCheckout: z.boolean().optional(),
   outcome: outcomeSchema,
   holding: z.boolean().optional(),
 });
@@ -575,7 +576,7 @@ export const liveBookingService: BookingService = defineBookingService({
       booking: null,
     };
   },
-  async pay({ attempt, signal, holding, onReviewReady }) {
+  async pay({ attempt, signal, holding, onReviewReady, startCheckout }) {
     if (attempt.draft.slots.some((slot) => !slot.native)) return unavailable();
     nativeAttemptId.parse(attempt.id);
     if (
@@ -624,7 +625,7 @@ export const liveBookingService: BookingService = defineBookingService({
         attempt.held
           ? `/api/booking/hitpay/${attempt.id}`
           : holding
-            ? `/api/booking/hold/${attempt.id}`
+            ? `/api/booking/${startCheckout ? "checkout" : "hold"}/${attempt.id}`
             : `/api/booking/native/${attempt.id}`,
         "POST",
         signal,
@@ -676,7 +677,7 @@ export const liveBookingService: BookingService = defineBookingService({
         result.rejectedSessionIndex,
       );
     }
-    if (holding && result.state === "associated")
+    if (holding && !startCheckout && result.state === "associated")
       return { ...attempt, verifying: undefined, held: true, status: "ready" };
     // A response can never mark the browser paid. All ambiguous writes remain
     // under this attempt and the protected confirmation/recovery owner.

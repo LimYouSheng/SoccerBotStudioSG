@@ -70,7 +70,7 @@ export function BookingPage({ step }: { step: BookingStep }) {
             : bookingService.mode === "live" &&
                 !attempt &&
                 draft.mode &&
-                ["review", "payment"].includes(step)
+                step === "payment"
               ? "time"
               : guardedStep(step, draft, attempt, now),
     current = progress.findIndex(([id]) => id === displayStep);

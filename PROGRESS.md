@@ -1,23 +1,14 @@
 # SoccerBotStudioSG current progress
 
-## Early Review and payment feedback — 19 October 2026 SGT
+## Editable Review, combined checkout and compact confirmation — 19 October 2026 SGT
 
-Owner requests Review after the last required availability read succeeds, while creation and hold verification continue. Additive0035 retains an immutable display-only preflight milestone under the original attempt. It is written only after successful combined single-session preflight, not inferred from older calendar offers or a dispatched write. Authenticated progress exposes reviewing with paymentAvailable=false; existing created/verifying progress remains compatible. Browser polling uses its existing bounded one-second cadence, so this is first-notification display, not a claimed instantaneous push or measured latency improvement. Batch behavior is unchanged.
+Owner supersedes creation-during-Review and queued provider edits: Details runs fresh read-only availability checks, then opens editable Review without creating a customer, booking or payment. Changed details reset consent. Continue to payment starts one combined checkout under the existing coordinator and durable attempt identity. Fresh pre-write validation remains necessary because Review can be left open; a read-only offer is not a reservation.
 
-Consent-only changes during the same reserve preserve its operation revision and survive completion/recovery. Payment remains disabled until authoritative hold verification; Continue uses the same held booking with fresh booking/invoice validation, never another slot-availability query or booking creation. Visible handoff feedback is “Opening secure payment…” and pending return feedback is “Verifying your payment…”. Confirmed claims remain gated by verified evidence. Pending return retains compact loader and do-not-refresh guidance; verified confirmation stays visible through final receipt loading.
+Combined checkout creates the booking, verifies the booking and unpaid invoice, retains the association, then creates HitPay. Its internal exact-attempt/hash/association proof can reuse that readback for at most five seconds, removing a duplicate immediate booking/invoice read. Restored/retried/stale paths retain fresh validation; no client-supplied proof or unverified booking can authorize payment. Consent, owner/freshness, serialized booking writes, idempotency, unknown-write recovery and original eight-minute payment/fifteen-minute hold deadlines remain. Required durable recovery evidence stays on the response path. No speculative payment or background-only financial persistence. The unmerged, unapplied0035 display milestone is removed; existing migrations remain unchanged. Queued edit design is superseded, not delivered.
 
-Test-impact pass covers service progress callbacks, provider guards, UI labels, shared helpers, actual-Worker browser pre-creation barrier and all standalone setup paths. The creation response is blocked while Review/consent are asserted; booking/payment effects remain singular. Focused72 component/service checks and the affected13 Worker checks passed; the additional preflight boundary check and28 final copy/confirmation checks passed. Full non-browser receipt and exact-head CI remain pending. No provider write or assistant browser execution.
+Handoff says “Opening secure payment…”; pending return says “Verifying your payment…” with a compact spinning logo and do-not-refresh guidance. Confirmation proof remains visible during final receipt loading. Only verified confirmation exposes the five actions, now above a compact session/player/amount summary. Full contact, all sessions, location, tax, references and disclaimers remain under “View full details”. No forced height, clipping or hidden overflow; smaller screens, text zoom and expanded details can scroll. Protected downloads still require fresh authorization.
 
-## Queued customer edits — authorized design, implementation pending
-
-Owner replaces the proposed field lock: customers may continue editing on Review while creation or an earlier edit is running. Keep the original submitted attempt immutable, and retain a separate owner/attempt-scoped desired draft with monotonically increasing revision. Latest saved values supersede unsent edits; do not cancel/recreate the booking. Any changed booking detail resets consent. Editing the browser draft must not abort or invalidate the original creation response or lose its reference.
-
-After creation completes and authoritative readback verifies the existing hold, validate the latest desired selection and apply one serialized edit to that booking. If further edits arrive during that write, retain them for the next revision. Each edit needs an immutable dispatch record and readback proving booking/invoice/amount/contact consistency. An unknown creation/edit result blocks subsequent writes until recovery establishes the same booking's state; never interpret a timeout as no effect. An unavailable revision remains visible as unapplied with an actionable error, preserving the last verified booking. Payment requires no pending/in-flight revision, verified current provider state, and fresh consent for that exact revision. Preserve original eight-minute payment and fifteen-minute hold deadlines. Returning from or paying an already issued checkout is outside this pre-checkout editing scope; never apply a price-changing edit against an outstanding payment request.
-
-SimplyBook documents admin editBook for an existing booking ID with service/provider/date/time changes (https://simplybook.me/en/api/developer-api/ref). Our adapter has no booking-edit operation. Documentation inspected does not establish failed-edit preservation of the old slot, invoice/price adjustment, or hold-expiry behavior. Before enabling customer edits, owner-operated provider checks must cover: same-price time move; weekday-to-premium-date price/service move; occupied target rejection with original slot readback; invoice ID/lines/amount and original expiry before/after; and contact/player-comment updates without altering unrelated shared-client history. Read back booking and invoice after each edit; do not test against an active HitPay request. Source work may use simulated providers, but cannot claim these provider semantics from mocks.
-
-Implementation remains outstanding: durable desired revisions, serialized edit transport and recovery, effective revision consumption by payment/receipt owners, UI caching/restoration, and corresponding mixed-edit/unknown-result tests. Current candidate keeps booking fields locked and must not be described as delivering queued edits. No edit/cancel/provider experiment was executed. Existing immutable attempts/associations and applied migration0001 remain intact. Early Review/consent/payment feedback are independently implemented in this candidate.
-
+Test-impact review covers read-only Review, edits/consent, creation/readback barriers, duplicate effects, unknown/failed creation, restored attempts, shared browser setup/counts, compact disclosure/action order and protected downloads. Focused component checks,15 combined-checkout Worker tests and full verify:code (209 tests, types, lint, tooling, build/export) passed. Full Worker suite and exact-head CI remain pending; browser/device coverage remains CI/owner-operated. No provider writes, merge or deployment in this follow-up.
 
 ## HAR08 confirmation continuity and record reconciliation — 19 October 2026 SGT
 
@@ -29,11 +20,9 @@ Read-only audit of this HAR's exact attempt: retained payment complete/verified,
 
 The archived grant records source0fd2c6e. HAR hold took13.795seconds versus HAR07's16.678; first Review-eligible response completed about10.633seconds versus13.644. Payment preparation succeeded in3.172seconds. These are browser network milestones, not screen-paint timings or a4–5second target acceptance. PR59 merged after all final gates passed; this follow-up requires its own PR/CI and merge authorization.
 
-
 ## Email-code browser interaction repair — 19 October 2026 SGT
 
 Final-policy CI39200175005 frontend passed74/75 browser cases. Tablet WebKit filled the code while main was still inert during the loading transition; the trace retained an empty input, so native required validation prevented the expected incorrect-code response. Wait for the code heading and removal of main inertness, then assert entered values before submitting. Apply the same readiness milestone to the live-email helper. Preserve invalid-code rejection, corrected-code navigation, existing timeout and every case; no forced interaction, sleeps, retries or production behavior change. Final successor CI is required before the owner-authorized PR59 merge.
-
 
 ## Fifteen-minute hold and eight-minute payment policy — 19 October 2026 SGT
 
@@ -41,11 +30,9 @@ Owner authorizes adding this policy to PR59 and merging only after final-commit 
 
 Additive migration0034 defaults existing creation records to their original600000/300000ms policy; existing holds/payment requests are not extended. Policy columns are immutable. Reconciliation, late settlement/manual review, unknown-write evidence and duplicate-effect protections remain. Browser expiry coverage uses an eight-minute-old new-policy creation; combined-hold tests verify policy, anchored expiry and one payment effect; legacy coverage asserts old defaults. The synthetic provider fixture now models a15-minute invoice deadline. No assistant provider setting/write/browser run or deployment; final CI pending.
 
-
 ## Completed-dismissal CI setup repair — 19 October 2026 SGT
 
 Merged-main50656c9 CI39198249437 passed74/75 live-email cases; phone WebKit timed out before reaching dismissal. Trace shows about22seconds spent creating the synthetic hold/payment before navigation, then waiting for fully reconciled confirmation. Customer confirmation was visible, but the completed-dismissal contract correctly requires full reconciliation. Retain that response wait and all lost-response/retry/receipt/single-effect assertions. Use the current combined hold route for this test setup instead of legacy split preparation/native execution, and assert one preflight. Other standalone setup callers keep their existing contracts. No timeout, retry, provider-limit or production-authority change. Exact-head CI remains required; HitPay upstream rejection and live latency remain unresolved.
-
 
 ## Bounded pre-creation concurrency — 19 October 2026 SGT
 
@@ -60,7 +47,6 @@ Owner HAR07 at11:38SGT shows hold200 in16.678seconds, first verifying reply begi
 Retained payment has no verified request/payment ID, reason hitpay_creation_unresolved and external_state none. Two bounded exact-reference GETs from the managed environment returned403 Cloudflare HTML; that separate observation does not establish the original Worker's upstream status. Read-only exact-window logs do not contain the original upstream status/body. Current official HitPay create-request reference supports JSON and expires_after in mins, with no published minimum on that page; no expiry/encoding root cause is established. Preserve the original unknown-write attempt; no new provider POST, cancellation, cleanup or payment was performed.
 
 Repair the evidenced diagnostic gap in the transport owner: classify upstream status and fixed representation only, emit correlated metadata without body/headers/URLs, and include transport failures in the existing first-generation reason retention. Keep503, bounded recovery and the one-POST guard; do not claim checkout is repaired. Regression asserts403 HTML metadata/redaction, retained evidence and no repeated create, preserving existing503/unknown-write tests. Search shared setup and frontend error contracts; no timeout, retry or success-authority change. Provider root-cause/physical acceptance remains blocked pending original upstream evidence or a later authorized recovery observation.
-
 
 ## Shared checkout expiry and payment-first confirmation — 19 October 2026 SGT
 

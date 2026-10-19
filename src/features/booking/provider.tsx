@@ -44,7 +44,7 @@ import {
   type StoredBooking,
 } from "@/services/storage";
 import { useBookingAvailability } from "./availability";
-type Action = Exclude<BookingOperation, "availability"> | "reserve";
+type Action = Exclude<BookingOperation, "availability"> | "reserve" | "review";
 type ActionState = {
   status:
     "idle" | "loading" | "success" | "failure" | "unavailable" | "cancelled";
@@ -69,6 +69,7 @@ interface BookingContextValue extends StoredBooking {
   cancel: () => void;
   update: (change: Partial<BookingDraft>) => void;
   reserve: () => Promise<boolean>;
+  review: () => Promise<boolean>;
   checkout: () => Promise<boolean>;
   pay: (outcome: Outcome) => Promise<boolean>;
   check: () => Promise<boolean>;
@@ -366,6 +367,7 @@ export function BookingProvider({
       if (
         operation !== "checkout" &&
         operation !== "reserve" &&
+        operation !== "review" &&
         !current.attempt
       )
         return false;
@@ -409,12 +411,51 @@ export function BookingProvider({
             "Your email session has expired. Verify your email again.",
           );
         const signal = request.controller.signal;
+        if (operation === "review") {
+          const dates = [
+            ...new Set(current.draft.slots.map((slot) => slot.date)),
+          ];
+          const available = (
+            await Promise.all(
+              dates.map((date) =>
+                service.availability({
+                  date,
+                  players: current.draft.players,
+                  serviceId: current.draft.nativeServiceId,
+                  fresh: true,
+                  signal,
+                }),
+              ),
+            )
+          ).flat();
+          if (!isCurrent()) return false;
+          const rejected = current.draft.slots.findIndex(
+            (slot) =>
+              !available.some(
+                (offer) =>
+                  offer.available &&
+                  slotKey(offer) === slotKey(slot) &&
+                  offer.native?.priceMinor === slot.native?.priceMinor &&
+                  offer.native?.serviceId === slot.native?.serviceId,
+              ),
+          );
+          if (rejected >= 0)
+            throw new BookingServiceError(
+              "selection_changed",
+              "A selected session is no longer available. Please choose another time.",
+              rejected,
+            );
+          setAction({ status: "success", operation });
+          return true;
+        }
         let attempt =
           operation === "checkout" && current.attempt?.held
             ? current.attempt
             : operation === "checkout" || operation === "reserve"
               ? await service.checkout({
-                  holding: operation === "reserve",
+                  holding:
+                    operation === "reserve" ||
+                    (operation === "checkout" && service.mode === "live"),
                   draft: current.draft,
                   previous: current.attempt,
                   signal,
@@ -443,12 +484,14 @@ export function BookingProvider({
         ) {
           // Retain the prepared attempt before the one-use provider write.
           // A missing reply must never cause a new preparation or payment.
-          holdDispatched = operation === "reserve";
+          const startCheckout = operation === "checkout" && !attempt.held;
+          holdDispatched = operation === "reserve" || startCheckout;
           attempt = await service.pay({
             attempt,
             outcome: "pending",
             signal,
-            holding: operation === "reserve",
+            holding: operation === "reserve" || startCheckout,
+            startCheckout,
             onReviewReady:
               operation === "reserve"
                 ? () => {
@@ -524,7 +567,7 @@ export function BookingProvider({
             return true;
           }
         }
-        if (latest.current.attempt?.verifying) {
+        if (holdDispatched && latest.current.attempt) {
           commit({
             ...latest.current,
             attempt: {
@@ -571,7 +614,9 @@ export function BookingProvider({
           return false;
         }
         const selectionRejected =
-          operation === "reserve" &&
+          (operation === "reserve" ||
+            operation === "review" ||
+            operation === "checkout") &&
           (known.code === "selection_unavailable" ||
             known.code === "selection_changed");
         if (selectionRejected) {
@@ -720,6 +765,7 @@ export function BookingProvider({
           });
         },
         reserve: () => run("reserve"),
+        review: () => run("review"),
         checkout: () => run("checkout"),
         pay: (outcome) => run("pay", outcome),
         check: () => run("check"),

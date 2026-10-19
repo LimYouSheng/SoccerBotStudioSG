@@ -321,7 +321,7 @@
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",
-    "title": "failed preparation releases cached calendar without removing the selection or refetching"
+    "title": "failed review read retains cached calendar without removing the selection or refetching"
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",
@@ -493,7 +493,7 @@
   },
   {
     "file": "src/features/booking/time-step.test.tsx",
-    "title": "confirmation shows each contact and location once with all five sections expanded"
+    "title": "confirmation places five actions above a compact summary and discloses complete details"
   },
   {
     "file": "src/features/booking/time-step.test.tsx",
@@ -949,7 +949,7 @@
   },
   {
     "file": "tests/live-email.spec.ts",
-    "title": "real API batch hold checks each session once and restores one complete unpaid reservation"
+    "title": "real API batch checkout checks each session once and restores one complete unpaid reservation"
   },
   {
     "file": "tests/live-email.spec.ts",
@@ -965,7 +965,7 @@
   },
   {
     "file": "tests/live-email.spec.ts",
-    "title": "real API created hold opens pending Review before readback and enables payment only after verification"
+    "title": "real API editable Review creates nothing and checkout waits for verified creation before HitPay"
   },
   {
     "file": "tests/live-email.spec.ts",
@@ -981,7 +981,7 @@
   },
   {
     "file": "src/features/booking/direct-checkout.test.tsx",
-    "title": "validated single selection shows Review before creation and keeps payment disabled until verified"
+    "title": "Review checks availability without creation and checkout verifies one booking before HitPay"
   },
   {
     "file": "src/features/booking/confirmation-checking.test.tsx",

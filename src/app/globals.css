@@ -2790,7 +2790,7 @@
   .confirmation-home {
     display: flex;
     width: 100%;
-    min-height: 70px;
+    min-height: 48px;
     margin-top: 12px;
     justify-content: center;
     text-align: center;
@@ -3606,19 +3606,64 @@
     margin-top: 0;
     padding-top: 0;
   }
+  .confirmation-shell {
+    padding-top: 20px;
+    padding-bottom: 24px;
+  }
+  .confirmation-shell .status-heading {
+    margin-bottom: 16px;
+  }
+  .confirmation-shell .status-icon {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 10px;
+  }
+  .confirmation-shell .status-icon svg {
+    width: 24px;
+    height: 24px;
+  }
+  .confirmation-shell .confirmation-card {
+    padding: 16px;
+  }
+  .confirmation-summary {
+    display: grid;
+    gap: 8px;
+  }
+  .confirmation-summary p {
+    margin: 0;
+  }
+  .confirmation-full-details {
+    border-top: 1px solid var(--color-line);
+    margin-top: 12px;
+    padding-top: 4px;
+  }
+  .confirmation-full-details > summary {
+    cursor: pointer;
+    min-height: 44px;
+    align-content: center;
+    color: var(--color-action);
+    font-weight: 600;
+  }
+  .confirmation-full-details[open] > summary {
+    margin-bottom: 12px;
+  }
   .confirmation-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
-    margin-top: 24px;
+    margin-bottom: 16px;
   }
   .confirmation-actions .button {
     min-width: 0;
-    min-height: 70px;
+    min-height: 48px;
     justify-content: center;
     text-align: center;
     gap: 10px;
-    padding: 18px 16px;
+    padding: 10px 12px;
+  }
+  .confirmation-actions .confirmation-home {
+    grid-column: 1 / -1;
+    margin-top: 0;
   }
   .confirmation-actions .button span {
     min-width: 0;
@@ -3915,15 +3960,18 @@
     .status-shell {
       padding: 36px 20px;
     }
+    .confirmation-shell {
+      padding-top: 16px;
+      padding-bottom: 20px;
+    }
     .confirmation-actions {
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
     }
     .confirmation-actions .button {
-      padding: 17px 10px;
-      min-height: 92px;
-      flex-direction: column;
-      gap: 9px;
+      padding: 10px 8px;
+      min-height: 48px;
+      gap: 6px;
     }
     .confirmation-actions .button svg {
       width: 20px;

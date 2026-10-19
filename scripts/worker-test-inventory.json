@@ -42,6 +42,8 @@
   "concurrent preflight drains siblings and rejects revocation before creation",
   "combined preparation overlaps public and admin authentication without premature booking",
   "concurrent preflight attributes invalid fields correctly and creates no booking",
+  "checkout creates one verified booking and reuses its fresh readback for one HitPay request",
+  "combined checkout never creates HitPay after failed booking verification and preserves its attempt",
   "foundation valid bindings emit correlated storage evidence without secret markers",
   "foundation missing and malformed configuration denies before protected reads",
   "foundation foreign database and coordinator namespace identities fail closed",
