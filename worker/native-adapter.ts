@@ -101,6 +101,41 @@ export function nativeBookingOperations(options: {
     )
       throw new ApiError(409, "native_intent_mismatch");
   };
+
+  const emitCreationEvidence = (
+    value: ReturnType<typeof normalizeNativeCreation>,
+    response: Awaited<ReturnType<NativeExchange>>,
+  ) => {
+    options.onCreationEvidence?.({
+      association: value.association,
+      dueDatetime: nativeRecord(
+        nativeRecord(response.body, "creation").invoice,
+        "creation.invoice",
+      ).due_datetime,
+      receivedAtMs: response.receivedAtMs,
+      observation: {
+        invoice: value.invoice,
+        bookings: intent.sessions.map((expected, index) => ({
+          accountId: intent.accountId,
+          environmentId: intent.environmentId,
+          attemptId: options.scope.attemptId,
+          customerId: intent.customerId,
+          invoiceId: value.association.invoiceId,
+          observedAtMs: response.receivedAtMs,
+          status: "confirmed" as const,
+          session: {
+            bookingId: value.association.bookingIds[index],
+            serviceId: expected.serviceId,
+            instructorId: expected.instructorId,
+            startMs: expected.startMs,
+            playEndMs: expected.startMs + SESSION_MINUTES * 60000,
+            occupiedStartMs: expected.startMs,
+            occupiedEndMs: expected.startMs + START_INTERVAL_MINUTES * 60000,
+          },
+        })),
+      },
+    });
+  };
   return {
     supported: true,
     retainsSessionReferences: true,
@@ -289,34 +324,7 @@ export function nativeBookingOperations(options: {
           bookingObservedAtMs: response.receivedAtMs,
           invoiceObservedAtMs: response.receivedAtMs,
         });
-        options.onCreationEvidence?.({
-          association: created.association,
-          dueDatetime: nativeRecord(envelope.invoice, "creation.invoice")
-            .due_datetime,
-          receivedAtMs: response.receivedAtMs,
-          observation: {
-            invoice: created.invoice,
-            bookings: intent.sessions.map((expected, index) => ({
-              accountId: intent.accountId,
-              environmentId: intent.environmentId,
-              attemptId: options.scope.attemptId,
-              customerId: intent.customerId,
-              invoiceId: created!.association.invoiceId,
-              observedAtMs: response.receivedAtMs,
-              status: "confirmed" as const,
-              session: {
-                bookingId: created!.association.bookingIds[index],
-                serviceId: expected.serviceId,
-                instructorId: expected.instructorId,
-                startMs: expected.startMs,
-                playEndMs: expected.startMs + SESSION_MINUTES * 60000,
-                occupiedStartMs: expected.startMs,
-                occupiedEndMs:
-                  expected.startMs + START_INTERVAL_MINUTES * 60000,
-              },
-            })),
-          },
-        });
+        emitCreationEvidence(created, response);
       }
       return {
         bookingId: key.bookingId,
@@ -356,6 +364,7 @@ export function nativeBookingOperations(options: {
           },
           bookingKeys,
         );
+        emitCreationEvidence(created, response);
       }
       if (
         !created ||

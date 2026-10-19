@@ -10,38 +10,30 @@ import {
 } from "./native-adapter";
 import type { ProviderSession, ProviderControl } from "./provider-session";
 
-export async function retainHitpayHold(
+// The anchored hold and its observation are committed in one D1 batch.
+// The original booking timestamp is read by SQLite, not a separate round trip.
+export function hitpayHoldStatement(
   env: Env,
   scope: NativeScope,
   association: string,
   hash: string,
   expires: number,
 ) {
-  const progress = await env.STATE.prepare(
-    "SELECT booking_created_ms,hold_window_ms FROM checkout_progress WHERE attempt_id=?",
-  )
-    .bind(scope.attemptId)
-    .first<{ booking_created_ms: number; hold_window_ms: number }>();
-  if (progress)
-    expires = Math.min(
-      expires,
-      progress.booking_created_ms + progress.hold_window_ms,
-    );
-  await env.STATE.prepare(
-    "INSERT INTO hitpay_holds(attempt_id,scope_json,association_json,intent_hash,expires_ms) VALUES(?,?,?,?,?)",
-  )
-    .bind(
-      scope.attemptId,
-      JSON.stringify({
-        attemptId: scope.attemptId,
-        companyLogin: scope.companyLogin,
-        timezone: scope.timezone,
-      }),
-      association,
-      hash,
-      expires,
-    )
-    .run();
+  return env.STATE.prepare(
+    "INSERT INTO hitpay_holds(attempt_id,scope_json,association_json,intent_hash,expires_ms) SELECT ?,?,?,?,MIN(?,COALESCE((SELECT booking_created_ms+hold_window_ms FROM checkout_progress WHERE attempt_id=?),?))",
+  ).bind(
+    scope.attemptId,
+    JSON.stringify({
+      attemptId: scope.attemptId,
+      companyLogin: scope.companyLogin,
+      timezone: scope.timezone,
+    }),
+    association,
+    hash,
+    expires,
+    scope.attemptId,
+    expires,
+  );
 }
 
 // A held slot must be unavailable to others. Payment validates the existing

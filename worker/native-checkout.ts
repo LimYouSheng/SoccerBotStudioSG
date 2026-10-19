@@ -1,5 +1,5 @@
 import { retainHoldEvidence } from "./native-hold-evidence";
-import { retainHitpayHold } from "./hitpay-hold";
+import { hitpayHoldStatement } from "./hitpay-hold";
 import { hitpaySetting } from "./hitpay-contract";
 import { selectPaymentRoute } from "./hitpay-journal";
 import { NativeCalendarReads, calendarDates } from "./native-calendar";
@@ -547,7 +547,6 @@ export async function executeNativeCheckout(options: {
           paymentRoute === "hitpay" &&
           options.onVerifiedHold &&
           creationEvidence &&
-          scope.intent.sessions.length === 1 &&
           creationEvidence.association.invoiceId === refs.invoiceId &&
           creationEvidence.association.nativeCustomerId ===
             refs.nativeCustomerId &&
@@ -597,21 +596,25 @@ export async function executeNativeCheckout(options: {
         supervisionDeadlineMs: grant.expires_ms,
         handoffAtMs: Date.now(),
       };
-      if (paymentRoute === "hitpay") {
-        await retainHitpayHold(
-          env,
-          scope,
-          associated.association_json,
-          row.intent_hash,
-          nativeCheckoutDeadline(timing, Date.now(), 900000),
-        );
-      } else await prepareNativeLink(env.STATE, scope, exchange, true, timing);
+      const hold =
+        paymentRoute === "hitpay"
+          ? hitpayHoldStatement(
+              env,
+              scope,
+              associated.association_json,
+              row.intent_hash,
+              nativeCheckoutDeadline(timing, Date.now(), 900000),
+            )
+          : undefined;
+      if (!hold)
+        await prepareNativeLink(env.STATE, scope, exchange, true, timing);
       await recordObservation(
         env.STATE,
         attemptId,
         associated.version,
         observation!,
         Date.now(),
+        hold ? [hold] : [],
       );
       result =
         paymentRoute === "hitpay" && options.onVerifiedHold

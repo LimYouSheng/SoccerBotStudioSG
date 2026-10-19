@@ -250,16 +250,16 @@ export async function createBookingMechanism(options = {}) {
             }
           if (options.batch && body?.method === "book") {
             assert.ok(batchBooks < 2, "batch creation must not replay");
-            const receipt = creation.bookings[batchBooks++];
+            batchBooks++;
             return Response.json({
               jsonrpc: "2.0",
               id: body.id,
               result: {
-                require_confirm: false,
+                require_confirm: true,
                 invoice: null,
                 batch_id: 601,
                 batch_hash: "synthetic-batch-hash",
-                bookings: [receipt],
+                bookings: creation.bookings.slice(0, batchBooks),
               },
             });
           }
@@ -296,7 +296,15 @@ export async function createBookingMechanism(options = {}) {
                 ? secondBooking
                 : booking,
             ...(options.batch
-              ? { createBatch: 601, closeBatch: creation }
+              ? {
+                  createBatch: 601,
+                  closeBatch: {
+                    invoice: creation.invoice,
+                    bookings: Object.fromEntries(
+                      creation.bookings.map((booking) => [booking.id, booking]),
+                    ),
+                  },
+                }
               : {}),
           };
           if (body && Object.hasOwn(results, body.method)) {

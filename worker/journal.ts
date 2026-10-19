@@ -135,14 +135,17 @@ export async function recordObservation(
   fence: number,
   observation: unknown,
   observedMs: number,
+  preceding: D1PreparedStatement[] = [],
 ) {
   // A stale completion cannot overwrite a later observation or a recovery fence.
-  const result = await db
+  const statement = db
     .prepare(
       "UPDATE attempts SET observation_json=?,observation_ms=?,version=version+1,state='observed' WHERE id=? AND version=? AND association_json IS NOT NULL AND state IN ('dispatching','observed','recovery_required') AND (observation_ms IS NULL OR observation_ms<?)",
     )
-    .bind(JSON.stringify(observation), observedMs, id, fence, observedMs)
-    .run();
+    .bind(JSON.stringify(observation), observedMs, id, fence, observedMs);
+  const result = preceding.length
+    ? (await db.batch([...preceding, statement])).at(-1)!
+    : await statement.run();
   if (result.meta.changes !== 1) throw new ApiError(409, "stale_completion");
 }
 export async function requireRecovery(
