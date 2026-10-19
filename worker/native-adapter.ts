@@ -452,6 +452,7 @@ export type NativeCheckoutTiming = {
 export function nativeCheckoutDeadline(
   timing: NativeCheckoutTiming,
   now: number,
+  handoffWindowMs: 600000 | 900000 = 600000,
 ) {
   const match =
     typeof timing.dueDatetime === "string" &&
@@ -478,7 +479,7 @@ export function nativeCheckoutDeadline(
     (480 - offsetMinutes) * 60000;
   const deadline = Math.min(
     timing.supervisionDeadlineMs,
-    timing.handoffAtMs + 600000,
+    timing.handoffAtMs + handoffWindowMs,
     due - 30000,
   );
   if (

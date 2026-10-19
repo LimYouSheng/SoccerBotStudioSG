@@ -61,14 +61,25 @@ test("combined hold performs one preflight and preserves immutable identity acro
     assert.ok(results.some((result) => result.state === "associated"));
     const timing = await m.db
       .prepare(
-        "SELECT c.booking_created_ms,h.expires_ms FROM checkout_progress c JOIN hitpay_holds h USING(attempt_id) WHERE attempt_id=?",
+        "SELECT c.booking_created_ms,c.payment_window_ms,c.hold_window_ms,h.expires_ms FROM checkout_progress c JOIN hitpay_holds h USING(attempt_id) WHERE attempt_id=?",
       )
       .bind(c.input.key)
       .first();
+    assert.equal(timing.payment_window_ms, 480000);
+    assert.equal(timing.hold_window_ms, 900000);
+    await assert.rejects(
+      m.db
+        .prepare(
+          "UPDATE checkout_progress SET payment_window_ms=300000 WHERE attempt_id=?",
+        )
+        .bind(c.input.key)
+        .run(),
+      /checkout_windows_immutable/,
+    );
     assert.ok(timing.booking_created_ms <= Date.now());
-    assert.ok(timing.expires_ms <= timing.booking_created_ms + 600000);
+    assert.ok(timing.expires_ms <= timing.booking_created_ms + 900000);
     assert.ok(timing.expires_ms > timing.booking_created_ms);
-    assert.ok(timing.expires_ms > timing.booking_created_ms + 300000);
+    assert.ok(timing.expires_ms > timing.booking_created_ms + 840000);
 
     assert.ok(results.every((result) => result.attemptId === c.input.key));
     for (const method of [
@@ -148,14 +159,14 @@ test("combined hold performs one preflight and preserves immutable identity acro
       .first();
     assert.equal(
       payment.expires_ms,
-      Math.min(timing.expires_ms, timing.booking_created_ms + 300000),
+      Math.min(timing.expires_ms, timing.booking_created_ms + 480000),
     );
     const creates = m.calls.filter(
       (call) =>
         call.url.endsWith("/v1/payment-requests") && call.method === "POST",
     );
     assert.equal(creates.length, 1);
-    assert.match(creates[0].body.expires_after, /^[1-4] mins$/);
+    assert.match(creates[0].body.expires_after, /^[1-7] mins$/);
     assert.deepEqual(m.unexpected, []);
   } finally {
     await m.close();

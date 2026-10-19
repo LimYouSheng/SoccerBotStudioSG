@@ -491,7 +491,7 @@ export async function executeNativeCheckout(options: {
     if (paymentRoute === "hitpay")
       operations.onCreated = async (createdAtMs) => {
         await env.STATE.prepare(
-          "INSERT INTO checkout_progress(attempt_id,booking_created_ms) VALUES(?,?) ON CONFLICT(attempt_id) DO NOTHING",
+          "INSERT INTO checkout_progress(attempt_id,booking_created_ms,payment_window_ms,hold_window_ms) VALUES(?,?,480000,900000) ON CONFLICT(attempt_id) DO NOTHING",
         )
           .bind(attemptId, createdAtMs)
           .run();
@@ -560,7 +560,7 @@ export async function executeNativeCheckout(options: {
           scope,
           associated.association_json,
           row.intent_hash,
-          nativeCheckoutDeadline(timing, Date.now()),
+          nativeCheckoutDeadline(timing, Date.now(), 900000),
         );
       } else await prepareNativeLink(env.STATE, scope, exchange, true, timing);
       await recordObservation(

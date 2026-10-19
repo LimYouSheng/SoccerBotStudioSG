@@ -2148,12 +2148,12 @@ test("real API expired unpaid Review returns to calendar without recreating the 
   const transport = await mechanismTransport(page, mechanism);
   try {
     const { headers, attemptId } = await prepareBrowserAttempt(page, mechanism);
-    // Simulate the retained server creation clock already being five minutes old.
+    // Simulate the retained server creation clock already being eight minutes old.
     // The production owner must not replace it during resumed preparation.
-    const created = Date.now() - 300001;
+    const created = Date.now() - 480001;
     await mechanism.db
       .prepare(
-        "INSERT INTO checkout_progress(attempt_id,booking_created_ms) VALUES(?,?)",
+        "INSERT INTO checkout_progress(attempt_id,booking_created_ms,payment_window_ms,hold_window_ms) VALUES(?,?,480000,900000)",
       )
       .bind(attemptId, created)
       .run();
