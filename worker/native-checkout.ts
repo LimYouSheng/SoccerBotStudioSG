@@ -23,6 +23,7 @@ import {
   nativeCustomerHours,
 } from "./prebooking";
 import {
+  type hitpayHandoffSchema,
   nativeAvailabilitySchema,
   nativePrepareSchema,
   nativeCurrentSchema,
@@ -113,7 +114,11 @@ export async function executeNativeCheckout(options: {
     intentHash: string;
     associationJson: string;
     verifiedAtMs: number;
-  }) => Promise<{ state: string; paymentAvailable: boolean }>;
+  }) => Promise<{
+    state: string;
+    paymentAvailable: boolean;
+    checkout?: z.infer<typeof hitpayHandoffSchema>;
+  }>;
 }) {
   const { request, env, attemptId, provider } = options;
   z.string().uuid().parse(attemptId);
@@ -405,6 +410,7 @@ export async function executeNativeCheckout(options: {
     state: string;
     paymentAvailable: boolean;
     rejectedSessionIndex?: number;
+    checkout?: z.infer<typeof hitpayHandoffSchema>;
   } = {
     state: "recovery_required",
     paymentAvailable: false,
@@ -429,6 +435,8 @@ export async function executeNativeCheckout(options: {
         >[0]
       | undefined;
     const operations = nativeBookingOperations({
+      deferComments:
+        ongoing && paymentRoute === "hitpay" && !!options.onVerifiedHold,
       onCreationEvidence: (value) => {
         creationEvidence = value;
       },
@@ -665,6 +673,7 @@ export async function executeNativeCheckout(options: {
       result.state === "associated" ? "complete" : "blocked",
       JSON.stringify({
         ...result,
+        checkout: undefined,
         ...(diagnostic ? { diagnostic } : {}),
         ...(cleanupDiagnostic ? { cleanupDiagnostic } : {}),
       }),

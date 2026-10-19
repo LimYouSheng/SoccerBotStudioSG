@@ -110,6 +110,7 @@ it("restored editable Review avoids background catalogue and calendar reads", as
   expect(fetch).not.toHaveBeenCalled();
 });
 async function directCase(scenario: string) {
+  navigation.path = "/book/review/";
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-10-15T00:00:00Z"));
   let finish!: (attempt: Attempt) => void;
@@ -183,11 +184,18 @@ async function directCase(scenario: string) {
   );
   expect(checkout).toHaveBeenCalledTimes(1);
   expect(assign).not.toHaveBeenCalled();
-  if (scenario === "cancel") fireEvent.click(screen.getByText("Cancel"));
+  if (scenario === "cancel" || scenario === "cancel_handoff")
+    fireEvent.click(screen.getByText("Cancel"));
+  if (scenario === "handoff" || scenario === "cancel_handoff") {
+    pay.mock.calls[0][0].onCheckoutReady?.({
+      url,
+      expiresAtMs: Date.now() + 60000,
+    });
+  }
   await act(async () =>
     finish({ ...pay.mock.calls[0][0].attempt, status: "checking" }),
   );
-  if (scenario === "success") {
+  if (scenario === "success" || scenario === "handoff") {
     expect(assign).toHaveBeenCalledExactlyOnceWith(url);
     // assign() starts navigation; the current document can still paint while
     // the checkout destination loads. Never reveal the review form here.
@@ -218,12 +226,18 @@ async function directCase(scenario: string) {
     expect(pay).toHaveBeenCalledTimes(1);
     expect(assign).toHaveBeenCalledTimes(1);
   } else expect(assign).not.toHaveBeenCalled();
+  if (scenario === "handoff" || scenario === "cancel_handoff")
+    expect(fetch).not.toHaveBeenCalled();
   expect(navigation.push).not.toHaveBeenCalled();
   expect(screen.getByTestId("retained")).toHaveTextContent(id);
 }
 
 it("direct checkout opens HitPay once in the same tab", () =>
   directCase("success"));
+it("saved URL from checkout navigates once without a context request", () =>
+  directCase("handoff"));
+it("cancelled checkout ignores a late saved URL handoff", () =>
+  directCase("cancel_handoff"));
 it("cancelled direct checkout never navigates", () => directCase("cancel"));
 it("direct checkout rejects an untrusted destination", () =>
   directCase("wrong_host"));
@@ -767,4 +781,53 @@ it("expired Review releases only an authoritatively unpaid attempt and preserves
     calls.filter((path) => path.startsWith("/api/booking/hold/")),
   ).toHaveLength(1);
   expect(calls.filter((path) => path.endsWith("/expire"))).toHaveLength(2);
+});
+
+it("live checkout validates direct handoff scope expiry and destination without persisting the URL", async () => {
+  const attempt: Attempt = {
+    id,
+    draft,
+    status: "ready",
+    outcome: "pending",
+    checkUntil: 0,
+    booking: null,
+  };
+  const checkout = { url, expiresAtMs: Date.now() + 60000 };
+  const good = {
+    attemptId: id,
+    state: "associated",
+    paymentAvailable: true,
+    checkout,
+  };
+  const response = vi.fn(async () => Response.json(good));
+  vi.stubGlobal("fetch", response);
+  const ready = vi.fn();
+  const input = {
+    attempt,
+    outcome: "pending" as const,
+    holding: true,
+    startCheckout: true,
+    onCheckoutReady: ready,
+  };
+  const result = await liveBookingService.pay(input);
+  expect(ready).toHaveBeenCalledExactlyOnceWith(checkout);
+  expect(result.status).toBe("checking");
+  expect(result.booking).toBeNull();
+  expect(JSON.stringify(result)).not.toContain(url);
+  for (const invalid of [
+    { ...good, attemptId: "00000000-0000-4000-8000-000000000002" },
+    { ...good, paymentAvailable: false },
+    { ...good, state: "recovery_required" },
+    { ...good, checkout: { ...checkout, expiresAtMs: Date.now() - 1 } },
+    {
+      ...good,
+      checkout: { ...checkout, url: url.replace("hit-pay.com", "evil.test") },
+    },
+  ]) {
+    response.mockImplementation(async () => Response.json(invalid));
+    await expect(liveBookingService.pay(input)).rejects.toMatchObject({
+      code: "invalid_response",
+    });
+    expect(ready).toHaveBeenCalledTimes(1);
+  }
 });

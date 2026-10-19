@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Owner prioritizes checkout URL handoff — 19 October 2026 SGT
+
+Owner authorizes removing awaited comment I/O and the extra context request before initial HitPay navigation. Added durable deferred comments with account queue/cron ownership and one-write claims; the checkout reply carries only its validated, saved URL and expiry to a transient client callback. Required financial journaling still precedes the HitPay POST: the payment reservation and request are not independent. Booking/invoice validation, original expiry, failed-save recovery and final access checks remain.
+
+Three focused Worker tests passed; 28 affected client/service tests passed after correcting the new test harness to mount Review on its actual route and mapping malformed handoff DTOs to invalid_response. Original failed logs retained. Cache extension separately passed215 client tests and386 Worker tests at21000da. No new provider experiment or assistant browser run. Full verify:code passed218 tests after moving the new schema import above initialization for the standalone CommonJS clock fixture; the original tooling failure is retained. Worker suite/final-head CI pending. Owner now explicitly authorizes fixing failed CI and merging PR61 after all three final-head gates pass.
+
 ## Owner adds recurring display warm-up — 19 October 2026 SGT
 
 After history review established the old fifteen-minute warmer was proposed but excluded, owner authorizes implementing it with PR61 and requests immediate updates for booking creation. Implement account-DO persistent public snapshots, fifteen-minute due claims on existing minute cron, creation-triggered invalidation/background refresh and original thirty-minute display deadlines. Homepage download/browser reuse remains eager; no claim of instant cold network transfer. Source gating stays disabled in base configuration and enabled in the exact live-release composition.

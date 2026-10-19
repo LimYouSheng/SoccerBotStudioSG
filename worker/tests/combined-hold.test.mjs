@@ -951,11 +951,17 @@ test("checkout reuses complete creation evidence for one HitPay request without 
     assert.equal(m.calls.filter((c) => c.body?.method === "book").length, 0);
     const response = await send(true);
     assert.equal(response.status, 200, await response.clone().text());
-    assert.deepEqual(await response.json(), {
+    const result = await response.json();
+    assert.deepEqual(result, {
       attemptId: c.input.key,
       state: "associated",
       paymentAvailable: true,
+      checkout: {
+        url: m.checkoutUrl,
+        expiresAtMs: result.checkout.expiresAtMs,
+      },
     });
+    assert.ok(result.checkout.expiresAtMs > Date.now());
     assert.equal(m.calls.filter((c) => c.body?.method === "book").length, 1);
     assert.equal(
       m.calls.filter((c) => c.body?.method === "getBookingDetails").length,
@@ -1206,6 +1212,143 @@ test("failed scheduled display refresh retains a bounded snapshot without renewi
     assert.equal(
       m.calls.filter((call) => call.body?.method === "book").length,
       0,
+    );
+  } finally {
+    await m.close();
+  }
+});
+
+test("checkout returns its durable URL while comments are blocked and annotation failure never repeats effects", async () => {
+  const gate = Promise.withResolvers();
+  const started = Promise.withResolvers();
+  const m = await createBookingMechanism({
+    respond: async (call) => {
+      if (call.url.endsWith("/comment")) {
+        started.resolve();
+        await gate.promise;
+        return new Response(null, { status: 503 });
+      }
+    },
+  });
+  try {
+    const c = await customer(m);
+    const send = () =>
+      m.mf.dispatchFetch(m.origin + `/api/booking/checkout/${c.input.key}`, {
+        method: "POST",
+        headers: c.headers,
+        body: JSON.stringify({ ...c.input, accepted: true }),
+      });
+    const response = await send();
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    await started.promise;
+    assert.equal(result.checkout.url, m.checkoutUrl);
+    const saved = await m.db
+      .prepare(
+        "SELECT checkout_url,request_id,expires_ms FROM hitpay_payments WHERE attempt_id=?",
+      )
+      .bind(c.input.key)
+      .first();
+    assert.equal(saved.checkout_url, result.checkout.url);
+    assert.ok(result.checkout.url.includes(saved.request_id));
+    assert.ok(result.checkout.expiresAtMs <= saved.expires_ms);
+    const effects = await m.db
+      .prepare(
+        "SELECT step,outcome,reference_id FROM session_effects WHERE attempt_id=? AND step LIKE 'native-comment%' ORDER BY step",
+      )
+      .bind(c.input.key)
+      .all();
+    assert.deepEqual(
+      effects.results.map(({ step, outcome }) => ({ step, outcome })),
+      [
+        { step: "native-comment:0", outcome: "unknown" },
+        { step: "native-comments-pending", outcome: "observed" },
+      ],
+    );
+    assert.equal(
+      m.calls.filter((c) => c.body?.method === "getBookingDetails").length,
+      0,
+    );
+    assert.equal(
+      m.calls.filter(
+        (c) => c.url.endsWith("/admin/invoices/901") && c.method === "GET",
+      ).length,
+      0,
+    );
+    assert.ok(
+      m.calls.findIndex(
+        (c) => c.url.includes("hit-pay.com") && c.method === "POST",
+      ) < m.calls.findIndex((c) => c.url.endsWith("/comment")),
+    );
+    gate.resolve();
+    assert.equal((await send()).status, 200);
+    await m.recover();
+    await m.recover();
+    assert.equal(m.calls.filter((c) => c.url.endsWith("/comment")).length, 1);
+    assert.equal(m.calls.filter((c) => c.body?.method === "book").length, 1);
+    assert.equal(
+      m.calls.filter(
+        (c) => c.url.includes("hit-pay.com") && c.method === "POST",
+      ).length,
+      1,
+    );
+    assert.equal(
+      (
+        await m.db
+          .prepare(
+            "SELECT outcome FROM session_effects WHERE attempt_id=? AND step='native-comment:0'",
+          )
+          .bind(c.input.key)
+          .first()
+      ).outcome,
+      "unknown",
+    );
+    assert.deepEqual(m.unexpected, []);
+  } finally {
+    gate.resolve();
+    await m.close();
+  }
+});
+
+test("checkout never exposes a HitPay URL when its durable save loses the creation fence", async () => {
+  let m;
+  m = await createBookingMechanism({
+    respond: async (call) => {
+      if (call.url.includes("hit-pay.com") && call.method === "POST")
+        await m.db
+          .prepare("UPDATE hitpay_payments SET generation=generation+1")
+          .run();
+    },
+  });
+  try {
+    const c = await customer(m);
+    const send = () =>
+      m.mf.dispatchFetch(m.origin + `/api/booking/checkout/${c.input.key}`, {
+        method: "POST",
+        headers: c.headers,
+        body: JSON.stringify({ ...c.input, accepted: true }),
+      });
+    const response = await send();
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      attemptId: c.input.key,
+      state: "recovery_required",
+      paymentAvailable: false,
+    });
+    const saved = await m.db
+      .prepare(
+        "SELECT request_id,checkout_url FROM hitpay_payments WHERE attempt_id=?",
+      )
+      .bind(c.input.key)
+      .first();
+    assert.deepEqual(saved, { request_id: null, checkout_url: null });
+    await send();
+    assert.equal(m.calls.filter((c) => c.body?.method === "book").length, 1);
+    assert.equal(
+      m.calls.filter(
+        (c) => c.url.includes("hit-pay.com") && c.method === "POST",
+      ).length,
+      1,
     );
   } finally {
     await m.close();

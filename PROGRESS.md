@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## Active checkout optimization on PR61
+
+Cache extension checkpoint21000da has passed full local code and386 Worker tests. Owner now prioritizes deferred comment I/O and returning the saved URL in the authenticated checkout response. Implemented locally with focused Worker3/client28 passes and full verify:code passed218 tests plus tooling/types/lint/build/export; full Worker gate running. Test-impact/inventory updated; final-head CI pending. Required financial writes remain ordered before HitPay creation; no 6–8second measurement claim. Owner explicitly authorizes pushing, repairing CI failures and merging PR61 once all three final-commit gates pass. Keep draft until that evidence; no assistant provider business writes. Existing main pipeline independently verifies/deploys the merge.
+
 ## PR61 extension — persistent display snapshots
 
 Owner authorizes fifteen-minute scheduled warming plus booking-triggered refresh, with eager browser download on site entry. Source implemented and focused persistence/scheduled/failure/checkout-handoff/client/release checks passed; full verify:code passed215 tests plus tooling/types/lint/build/export and verify:worker passed386/386; final-head CI pending. No merge/deployment. Initial published d46b336 CI39264502349 covers loading/cache-priority only; the snapshot extension must be pushed and verified separately. Checkout target6–8seconds is under investigation; awaited comments and remaining read/persistence barriers identified without attributing unmeasured provider timings.

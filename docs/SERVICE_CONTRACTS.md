@@ -1,5 +1,13 @@
 # SoccerBotStudio — Service Contracts
 
+## Direct saved checkout handoff — 19 October 2026 SGT
+
+POST booking/checkout/{attemptId} and POST booking/hitpay/{attemptId} may return checkout:{url,expiresAtMs} only with state=associated/paymentAvailable=true after strict HitPay response validation and successful durable ID/URL save. Failed/unknown writes and repeat dispatches expose no new handoff. The authenticated client validates matching attempt, expected state, allowed destination and expiry, and invokes a transient onCheckoutReady callback; the active provider action navigates once without a redundant checkout-context GET. The original pending/recovery contracts and protected return verification are unchanged.
+
+The combined ongoing flow journals native-comments-pending against its validated exact booking set before association. After completion or retained failure, the account display queue performs annotation; minute scheduling selects at most one eligible attempt per tick after payment recovery. Native-comment claims remain unknown until an exact echoed response is stored, and are never resent after uncertain delivery. Revoked/expired/foreign scopes cannot dispatch. No new migration, business booking/payment operation or public annotation route.
+
+Test-impact pass: searched all native comment assumptions, paymentAvailable response assertions, service wrappers/callbacks, checkout-context waits, fixtures and standalone setups. Existing actual Worker browser handoff gate now delays the HitPay POST instead of the removed context GET and asserts zero context requests, retaining overlay, failure, one-booking/payment and readback assertions. Added Worker blocked/failed-comment and lost-save-fence regressions plus client direct/cancelled/malformed handoff coverage. Full non-browser/final-head CI results remain pending.
+
 ## Scheduled public snapshots — 19 October 2026 SGT
 
 PUBLIC_DISPLAY_WARMING=enabled plus ongoing trusted customer access permits coordinator warmDisplay. The existing minute cron invokes recovery first and verifies environment bindings before warming. SQLite display_refresh claims one refresh per fifteen minutes; dirty booking state can claim immediately. Current/previously requested horizon months refresh through the existing display queue, with the same provider accounting, pacing and concurrency limits. No new D1 migration or remote configuration operation occurs during source work.

@@ -68,6 +68,7 @@ export function nativeBookingOperations(options: {
   prebooking: Pick<NativePrebooking, "revalidate" | "invalidate">;
   hasRecoveryCapacity: BookingOperations["hasRecoveryCapacity"];
   db: D1Database;
+  deferComments?: boolean;
   clientSignature?: (clientId: string, hash: string) => Promise<string>;
   batchSignature?: (batchId: string, hash: string) => Promise<string>;
   onCreationEvidence?: (evidence: {
@@ -361,40 +362,52 @@ export function nativeBookingOperations(options: {
         JSON.stringify(ids) !== JSON.stringify(created.association.bookingIds)
       )
         throw new ApiError(409, "native_association_missing");
-      // Annotate only the newly created, validated booking set. Each comment
-      // is a separately claimed, non-blocking effect; never replay an unknown
-      // write or recreate a booking/payment because annotation failed.
-      for (const [index, bookingId] of ids.entries()) {
-        const step = `native-comment:${index}`;
-        try {
-          await assertCurrent();
-          const claimed = await options.db
-            .prepare(
-              "INSERT OR IGNORE INTO session_effects(attempt_id,step,outcome,reference_id) SELECT id,?,'unknown',? FROM attempts WHERE id=? AND state='dispatching' AND association_json IS NULL AND deadline_ms>?",
-            )
-            .bind(step, bookingId, attemptId, Date.now())
-            .run();
-          if (claimed.meta.changes !== 1) continue;
-          await assertCurrent();
-          const comment = nativeBookingComment(intent, index);
-          const response = await options.exchange({
-            kind: "booking-comment",
-            bookingId,
-            comment,
-          });
-          const result = z
-            .object({ comment: z.literal(comment) })
-            .safeParse(response.body);
-          if (result.success)
-            await options.db
+      if (options.deferComments) {
+        await assertCurrent();
+        const queued = await options.db
+          .prepare(
+            "INSERT OR IGNORE INTO session_effects(attempt_id,step,outcome,reference_id) SELECT id,'native-comments-pending','observed',? FROM attempts WHERE id=? AND state='dispatching' AND association_json IS NULL AND deadline_ms>?",
+          )
+          .bind(JSON.stringify(ids), attemptId, Date.now())
+          .run();
+        if (queued.meta.changes !== 1)
+          throw new ApiError(409, "native_comments_not_queued");
+      } else {
+        // Annotate only the newly created, validated booking set. Each comment
+        // is a separately claimed, non-blocking effect; never replay an unknown
+        // write or recreate a booking/payment because annotation failed.
+        for (const [index, bookingId] of ids.entries()) {
+          const step = `native-comment:${index}`;
+          try {
+            await assertCurrent();
+            const claimed = await options.db
               .prepare(
-                "UPDATE session_effects SET outcome='observed' WHERE attempt_id=? AND step=? AND outcome='unknown' AND reference_id=?",
+                "INSERT OR IGNORE INTO session_effects(attempt_id,step,outcome,reference_id) SELECT id,?,'unknown',? FROM attempts WHERE id=? AND state='dispatching' AND association_json IS NULL AND deadline_ms>?",
               )
-              .bind(attemptId, step, bookingId)
+              .bind(step, bookingId, attemptId, Date.now())
               .run();
-        } catch {
-          // Comment failure does not change the accepted booking/invoice.
-          // The retained unknown effect prevents automatic resending.
+            if (claimed.meta.changes !== 1) continue;
+            await assertCurrent();
+            const comment = nativeBookingComment(intent, index);
+            const response = await options.exchange({
+              kind: "booking-comment",
+              bookingId,
+              comment,
+            });
+            const result = z
+              .object({ comment: z.literal(comment) })
+              .safeParse(response.body);
+            if (result.success)
+              await options.db
+                .prepare(
+                  "UPDATE session_effects SET outcome='observed' WHERE attempt_id=? AND step=? AND outcome='unknown' AND reference_id=?",
+                )
+                .bind(attemptId, step, bookingId)
+                .run();
+          } catch {
+            // Comment failure does not change the accepted booking/invoice.
+            // The retained unknown effect prevents automatic resending.
+          }
         }
       }
       return {

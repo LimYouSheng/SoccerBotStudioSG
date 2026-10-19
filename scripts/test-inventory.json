@@ -1058,5 +1058,17 @@
   {
     "file": "src/features/booking/booking-parity.test.tsx",
     "title": "prewarmed calendar remains visible until its original display deadline without refetching"
+  },
+  {
+    "file": "src/features/booking/direct-checkout.test.tsx",
+    "title": "saved URL from checkout navigates once without a context request"
+  },
+  {
+    "file": "src/features/booking/direct-checkout.test.tsx",
+    "title": "cancelled checkout ignores a late saved URL handoff"
+  },
+  {
+    "file": "src/features/booking/direct-checkout.test.tsx",
+    "title": "live checkout validates direct handoff scope expiry and destination without persisting the URL"
   }
 ]

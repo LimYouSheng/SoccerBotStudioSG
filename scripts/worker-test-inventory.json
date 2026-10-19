@@ -384,5 +384,7 @@
   "webhook comparison channels isolate capture deduplication caps and closure",
   "invoice capture retains authentication boundaries and immutable event authority",
   "scheduled display warming survives idle entry and booking refresh never delays payment handoff",
-  "failed scheduled display refresh retains a bounded snapshot without renewing its expiry"
+  "failed scheduled display refresh retains a bounded snapshot without renewing its expiry",
+  "checkout returns its durable URL while comments are blocked and annotation failure never repeats effects",
+  "checkout never exposes a HitPay URL when its durable save loses the creation fence"
 ]

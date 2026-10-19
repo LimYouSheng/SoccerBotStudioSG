@@ -1,3 +1,4 @@
+import { annotatePendingBooking } from "./native-comments";
 import { DisplaySnapshots } from "./display-snapshots";
 import { expireCheckout } from "./checkout-progress";
 import { dismissCompletedCheckout } from "./completed-checkout";
@@ -923,10 +924,30 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           control: this.providerControl(false, true),
           recoveryControl: this.providerControl(true, true),
           accounting: () => this.providerAccounting(),
-        }).finally(() => this.refreshDisplayAfterWrite());
+        }).finally(() => {
+          if (scope.checkout)
+            this.ctx.waitUntil(
+              this.bookingComments(attemptId).catch(() => {
+                console.error(
+                  JSON.stringify({ event: "booking_comments_deferred" }),
+                );
+              }),
+            );
+          this.refreshDisplayAfterWrite();
+        });
       }),
     );
     return rpcOutcome(() => pending);
+  }
+  async bookingComments(attemptId?: string) {
+    return this.providerQueue.run("display", () =>
+      annotatePendingBooking(
+        this.env,
+        this.provider,
+        this.providerControl(false, true),
+        attemptId,
+      ),
+    );
   }
   async nativeCheckout(
     scope: { attemptId: string; cookie: string; holding?: boolean },

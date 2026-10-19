@@ -2013,15 +2013,14 @@ async function optimisticHold(page: Page, failReadback: boolean) {
         await readGate.promise;
         if (failReadback) return new Response(null, { status: 503 });
       }
+      if (call.url.includes("hit-pay.com") && call.method === "POST") {
+        checkoutStarted.resolve();
+        await checkoutGate.promise;
+      }
       return undefined;
     },
   });
-  const transport = await mechanismTransport(page, mechanism, async (path) => {
-    if (path.endsWith("/checkout")) {
-      checkoutStarted.resolve();
-      await checkoutGate.promise;
-    }
-  });
+  const transport = await mechanismTransport(page, mechanism);
   try {
     await guestDetails(page, mechanism);
     await reviewResponse(page);
@@ -2066,11 +2065,11 @@ async function optimisticHold(page: Page, failReadback: boolean) {
     await readStarted.promise;
     await assertNoPaymentOrConfirmation(page, mechanism);
     readGate.resolve();
-    expect(await (await result).json()).toMatchObject({
-      state: failReadback ? "recovery_required" : "associated",
-      paymentAvailable: !failReadback,
-    });
     if (failReadback) {
+      expect(await (await result).json()).toMatchObject({
+        state: failReadback ? "recovery_required" : "associated",
+        paymentAvailable: !failReadback,
+      });
       await expect(page).toHaveURL(/\/book\/payment\/$/);
       await assertNoPaymentOrConfirmation(page, mechanism);
     } else {
@@ -2086,6 +2085,10 @@ async function optimisticHold(page: Page, failReadback: boolean) {
         transport.calls.filter((call) => call.path.endsWith("/confirmation")),
       ).toHaveLength(0);
       checkoutGate.resolve();
+      expect(await (await result).json()).toMatchObject({
+        state: failReadback ? "recovery_required" : "associated",
+        paymentAvailable: !failReadback,
+      });
       await expect(page).toHaveURL(mechanism.checkoutUrl);
       expect(
         transport.calls.filter((call) =>
@@ -2094,7 +2097,7 @@ async function optimisticHold(page: Page, failReadback: boolean) {
       ).toHaveLength(0);
       expect(
         transport.calls.filter((call) => call.path.endsWith("/checkout")),
-      ).toHaveLength(1);
+      ).toHaveLength(0);
       expect(
         mechanism.calls.filter(
           (call) => call.body?.method === "getBookingDetails",

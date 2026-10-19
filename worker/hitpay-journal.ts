@@ -153,11 +153,14 @@ export async function prepareHitpay(
     verified.expiresAtMs <= Date.now() + 60000
   )
     throw new ApiError(409, "hitpay_creation_state_unverified");
-  await env.STATE.prepare(
+  const saved = await env.STATE.prepare(
     "UPDATE hitpay_payments SET request_id=?,checkout_url=?,reason='payment_pending',ready_ms=? WHERE attempt_id=? AND request_id IS NULL AND generation=0",
   )
     .bind(verified.id, verified.url, Date.now() + 90000, scope.attemptId)
     .run();
+  if (saved.meta.changes !== 1)
+    throw new ApiError(409, "hitpay_creation_fence_lost");
+  return { url: verified.url, expiresAtMs: verified.expiresAtMs };
 }
 // Historical payment evidence only; this never authorizes confirmation or export.
 // The caller authenticates ownership before reading this private metadata.

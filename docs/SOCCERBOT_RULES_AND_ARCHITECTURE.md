@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Checkout handoff optimization — 19 October 2026 SGT
+
+The ongoing combined HitPay checkout queues automatic booking comments durably after validated creation and processes them after the financial handoff through the account scheduler. The minute cron is a bounded fallback for undispatched comments. Existing finite/native and holding-only compositions retain their grant-bound annotation path. Deferred work uses exact retained booking IDs/intent, account/environment/company, original live grant and unrevoked customer access; each provider write is claimed once, and unknown annotation outcomes are never automatically resent. Shared provider limits and foreground financial priority remain.
+
+HitPay creation still follows durable booking association, anchored deadlines and unique payment reservation. Return the validated checkout URL/expiry only after its original payment row is saved, with final authentication; a lost save fence cannot expose a URL. The browser uses this response only for the active initial handoff, keeps Opening secure payment feedback and never persists the URL in its local attempt. Protected context remains for restoration, legacy replies and recovery. No confirmed/paid state is inferred. Measured 6–8second acceptance remains pending.
+
 ## Persistent display warming and booking-triggered refresh — 19 October 2026 SGT
 
 Owner adds the previously deferred recurring warm-up to PR61. The existing minute scheduled handler runs recovery first, then asks the account coordinator for a display refresh due every fifteen minutes. A persisted claim prevents duplicate cron/booking triggers across restart. Warm only the current Singapore month and other already-requested months within the existing four-month horizon, not four mandatory browser preloads. Jobs enter the existing display queue individually; provider limits and financial priority remain unchanged.
