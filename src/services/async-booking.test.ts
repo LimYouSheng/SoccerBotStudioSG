@@ -468,7 +468,7 @@ test("holding progress only accepts the matching server milestone and stops with
         attemptId: matching
           ? attempt.id
           : "00000000-0000-4000-8000-000000000099",
-        state: "verifying",
+        state: "reviewing",
       });
     });
   const progress = vi.fn();
@@ -476,7 +476,7 @@ test("holding progress only accepts the matching server milestone and stops with
     attempt,
     holding: true,
     outcome: "pending",
-    onHoldCreated: progress,
+    onReviewReady: progress,
   });
   await vi.advanceTimersByTimeAsync(1000);
   expect(progress).not.toHaveBeenCalled();

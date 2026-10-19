@@ -485,7 +485,11 @@ test("single hold exposes creation progress while independent readbacks are pend
       m.origin + `/api/booking/native/${c.input.key}`,
       { headers: c.headers },
     );
-    assert.equal((await beforeCreation.json()).state, "running");
+    assert.deepEqual(await beforeCreation.json(), {
+      attemptId: c.input.key,
+      state: "reviewing",
+      paymentAvailable: false,
+    });
     releaseBook();
     await commenting;
     const beforeComment = await m.mf.dispatchFetch(
@@ -786,6 +790,23 @@ test(
       assert.equal(
         m.calls.some((call) => call.body?.method === "book"),
         false,
+      );
+      const beforePreflight = await m.mf.dispatchFetch(
+        m.origin + `/api/booking/native/${c.input.key}`,
+        { headers: c.headers },
+      );
+      assert.deepEqual(await beforePreflight.json(), {
+        attemptId: c.input.key,
+        state: "running",
+        paymentAvailable: false,
+      });
+      assert.equal(
+        (
+          await m.db
+            .prepare("SELECT COUNT(*) AS n FROM checkout_review_progress")
+            .first()
+        ).n,
+        0,
       );
       fields.resolve();
       const response = await pending;

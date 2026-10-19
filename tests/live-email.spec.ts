@@ -1372,7 +1372,7 @@ async function uncertainHolding(
     await expect(page).toHaveURL(/\/book\/payment\/$/);
     await expect(
       page.getByRole("status", {
-        name: "Checking your payment and booking…",
+        name: "Verifying your payment…",
         exact: true,
       }),
     ).toBeVisible();
@@ -1833,7 +1833,7 @@ async function failedBatch(page: Page, unknown: boolean) {
     await page.reload();
     await expect(
       page.getByRole("status", {
-        name: "Checking your payment and booking…",
+        name: "Verifying your payment…",
         exact: true,
       }),
     ).toBeVisible();
@@ -1942,8 +1942,20 @@ async function optimisticHold(page: Page, failReadback: boolean) {
   const commenting = new Promise<void>((resolve) => {
     commentStarted = resolve;
   });
+  let releaseBook!: () => void;
+  let bookStarted!: () => void;
+  const bookGate = new Promise<void>((resolve) => {
+    releaseBook = resolve;
+  });
+  const booking = new Promise<void>((resolve) => {
+    bookStarted = resolve;
+  });
   const mechanism = await createBookingMechanism({
     respond: async (call) => {
+      if (call.body?.method === "book") {
+        bookStarted();
+        await bookGate;
+      }
       if (call.url.endsWith("/admin/bookings/701/comment")) {
         commentStarted();
         await commentGate;
@@ -1985,9 +1997,9 @@ async function optimisticHold(page: Page, failReadback: boolean) {
     await page
       .getByRole("button", { name: "Review booking", exact: true })
       .click();
-    await commenting;
-    // Creation is validated and retained; the comment response stays blocked.
-    // Review must appear now, before either comment completion or readback.
+    await booking;
+    // Fresh preflight passed; creation is still blocked. Review must already
+    // be interactive, while checkout remains unavailable.
     await expect(
       page.getByRole("heading", { name: "Review booking", exact: true }),
     ).toBeVisible();
@@ -2017,6 +2029,14 @@ async function optimisticHold(page: Page, failReadback: boolean) {
     const review = await page
       .getByRole("heading", { name: "Review booking", exact: true })
       .elementHandle();
+    await expect(page.getByRole("checkbox")).toBeEnabled();
+    await page.getByRole("checkbox").check();
+    await expect(page.getByRole("checkbox")).toBeChecked();
+    await expect(
+      page.getByRole("button", { name: "Verifying your reservation…" }),
+    ).toBeDisabled();
+    releaseBook();
+    await commenting;
     releaseComment();
     await created;
     expect(await review?.evaluate((element) => element.isConnected)).toBe(true);
@@ -2044,7 +2064,7 @@ async function optimisticHold(page: Page, failReadback: boolean) {
       failReadback ? /\/book\/payment\/$/ : /\/book\/review\/$/,
     );
     if (!failReadback) {
-      await page.getByRole("checkbox").check();
+      await expect(page.getByRole("checkbox")).toBeChecked();
       await expect(
         page.getByRole("button", { name: "Continue to payment", exact: true }),
       ).toBeEnabled();
@@ -2089,6 +2109,7 @@ async function optimisticHold(page: Page, failReadback: boolean) {
       ).toHaveLength(1);
     }
   } finally {
+    releaseBook();
     releaseCheckout();
     releaseComment();
     release();
@@ -2131,7 +2152,7 @@ test("real API unpaid return shows the pending confirmation layout without claim
     ).toBeVisible();
     await expect(
       page.getByRole("status", {
-        name: "Checking your payment and booking…",
+        name: "Verifying your payment…",
         exact: true,
       }),
     ).toBeVisible();
@@ -2154,7 +2175,7 @@ test("real API unpaid return shows the pending confirmation layout without claim
       ),
     ).toBeVisible();
     const loader = page.getByRole("status", {
-      name: "Checking your payment and booking…",
+      name: "Verifying your payment…",
       exact: true,
     });
     expect(

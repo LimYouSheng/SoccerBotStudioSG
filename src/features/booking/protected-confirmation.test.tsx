@@ -62,7 +62,7 @@ it("shows checking before the protected server result and confirms only verified
   vi.stubGlobal("fetch", fetch);
   render(<ProtectedConfirmation attemptId={first} />);
   expect(
-    screen.getByRole("status", { name: "Checking your payment and booking…" }),
+    screen.getByRole("status", { name: "Verifying your payment…" }),
   ).toBeInTheDocument();
   finish(Response.json({ status: "confirmed", reason: "verified" }));
   await screen.findByRole("status", { name: "Preparing your confirmation…" });
@@ -617,6 +617,7 @@ it("pending confirmation retains the final detail layout while hiding success an
       "Please don’t close or refresh this page while we finish.",
     ),
   ).toBeVisible();
+  expect(screen.getByText("Verifying your payment…")).toBeVisible();
   const card = document.querySelector(".confirmation-card");
   expect(document.querySelector(".booking-loading")).toBeNull();
   expect(
@@ -626,7 +627,7 @@ it("pending confirmation retains the final detail layout while hiding success an
     expect(screen.getByRole("heading", { name })).toBeVisible();
   expect(screen.getByText("Synthetic Customer")).toBeVisible();
   expect(
-    screen.getByRole("status", { name: "Checking your payment and booking…" }),
+    screen.getByRole("status", { name: "Verifying your payment…" }),
   ).toBeVisible();
   expect(screen.queryByText("Paid", { exact: true })).toBeNull();
   expect(screen.queryByLabelText("Booking actions")).toBeNull();

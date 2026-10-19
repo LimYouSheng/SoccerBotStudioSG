@@ -126,7 +126,7 @@ async function directCase(scenario: string) {
   expect(screen.getByTestId("retained")).toHaveTextContent(id);
   expect(pay).toHaveBeenCalledTimes(1);
   fireEvent.click(
-    screen.getByRole("button", { name: "Checking your booking…" }),
+    screen.getByRole("button", { name: "Opening secure payment…" }),
   );
   expect(checkout).toHaveBeenCalledTimes(1);
   expect(assign).not.toHaveBeenCalled();
@@ -140,13 +140,18 @@ async function directCase(scenario: string) {
     // the checkout destination loads. Never reveal the review form here.
     expect(screen.getByTestId("action")).toHaveTextContent("loading");
     expect(
-      screen.getByRole("status", { name: "Checking your booking…" }),
+      screen.getByRole("status", { name: "Opening secure payment…" }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Opening secure payment… Please don’t close or refresh this page while we finish.",
+      ),
+    ).toBeVisible();
     await act(async () => fireEvent.click(screen.getByText("Repeat checkout")));
     expect(pay).toHaveBeenCalledTimes(1);
     expect(assign).toHaveBeenCalledTimes(1);
     expect(
-      screen.getByRole("button", { name: "Checking your booking…" }),
+      screen.getByRole("button", { name: "Opening secure payment…" }),
     ).toBeDisabled();
     act(() => window.dispatchEvent(new PageTransitionEvent("pageshow")));
     expect(screen.getByTestId("action")).toHaveTextContent("loading");
@@ -408,7 +413,7 @@ it("HitPay HTTP conflict preserves the hold and shows payment failure without se
   expect(navigation.push).not.toHaveBeenCalled();
 });
 
-it("created single hold shows Review before readback and keeps payment disabled until verified", async () => {
+it("validated single selection shows Review before creation and keeps payment disabled until verified", async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-10-15T00:00:00Z"));
   let complete!: (attempt: Attempt) => void;
@@ -431,10 +436,10 @@ it("created single hold shows Review before readback and keeps payment disabled 
   });
   vi.stubGlobal("fetch", fetchContext);
   const pay = vi.fn<BookingService["pay"]>(
-    ({ attempt, onHoldCreated, holding }) => {
+    ({ attempt, onReviewReady, holding }) => {
       if (!holding) return Promise.resolve({ ...attempt, status: "checking" });
       created = attempt;
-      onHoldCreated?.();
+      onReviewReady?.();
       return new Promise((resolve) => {
         complete = resolve;
       });
@@ -489,6 +494,17 @@ it("created single hold shows Review before readback and keeps payment disabled 
     "aria-current",
     "step",
   );
+  expect(screen.getByRole("checkbox")).toBeEnabled();
+  fireEvent.click(screen.getByRole("checkbox"));
+  expect(screen.getByRole("checkbox")).toBeChecked();
+  fireEvent.click(screen.getByRole("checkbox"));
+  expect(screen.getByRole("checkbox")).not.toBeChecked();
+  fireEvent.click(screen.getByRole("checkbox"));
+  expect(screen.getByRole("checkbox")).toBeChecked();
+  expect(
+    screen.getByRole("button", { name: "Verifying your reservation…" }),
+  ).toBeDisabled();
+  expect(pay).toHaveBeenCalledTimes(1);
   const mountedReview = screen.getByRole("heading", { name: "Review booking" });
   await act(async () => complete({ ...created!, held: true, status: "ready" }));
   expect(screen.getByRole("heading", { name: "Review booking" })).toBe(
@@ -505,12 +521,13 @@ it("created single hold shows Review before readback and keeps payment disabled 
   expect(document.querySelector(".page-loading-emblem")).toBeNull();
   expect(pay).toHaveBeenCalledTimes(1);
   fetchContext.mockClear();
-  fireEvent.click(screen.getByRole("checkbox"));
+  expect(screen.getByRole("checkbox")).toBeChecked();
   await act(async () =>
     fireEvent.click(
       screen.getByRole("button", { name: "Continue to payment" }),
     ),
   );
+  expect(pay.mock.calls[1][0].attempt.draft.accepted).toBe(true);
   expect(fetchContext).toHaveBeenCalledTimes(1);
   expect(contextSignal?.aborted).toBe(false);
   expect(navigation.replace).not.toHaveBeenCalledWith("/book/payment/");
@@ -557,8 +574,8 @@ it("lost hold response restores only the same verified attempt without repeating
   };
   let restoreResult: Attempt | null = null;
   const restore = vi.fn(async () => restoreResult);
-  const pay = vi.fn<BookingService["pay"]>(async ({ onHoldCreated }) => {
-    onHoldCreated?.();
+  const pay = vi.fn<BookingService["pay"]>(async ({ onReviewReady }) => {
+    onReviewReady?.();
     throw new TypeError("Failed to fetch");
   });
   function Reserve() {
@@ -618,8 +635,8 @@ it("lost hold response cannot adopt a different attempt returned by recovery", a
       id: "00000000-0000-4000-8000-000000000002",
       held: true,
     });
-  const pay = vi.fn<BookingService["pay"]>(async ({ onHoldCreated }) => {
-    onHoldCreated?.();
+  const pay = vi.fn<BookingService["pay"]>(async ({ onReviewReady }) => {
+    onReviewReady?.();
     throw new TypeError("Failed to fetch");
   });
   function Reserve() {

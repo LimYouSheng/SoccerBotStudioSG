@@ -193,7 +193,7 @@ it("hides the native payment capability at its expiry without claiming payment c
     screen.queryByRole("link", { name: "Open checkout" }),
   ).not.toBeInTheDocument();
   expect(
-    screen.getByRole("status", { name: "Checking your payment and booking…" }),
+    screen.getByRole("status", { name: "Verifying your payment…" }),
   ).toBeVisible();
 });
 

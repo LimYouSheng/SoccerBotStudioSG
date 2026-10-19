@@ -260,11 +260,15 @@ export function BookingProvider({
   const latest = useRef(value);
   const hydrationOwner = useRef({ service, identityService });
   const commit = useCallback(
-    (next: StoredBooking, preserveConfirmation = false) => {
+    (
+      next: StoredBooking,
+      preserveConfirmation = false,
+      preserveOperation = false,
+    ) => {
       const state = {
         ...next,
         ready: true,
-        revision: latest.current.revision + 1,
+        revision: latest.current.revision + (preserveOperation ? 0 : 1),
         confirmationRevision:
           latest.current.confirmationRevision + (preserveConfirmation ? 0 : 1),
       };
@@ -445,7 +449,7 @@ export function BookingProvider({
             outcome: "pending",
             signal,
             holding: operation === "reserve",
-            onHoldCreated:
+            onReviewReady:
               operation === "reserve"
                 ? () => {
                     if (!isCurrent()) return;
@@ -456,6 +460,12 @@ export function BookingProvider({
                 : undefined,
           });
           if (!isCurrent()) return false;
+          // Consent may change while the created hold is being verified.
+          // Carry it forward without canceling or recreating the reservation.
+          if (operation === "reserve") {
+            current = latest.current;
+            attempt = { ...attempt, draft: current.draft };
+          }
           commit({ ...current, attempt });
           current = latest.current;
           if (operation === "reserve") {
@@ -506,7 +516,10 @@ export function BookingProvider({
             restored?.held &&
             restored.status === "ready"
           ) {
-            commit({ ...latest.current, attempt: restored });
+            commit({
+              ...latest.current,
+              attempt: { ...restored, draft: latest.current.draft },
+            });
             setAction({ status: "success", operation });
             return true;
           }
@@ -668,19 +681,28 @@ export function BookingProvider({
         },
         update(change) {
           const current = latest.current;
-          if (current.attempt?.held) {
+          if (current.attempt?.held || current.attempt?.verifying) {
             if (
-              active.current ||
+              (active.current &&
+                !(
+                  current.attempt.verifying &&
+                  active.current.operation === "reserve"
+                )) ||
               current.attempt.status !== "ready" ||
               Object.keys(change).some((key) => key !== "accepted")
             )
               return;
             const draft = { ...current.draft, ...change };
-            commit({
-              ...current,
-              draft,
-              attempt: { ...current.attempt, draft },
-            });
+            // Only consent may change during this same reservation. It does
+            // not invalidate the in-flight hold result or its request guard.
+            const consentingDuringReserve =
+              current.attempt.verifying === true &&
+              active.current?.operation === "reserve";
+            commit(
+              { ...current, draft, attempt: { ...current.attempt, draft } },
+              consentingDuringReserve,
+              consentingDuringReserve,
+            );
             return;
           }
           if (

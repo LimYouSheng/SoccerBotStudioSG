@@ -399,7 +399,7 @@ test("review waits before navigation and same-turn duplicate checkout has one lo
   expect(checkout).toHaveBeenCalledTimes(1);
   expect(navigation.push).not.toHaveBeenCalled();
   expect(
-    screen.getByRole("button", { name: "Checking your booking…" }),
+    screen.getByRole("button", { name: "Opening secure payment…" }),
   ).toBeDisabled();
   const result = demoBookingModel.checkout(draft(), null);
   await act(async () => {
@@ -768,7 +768,7 @@ test("replacing an adapter cancels its pending action and releases the new revie
   );
   fireEvent.click(screen.getByRole("button", { name: "Continue to payment" }));
   expect(
-    screen.getByRole("button", { name: "Checking your booking…" }),
+    screen.getByRole("button", { name: "Opening secure payment…" }),
   ).toBeDisabled();
   view.rerender(
     <BookingProvider bookingService={replacement}>

@@ -798,7 +798,7 @@ test("protected confirmation waits for server evidence and rejects a tampered re
   );
   await openSite(page, `/confirmation/?attempt=${attempt}&paid=true`);
   await expect(
-    page.getByRole("status", { name: "Checking your payment and booking…" }),
+    page.getByRole("status", { name: "Verifying your payment…" }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Booking confirmed", exact: true }),

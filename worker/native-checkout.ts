@@ -69,11 +69,11 @@ export async function nativeCheckoutStatus(
 ) {
   z.string().uuid().parse(attemptId);
   const access = await authenticate(request, env, Date.now());
-  // Finalization is claimed only after creation is validated and its reference
-  // is durable. Comments/readback follow; they must not gate display-only Review.
+  // Display-only Review can start after the fresh preflight is retained.
+  // Neither that milestone nor creation authorizes payment; verified hold does.
   const grant = await env.STATE.withSession("first-primary")
     .prepare(
-      "SELECT g.state,g.result_json,a.state AS attempt_state,a.association_json,a.intent_json,EXISTS(SELECT 1 FROM session_effects f WHERE f.attempt_id=a.id AND f.step='finalize' AND EXISTS(SELECT 1 FROM session_effects b WHERE b.attempt_id=a.id AND b.step='session:0' AND b.outcome='observed' AND b.reference_id IS NOT NULL)) AS creation_received FROM native_checkout_grants g JOIN attempts a ON a.id=g.attempt_id WHERE g.attempt_id=? AND g.capability_hash=? AND a.owner_id=?",
+      "SELECT g.state,g.result_json,EXISTS(SELECT 1 FROM checkout_review_progress r WHERE r.attempt_id=a.id) AS review_ready,a.state AS attempt_state,a.association_json,a.intent_json,EXISTS(SELECT 1 FROM session_effects f WHERE f.attempt_id=a.id AND f.step='finalize' AND EXISTS(SELECT 1 FROM session_effects b WHERE b.attempt_id=a.id AND b.step='session:0' AND b.outcome='observed' AND b.reference_id IS NOT NULL)) AS creation_received FROM native_checkout_grants g JOIN attempts a ON a.id=g.attempt_id WHERE g.attempt_id=? AND g.capability_hash=? AND a.owner_id=?",
     )
     .bind(attemptId, access.capability_hash, access.owner_id)
     .first<{
@@ -82,6 +82,7 @@ export async function nativeCheckoutStatus(
       association_json: string | null;
       attempt_state: string;
       creation_received: number;
+      review_ready: number;
       intent_json: string;
     }>();
   if (!grant) throw new ApiError(404, "native_checkout_unavailable");
@@ -94,7 +95,13 @@ export async function nativeCheckoutStatus(
           grant.creation_received === 1)) &&
       intentSchema.parse(JSON.parse(grant.intent_json)).sessions.length === 1
         ? "verifying"
-        : grant.state,
+        : grant.state === "running" &&
+            grant.attempt_state === "dispatching" &&
+            grant.review_ready === 1 &&
+            intentSchema.parse(JSON.parse(grant.intent_json)).sessions
+              .length === 1
+          ? "reviewing"
+          : grant.state,
     paymentAvailable: false,
   };
 }
@@ -474,6 +481,12 @@ export async function executeNativeCheckout(options: {
                     )
                       .bind(JSON.stringify(validatedDates), attemptId)
                       .run();
+                    if (value.sessions.length === 1)
+                      await env.STATE.prepare(
+                        "INSERT INTO checkout_review_progress(attempt_id,validated_ms) VALUES(?,?) ON CONFLICT(attempt_id) DO NOTHING",
+                      )
+                        .bind(attemptId, Date.now())
+                        .run();
                   }
                 : undefined,
             );

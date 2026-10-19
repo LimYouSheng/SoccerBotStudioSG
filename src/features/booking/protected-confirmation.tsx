@@ -297,7 +297,7 @@ export function ProtectedConfirmation({
         ? "Preparing your confirmation…"
         : checkoutMode && preparation === "loading"
           ? "Preparing checkout…"
-          : "Checking your payment and booking…";
+          : "Verifying your payment…";
     if (current?.details) {
       const details = bookingFromReceipt(current.details);
       return (
@@ -321,9 +321,10 @@ export function ProtectedConfirmation({
                 ? "Preparing your confirmation…"
                 : checkoutMode && preparation === "loading"
                   ? "Preparing checkout…"
-                  : "Checking your payment and booking…"
+                  : "Verifying your payment…"
             }
           />
+          <p className="text-sm text-muted">{pendingLabel}</p>
           {current && <ConfirmationSummary summary={current.summary} />}
         </section>
       </div>
@@ -351,7 +352,7 @@ export function ProtectedConfirmation({
                 label={
                   checkoutMode && preparation === "loading"
                     ? "Preparing checkout…"
-                    : "Checking your payment and booking…"
+                    : "Verifying your payment…"
                 }
               />
             )

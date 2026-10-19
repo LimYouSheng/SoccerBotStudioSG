@@ -981,7 +981,7 @@
   },
   {
     "file": "src/features/booking/direct-checkout.test.tsx",
-    "title": "created single hold shows Review before readback and keeps payment disabled until verified"
+    "title": "validated single selection shows Review before creation and keeps payment disabled until verified"
   },
   {
     "file": "src/features/booking/confirmation-checking.test.tsx",

@@ -290,7 +290,7 @@ export function defineBookingService(adapter: BookingService): BookingService {
         const result = await adapter.pay({
           ...request,
           signal: input.signal,
-          onHoldCreated: input.onHoldCreated,
+          onReviewReady: input.onReviewReady,
         });
         if (request.holding && adapter.mode === "live") {
           const held = resultAttempt(result, previous.draft, previous.id);
@@ -575,7 +575,7 @@ export const liveBookingService: BookingService = defineBookingService({
       booking: null,
     };
   },
-  async pay({ attempt, signal, holding, onHoldCreated }) {
+  async pay({ attempt, signal, holding, onReviewReady }) {
     if (attempt.draft.slots.some((slot) => !slot.native)) return unavailable();
     nativeAttemptId.parse(attempt.id);
     if (
@@ -603,8 +603,11 @@ export const liveBookingService: BookingService = defineBookingService({
               progress.signal,
             ),
           );
-        if (status.attemptId === attempt.id && status.state === "verifying") {
-          if (!progress.signal.aborted) onHoldCreated?.();
+        if (
+          status.attemptId === attempt.id &&
+          (status.state === "reviewing" || status.state === "verifying")
+        ) {
+          if (!progress.signal.aborted) onReviewReady?.();
           return;
         }
       } catch {
@@ -613,7 +616,7 @@ export const liveBookingService: BookingService = defineBookingService({
       if (!progress.signal.aborted && ++checks < 30)
         timer = setTimeout(() => void inspect(), 1000);
     };
-    if (holding && attempt.draft.slots.length === 1 && onHoldCreated)
+    if (holding && attempt.draft.slots.length === 1 && onReviewReady)
       timer = setTimeout(() => void inspect(), 1000);
     let raw: unknown;
     try {

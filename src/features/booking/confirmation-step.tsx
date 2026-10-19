@@ -37,7 +37,7 @@ export function BookingConfirmation({
   booking,
   preview = false,
   pending = false,
-  pendingLabel = "Checking your payment and booking…",
+  pendingLabel = "Verifying your payment…",
   taxMinor = 0,
   verifiedAtMs,
   onAgain,
@@ -90,6 +90,7 @@ export function BookingConfirmation({
         {pending ? (
           <>
             <InlineLoading compact label={pendingLabel} />
+            <p className="text-sm text-muted">{pendingLabel}</p>
             <p className="text-sm text-muted">{loadingMessage}</p>
           </>
         ) : (
