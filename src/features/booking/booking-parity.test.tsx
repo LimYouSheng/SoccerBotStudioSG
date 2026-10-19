@@ -552,6 +552,48 @@ test("browser slot cache expires after five minutes", async () => {
   expect(screen.getByRole("status")).toHaveTextContent("loading");
 });
 
+test("prewarmed calendar remains visible until its original display deadline without refetching", async () => {
+  vi.useFakeTimers();
+  const initial = Date.parse("2027-01-01T00:00:00Z");
+  vi.setSystemTime(initial);
+  const publicCalendar = vi.fn(async ({ month }: { month: string }) => ({
+    month,
+    serviceId: "12",
+    observedAtMs: initial - 900000,
+    displayExpiresAtMs: initial + 900000,
+    dates: [
+      {
+        date: month + "-05",
+        available: true,
+        offers: [
+          {
+            serviceId: "12",
+            serviceName: "Session",
+            instructorId: "3",
+            instructorName: "Trainer",
+            startMs: Date.parse(`${month}-05T12:00:00+08:00`),
+            priceMinor: 8800,
+            currency: "SGD" as const,
+          },
+        ],
+      },
+    ],
+  }));
+  render(
+    <CalendarProbe
+      service={{ ...demoBookingService, publicCalendar }}
+      now={initial}
+    />,
+  );
+  await act(async () => {});
+  expect(screen.getByRole("status")).toHaveTextContent("2027-01-05");
+  await act(async () => vi.advanceTimersByTime(60000));
+  expect(screen.getByRole("status")).toHaveTextContent("2027-01-05");
+  await act(async () => vi.advanceTimersByTime(840000));
+  expect(screen.getByRole("status")).toHaveTextContent("loading");
+  expect(publicCalendar).toHaveBeenCalledTimes(1);
+});
+
 test("Details opens local Review without waiting for unavailable providers", async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2027-01-01T00:00:00Z"));

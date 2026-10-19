@@ -1050,5 +1050,13 @@
   {
     "file": "tests/live-email.spec.ts",
     "title": "real API expired unpaid Review retains its hold through the grace window without recreating or losing contact"
+  },
+  {
+    "file": "src/services/customer-catalogue.test.ts",
+    "title": "scheduled display catalogue retains original expiry and rejects renewed or overdue snapshots"
+  },
+  {
+    "file": "src/features/booking/booking-parity.test.tsx",
+    "title": "prewarmed calendar remains visible until its original display deadline without refetching"
   }
 ]

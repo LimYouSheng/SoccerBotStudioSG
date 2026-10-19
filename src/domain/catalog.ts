@@ -35,6 +35,26 @@ export const ENQUIRY_TYPES = [
 import { z } from "zod";
 import { MAX_PLAYERS } from "./booking-policy";
 export const CATALOGUE_MAX_AGE_MS = 60000;
+// Public display only: one missed fifteen-minute refresh may retain the prior
+// snapshot. The original observation deadline never moves when it is served.
+export const DISPLAY_SNAPSHOT_MAX_AGE_MS = 30 * 60_000;
+export function displayDeadline(
+  value: { observedAtMs: number; displayExpiresAtMs?: number },
+  fallback: number,
+) {
+  return value.displayExpiresAtMs ?? value.observedAtMs + fallback;
+}
+export function validDisplayDeadline(value: {
+  observedAtMs: number;
+  displayExpiresAtMs?: number;
+}) {
+  return (
+    value.displayExpiresAtMs === undefined ||
+    (value.displayExpiresAtMs > value.observedAtMs &&
+      value.displayExpiresAtMs <=
+        value.observedAtMs + DISPLAY_SNAPSHOT_MAX_AGE_MS)
+  );
+}
 export const CATALOGUE_RECORD_LIMIT = 1000;
 export const providerIdentifier = z
   .string()
@@ -102,12 +122,14 @@ export type ProviderCatalogue = z.infer<typeof catalogueSchema>;
 export const customerCatalogueSchema = z
   .strictObject({
     environment: z.literal("developer"),
+    displayExpiresAtMs: z.number().int().nonnegative().safe().optional(),
     observedAtMs: catalogueSchema.shape.observedAtMs,
     complete: catalogueSchema.shape.complete,
     services: catalogueSchema.shape.services,
     instructors: catalogueSchema.shape.instructors,
   })
-  .superRefine(checkCatalogue);
+  .superRefine(checkCatalogue)
+  .refine(validDisplayDeadline);
 export type CustomerCatalogue = z.infer<typeof customerCatalogueSchema>;
 
 export type CatalogueBinding = z.infer<typeof catalogueBindingSchema>;

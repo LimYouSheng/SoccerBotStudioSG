@@ -1,5 +1,13 @@
 # SoccerBotStudio — Service Contracts
 
+## Scheduled public snapshots — 19 October 2026 SGT
+
+PUBLIC_DISPLAY_WARMING=enabled plus ongoing trusted customer access permits coordinator warmDisplay. The existing minute cron invokes recovery first and verifies environment bindings before warming. SQLite display_refresh claims one refresh per fifteen minutes; dirty booking state can claim immediately. Current/previously requested horizon months refresh through the existing display queue, with the same provider accounting, pacing and concurrency limits. No new D1 migration or remote configuration operation occurs during source work.
+
+Public calendar/catalogue may include displayExpiresAtMs, bounded to observedAtMs+1800000. Client schemas reject future observations, overlong/renewed deadlines and expired snapshots; calendar retention and shared metadata cache honor the original deadline. Missing/expired snapshots use ordinary queued reads and explicit failure feedback. Homepage preloads before booking navigation; completed or in-flight browser reads are reused. Protected calendar/prebooking/checkout contracts do not consume this extended display freshness.
+
+Creation/failure invalidates persisted calendar data and queues fresh reads without awaiting them before the checkout response. The actual Worker regression blocks this refresh while requiring paymentAvailable and protected checkout context, exactly one booking/payment, and subsequent removal of the booked slot. Persistent SQLite tests cover restart reconstruction, deadline retention, scope isolation, invalidation fencing and cadence claims. Failed scheduled reads retain a bounded prior snapshot without renewal and refuse expired fallback. The CI guest journey warms through the actual scheduled handler before homepage entry, retaining all request counts, consent and duplicate-effect assertions.
+
 ## Public display cache fast path and loading scope — 19 October 2026 SGT
 
 Coordinator publicCalendar/windowCatalogue attempt the existing read owners with cacheOnly before joining the provider queue. Cache-only returns a detached valid snapshot or internal display_cache_miss; it neither starts nor joins pending provider I/O. Only that miss enters the display queue. Closed/invalid scopes propagate their original error. Calendar price, opening-hour/lead-time filters and sixty-second server TTL remain unchanged; no anonymous write authority is granted. Native/protected operations retain authentication and existing queue behavior.

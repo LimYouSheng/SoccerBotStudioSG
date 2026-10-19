@@ -1,3 +1,4 @@
+import { validDisplayDeadline } from "./catalog";
 import { providerReferencesSchema } from "./provider-references";
 // Initial sandbox checkout URL only; the server binds merchant and request ID.
 export function isHitpayCheckoutUrl(value: string): boolean {
@@ -41,6 +42,7 @@ export const nativeAvailabilitySchema = z.strictObject({
 });
 export const publicCalendarSchema = z
   .strictObject({
+    displayExpiresAtMs: z.number().int().nonnegative().safe().optional(),
     month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
     serviceId: providerIdentifier,
     observedAtMs: z.number().int().nonnegative().safe(),
@@ -54,6 +56,7 @@ export const publicCalendarSchema = z
       )
       .max(31),
   })
+  .refine(validDisplayDeadline)
   .refine(
     (value) =>
       new Set(value.dates.map((day) => day.date)).size === value.dates.length &&

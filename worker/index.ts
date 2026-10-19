@@ -72,6 +72,14 @@ export default {
         JSON.stringify({ event: "scheduled_recovery_unavailable" }),
       );
     }
+    try {
+      if (policy(env).PUBLIC_DISPLAY_WARMING === "enabled") {
+        await verifyBindings(env);
+        await env.COORDINATOR.getByName(coordinatorName).warmDisplay();
+      }
+    } catch {
+      console.error(JSON.stringify({ event: "display_refresh_unavailable" }));
+    }
   },
   async fetch(request: Request, env: Env): Promise<Response> {
     const correlationId = crypto.randomUUID(),

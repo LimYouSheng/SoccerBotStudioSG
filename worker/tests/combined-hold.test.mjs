@@ -1071,3 +1071,143 @@ test("combined batch checkout retains one payment effect and exact booking assoc
     await m.close();
   }
 });
+
+test("scheduled display warming survives idle entry and booking refresh never delays payment handoff", async () => {
+  let paymentCreated = false;
+  const refreshStarted = Promise.withResolvers();
+  const releaseRefresh = Promise.withResolvers();
+  const m = await createBookingMechanism({
+    displayWarming: true,
+    respond: async (call) => {
+      if (call.url.endsWith("/v1/payment-requests") && call.method === "POST")
+        paymentCreated = true;
+      if (paymentCreated && call.body?.method === "getStartTimeMatrix") {
+        refreshStarted.resolve();
+        await releaseRefresh.promise;
+      }
+    },
+  });
+  try {
+    await (await m.mf.getWorker()).scheduled();
+    const before = m.calls.length;
+    const month = new Date(Date.now() + 28800000).toISOString().slice(0, 7);
+    const home = await m.mf.dispatchFetch(m.origin + "/api/calendar/" + month);
+    const calendar = await home.json();
+    assert.equal(home.status, 200);
+    assert.equal(calendar.displayExpiresAtMs, calendar.observedAtMs + 1800000);
+    const catalogue = await m.mf.dispatchFetch(m.origin + "/api/catalogue");
+    assert.equal(catalogue.status, 200);
+    assert.equal(
+      m.calls.length,
+      before,
+      "cron warmed data before any customer visit",
+    );
+    await (await m.mf.getWorker()).scheduled();
+    assert.equal(
+      m.calls.length,
+      before,
+      "minute cron cannot repeat the fifteen-minute warm-up",
+    );
+    // Retain the booking's month even if the fixture crosses a month boundary.
+    await m.mf.dispatchFetch(m.origin + "/api/calendar/" + m.date.slice(0, 7));
+    const c = await customer(m);
+    const response = await m.mf.dispatchFetch(
+      m.origin + `/api/booking/checkout/${c.input.key}`,
+      {
+        method: "POST",
+        headers: c.headers,
+        body: JSON.stringify({ ...c.input, accepted: true }),
+      },
+    );
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).paymentAvailable, true);
+    await refreshStarted.promise;
+    const context = await m.mf.dispatchFetch(
+      m.origin + `/api/attempts/${c.input.key}/checkout`,
+      { headers: c.headers },
+    );
+    assert.equal(
+      context.status,
+      200,
+      "checkout context is available while display refresh is blocked",
+    );
+    assert.equal(
+      m.calls.filter((call) => call.body?.method === "book").length,
+      1,
+    );
+    assert.equal(
+      m.calls.filter(
+        (call) =>
+          call.url.endsWith("/v1/payment-requests") && call.method === "POST",
+      ).length,
+      1,
+    );
+    releaseRefresh.resolve();
+    const updated = await m.mf.dispatchFetch(
+      m.origin + "/api/calendar/" + m.date.slice(0, 7),
+    );
+    const updatedCalendar = await updated.json();
+    assert.equal(updated.status, 200);
+    assert.equal(
+      updatedCalendar.dates
+        .flatMap((day) => day.offers ?? [])
+        .some((offer) => offer.startMs === m.startMs),
+      false,
+    );
+    assert.deepEqual(m.unexpected, []);
+  } finally {
+    releaseRefresh.resolve();
+    await m.close();
+  }
+});
+
+test("failed scheduled display refresh retains a bounded snapshot without renewing its expiry", async () => {
+  let fail = false;
+  const m = await createBookingMechanism({
+    displayWarming: true,
+    respond: async (call) => {
+      if (fail && call.body?.method === "getStartTimeMatrix")
+        return new Response("synthetic unavailable", { status: 503 });
+    },
+  });
+  try {
+    await (await m.mf.getWorker()).scheduled();
+    const month = new Date(Date.now() + 28800000).toISOString().slice(0, 7);
+    const url = m.origin + "/api/calendar/" + month;
+    const original = await (await m.mf.dispatchFetch(url)).json();
+    const storage = await m.mf.unsafeGetDurableObjectStorage(
+      "booking-mechanism",
+      "SoccerBotAccountCoordinator",
+      { name: "simplybook-developer-account" },
+    );
+    await storage.exec("UPDATE display_refresh SET started_ms=0");
+    fail = true;
+    await (await m.mf.getWorker()).scheduled();
+    const before = m.calls.length;
+    assert.deepEqual(await (await m.mf.dispatchFetch(url)).json(), original);
+    assert.equal(
+      m.calls.length,
+      before,
+      "failed refresh leaves valid persisted display available",
+    );
+    await (await m.mf.getWorker()).scheduled();
+    assert.equal(
+      m.calls.length,
+      before,
+      "failed refresh is not replayed every minute",
+    );
+    await storage.exec("UPDATE display_snapshots SET expires_ms=0");
+    const expired = await m.mf.dispatchFetch(url);
+    assert.equal(
+      expired.status,
+      503,
+      "expired display cannot silently replace failed provider evidence",
+    );
+    assert.equal(
+      m.calls.filter((call) => call.body?.method === "book").length,
+      0,
+    );
+  } finally {
+    await m.close();
+  }
+});

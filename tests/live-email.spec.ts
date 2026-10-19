@@ -505,9 +505,10 @@ async function mechanismTransport(
 test("native guest journey preserves players contact and one checkout across refresh", async ({
   page,
 }) => {
-  const mechanism = await createBookingMechanism();
+  const mechanism = await createBookingMechanism({ displayWarming: true });
   const transport = await mechanismTransport(page, mechanism);
   try {
+    await mechanism.recover();
     const { date, startMs, checkoutUrl } = mechanism;
     const { calls, unexpected } = transport;
     const warmedMonths = new Set<string>();

@@ -29,6 +29,7 @@
   "customer booking accepts exactly 240 minutes and rechecks the cutoff after provider reads",
   "provider identity renewal keeps native reads valid across token retention boundaries",
   "bounded read groups reuse two lanes and drain failure without starting queued work",
+  "persistent display snapshots retain original deadlines across restarts and fence invalidation",
   "combined hold performs one preflight and preserves immutable identity across concurrent requests and restoration",
   "combined hold rejects changed price and unavailable selection before creation without deleting attempt evidence",
   "combined hold retains an unknown provider creation and never replays it after a lost response",
@@ -381,5 +382,7 @@
   "webhook body limits and HTTP boundaries reject before capture",
   "webhook slow streamed bodies time out and never acknowledge a receipt",
   "webhook comparison channels isolate capture deduplication caps and closure",
-  "invoice capture retains authentication boundaries and immutable event authority"
+  "invoice capture retains authentication boundaries and immutable event authority",
+  "scheduled display warming survives idle entry and booking refresh never delays payment handoff",
+  "failed scheduled display refresh retains a bounded snapshot without renewing its expiry"
 ]

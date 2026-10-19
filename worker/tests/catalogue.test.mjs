@@ -1,3 +1,4 @@
+import { DatabaseSync } from "node:sqlite";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { build } from "esbuild";
@@ -5,7 +6,7 @@ import { readFileSync } from "node:fs";
 import ts from "typescript";
 const bundle = await build({
   stdin: {
-    contents: `export * from './worker/parallel-reads'; export * from './worker/customer-catalogue'; export * from './worker/public-calendar'; export * from './worker/native-calendar'; export * from './worker/catalogue'; export * from './worker/prebooking'; export * from './worker/provider-session'; export * from './worker/provider-transport';`,
+    contents: `export * from './worker/display-snapshots'; export * from './worker/parallel-reads'; export * from './worker/customer-catalogue'; export * from './worker/public-calendar'; export * from './worker/native-calendar'; export * from './worker/catalogue'; export * from './worker/prebooking'; export * from './worker/provider-session'; export * from './worker/provider-transport';`,
     resolveDir: process.cwd(),
   },
   bundle: true,
@@ -14,6 +15,7 @@ const bundle = await build({
   format: "esm",
 });
 const {
+  DisplaySnapshots,
   parallelReads,
   customerCatalogue,
   publicCalendar,
@@ -1827,4 +1829,61 @@ test("bounded read groups reuse two lanes and drain failure without starting que
     await parallelReads([async () => 1, async () => 2, async () => 3]),
     [1, 2, 3],
   );
+});
+
+test("persistent display snapshots retain original deadlines across restarts and fence invalidation", () => {
+  const db = new DatabaseSync(":memory:");
+  const sql = {
+    exec(query, ...args) {
+      const rows = db.prepare(query).all(...args);
+      return {
+        toArray: () => rows,
+        one: () => {
+          assert.equal(rows.length, 1);
+          return rows[0];
+        },
+      };
+    },
+  };
+  const clock = Date.now;
+  let now = 2000000000000;
+  Date.now = () => now;
+  try {
+    const store = new DisplaySnapshots(sql, "account/source");
+    const month = new Date(now + 28800000).toISOString().slice(0, 7);
+    const key = `calendar:${month}`;
+    const value = { month, serviceId: "2", observedAtMs: now, dates: [] };
+    store.save("calendar", key, value, store.generation());
+    const expected = store.read("calendar", key);
+    assert.equal(expected.displayExpiresAtMs, now + 1800000);
+    assert.equal(store.claimRefresh(now), true);
+    assert.equal(
+      new DisplaySnapshots(sql, "account/source").claimRefresh(now),
+      false,
+    );
+    now += 900000;
+    const restarted = new DisplaySnapshots(sql, "account/source");
+    assert.deepEqual(restarted.read("calendar", key), expected);
+    assert.equal(restarted.claimRefresh(now), true);
+    // A failed refresh changes neither content nor its original deadline.
+    assert.deepEqual(restarted.read("calendar", key), expected);
+    const oldGeneration = restarted.generation();
+    restarted.invalidateCalendars();
+    assert.equal(restarted.read("calendar", key), undefined);
+    assert.ok(restarted.months().includes(month));
+    restarted.save("calendar", key, value, oldGeneration);
+    assert.equal(restarted.read("calendar", key), undefined);
+    assert.equal(restarted.claimRefresh(now), true);
+    restarted.save("calendar", key, value, restarted.generation());
+    assert.deepEqual(restarted.read("calendar", key), expected);
+    assert.equal(
+      new DisplaySnapshots(sql, "different-source").read("calendar", key),
+      undefined,
+    );
+    now = expected.displayExpiresAtMs;
+    assert.equal(restarted.read("calendar", key), undefined);
+  } finally {
+    Date.now = clock;
+    db.close();
+  }
 });

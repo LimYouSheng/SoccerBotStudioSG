@@ -90,3 +90,28 @@ test("homepage catalogue cache shares in-flight reads and survives authenticatio
   finish(Response.json(catalogue()));
   await refreshed;
 });
+
+test("scheduled display catalogue retains original expiry and rejects renewed or overdue snapshots", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2027-01-01T00:15:00Z"));
+  const now = Date.now();
+  const data = {
+    ...catalogue(),
+    observedAtMs: now - 900000,
+    displayExpiresAtMs: now + 900000,
+  };
+  const request = vi.fn().mockResolvedValue(Response.json(data));
+  vi.stubGlobal("fetch", request);
+  const service = createCustomerCatalogueService();
+  const signal = new AbortController().signal;
+  expect(await service.read(signal)).toEqual(data);
+  vi.setSystemTime(data.displayExpiresAtMs - 1);
+  expect(service.peek()).toEqual(data);
+  vi.setSystemTime(data.displayExpiresAtMs);
+  expect(service.peek()).toBeUndefined();
+  await expect(service.read(signal)).rejects.toThrow();
+  request.mockResolvedValue(
+    Response.json({ ...data, displayExpiresAtMs: Date.now() + 1800000 }),
+  );
+  await expect(service.read(signal)).rejects.toThrow();
+});

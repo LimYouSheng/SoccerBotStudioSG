@@ -36,6 +36,7 @@
     "ENVIRONMENT": "developer",
     "PROVIDER_ACCESS": "disabled",
     "LIVE_CUSTOMER_ACCESS": "disabled",
+    "PUBLIC_DISPLAY_WARMING": "disabled",
     "CHECKOUT_PAYMENT_ROUTE": "native",
     "HITPAY_CHECKOUT": "disabled",
     "HITPAY_RECOVERY": "disabled",

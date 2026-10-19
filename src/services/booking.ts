@@ -1,5 +1,6 @@
 import {
   CATALOGUE_MAX_AGE_MS,
+  displayDeadline,
   catalogueSchema,
   catalogueBindingSchema,
   type CatalogueBinding,
@@ -206,7 +207,7 @@ export function defineBookingService(adapter: BookingService): BookingService {
               if (
                 value.month !== input.month ||
                 value.observedAtMs > Date.now() ||
-                Date.now() - value.observedAtMs >= CATALOGUE_MAX_AGE_MS
+                Date.now() >= displayDeadline(value, CATALOGUE_MAX_AGE_MS)
               )
                 throw invalidResponse();
               return value;

@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## PR61 extension — persistent display snapshots
+
+Owner authorizes fifteen-minute scheduled warming plus booking-triggered refresh, with eager browser download on site entry. Source implemented and focused persistence/scheduled/failure/checkout-handoff/client/release checks passed; full verify:code passed215 tests plus tooling/types/lint/build/export and verify:worker passed386/386; final-head CI pending. No merge/deployment. Initial published d46b336 CI39264502349 covers loading/cache-priority only; the snapshot extension must be pushed and verified separately. Checkout target6–8seconds is under investigation; awaited comments and remaining read/persistence barriers identified without attributing unmeasured provider timings.
+
 ## Browsing-loading successor — 19 October 2026 SGT
 
 Baseline main d15caba; branch fix/browsing-loading-cache. Fix explicit local display loading and stable guest feedback; serve valid public calendar/catalogue cache hits before provider queue; start short catalogue prefetch before month work. Financial overlays, shared provider limits and serialized booking writes remain. Focused50 frontend/30 catalogue/one actual workerd mixed cache/queue case passed. Full verify:code passed213 tests plus tooling/types/lint/build/export; full Worker gate and exact-head CI pending; successor PR requires its own merge approval. Awaited booking-comment optimization is identified but deferred pending durable background effect ownership. Canonical owners contain contracts and test impact.

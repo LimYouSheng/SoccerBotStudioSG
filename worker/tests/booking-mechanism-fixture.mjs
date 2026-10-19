@@ -88,8 +88,8 @@ export async function createBookingMechanism(options = {}) {
       external: ["cloudflare:workers", "node:async_hooks"],
     }))
   ).outputFiles[0].text;
-  const mf = new Miniflare(
-    convertV4MiniflareOptions({
+  const mf = new Miniflare({
+    ...convertV4MiniflareOptions({
       name: "booking-mechanism",
       modules: true,
       script,
@@ -102,6 +102,7 @@ export async function createBookingMechanism(options = {}) {
         APP_ORIGIN: origin,
         SOURCE_REVISION: "d".repeat(40),
         LIVE_CUSTOMER_ACCESS: "enabled",
+        PUBLIC_DISPLAY_WARMING: options.displayWarming ? "enabled" : "disabled",
         PROVIDER_ACCESS: "trusted-reads",
         CHECKOUT_PAYMENT_ROUTE: "hitpay",
         HITPAY_CHECKOUT: "enabled",
@@ -314,7 +315,8 @@ export async function createBookingMechanism(options = {}) {
         throw new Error("Unexpected simulated provider request");
       },
     }),
-  );
+    unsafeInspectDurableObjects: options.displayWarming === true,
+  });
   try {
     await mf.ready;
     const db = await mf.getD1Database("STATE");

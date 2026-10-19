@@ -1,5 +1,13 @@
 # SoccerBotStudio — Journey
 
+## Owner adds recurring display warm-up — 19 October 2026 SGT
+
+After history review established the old fifteen-minute warmer was proposed but excluded, owner authorizes implementing it with PR61 and requests immediate updates for booking creation. Implement account-DO persistent public snapshots, fifteen-minute due claims on existing minute cron, creation-triggered invalidation/background refresh and original thirty-minute display deadlines. Homepage download/browser reuse remains eager; no claim of instant cold network transfer. Source gating stays disabled in base configuration and enabled in the exact live-release composition.
+
+Focused evidence: persistent SQLite reconstruction/fencing/deadline regression passed; actual Worker scheduled warming/blocked-refresh handoff test passed; failed-refresh/expired-fallback test passed after enabling the fixture's explicit local DO inspection option. Eighteen affected client tests and five release-deployment validation cases passed. Original fixture failure retained outside Git. First PR61 code gate passed213 tests and Worker383 tests before this extension; these are not acceptance of the new snapshot source. Updated full verify:code passed215 tests plus tooling/types/lint/build/export; verify:worker passed386/386. Final-head CI remains pending.
+
+Checkout latency investigation remains separate: current single-session flow already overlaps identity with attempt persistence and uses two-lane provider reads. Remaining barriers include catalogue completion before the three preflight reads, awaited booking comments, D1 recovery persistence and a separate checkout-context HTTP request. Comment latency may age five-second creation evidence into additional readback. HAR shows the combined request duration, not individual upstream attribution; six-to-eight-second handoff remains an unmeasured target. No checkout safety check is removed in this cache change.
+
 ## Browsing loading and cache investigation — 19 October 2026 SGT
 
 Started successor from actual main d15caba after PR60 merge. Owner reports homepage/guest flicker, awkward locking and slow initial calendar. Shared BookingLoading ignored compact/overlay props, registering global inertness even for display feedback. Public display cache lookup also happened inside the single provider runner. Repaired explicit local loading and cache-only bypass; cache misses still queue and no TTL or provider limit is widened. Short session metadata prefetch starts before month range work.

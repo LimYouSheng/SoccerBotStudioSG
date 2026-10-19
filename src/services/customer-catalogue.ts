@@ -1,6 +1,7 @@
 import {
   customerCatalogueSchema,
   CATALOGUE_MAX_AGE_MS,
+  displayDeadline,
   type CustomerCatalogue,
 } from "@/domain/catalog";
 import { BROWSER_CALENDAR_MAX_AGE_MS } from "@/domain/native-checkout";
@@ -52,7 +53,7 @@ const transport: CustomerCatalogueService = {
       signal.aborted ||
       !result.success ||
       result.data.observedAtMs > Date.now() ||
-      Date.now() - result.data.observedAtMs >= CATALOGUE_MAX_AGE_MS
+      Date.now() >= displayDeadline(result.data, CATALOGUE_MAX_AGE_MS)
     )
       throw unavailable();
     return result.data;
@@ -70,7 +71,7 @@ export function createCustomerCatalogueService(): CustomerCatalogueService & {
     if (
       retained &&
       (retained.observedAtMs > Date.now() ||
-        Date.now() - retained.observedAtMs >= BROWSER_CALENDAR_MAX_AGE_MS)
+        Date.now() >= displayDeadline(retained, BROWSER_CALENDAR_MAX_AGE_MS))
     )
       retained = undefined;
     return retained;

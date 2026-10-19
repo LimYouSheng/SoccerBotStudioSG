@@ -23,6 +23,7 @@ export type AvailabilityInput = BookingRequest & {
   fresh?: boolean;
 };
 export type CalendarAvailability = {
+  displayExpiresAtMs?: number;
   month: string;
   observedAtMs: number;
   dates: {
