@@ -103,40 +103,40 @@ export async function prepareHitpay(
     .run();
   if (intent.meta.changes !== 1)
     throw new ApiError(409, "hitpay_creation_already_reserved");
-  const raw = await hitpayRequest(
-    config.key,
-    {
-      kind: "create",
-      body: {
-        amount: `${Math.floor(scope.intent.totalMinor / 100)}.${String(scope.intent.totalMinor % 100).padStart(2, "0")}`,
-        currency: "SGD",
-        reference_number: reference,
-        allow_repeated_payments: "false",
-        send_email: "false",
-        send_sms: "false",
-        add_admin_fee: "false",
-        payment_methods: ["paynow_online", "card"],
-        expires_after: `${Math.floor((expires - Date.now() - 20000) / 60000)} mins`,
-        redirect_url:
-          env.APP_ORIGIN + "/confirmation/?attempt=" + scope.attemptId,
-        ...(scope.intent.contact
-          ? {
-              name: scope.intent.contact.name,
-              email: scope.intent.contact.email,
-            }
-          : {}),
-        purpose: "SoccerBot booking",
-      },
-    },
-    async () => {
-      assertHitpayCreation(env);
-      await assertGranted();
-      if (Date.now() + 80000 >= expires)
-        throw new ApiError(409, "hitpay_checkout_expired");
-    },
-  );
   let verified: ReturnType<typeof verifyHitpayRequest>;
   try {
+    const raw = await hitpayRequest(
+      config.key,
+      {
+        kind: "create",
+        body: {
+          amount: `${Math.floor(scope.intent.totalMinor / 100)}.${String(scope.intent.totalMinor % 100).padStart(2, "0")}`,
+          currency: "SGD",
+          reference_number: reference,
+          allow_repeated_payments: "false",
+          send_email: "false",
+          send_sms: "false",
+          add_admin_fee: "false",
+          payment_methods: ["paynow_online", "card"],
+          expires_after: `${Math.floor((expires - Date.now() - 20000) / 60000)} mins`,
+          redirect_url:
+            env.APP_ORIGIN + "/confirmation/?attempt=" + scope.attemptId,
+          ...(scope.intent.contact
+            ? {
+                name: scope.intent.contact.name,
+                email: scope.intent.contact.email,
+              }
+            : {}),
+          purpose: "SoccerBot booking",
+        },
+      },
+      async () => {
+        assertHitpayCreation(env);
+        await assertGranted();
+        if (Date.now() + 80000 >= expires)
+          throw new ApiError(409, "hitpay_checkout_expired");
+      },
+    );
     verified = verifyHitpayRequest(raw, paymentScope, reference);
   } catch (error) {
     await env.STATE.prepare(

@@ -17,6 +17,22 @@ const context = new AsyncLocalStorage<Trace>();
 export function traceId() {
   return context.getStore()?.correlationId || crypto.randomUUID();
 }
+// Fixed metadata only. Never include upstream URLs, headers or body text.
+export function traceHitpayFailure(
+  operation: "create" | "read" | "search",
+  status: number,
+  representation: "json" | "html" | "other" | "missing",
+) {
+  console.log(
+    JSON.stringify({
+      event: "hitpay_transport_failure",
+      correlationId: traceId(),
+      operation,
+      status,
+      representation,
+    }),
+  );
+}
 export function traceStatus(status: number) {
   const trace = context.getStore();
   if (trace) trace.httpStatus = status;

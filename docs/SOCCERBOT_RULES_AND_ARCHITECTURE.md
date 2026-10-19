@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Payment failure diagnostic boundary — 19 October 2026 SGT
+
+HAR07 exposes an upstream transport failure whose status was discarded. Keep diagnostic classification in provider-transport and structured emission in diagnostics; retain the original creation reservation in hitpay-journal. Fixed metadata must never contain upstream bodies/URLs, headers, credentials or customer data. A clearer diagnostic does not prove non-creation, permit another POST, authorize releasing the attempt, or establish a checkout repair. Preserve the existing503/customer recovery contract. Journey owns incident evidence; Service Contracts owns fields and behavior.
+
 ## Customer confirmation and shared checkout deadline — 19 October 2026 SGT
 
 Current owner instruction supersedes the earlier all-reconciliation-before-success UI rule. A server-verified matching HitPay payment against the original verified, unexpired hold may show Booking confirmed and Paid immediately. Accounting reconciliation continues durably; downloads wait locally for the original reconciliation and then obtain fresh protected authorization. Customer success evidence is distinct from the reconciled receipt/export decision. Known conflicts/manual review must not gain confirmation.

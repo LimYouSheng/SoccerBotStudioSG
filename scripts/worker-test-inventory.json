@@ -77,6 +77,7 @@
   "late verified payment cannot confirm an expired hold or release it for another booking",
   "on-time HitPay payment reconciles after payment expiry only within the original hold",
   "on-time HitPay payment cannot finalize after the original hold expires",
+  "HitPay upstream HTTP diagnostics retain only status and representation without replaying creation",
   "delivery default empty window and disabled mode reject before external dispatch",
   "delivery validates exact revision origin recipient and authenticated bounded JSON before dispatch",
   "delivery public routes use fixed sender recipient idempotency and single-use verified identity",
