@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Creation-first optimistic Review clarification — 19 October 2026 SGT
+
+Owner clarifies that Review should appear after booking creation, with comments/readback continuing while payment stays disabled. Earlier source waited for comment acknowledgement. Reuse the existing finalize claim, which occurs only after accepted-session validation and durable reference retention, together with observed session:0 evidence. This moves protected progress earlier without a new journal write, schema change, provider call or relaxed payment guard. Unknown/raw-only creations, missing finalization, recovery and batches do not gain this progress state. Required pre-write claims and post-response reference retention remain awaited; independent readbacks already overlap. The existing one-second poll adds detection latency, so neither instantaneous server push nor a4–5second measured result is claimed.
+
+Real-Worker regression holds booking creation first (running), then blocks the comment response and requires verifying before any readback. It fails against the previous comment-gated query and passes only with the earlier marker. Snapshot cases preserve unknown/missing/recovery/batch/authorization/payment-denial coverage; inventory title follows the changed contract. Both actual-Worker browser optimistic Review journeys now require visible payment-disabled Review while comments remain blocked, preserving subsequent readback success/failure and direct handoff coverage. Browser execution remains owner/CI-operated. Final code/Worker verification and exact-source CI are required for the expanded PR57 candidate.
+
 ## HAR06 Details-to-Review latency follow-up — 19 October 2026 SGT
 
 Owner manually measures13–14seconds. The hold starts09:11:29.401; the last running poll completes about09:11:42.586, the first verifying poll about09:11:43.907 (14.506s after start), and the hold response about09:11:45.135 (15.734s). The1.228s gap is between received browser milestones, not a duration for backend steps4–8 or a measured paint time. Poll snapshots are roughly1.3s apart including response latency. The exact comment-completion time is not recorded in this HAR.

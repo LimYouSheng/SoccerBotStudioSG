@@ -386,6 +386,19 @@ test("combined batch hold uses one validation per item and retains partial or un
 });
 
 test("single hold exposes creation progress while independent readbacks are pending and payment remains blocked", async () => {
+  let releaseBook, releaseComment, bookStarted, commentStarted;
+  const bookGate = new Promise((resolve) => {
+    releaseBook = resolve;
+  });
+  const commentGate = new Promise((resolve) => {
+    releaseComment = resolve;
+  });
+  const booking = new Promise((resolve) => {
+    bookStarted = resolve;
+  });
+  const commenting = new Promise((resolve) => {
+    commentStarted = resolve;
+  });
   let release;
   const gate = new Promise((resolve) => {
     release = resolve;
@@ -397,6 +410,14 @@ test("single hold exposes creation progress while independent readbacks are pend
   const reads = new Set();
   const m = await createBookingMechanism({
     respond: async (call) => {
+      if (call.body?.method === "book") {
+        bookStarted();
+        await bookGate;
+      }
+      if (call.url.endsWith("/comment")) {
+        commentStarted();
+        await commentGate;
+      }
       const kind =
         call.body?.method === "getBookingDetails"
           ? "booking"
@@ -414,6 +435,29 @@ test("single hold exposes creation progress while independent readbacks are pend
   try {
     const c = await customer(m);
     holding = c.send();
+    await booking;
+    const beforeCreation = await m.mf.dispatchFetch(
+      m.origin + `/api/booking/native/${c.input.key}`,
+      { headers: c.headers },
+    );
+    assert.equal((await beforeCreation.json()).state, "running");
+    releaseBook();
+    await commenting;
+    const beforeComment = await m.mf.dispatchFetch(
+      m.origin + `/api/booking/native/${c.input.key}`,
+      { headers: c.headers },
+    );
+    assert.deepEqual(await beforeComment.json(), {
+      attemptId: c.input.key,
+      state: "verifying",
+      paymentAvailable: false,
+    });
+    assert.equal(reads.size, 0);
+    assert.equal(
+      (await m.db.prepare("SELECT COUNT(*) AS n FROM hitpay_holds").first()).n,
+      0,
+    );
+    releaseComment();
     await entered;
     const progress = await m.mf.dispatchFetch(
       m.origin + `/api/booking/native/${c.input.key}`,
@@ -455,6 +499,8 @@ test("single hold exposes creation progress while independent readbacks are pend
       0,
     );
   } finally {
+    releaseBook();
+    releaseComment();
     release();
     await holding;
     await m.close();
@@ -528,7 +574,7 @@ test("ongoing confirmation grants five fast stored-status checks while retaining
   }
 });
 
-test("single hold progress exposes the matched comment receipt before association without granting payment", async () => {
+test("single hold progress requires validated retained creation before comments without granting payment", async () => {
   const m = await createBookingMechanism();
   try {
     const c = await customer(m);
@@ -541,6 +587,7 @@ test("single hold progress exposes the matched comment receipt before associatio
       {
         outcome: "observed",
         reference: "701",
+        finalized: true,
         state: "dispatching",
         batch: false,
         expected: "verifying",
@@ -548,13 +595,7 @@ test("single hold progress exposes the matched comment receipt before associatio
       {
         outcome: "unknown",
         reference: "701",
-        state: "dispatching",
-        batch: false,
-        expected: "running",
-      },
-      {
-        outcome: "observed",
-        reference: "wrong",
+        finalized: true,
         state: "dispatching",
         batch: false,
         expected: "running",
@@ -562,6 +603,15 @@ test("single hold progress exposes the matched comment receipt before associatio
       {
         outcome: "observed",
         reference: "701",
+        finalized: false,
+        state: "dispatching",
+        batch: false,
+        expected: "running",
+      },
+      {
+        outcome: "observed",
+        reference: "701",
+        finalized: true,
         state: "recovery_required",
         batch: false,
         expected: "running",
@@ -569,6 +619,7 @@ test("single hold progress exposes the matched comment receipt before associatio
       {
         outcome: "observed",
         reference: "701",
+        finalized: true,
         state: "dispatching",
         batch: true,
         expected: "running",
@@ -610,15 +661,16 @@ test("single hold progress exposes the matched comment receipt before associatio
         .bind(id, hash, saved.owner_id)
         .run();
       await m.db
-        .prepare(
-          "INSERT INTO session_effects VALUES(?,'session:0','observed','701')",
-        )
-        .bind(id)
-        .run();
-      await m.db
-        .prepare("INSERT INTO session_effects VALUES(?,'native-comment:0',?,?)")
+        .prepare("INSERT INTO session_effects VALUES(?,'session:0',?,?)")
         .bind(id, scenario.outcome, scenario.reference)
         .run();
+      if (scenario.finalized)
+        await m.db
+          .prepare(
+            "INSERT INTO session_effects VALUES(?,'finalize','unknown',NULL)",
+          )
+          .bind(id)
+          .run();
       const response = await m.mf.dispatchFetch(
         m.origin + `/api/booking/native/${id}`,
         { headers: c.headers },

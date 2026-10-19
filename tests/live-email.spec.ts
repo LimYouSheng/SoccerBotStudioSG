@@ -1901,13 +1901,8 @@ async function optimisticHold(page: Page, failReadback: boolean) {
       .getByRole("button", { name: "Review booking", exact: true })
       .click();
     await commenting;
-    await expect(
-      page.getByRole("heading", { name: "Review booking", exact: true }),
-    ).toHaveCount(0);
-    releaseComment();
-    // Assert the creation milestone, not a five-second budget for preflight.
-    // The original request stays blocked at readback throughout UI assertions.
-    await created;
+    // Creation is validated and retained; the comment response stays blocked.
+    // Review must appear now, before either comment completion or readback.
     await expect(
       page.getByRole("heading", { name: "Review booking", exact: true }),
     ).toBeVisible();
@@ -1937,6 +1932,12 @@ async function optimisticHold(page: Page, failReadback: boolean) {
     const review = await page
       .getByRole("heading", { name: "Review booking", exact: true })
       .elementHandle();
+    releaseComment();
+    await created;
+    expect(await review?.evaluate((element) => element.isConnected)).toBe(true);
+    await expect(
+      page.getByRole("button", { name: "Verifying your reservation…" }),
+    ).toBeDisabled();
     release();
     expect(await (await result).json()).toMatchObject({
       state: failReadback ? "recovery_required" : "associated",

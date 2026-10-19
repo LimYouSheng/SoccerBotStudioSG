@@ -69,9 +69,11 @@ export async function nativeCheckoutStatus(
 ) {
   z.string().uuid().parse(attemptId);
   const access = await authenticate(request, env, Date.now());
+  // Finalization is claimed only after creation is validated and its reference
+  // is durable. Comments/readback follow; they must not gate display-only Review.
   const grant = await env.STATE.withSession("first-primary")
     .prepare(
-      "SELECT g.state,g.result_json,a.state AS attempt_state,a.association_json,a.intent_json,EXISTS(SELECT 1 FROM session_effects e WHERE e.attempt_id=a.id AND e.step='native-comment:0' AND e.outcome='observed' AND EXISTS(SELECT 1 FROM session_effects b WHERE b.attempt_id=a.id AND b.step='session:0' AND b.outcome='observed' AND b.reference_id=e.reference_id)) AS comment_received FROM native_checkout_grants g JOIN attempts a ON a.id=g.attempt_id WHERE g.attempt_id=? AND g.capability_hash=? AND a.owner_id=?",
+      "SELECT g.state,g.result_json,a.state AS attempt_state,a.association_json,a.intent_json,EXISTS(SELECT 1 FROM session_effects f WHERE f.attempt_id=a.id AND f.step='finalize' AND EXISTS(SELECT 1 FROM session_effects b WHERE b.attempt_id=a.id AND b.step='session:0' AND b.outcome='observed' AND b.reference_id IS NOT NULL)) AS creation_received FROM native_checkout_grants g JOIN attempts a ON a.id=g.attempt_id WHERE g.attempt_id=? AND g.capability_hash=? AND a.owner_id=?",
     )
     .bind(attemptId, access.capability_hash, access.owner_id)
     .first<{
@@ -79,7 +81,7 @@ export async function nativeCheckoutStatus(
       result_json: string | null;
       association_json: string | null;
       attempt_state: string;
-      comment_received: number;
+      creation_received: number;
       intent_json: string;
     }>();
   if (!grant) throw new ApiError(404, "native_checkout_unavailable");
@@ -89,7 +91,7 @@ export async function nativeCheckoutStatus(
       grant.state === "running" &&
       (grant.association_json ||
         (grant.attempt_state === "dispatching" &&
-          grant.comment_received === 1)) &&
+          grant.creation_received === 1)) &&
       intentSchema.parse(JSON.parse(grant.intent_json)).sessions.length === 1
         ? "verifying"
         : grant.state,
