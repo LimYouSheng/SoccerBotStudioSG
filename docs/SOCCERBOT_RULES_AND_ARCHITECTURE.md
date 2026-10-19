@@ -1,5 +1,13 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Browsing cache priority and local loading — 19 October 2026 SGT
+
+Public calendar/catalogue first attempt a cache-only read outside the account provider runner. Valid display data retains existing scope, window, freshness, pricing and lead-time filters; a miss cannot dispatch or await provider work outside the queue. Cold/expired reads use the existing shared runner, bounded provider admission and fairness. Booking writes remain serialized. This is not the deferred full two-lane concurrency change or a new cache TTL. History audit found the proposed fifteen-minute calendar warmer explicitly excluded on15October; current release cron is minute-based recovery only. Scheduled persistent display snapshots remain unimplemented.
+
+Calendar/session/basket display loaders are local and do not make the whole page inert. Guest/email submission preserves mounted content, duplicate-action guards and navigation waiting, with local status and disabled action controls. Financial submission keeps the shared blocking overlay. Initial homepage prefetch starts session metadata before the longer month read; only the displayed month is loaded.
+
+Redirect audit: native adapter finalize still awaits booking comments before association and HitPay preparation. Failure is non-fatal but latency is on the critical path; a slow comment can also age the five-second creation evidence into fresh readback. Moving annotation off-path needs durable deferred-effect ownership, guarded dispatch and restart recovery; it is not implemented here. Required hold/payment persistence and authoritative booking/payment checks remain awaited. No new payment concurrency or provider experiment.
+
 ## Local Review and anchored return checking — 19 October 2026 SGT
 
 Owner replaces fresh-read Review and checkout resume with editable local Review and a fixed checking window. Details validates the draft locally; checkout retains fresh server write-boundary checks, original attempt identity, shared capacity and consent. Session-scoped live draft persistence restores edits without restoring consent or financial authority. Protected server restoration always owns existing attempts.

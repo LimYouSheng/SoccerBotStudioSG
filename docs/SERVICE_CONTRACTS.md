@@ -1,5 +1,13 @@
 # SoccerBotStudio — Service Contracts
 
+## Public display cache fast path and loading scope — 19 October 2026 SGT
+
+Coordinator publicCalendar/windowCatalogue attempt the existing read owners with cacheOnly before joining the provider queue. Cache-only returns a detached valid snapshot or internal display_cache_miss; it neither starts nor joins pending provider I/O. Only that miss enters the display queue. Closed/invalid scopes propagate their original error. Calendar price, opening-hour/lead-time filters and sixty-second server TTL remain unchanged; no anonymous write authority is granted. Native/protected operations retain authentication and existing queue behavior.
+
+BookingLoading overlay=false now renders the requested local presentation without registering global inertness. Display-only callers explicitly select it; compact alone retains existing blocking behavior for financial actions. Account submission uses stable-layout accessible status and button feedback, disabled conflicting controls, cancellation and existing asynchronous identity/navigation guards. Checkout keeps “Opening secure payment…” and pending confirmation retains “Verifying your payment…”.
+
+Test-impact pass covers all loader callsites, account lifecycle/navigation, shared browser guest/email setup, calendar expiry/failure, cache scope/invalidation/pending reads, and coordinator admission. Actual workerd regression holds a cold provider range request open while existing calendar/catalogue cache hits complete with zero additional provider calls. CI real-Worker guest journey asserts interactive cached entry/calendar; financial overlay and duplicate-effect assertions remain. No browser runs by the assistant.
+
 ## Local Review and fixed payment-checking contract — 19 October 2026 SGT
 
 Restored editable Review suppresses background catalogue/calendar reads from the synchronous route, before page effects mount; an unresolved route cannot start display prefetch. Revoked access at the checkout boundary routes to protected denied feedback, retains only the local draft with consent reset, and creates no server/provider booking.

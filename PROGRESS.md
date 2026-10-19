@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## Browsing-loading successor — 19 October 2026 SGT
+
+Baseline main d15caba; branch fix/browsing-loading-cache. Fix explicit local display loading and stable guest feedback; serve valid public calendar/catalogue cache hits before provider queue; start short catalogue prefetch before month work. Financial overlays, shared provider limits and serialized booking writes remain. Focused50 frontend/30 catalogue/one actual workerd mixed cache/queue case passed. Full verify:code passed213 tests plus tooling/types/lint/build/export; full Worker gate and exact-head CI pending; successor PR requires its own merge approval. Awaited booking-comment optimization is identified but deferred pending durable background effect ownership. Canonical owners contain contracts and test impact.
+
 ## PR60 streamed Review restoration race — 19 October 2026 SGT
 
 Headbe08170 passed frontend/backend; live-email passed74/75. Tablet WebKit exposed a mount-order race: restoration finished before Review mounted, so the default browsing flag launched calendar/catalogue reads. Delaying the Review component in the regression reproduces the extra read. Provider now combines the page browsing flag with the synchronous pathname, blocks unknown routes until resolved, and suppresses Details/Review/payment/confirmation display prefetch before page effects. Router mocks updated across affected component setup paths;212 component/service tests passed. The existing zero-extra-display-read browser assertion is unchanged. Final exact-head CI and authorized conditional merge remain pending.

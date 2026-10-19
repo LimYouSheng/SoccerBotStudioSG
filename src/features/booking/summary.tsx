@@ -212,6 +212,7 @@ export function Summary({ basket = false }: { basket?: boolean }) {
                 "A selected session is no longer available. Remove it and choose another time."
               ) : !result ? (
                 <BrandLoading
+                  overlay={false}
                   compact
                   label="Checking your selected sessions…"
                 />

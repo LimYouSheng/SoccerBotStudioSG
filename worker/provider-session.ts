@@ -69,7 +69,12 @@ export class ProviderSession {
     this.boundScope = key;
     return secrets;
   }
-  async catalogue(env: Env, control: ProviderControl, fresh = false) {
+  async catalogue(
+    env: Env,
+    control: ProviderControl,
+    fresh = false,
+    cacheOnly = false,
+  ) {
     const p = policy(env),
       secrets = this.bindScope(env);
     if (
@@ -91,6 +96,7 @@ export class ProviderSession {
       },
       fresh,
       !!control.liveCustomer && liveCustomerAccess(env),
+      cacheOnly,
     );
   }
   prebooking(

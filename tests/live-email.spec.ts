@@ -539,6 +539,8 @@ test("native guest journey preserves players contact and one checkout across ref
     });
     await expect(guest).toBeVisible();
     await expect(email).toBeVisible();
+    await expect(page.locator(".booking-flow-overlay")).toHaveCount(0);
+    await expect(guest).toBeEnabled();
     const guestBox = (await guest.boundingBox())!;
     const emailBox = (await email.boundingBox())!;
     expect(Math.abs(guestBox.width - emailBox.width)).toBeLessThanOrEqual(1);
@@ -554,6 +556,8 @@ test("native guest journey preserves players contact and one checkout across ref
     await page
       .getByRole("link", { name: "See available times", exact: true })
       .click();
+    await expect(page.locator(".booking-flow-overlay")).toHaveCount(0);
+    await expect(page.locator("main")).not.toHaveAttribute("inert");
     const today = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Singapore",
       year: "numeric",

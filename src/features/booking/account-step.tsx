@@ -1,5 +1,4 @@
 "use client";
-import { BookingLoading as BrandLoading } from "./booking-loading";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icon";
@@ -122,7 +121,13 @@ export function AccountStep() {
           </div>
         )}
         {error && <p role="alert">{error}</p>}
-        {busy && <BrandLoading compact label="Preparing your booking…" />}
+        {busy && (
+          <span
+            className="sr-only"
+            role="status"
+            aria-label="Preparing your booking…"
+          />
+        )}
         <div className="access-options">
           <section className="surface access-option">
             <span className="auth-mark">
@@ -132,10 +137,12 @@ export function AccountStep() {
             <p className="text-muted">Book without creating an account.</p>
             <button
               className="button wide"
+              aria-label="Continue as guest"
               disabled={busy}
               onClick={() => void perform((signal) => proceed(signal))}
             >
-              Continue as guest <Icon name="arrow" />
+              {busy ? "Preparing your booking…" : "Continue as guest"}{" "}
+              <Icon name="arrow" />
             </button>
           </section>
           <section className="surface access-option">
@@ -237,7 +244,13 @@ export function AccountStep() {
           </>
         )}
       </p>
-      {busy && <BrandLoading compact label="Checking your details…" />}
+      {busy && (
+        <span
+          className="sr-only"
+          role="status"
+          aria-label="Checking your details…"
+        />
+      )}
       <form
         className="surface auth-panel"
         onSubmit={(event) => {
@@ -265,6 +278,7 @@ export function AccountStep() {
               Email address
             </label>
             <input
+              disabled={busy}
               id="auth-email"
               className="field-control"
               type="email"
@@ -277,6 +291,7 @@ export function AccountStep() {
             <label className="check-label auth-remember">
               <input
                 type="checkbox"
+                disabled={busy}
                 checked={remember}
                 onChange={(e) => setRemember(e.target.checked)}
               />
@@ -289,6 +304,7 @@ export function AccountStep() {
               Verification code
             </label>
             <input
+              disabled={busy}
               id="auth-code"
               className="field-control auth-code"
               inputMode="numeric"
@@ -326,7 +342,12 @@ export function AccountStep() {
         <div className="auth-code-actions">
           {view === "code" && (
             <>
-              <button type="button" className="text-link" onClick={request}>
+              <button
+                type="button"
+                disabled={busy}
+                className="text-link"
+                onClick={request}
+              >
                 Resend code
               </button>
               <button

@@ -629,16 +629,32 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     return rpcOutcome(() => pending);
   }
   async publicCalendar(month: string, correlationId: string) {
-    const pending = this.providerQueue.run("display", () =>
+    return rpcOutcome(() =>
       traced(correlationId, "coordinator", () =>
-        publicCalendar({
-          ...this.calendarReadOptions(),
-          month,
-        }),
+        this.displayRead((cacheOnly) =>
+          publicCalendar({
+            ...this.calendarReadOptions(),
+            month,
+            cacheOnly,
+          }),
+        ),
       ),
     );
-    return rpcOutcome(() => pending);
   }
+  private async displayRead<T>(
+    read: (cacheOnly: boolean) => Promise<T>,
+  ): Promise<T> {
+    try {
+      // Valid public display snapshots need no provider runner. A miss may not
+      // dispatch or wait for provider I/O outside the existing bounded admission.
+      return await read(true);
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.code !== "display_cache_miss")
+        throw error;
+      return this.providerQueue.run("display", () => read(false));
+    }
+  }
+
   private calendarReadOptions() {
     return {
       env: this.env,
@@ -687,13 +703,15 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     );
   }
   async windowCatalogue(correlationId: string) {
-    const pending = this.providerQueue.run("display", () =>
+    return rpcOutcome(() =>
       traced(correlationId, "coordinator", () =>
-        windowCatalogue(this.calendarReadOptions()),
+        this.displayRead((cacheOnly) =>
+          windowCatalogue({ ...this.calendarReadOptions(), cacheOnly }),
+        ),
       ),
     );
-    return rpcOutcome(() => pending);
   }
+
   async nativeCalendar(
     scope: { month: string; serviceId: string; cookie: string },
     correlationId: string,

@@ -127,6 +127,7 @@ export class CatalogueReads {
     exchange: NativeExchange,
     fresh = false,
     parallel = false,
+    cacheOnly = false,
   ): Promise<ProviderCatalogue> {
     const key = this.key(binding);
     if (fresh) this.invalidate(binding);
@@ -146,6 +147,7 @@ export class CatalogueReads {
       Date.now() - entry.value.observedAtMs < CATALOGUE_CACHE_MS
     )
       return structuredClone(entry.value);
+    if (cacheOnly) throw new ApiError(503, "display_cache_miss");
     if (!fresh && entry.pending) return structuredClone(await entry.pending);
     const generation = entry.generation;
     const selected = entry;

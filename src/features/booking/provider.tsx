@@ -198,20 +198,6 @@ export function BookingProvider({
         : "guest",
     [value.draft.mode, identityService],
   );
-  const calendar = useCalendarAvailability(
-    service,
-    value.ready && value.draft.mode ? value.draft.nativeServiceId : undefined,
-    calendarMonth,
-    JSON.stringify([
-      service.publicCalendar ? "public" : sessionKey(),
-      availabilityRevision,
-    ]),
-    !value.ready ||
-      restorationPending ||
-      !calendarBrowsing ||
-      calendarPaused ||
-      !!value.attempt,
-  );
   useEffect(() => {
     if (
       service.mode !== "live" ||
@@ -228,6 +214,20 @@ export function BookingProvider({
     });
     return () => controller.abort();
   }, [service, restorationPending, calendarBrowsing, value.attempt]);
+  const calendar = useCalendarAvailability(
+    service,
+    value.ready && value.draft.mode ? value.draft.nativeServiceId : undefined,
+    calendarMonth,
+    JSON.stringify([
+      service.publicCalendar ? "public" : sessionKey(),
+      availabilityRevision,
+    ]),
+    !value.ready ||
+      restorationPending ||
+      !calendarBrowsing ||
+      calendarPaused ||
+      !!value.attempt,
+  );
   const availability = useBookingAvailability(
     service,
     value.attempt ||

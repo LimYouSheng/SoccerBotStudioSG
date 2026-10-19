@@ -1,5 +1,13 @@
 # SoccerBotStudio — Journey
 
+## Browsing loading and cache investigation — 19 October 2026 SGT
+
+Started successor from actual main d15caba after PR60 merge. Owner reports homepage/guest flicker, awkward locking and slow initial calendar. Shared BookingLoading ignored compact/overlay props, registering global inertness even for display feedback. Public display cache lookup also happened inside the single provider runner. Repaired explicit local loading and cache-only bypass; cache misses still queue and no TTL or provider limit is widened. Short session metadata prefetch starts before month range work.
+
+Fifty focused component/service tests and thirty catalogue tests passed. Actual workerd blocked-runner cache regression passed with existing consent/authentication/replay assertions. Initial local Worker check exposed an unintended cacheOnly argument in prebooking; removed it and reran both affected suites successfully. Preserve original logs outside Git. Full verify:code passed213 unit/component/service cases plus source/policy/tooling, format/lint/types and build/export. Full Worker and final-commit CI evidence belongs in the successor PR; not deployed or physically accepted.
+
+HitPay audit found awaited native booking comments before association, despite non-fatal annotation errors. This is an optimization opportunity, not payment reconciliation already moved to background. Deferred annotation needs durable effect/recovery design; no unsafe fire-and-forget change. Required financial persistence, original attempt identity, valid booking proof and hosted link remain prerequisites to redirect.
+
 ## PR60 flow implementation and CI diagnosis — 19 October 2026 SGT
 
 Inspected failed run39209839579 atf03049e. Frontend/backend browser lanes each failed two journeys on all three devices: assertions targeted Studio1 and Selected sessions inside the new collapsed full-details disclosure. Live-email failed three journeys on each device: unsaved local Review disappeared on reload; the batch provider double hard-coded SGD88 against the valid SGD176 request; failed creation waited unnecessarily for checkout context while the browser test held that response. Worker tests had passed. Repairs retain the disclosure assertions after expansion, save only a local draft, validate exact batch totals and route failed combined creation to retained pending recovery. No browser execution by the assistant.

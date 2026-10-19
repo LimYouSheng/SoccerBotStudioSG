@@ -773,6 +773,10 @@
   },
   {
     "file": "src/features/booking/booking-loading.test.tsx",
+    "title": "display loading leaves navigation interactive while payment loading still locks the page"
+  },
+  {
+    "file": "src/features/booking/booking-loading.test.tsx",
     "title": "overlapping booking reads share one full-page loader and preserve the mounted form"
   },
   {
