@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## HAR07 upstream failure and measured hold delay — 19 October 2026 SGT
+
+HAR07's11:38SGT trial used Worker version4acf4e0f, correlated with deployed sourcef966884. Holding succeeded in16.678seconds; the first verifying poll began13.295seconds after dispatch. Payment preparation then returned503 hitpay_transport_unknown in3.262seconds without a browser checkout URL. The hold coordinator recorded16.309seconds with13 provider spans(total9.867seconds),47 D1 spans(total7.136seconds), and no coordinator queue-wait span; these overlapping totals cannot be added as a critical path. Persisted creation was11.715seconds after coordinator start. The4–5second target remains unmet/unverified.
+
+D1 retains unresolved creation without verified request/payment ID or external write. Exact-reference GETs from the managed environment returned403 Cloudflare HTML; this is separate from the original Worker failure. Original upstream status/body is absent from exact-window logs. Public HitPay reference supports the existing JSON encoding and mins expiry syntax; neither expiry rejection nor WAF rejection of the original request is established. Fix only the evidenced missing diagnostic classification/retention, with redaction and no-replay regression coverage. No assistant provider POST, cancellation, cleanup or payment. Progress owns verification and the unresolved provider acceptance gate.
+
 ## Payment-first confirmation and expiry implementation — 19 October 2026 SGT
 
 Owner clarified that verified matching payment should immediately complete the customer-facing booking when the existing hold remains valid; SimplyBook reconciliation must continue regardless of the page. A clicked download may wait, but confirmation must stay usable. Owner then requested a fixed five-minute payment deadline from creation, preserving contact when unpaid expired Review/checkout returns to calendar, and authorized implementation plus CI repair. This supersedes earlier pending-success UI instructions.
