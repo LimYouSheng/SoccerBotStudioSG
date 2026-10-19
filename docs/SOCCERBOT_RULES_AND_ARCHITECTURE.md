@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Test-impact review is part of every change — 19 October 2026
+
+Every logical change and repair includes the mandatory [Service Contracts test-impact pass](SERVICE_CONTRACTS.md#mandatory-test-impact-pass-after-every-change--19-october-2026): review all affected test layers and duplicated setup, update obsolete assumptions, run affected permitted checks, and obtain final exact-commit CI before acceptance. Preserve failure coverage, browser ownership and all booking/payment protections. Publication for CI is distinct from readiness; a local pass alone cannot certify the browser journey.
+
 ## One-month calendar preload — 19 October 2026 SGT
 
 Owner reduces eager calendar loading from four months to the displayed month only. Homepage preloads the current Singapore calendar month; another month is fetched only when opened. The existing four-month navigation horizon is unchanged. Empty results are cached, cache expiry does not poll, fresh entries are reused, and Details/Review/payment still abort or pause calendar work. This reduces eager month requests from four to one, not a measured end-to-end latency claim. Update component call-count expectations, preserve stale-reply/expiry/conflict assertions and explicitly test next-month loading, abort and return reuse. Actual-Worker browser setup now waits for one preload rather than warming all four months.

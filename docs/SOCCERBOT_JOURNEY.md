@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Owner requires a test-impact pass after every change — 19 October 2026
+
+Repeated CI repairs exposed an incomplete impact review: the one-month preload updated guestDetails and component expectations but missed a separate native guest journey's warmedMonths wait and two four-call assertions. CI39176339093 passed frontend/backend but failed that journey on all three devices (69/72 live-email). Repair de52174 preserves the journey and changes only those obsolete assumptions; its exact-source CI remains separate evidence.
+
+Owner requests documenting one test-check pass after every change. AGENTS now points to the mandatory Service Contracts procedure; Rules and Architecture makes it part of acceptance. Search all setup/helper/standalone paths, check affected non-browser suites after each change, inspect and retain browser coverage, and distinguish draft publication from final CI readiness. This documentation does not claim automated enforcement or permission to run local browsers.
+
 ## One-month browser expectation repair — 19 October 2026 SGT
 
 CI39176339093 on3a34e2a passed frontend/backend, but live-email passed69/72: the same native guest journey timed out on all three engines. Its separate warmedMonths setup still waited for four responses, then asserted four calendar calls twice. Update it to one initial response/call and exactly one additional call only if the selected month differs. Preserve all contact/player, hold/payment effect counts, restore, no post-hold availability and access assertions. No timeout/retry change or product change. Final exact-source browser CI remains required.

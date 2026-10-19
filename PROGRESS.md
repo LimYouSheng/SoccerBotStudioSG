@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## Mandatory test-impact pass — 19 October 2026
+
+Owner requires one complete test-impact review after every logical change and repair. Follow AGENTS Verify and the [Service Contracts procedure](docs/SERVICE_CONTRACTS.md#mandatory-test-impact-pass-after-every-change--19-october-2026), including all duplicated setup/response waits and final exact-commit CI. The missed warmedMonths four-response wait is the retained counterexample. This checkpoint changes documentation only; application/browser acceptance remains tied to the final PR checks.
+
 ## One-month browser expectation repair — 19 October 2026 SGT
 
 CI39176339093 on3a34e2a passed frontend/backend, but live-email passed69/72: the same native guest journey timed out on all three engines. Its separate warmedMonths setup still waited for four responses, then asserted four calendar calls twice. Update it to one initial response/call and exactly one additional call only if the selected month differs. Preserve all contact/player, hold/payment effect counts, restore, no post-hold availability and access assertions. No timeout/retry change or product change. Final exact-source browser CI remains required.

@@ -1,5 +1,18 @@
 # SoccerBotStudio — Service Contracts
 
+## Mandatory test-impact pass after every change — 19 October 2026
+
+After every logical behavior/configuration change, and again after any repair, complete one explicit test-impact pass before committing/publishing. This applies to optimizations and presentation changes as well as new features; it does not require rerunning the entire suite after each keystroke.
+
+1. State the changed observable contract and unchanged protections. Identify affected component/domain, Worker/API, browser, fixture/helper and inventory owners.
+2. Search repository-wide for old assumptions using names and behavior, not one exact variable spelling: request counts, prefetch ranges, response waits, timing milestones, labels/selectors, navigation, fixture defaults and duplicated inline setup. Inspect both shared helpers and standalone journeys. For a four-to-one-month change, inspect warmedMonths, months, calendarReady, every calendar response predicate and call-count assertion; changing only guestDetails is incomplete.
+3. Update every affected expectation to the new contract and preserve its original purpose. Add meaningful success/failure coverage where missing. Never remove unrelated assertions, raise timeouts, add retries or reduce scenario/device coverage to make a test pass. Legitimate request-count changes are documented behavior changes, not permission to weaken duplicate-effect checks.
+4. Run the affected non-browser checks after the change. Inspect browser sources and submit the exact candidate to the required CI browser gates; browser execution remains owner/CI-operated. Use the final applicable full code/Worker verification on the stable candidate. Documentation-only changes use documentation/source/policy checks, without rerunning unchanged application suites.
+5. Before publishing, record the affected suites, searches/review performed, checks/results and pending evidence in the PR. Local passing results never substitute for unexecuted browser tests. A draft may be published to obtain CI; do not label it ready, accepted or ready for physical testing until all required checks pass on its final commit. Any later change requires a renewed impact pass and exact-commit CI.
+6. On failure, retain the first receipt, identify the owning cause, search for sibling occurrences, repair and rerun affected checks. A timeout reported during teardown may originate in an earlier unresolved response wait. Never treat rerunning unchanged CI as the fix.
+
+Required CI remains verify / frontend, verify / backend and verify / live-email with their existing device matrices and strict inventories. This is a mandatory engineering workflow, not a claim that a new automated completeness checker exists.
+
 ## One-month calendar preload — 19 October 2026 SGT
 
 Owner reduces eager calendar loading from four months to the displayed month only. Homepage preloads the current Singapore calendar month; another month is fetched only when opened. The existing four-month navigation horizon is unchanged. Empty results are cached, cache expiry does not poll, fresh entries are reused, and Details/Review/payment still abort or pause calendar work. This reduces eager month requests from four to one, not a measured end-to-end latency claim. Update component call-count expectations, preserve stale-reply/expiry/conflict assertions and explicitly test next-month loading, abort and return reuse. Actual-Worker browser setup now waits for one preload rather than warming all four months.
