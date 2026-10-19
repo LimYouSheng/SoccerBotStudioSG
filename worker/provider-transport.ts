@@ -5,7 +5,7 @@ import {
 } from "./webhook-contract";
 import { z } from "zod";
 import { providerId } from "./provider-normalization";
-import { measure, traceId } from "./diagnostics";
+import { measure, traceId, traceHitpayFailure } from "./diagnostics";
 import { ApiError } from "./policy";
 
 // Fixed identity endpoints share the physical transport owner. Their durable
@@ -711,8 +711,20 @@ export async function hitpayRequest(
         .includes("application/json") ||
       !response.body
     ) {
+      const type = response.headers.get("content-type")?.toLowerCase();
+      const representation = type?.includes("application/json")
+        ? "json"
+        : type?.includes("text/html")
+          ? "html"
+          : type
+            ? "other"
+            : "missing";
+      traceHitpayFailure(operation.kind, response.status, representation);
       await response.body?.cancel();
-      throw new ApiError(503, "hitpay_transport_unknown");
+      throw new ApiError(
+        503,
+        `hitpay_http_${response.status}_${representation}`,
+      );
     }
     const reader = response.body.getReader(),
       decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });

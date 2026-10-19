@@ -6,6 +6,14 @@ Owner authorizes concurrency after HAR06/07 analysis: booking response arrived11
 
 Test-impact pass covers catalogue/provider/native/combined-hold tests, shared simulated Worker setup, standalone preparation callers and live-email browser request counts. Barrier regressions prove authentication/preflight overlap, failure draining, no premature creation and revocation rejection. Existing invalid-price test retains zero provider calls. Verification in progress; no live provider writes, browser execution, merge or deployment. Simulated overlap is not a measured live4–5second result.
 
+## HAR07 payment transport investigation — 19 October 2026 SGT
+
+Owner HAR07 at11:38SGT shows hold200 in16.678seconds, first verifying reply beginning13.295seconds after hold dispatch, then HitPay preparation503 hitpay_transport_unknown in3.262seconds. No checkout URL reached the browser. The exact-window Worker logs carry version4acf4e0f, matching deployed merged sourcef966884. Hold coordinator duration16.309seconds includes13 provider spans totaling9.867seconds and47 D1 spans totaling7.136seconds; span totals overlap and are not additive critical-path measurements. Recorded creation is11.715seconds after coordinator start, so this run does not establish a4–5second optimistic Review transition.
+
+Retained payment has no verified request/payment ID, reason hitpay_creation_unresolved and external_state none. Two bounded exact-reference GETs from the managed environment returned403 Cloudflare HTML; that separate observation does not establish the original Worker's upstream status. Read-only exact-window logs do not contain the original upstream status/body. Current official HitPay create-request reference supports JSON and expires_after in mins, with no published minimum on that page; no expiry/encoding root cause is established. Preserve the original unknown-write attempt; no new provider POST, cancellation, cleanup or payment was performed.
+
+Repair the evidenced diagnostic gap in the transport owner: classify upstream status and fixed representation only, emit correlated metadata without body/headers/URLs, and include transport failures in the existing first-generation reason retention. Keep503, bounded recovery and the one-POST guard; do not claim checkout is repaired. Regression asserts403 HTML metadata/redaction, retained evidence and no repeated create, preserving existing503/unknown-write tests. Search shared setup and frontend error contracts; no timeout, retry or success-authority change. Provider root-cause/physical acceptance remains blocked pending original upstream evidence or a later authorized recovery observation.
+
 
 ## Shared checkout expiry and payment-first confirmation — 19 October 2026 SGT
 

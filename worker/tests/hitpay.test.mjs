@@ -36,7 +36,7 @@ const scope = {
 const fixtures = JSON.parse(
   readFileSync("worker/tests/native-fixtures.json", "utf8"),
 ).responses;
-let script, mf, db, contract, outbound, handler;
+let script, mf, db, contract, outbound, handler, logs;
 const intent = {
   accountId: config.account_id,
   environmentId: "developer",
@@ -98,6 +98,7 @@ before(async () => {
 beforeEach(async () => {
   outbound = 0;
   handler = null;
+  logs = [];
   mf = new Miniflare(
     convertV4MiniflareOptions({
       name: "soccerbot-hitpay-test",
@@ -106,6 +107,7 @@ beforeEach(async () => {
       compatibilityDate: config.compatibility_date,
       compatibilityFlags: config.compatibility_flags,
       cf: false,
+      handleStructuredLogs: (entry) => logs.push(entry.message),
       bindings: {
         ...config.vars,
         APP_ORIGIN: origin,
@@ -726,6 +728,7 @@ test("HitPay creation persists intent before dispatch and never repeats an uncer
   assert.equal((await mf.dispatchFetch(origin + "/test/create")).status, 409);
   assert.equal(posts, 1);
   assert.equal((await row()).request_id, null);
+  assert.equal((await row()).reason, "hitpay_http_503_other");
 });
 test("HitPay creation recovery searches exact reference without another POST", async () => {
   let posts = 0,
@@ -1708,4 +1711,55 @@ test("on-time HitPay payment cannot finalize after the original hold expires", a
     ).confirmation_json,
     null,
   );
+});
+
+test("HitPay upstream HTTP diagnostics retain only status and representation without replaying creation", async () => {
+  let creates = 0;
+  handler = async () => {
+    creates++;
+    return new Response(
+      "<html>private-token synthetic@example.test https://private.invalid/checkout</html>",
+      {
+        status: 403,
+        headers: {
+          "Content-Type": "text/html; charset=UTF-8",
+          Location: "https://private.invalid/checkout",
+        },
+      },
+    );
+  };
+  const response = await mf.dispatchFetch(origin + "/test/create");
+  assert.equal(response.status, 409);
+  const saved = await row();
+  assert.equal(saved.reason, "hitpay_http_403_html");
+  const diagnostic = logs
+    .map((line) => {
+      try {
+        return JSON.parse(line);
+      } catch {
+        return null;
+      }
+    })
+    .find((line) => line?.event === "hitpay_transport_failure");
+  assert.deepEqual(Object.keys(diagnostic).sort(), [
+    "correlationId",
+    "event",
+    "operation",
+    "representation",
+    "status",
+  ]);
+  assert.equal(diagnostic.status, 403);
+  assert.equal(diagnostic.operation, "create");
+  assert.equal(diagnostic.representation, "html");
+  assert.equal(JSON.stringify(logs).includes("private-token"), false);
+  assert.equal(JSON.stringify(logs).includes("private.invalid"), false);
+  assert.equal(saved.state, "due");
+  assert.equal(saved.request_id, null);
+  assert.equal(saved.external_state, "none");
+  assert.equal(saved.paid_ms, null);
+  assert.equal(JSON.stringify(saved).includes("private-token"), false);
+  assert.equal(JSON.stringify(saved).includes("private.invalid"), false);
+  await mf.dispatchFetch(origin + "/test/create");
+  assert.equal(creates, 1);
+  assert.deepEqual(await row(), saved);
 });
