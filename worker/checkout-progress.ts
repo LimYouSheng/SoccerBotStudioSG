@@ -63,10 +63,27 @@ export async function customerConfirmation(env: Env, id: string) {
   return receiptSchema.parse(JSON.parse(row.confirmation_json));
 }
 
-// Time alone is not proof of non-payment. Once a payment creation was
-// dispatched, only authoritative expired-without-payment evidence may release
-// the active grant. A newer webhook invalidates that evidence.
-const unpaidExpiry = `EXISTS(SELECT 1 FROM hitpay_holds h WHERE h.attempt_id=native_checkout_grants.attempt_id AND MIN(h.expires_ms,COALESCE((SELECT c.booking_created_ms+c.payment_window_ms FROM checkout_progress c WHERE c.attempt_id=h.attempt_id),h.expires_ms))<=?) AND (NOT EXISTS(SELECT 1 FROM hitpay_payments p WHERE p.attempt_id=native_checkout_grants.attempt_id) OR EXISTS(SELECT 1 FROM hitpay_payments p WHERE p.attempt_id=native_checkout_grants.attempt_id AND p.state='manual_review' AND p.reason='hitpay_payment_expired' AND p.paid_ms IS NULL AND p.payment_id IS NULL AND p.external_state='none' AND NOT EXISTS(SELECT 1 FROM hitpay_receipts r WHERE r.attempt_id=p.attempt_id AND r.rowid>p.receipt_checkpoint)))`;
+// Time alone is not proof of non-payment.
+// Dispatched payments remain blocked until the provider terminal-nonpayment
+// contract is established. An expired request alone cannot authorize release.
+const unpaidExpiry = `EXISTS(SELECT 1 FROM hitpay_holds h JOIN checkout_progress c ON c.attempt_id=h.attempt_id WHERE h.attempt_id=native_checkout_grants.attempt_id AND MAX(c.booking_created_ms+c.payment_window_ms+300000,h.expires_ms)<=?) AND NOT EXISTS(SELECT 1 FROM hitpay_payments p WHERE p.attempt_id=native_checkout_grants.attempt_id)`;
+
+export async function checkoutCheckingDeadline(
+  env: Env,
+  id: string,
+  fallback: number,
+) {
+  const progress = await env.STATE.withSession("first-primary")
+    .prepare(
+      "SELECT booking_created_ms,payment_window_ms FROM checkout_progress WHERE attempt_id=?",
+    )
+    .bind(id)
+    .first<{ booking_created_ms: number; payment_window_ms: number }>();
+  return progress
+    ? progress.booking_created_ms + progress.payment_window_ms + 300000
+    : fallback;
+}
+
 export async function checkoutExpired(env: Env, id: string, now: number) {
   return !!(await env.STATE.withSession("first-primary")
     .prepare(

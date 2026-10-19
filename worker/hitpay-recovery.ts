@@ -1,4 +1,7 @@
-import { retainCustomerConfirmation } from "./checkout-progress";
+import {
+  retainCustomerConfirmation,
+  checkoutCheckingDeadline,
+} from "./checkout-progress";
 import { ApiError, digest, policy } from "./policy";
 import {
   hitpayRecoveryEnabled,
@@ -54,6 +57,11 @@ export async function recoverHitpay(
       return base.reserve();
     },
   };
+  const checkingDeadline = await checkoutCheckingDeadline(
+    env,
+    id,
+    row.expires_ms + 300000,
+  );
   let result = "due",
     reason = "verification_pending";
   try {
@@ -99,7 +107,9 @@ export async function recoverHitpay(
         throw new ApiError(409, "hitpay_paid_state_changed");
       reason = "payment_pending";
       if (["failed", "expired", "canceled"].includes(verified.status)) {
-        result = "manual_review";
+        // Recheck terminal-looking request states through the fixed grace
+        // window; expiry alone is not proof that settlement is impossible.
+        result = Date.now() >= checkingDeadline ? "manual_review" : "due";
         reason = "hitpay_payment_" + verified.status;
       }
       return;
@@ -266,7 +276,10 @@ export async function recoverHitpay(
       ).bind(
         result,
         reason,
-        Date.now() + Math.min(3600000, 90000 * 2 ** Math.min(row.tries - 1, 6)),
+        Date.now() < checkingDeadline
+          ? Math.min(checkingDeadline, Date.now() + 90000)
+          : Date.now() +
+              Math.min(3600000, 90000 * 2 ** Math.min(row.tries - 1, 6)),
         id,
         row.generation,
       ),

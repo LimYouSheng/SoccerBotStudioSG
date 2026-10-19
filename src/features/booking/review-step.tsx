@@ -123,9 +123,7 @@ export function ReviewStep({
       <label className="check-label review-terms">
         <input
           type="checkbox"
-
           checked={draft.accepted}
-          disabled={verifying}
           onChange={(e) => update({ accepted: e.target.checked })}
         />
         <span>
@@ -163,7 +161,7 @@ export function ReviewStep({
           {verifying ? (
             "Verifying your reservation…"
           ) : busy ? (
-            <BrandLoading compact label="Checking your booking…" />
+            <BrandLoading compact label="Opening secure payment…" />
           ) : (
             "Continue to payment"
           )}

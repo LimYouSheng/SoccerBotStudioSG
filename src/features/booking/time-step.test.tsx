@@ -12,6 +12,7 @@ import { ConfirmationStep } from "./confirmation-step";
 import { demoBookingModel } from "@/services/demo/booking";
 import { loadBooking, saveBooking } from "@/services/storage";
 vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
 const restoredDate = "2026-10-13";
@@ -106,7 +107,7 @@ test("crossing notices persist in the basket and review before payment", async (
   ).toBeDisabled();
 });
 
-test("confirmation shows each contact and location once with all five sections expanded", async () => {
+test("confirmation places five actions above a compact summary and discloses complete details", async () => {
   const stored = loadBooking();
   const draft = {
     ...stored.draft,
@@ -133,6 +134,14 @@ test("confirmation shows each contact and location once with all five sections e
       <ConfirmationStep />
     </BookingProvider>,
   );
+  const disclosure = view.container.querySelector("details");
+  expect(disclosure).not.toHaveAttribute("open");
+  const actions = screen.getByLabelText("Booking actions");
+  expect(actions.querySelectorAll("button, a")).toHaveLength(5);
+  expect(actions.compareDocumentPosition(disclosure!)).toBe(
+    Node.DOCUMENT_POSITION_FOLLOWING,
+  );
+  fireEvent.click(screen.getByText("View full details"));
   expect(
     screen
       .getAllByRole("heading", { level: 2 })
@@ -144,7 +153,7 @@ test("confirmation shows each contact and location once with all five sections e
     "Amount",
     "Disclaimers",
   ]);
-  expect(view.container.querySelectorAll("details")).toHaveLength(0);
+  expect(disclosure).toHaveAttribute("open");
   expect(screen.getAllByText("Demo Customer", { exact: true })).toHaveLength(1);
   expect(screen.getAllByText("Studio 1", { exact: true })).toHaveLength(1);
   expect(screen.getAllByText("Faisal Shahril", { exact: true })).toHaveLength(

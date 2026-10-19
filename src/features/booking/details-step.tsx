@@ -24,7 +24,7 @@ export function DetailsStep({
       update,
       identityService,
       bookingService,
-      reserve,
+      review,
       action,
       selectionNotice,
       cancel,
@@ -206,14 +206,10 @@ export function DetailsStep({
               try {
                 if (draft.mode === "member" && remember && !(await save()))
                   return;
-                // Preparation validates the selection server-side before the
-                // one-use holding operation; no duplicate browser day read.
+                // Review uses the local draft; checkout owns server validation.
                 if (!mounted.current) return;
                 if (bookingService.mode === "live") {
-                  await reserve();
-                  // BookingPage owns live held/recovery routing. Keep its
-                  // existing Review mounted instead of pushing a second route.
-                  return;
+                  if (!(await review())) return;
                 }
                 if (mounted.current)
                   startNavigation(() => router.push("/book/review/"));
@@ -227,8 +223,8 @@ export function DetailsStep({
       >
         {!profileOnly && bookingService.mode === "live" && (
           <p>
-            Review booking checks your selected times and places a temporary
-            hold while you review and pay.
+            Review your selected times and details. Your booking is created when
+            you continue to payment.
           </p>
         )}
         <p className="booking-required">* Required fields</p>

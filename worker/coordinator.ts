@@ -758,7 +758,12 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     return rpcOutcome(() => pending);
   }
   async holdCustomer(
-    scope: { attemptId: string; cookie: string; value: unknown },
+    scope: {
+      attemptId: string;
+      cookie: string;
+      value: unknown;
+      checkout?: boolean;
+    },
     correlationId: string,
   ) {
     const attemptId = z.string().uuid().parse(scope.attemptId);
@@ -771,7 +776,8 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         if (
           !liveCustomerAccess(this.env) ||
           !input.holding ||
-          input.key !== attemptId
+          input.key !== attemptId ||
+          (scope.checkout && !input.accepted)
         )
           throw new ApiError(400, "combined_hold_unavailable");
         const env = {
@@ -794,6 +800,17 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           attemptId,
           holding: true,
           combinedHold: true,
+          onVerifiedHold: scope.checkout
+            ? (proof) =>
+                payHitpayHold(
+                  request,
+                  env,
+                  attemptId,
+                  this.provider,
+                  this.providerControl(false, true),
+                  proof,
+                )
+            : undefined,
           provider: this.provider,
           control: this.providerControl(false, true),
           recoveryControl: this.providerControl(true, true),

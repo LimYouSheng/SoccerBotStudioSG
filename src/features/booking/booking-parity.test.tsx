@@ -24,6 +24,7 @@ import { dateLabel } from "@/domain/dates";
 const push = vi.fn();
 const replace = vi.fn();
 vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
   useRouter: () => ({ push, replace }),
 }));
 afterEach(() => {
@@ -123,29 +124,32 @@ const slot = {
   },
 };
 function Seed() {
-  const { update } = useBooking();
+  const { update, checkout } = useBooking();
   return (
-    <button
-      onClick={() =>
-        update({
-          mode: "guest",
-          nativeServiceId: "12",
-          slots: [slot],
-          contact: {
-            name: "Test Customer",
-            email: "test@example.com",
-            phone: "+65 8123 4567",
-            contactMethod: "email",
-            academy: "Test Academy",
-          },
-        })
-      }
-    >
-      Choose test session
-    </button>
+    <>
+      <button onClick={() => void checkout()}>Dispatch checkout</button>
+      <button
+        onClick={() =>
+          update({
+            mode: "guest",
+            nativeServiceId: "12",
+            slots: [slot],
+            contact: {
+              name: "Test Customer",
+              email: "test@example.com",
+              phone: "+65 8123 4567",
+              contactMethod: "email",
+              academy: "Test Academy",
+            },
+          })
+        }
+      >
+        Choose test session
+      </button>
+    </>
   );
 }
-test("live calendar removes unavailable selections after fresh review and retains contact details", async () => {
+test("live calendar removes selections rejected at checkout and retains contact details", async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2027-01-01T00:00:00Z"));
   let stale = false;
@@ -214,11 +218,15 @@ test("live calendar removes unavailable selections after fresh review and retain
     false,
   );
   fireEvent.click(screen.getByRole("button", { name: "Review booking" }));
+  await waitFor(() => expect(push).toHaveBeenCalledWith("/book/review/"));
+  fireEvent.click(screen.getByText("Dispatch checkout"));
   const notices = await screen.findAllByRole("alert");
   expect(notices).toHaveLength(2); // This fixture mounts calendar and Details together.
   for (const notice of notices)
-    expect(notice).toHaveTextContent("sessions were removed");
-  expect(push).not.toHaveBeenCalled();
+    expect(notice).toHaveTextContent(
+      "The selected sessions were removed because availability changed.",
+    );
+  expect(push).toHaveBeenCalledWith("/book/review/");
   expect(screen.getByLabelText(/Full name/)).toHaveValue("Test Customer");
   expect(
     screen.queryByRole("button", {
@@ -373,7 +381,7 @@ test("fresh calendar receipts render before the minute clock ticks and expire at
   expect(screen.getByRole("status")).toHaveTextContent("loading");
 });
 
-test("preloaded browser slots survive date and player changes and Continue refreshes changed availability", async () => {
+test("preloaded browser slots survive edits and checkout rejects changed availability", async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2027-01-04T22:30:00Z"));
   let changed = false;
@@ -477,14 +485,18 @@ test("preloaded browser slots survive date and player changes and Continue refre
     false,
   );
   fireEvent.click(screen.getByRole("button", { name: "Review booking" }));
+  await waitFor(() => expect(push).toHaveBeenCalledWith("/book/review/"));
+  fireEvent.click(screen.getByText("Dispatch checkout"));
   const notices = await screen.findAllByRole("alert");
   expect(notices).toHaveLength(2); // This fixture mounts calendar and Details together.
   for (const notice of notices)
-    expect(notice).toHaveTextContent("sessions were removed");
+    expect(notice).toHaveTextContent(
+      "The selected sessions were removed because availability changed.",
+    );
   expect(availability.mock.calls.some(([input]) => input.fresh === true)).toBe(
     false,
   );
-  expect(push).not.toHaveBeenCalled();
+  expect(push).toHaveBeenCalledWith("/book/review/");
   expect(screen.getByLabelText(/Full name/)).toHaveValue("Test Customer");
   expect(
     screen.queryByRole("button", {
@@ -540,15 +552,12 @@ test("browser slot cache expires after five minutes", async () => {
   expect(screen.getByRole("status")).toHaveTextContent("loading");
 });
 
-test("Details accepts input before checking the complete selection on submission", async () => {
+test("Details opens local Review without waiting for unavailable providers", async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2027-01-01T00:00:00Z"));
-  let fail!: (error: Error) => void;
-  let finish!: (
-    attempt: Awaited<ReturnType<BookingService["checkout"]>>,
-  ) => void;
-  let submittedDraft!: Parameters<BookingService["checkout"]>[0]["draft"];
-  const availability = vi.fn<BookingService["availability"]>(async () => []);
+  const availability = vi.fn<BookingService["availability"]>(async () => {
+    throw new Error("Provider unavailable");
+  });
   const publicCalendar = vi.fn(async ({ month }: { month: string }) => ({
     month,
     serviceId: "12",
@@ -574,7 +583,6 @@ test("Details accepts input before checking the complete selection on submission
           ]
         : [],
   }));
-  let finishHold!: () => void;
   const service = {
     ...demoBookingService,
     mode: "live" as const,
@@ -586,21 +594,8 @@ test("Details accepts input before checking the complete selection on submission
     },
     publicCalendar,
     availability,
-    checkout: vi.fn(({ draft }: Parameters<BookingService["checkout"]>[0]) => {
-      submittedDraft = draft;
-      return new Promise<Awaited<ReturnType<BookingService["checkout"]>>>(
-        (resolve, reject) => {
-          finish = resolve;
-          fail = reject;
-        },
-      );
-    }),
-    pay: vi.fn(
-      ({ attempt }: Parameters<typeof demoBookingService.pay>[0]) =>
-        new Promise<typeof attempt>((resolve) => {
-          finishHold = () => resolve({ ...attempt, held: true });
-        }),
-    ),
+    checkout: vi.fn(demoBookingService.checkout),
+    pay: vi.fn(demoBookingService.pay),
   };
   const tree = (step: "time" | "details") => (
     <BookingProvider bookingService={service}>
@@ -621,58 +616,20 @@ test("Details accepts input before checking the complete selection on submission
     screen.getByRole("heading", { name: "Your details" }),
   ).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Review booking" }));
+  await waitFor(() => expect(push).toHaveBeenCalledWith("/book/review/"));
   expect(availability).not.toHaveBeenCalled();
-  expect(service.checkout).toHaveBeenCalledTimes(1);
-  expect(push).not.toHaveBeenCalled();
-  expect(
-    screen.getByRole("button", { name: "Checking availability…" }),
-  ).toBeDisabled();
-  await act(async () => fail(new Error("provider_auth_failed")));
-  expect(
-    screen.getByRole("heading", { name: "Your details" }),
-  ).toBeInTheDocument();
-  expect(
-    screen.getByText(/couldn’t complete that request/),
-  ).toBeInTheDocument();
+  expect(service.checkout).not.toHaveBeenCalled();
+  expect(service.pay).not.toHaveBeenCalled();
   expect(screen.getByLabelText(/Full name/)).toHaveValue("Test Customer");
-  expect(service.checkout).toHaveBeenCalledTimes(1);
-  expect(push).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole("button", { name: "Review booking" }));
-  await act(async () =>
-    finish({
-      id: "synthetic-held-attempt",
-      draft: submittedDraft,
-      status: "ready",
-      outcome: "pending",
-      checkUntil: 0,
-      booking: null,
-    }),
-  );
-  expect(service.pay).toHaveBeenCalledTimes(1);
-  expect(service.pay.mock.calls[0][0].signal?.aborted).toBe(false);
-  expect(
-    screen.getByRole("heading", { name: "Your details" }),
-  ).toBeInTheDocument();
-  expect(screen.getByLabelText(/Full name/)).toHaveValue("Test Customer");
-  expect(push).not.toHaveBeenCalled();
-  await act(async () => finishHold());
-  expect(replace).not.toHaveBeenCalledWith("/book/review/");
-  expect(window.location.pathname).toMatch(/\/book\/review\/$/);
-  expect(service.pay.mock.calls[0][0].attempt.draft.contact.name).toBe(
-    "Test Customer",
-  );
-  expect(availability).not.toHaveBeenCalled();
-  expect(service.checkout).toHaveBeenCalledTimes(2);
-  // A failed read retains the existing display cache.
   expect(publicCalendar).toHaveBeenCalledTimes(1);
 });
 
-test("failed preparation releases cached calendar without removing the selection or refetching", async () => {
+test("failed checkout preparation retains cached calendar and contact without refetching", async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2027-01-04T22:30:00Z"));
-  const availability = vi.fn<BookingService["availability"]>(async () => [
-    { ...slot, available: true },
-  ]);
+  const availability = vi.fn<BookingService["availability"]>(async () => {
+    throw new Error("availability unavailable");
+  });
   const publicCalendar = vi.fn(async ({ month }: { month: string }) => ({
     month,
     serviceId: "12",
@@ -743,6 +700,9 @@ test("failed preparation releases cached calendar without removing the selection
   await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(1));
   view.rerender(tree("details"));
   fireEvent.click(screen.getByRole("button", { name: "Review booking" }));
+  await waitFor(() => expect(push).toHaveBeenCalledWith("/book/review/"));
+  expect(availability).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByText("Dispatch checkout"));
   await waitFor(() => expect(checkout).toHaveBeenCalledTimes(1));
   await act(async () => {});
   expect(screen.getByLabelText(/Full name/)).toHaveValue("Test Customer");
@@ -841,7 +801,7 @@ test("reservation conflict removes its session locally and returns to calendar w
       </>
     );
   }
-  const tree = (step: "time" | "details") => (
+  const tree = (step: "time" | "details" | "review") => (
     <BookingProvider bookingService={service}>
       <Seed />
       <BookingPage step={step} />
@@ -854,6 +814,10 @@ test("reservation conflict removes its session locally and returns to calendar w
   await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(1));
   view.rerender(tree("details"));
   fireEvent.click(screen.getByRole("button", { name: "Review booking" }));
+  await waitFor(() => expect(push).toHaveBeenCalledWith("/book/review/"));
+  view.rerender(tree("review"));
+  fireEvent.click(screen.getByRole("checkbox"));
+  fireEvent.click(screen.getByRole("button", { name: "Continue to payment" }));
   await waitFor(() => expect(pay).toHaveBeenCalledTimes(1));
   await act(async () => {});
   fireEvent.click(screen.getByText("Return to calendar"));

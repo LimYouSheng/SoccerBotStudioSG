@@ -65,6 +65,14 @@ test("combined hold performs one preflight and preserves immutable identity acro
       )
       .bind(c.input.key)
       .first();
+    const context = await m.mf.dispatchFetch(
+      m.origin + `/api/attempts/${c.input.key}/checkout`,
+      { headers: c.headers },
+    );
+    assert.equal(
+      (await context.json()).checking.deadlineMs,
+      timing.booking_created_ms + 780000,
+    );
     assert.equal(timing.payment_window_ms, 480000);
     assert.equal(timing.hold_window_ms, 900000);
     await assert.rejects(
@@ -485,7 +493,11 @@ test("single hold exposes creation progress while independent readbacks are pend
       m.origin + `/api/booking/native/${c.input.key}`,
       { headers: c.headers },
     );
-    assert.equal((await beforeCreation.json()).state, "running");
+    assert.deepEqual(await beforeCreation.json(), {
+      attemptId: c.input.key,
+      state: "running",
+      paymentAvailable: false,
+    });
     releaseBook();
     await commenting;
     const beforeComment = await m.mf.dispatchFetch(
@@ -574,7 +586,7 @@ test("ongoing confirmation grants five fast stored-status checks while retaining
       );
       assert.equal(response.status, 200);
       const next = Number(response.headers.get("X-Next-Check"));
-      const delay = i < 5 ? 1000 : 5000;
+      const delay = i < 5 ? 1000 : 10000;
       assert.ok(next >= start + delay && next <= Date.now() + delay);
       const repeated = await m.mf.dispatchFetch(
         m.origin + `/api/attempts/${c.input.key}/confirmation`,
@@ -920,6 +932,141 @@ test("concurrent preflight attributes invalid fields correctly and creates no bo
       JSON.parse(row.result_json).diagnostic.operation,
       "required-fields",
     );
+  } finally {
+    await m.close();
+  }
+});
+
+test("checkout reuses complete creation evidence for one HitPay request without redundant reads", async () => {
+  const m = await createBookingMechanism();
+  try {
+    const c = await customer(m);
+    const send = (accepted) =>
+      m.mf.dispatchFetch(m.origin + `/api/booking/checkout/${c.input.key}`, {
+        method: "POST",
+        headers: c.headers,
+        body: JSON.stringify({ ...c.input, accepted }),
+      });
+    assert.equal((await send(false)).status, 400);
+    assert.equal(m.calls.filter((c) => c.body?.method === "book").length, 0);
+    const response = await send(true);
+    assert.equal(response.status, 200, await response.clone().text());
+    assert.deepEqual(await response.json(), {
+      attemptId: c.input.key,
+      state: "associated",
+      paymentAvailable: true,
+    });
+    assert.equal(m.calls.filter((c) => c.body?.method === "book").length, 1);
+    assert.equal(
+      m.calls.filter((c) => c.body?.method === "getBookingDetails").length,
+      0,
+    );
+    assert.equal(
+      m.calls.filter(
+        (c) => c.url.endsWith("/admin/invoices/901") && c.method === "GET",
+      ).length,
+      0,
+    );
+    assert.equal(
+      m.calls.filter(
+        (c) => c.url.includes("hit-pay.com") && c.method === "POST",
+      ).length,
+      1,
+    );
+    const repeat = await send(true);
+    assert.equal(repeat.status, 200);
+    assert.equal(m.calls.filter((c) => c.body?.method === "book").length, 1);
+    assert.equal(
+      m.calls.filter(
+        (c) => c.url.includes("hit-pay.com") && c.method === "POST",
+      ).length,
+      1,
+    );
+    assert.deepEqual(m.unexpected, []);
+  } finally {
+    await m.close();
+  }
+});
+
+test("combined checkout never creates HitPay after failed booking verification and preserves its attempt", async () => {
+  const m = await createBookingMechanism({
+    missingCreationDeadline: true,
+    respond: async (call) =>
+      call.body?.method === "getBookingDetails"
+        ? new Response(null, { status: 503 })
+        : undefined,
+  });
+  try {
+    const c = await customer(m);
+    const send = () =>
+      m.mf.dispatchFetch(m.origin + `/api/booking/checkout/${c.input.key}`, {
+        method: "POST",
+        headers: c.headers,
+        body: JSON.stringify({ ...c.input, accepted: true }),
+      });
+    const response = await send();
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      attemptId: c.input.key,
+      state: "recovery_required",
+      paymentAvailable: false,
+    });
+    assert.equal(m.calls.filter((c) => c.body?.method === "book").length, 1);
+    assert.equal(
+      m.calls.filter((c) => c.url.includes("hit-pay.com")).length,
+      0,
+    );
+    await send();
+    assert.equal(m.calls.filter((c) => c.body?.method === "book").length, 1);
+    assert.equal(
+      m.calls.filter((c) => c.url.includes("hit-pay.com")).length,
+      0,
+    );
+    assert.equal(
+      (await m.db.prepare("SELECT COUNT(*) AS n FROM attempts").first()).n,
+      1,
+    );
+  } finally {
+    await m.close();
+  }
+});
+
+test("combined batch checkout retains one payment effect and exact booking association", async () => {
+  const m = await createBookingMechanism({ batch: true });
+  try {
+    const c = await customer(m);
+    c.input.sessions.push({
+      ...c.input.sessions[0],
+      startMs: m.startMs + 3000000,
+    });
+    const send = () =>
+      m.mf.dispatchFetch(m.origin + `/api/booking/checkout/${c.input.key}`, {
+        method: "POST",
+        headers: c.headers,
+        body: JSON.stringify({ ...c.input, accepted: true }),
+      });
+    const response = await send();
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    assert.equal(
+      result.state,
+      "associated",
+      JSON.stringify(
+        await m.db
+          .prepare("SELECT result_json FROM native_checkout_grants")
+          .first(),
+      ),
+    );
+    assert.equal(result.paymentAvailable, true);
+    await send();
+    assert.equal(m.calls.filter((c) => c.body?.method === "book").length, 2);
+    assert.equal(
+      m.calls.filter(
+        (c) => c.url.includes("hit-pay.com") && c.method === "POST",
+      ).length,
+      1,
+    );
+    assert.deepEqual(m.unexpected, []);
   } finally {
     await m.close();
   }

@@ -301,10 +301,6 @@
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",
-    "title": "Details accepts input before checking the complete selection on submission"
-  },
-  {
-    "file": "src/features/booking/booking-parity.test.tsx",
     "title": "Details aborts an explicitly opened month and calendar return retains loaded months"
   },
   {
@@ -321,10 +317,6 @@
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",
-    "title": "failed preparation releases cached calendar without removing the selection or refetching"
-  },
-  {
-    "file": "src/features/booking/booking-parity.test.tsx",
     "title": "fresh calendar receipts render before the minute clock ticks and expire at their own deadline"
   },
   {
@@ -333,19 +325,11 @@
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",
-    "title": "live calendar removes unavailable selections after fresh review and retains contact details"
-  },
-  {
-    "file": "src/features/booking/booking-parity.test.tsx",
     "title": "live session preserves demo product player and inclusion presentation using provider labels"
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",
     "title": "live booking selection does not initialize an unrelated provider session"
-  },
-  {
-    "file": "src/features/booking/booking-parity.test.tsx",
-    "title": "preloaded browser slots survive date and player changes and Continue refreshes changed availability"
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",
@@ -394,6 +378,10 @@
   {
     "file": "src/features/booking/details-step.test.tsx",
     "title": "verified opt-out details submit without saving a contact profile"
+  },
+  {
+    "file": "src/features/booking/direct-checkout.test.tsx",
+    "title": "restored editable Review avoids background catalogue and calendar reads"
   },
   {
     "file": "src/features/booking/direct-checkout.test.tsx",
@@ -493,7 +481,7 @@
   },
   {
     "file": "src/features/booking/time-step.test.tsx",
-    "title": "confirmation shows each contact and location once with all five sections expanded"
+    "title": "confirmation places five actions above a compact summary and discloses complete details"
   },
   {
     "file": "src/features/booking/time-step.test.tsx",
@@ -929,7 +917,7 @@
   },
   {
     "file": "tests/live-email.spec.ts",
-    "title": "real API revoked access during Details keeps the form and prevents provider creation"
+    "title": "real API revoked access at checkout retains the draft and denies protected access without provider creation"
   },
   {
     "file": "tests/live-email.spec.ts",
@@ -949,7 +937,7 @@
   },
   {
     "file": "tests/live-email.spec.ts",
-    "title": "real API batch hold checks each session once and restores one complete unpaid reservation"
+    "title": "real API batch checkout checks each session once and restores one complete unpaid reservation"
   },
   {
     "file": "tests/live-email.spec.ts",
@@ -965,7 +953,7 @@
   },
   {
     "file": "tests/live-email.spec.ts",
-    "title": "real API created hold opens pending Review before readback and enables payment only after verification"
+    "title": "real API editable Review creates nothing and checkout waits for verified creation before HitPay"
   },
   {
     "file": "tests/live-email.spec.ts",
@@ -978,10 +966,6 @@
   {
     "file": "src/services/async-booking.test.ts",
     "title": "holding progress only accepts the matching server milestone and stops without replaying the write"
-  },
-  {
-    "file": "src/features/booking/direct-checkout.test.tsx",
-    "title": "created single hold shows Review before readback and keeps payment disabled until verified"
   },
   {
     "file": "src/features/booking/confirmation-checking.test.tsx",
@@ -1028,7 +1012,39 @@
     "title": "manual review supersedes an earlier customer confirmation without exposing downloads"
   },
   {
+    "file": "src/features/booking/protected-confirmation.test.tsx",
+    "title": "poll-confirmed payment retains its displayed proof while the final receipt is delayed"
+  },
+  {
+    "file": "src/features/booking/booking-parity.test.tsx",
+    "title": "Details opens local Review without waiting for unavailable providers"
+  },
+  {
+    "file": "src/features/booking/booking-parity.test.tsx",
+    "title": "failed checkout preparation retains cached calendar and contact without refetching"
+  },
+  {
+    "file": "src/features/booking/booking-parity.test.tsx",
+    "title": "live calendar removes selections rejected at checkout and retains contact details"
+  },
+  {
+    "file": "src/features/booking/booking-parity.test.tsx",
+    "title": "preloaded browser slots survive edits and checkout rejects changed availability"
+  },
+  {
+    "file": "src/features/booking/confirmation-checking.test.tsx",
+    "title": "a return at minute seven keeps six minutes of checking and makes one final read without renewing on reload"
+  },
+  {
+    "file": "src/features/booking/direct-checkout.test.tsx",
+    "title": "Review performs no provider reads and checkout verifies one booking before HitPay"
+  },
+  {
+    "file": "src/services/booking.test.ts",
+    "title": "live draft reload preserves edits but never restores consent or payment authority"
+  },
+  {
     "file": "tests/live-email.spec.ts",
-    "title": "real API expired unpaid Review returns to calendar without recreating the booking or losing contact"
+    "title": "real API expired unpaid Review retains its hold through the grace window without recreating or losing contact"
   }
 ]

@@ -140,13 +140,13 @@ test("synthetic paid but invalid booking needs recovery instead of claiming succ
   await start(page);
   await outcome(page, "Simulate payment needing review");
   await expect(
-    page.getByRole("heading", { name: "Your booking needs review" }),
+    page.getByRole("heading", { name: "Payment status unresolved" }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Booking confirmed", exact: true }),
   ).toHaveCount(0);
   await expect(
-    page.getByText(/does not mean your payment was cancelled/),
+    page.getByText(/The checking deadline does not cancel payment/),
   ).toBeVisible();
   await page.screenshot({
     path: info.outputPath("04-recovery.png"),

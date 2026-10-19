@@ -1,4 +1,5 @@
 "use client";
+import { loadingMessage } from "./booking-loading";
 import { BrandLoading as InlineLoading } from "@/components/brand-loading";
 import Link from "next/link";
 import { useState } from "react";
@@ -36,7 +37,7 @@ export function BookingConfirmation({
   booking,
   preview = false,
   pending = false,
-  pendingLabel = "Checking your payment and booking…",
+  pendingLabel = "Verifying your payment…",
   taxMinor = 0,
   verifiedAtMs,
   onAgain,
@@ -84,10 +85,18 @@ export function BookingConfirmation({
     }
   }
   return (
-    <div className="status-shell">
+    <div className="status-shell confirmation-shell">
       <div className="status-heading">
         {pending ? (
-          <InlineLoading compact label={pendingLabel} />
+          <>
+            <InlineLoading compact label={pendingLabel} />
+            <p className="text-sm text-muted">{pendingLabel}</p>
+            <p className="text-sm text-muted">
+              We’re checking your previous payment before another checkout can
+              start. Your details are saved.
+            </p>
+            <p className="text-sm text-muted">{loadingMessage}</p>
+          </>
         ) : (
           <>
             <span className="status-icon">
@@ -111,120 +120,7 @@ export function BookingConfirmation({
           {preview ? "Booking reference" : "SoccerBot reference"}{" "}
           <strong className="text-ink">{booking.reference}</strong>
         </p>
-        {booking.providerReferences && (
-          <div className="reference">
-            <p>
-              SimplyBook booking ID
-              {booking.providerReferences.bookingIds.length > 1
-                ? "s"
-                : ""}:{" "}
-              <strong>
-                {booking.providerReferences.bookingIds.join(", ")}
-              </strong>
-            </p>
-            <p>
-              SimplyBook invoice ID:{" "}
-              <strong>{booking.providerReferences.invoiceId}</strong>
-            </p>
-          </div>
-        )}
       </div>
-      <section className="surface confirmation-card">
-        <section
-          className="confirmation-section"
-          aria-labelledby="confirmation-client"
-        >
-          <h2 className="section-title" id="confirmation-client">
-            Client Details
-          </h2>
-          <ClientDetails contact={booking.draft.contact} />
-        </section>
-        <section
-          className="confirmation-section"
-          aria-labelledby="confirmation-sessions"
-        >
-          <h2 className="section-title" id="confirmation-sessions">
-            Session Details
-          </h2>
-          <p className="confirmation-service">
-            <strong>
-              {booking.slots[0]?.native?.serviceName ?? SERVICE_NAME}
-            </strong>
-            <br />
-            {booking.draft.players}{" "}
-            {booking.draft.players === 1 ? "player" : "players"} per session ·
-            40 minutes · Singapore time
-          </p>
-          <SessionList slots={booking.slots} showRotation={false} />
-        </section>
-        <section
-          className="confirmation-section"
-          aria-labelledby="confirmation-location"
-        >
-          <h2 className="section-title" id="confirmation-location">
-            Location
-          </h2>
-          <p>
-            <strong>
-              {[...new Set(booking.slots.map((slot) => slot.studio))].join(
-                ", ",
-              )}
-            </strong>
-            <br />
-            {ADDRESS}
-          </p>
-        </section>
-        <section
-          className="confirmation-section"
-          aria-labelledby="confirmation-amount"
-        >
-          <h2 className="section-title" id="confirmation-amount">
-            Amount
-          </h2>
-          <div className="paid">
-            {pending ? (
-              <span aria-hidden="true" />
-            ) : (
-              <span className="pill success">
-                {preview ? "Paid · Preview" : "Paid"}
-              </span>
-            )}
-            <strong>{money(booking.totalCents)}</strong>
-          </div>
-          <p className="hint">
-            {preview
-              ? `${booking.slots.length} session${booking.slots.length === 1 ? "" : "s"} · SGD · Inclusive of GST`
-              : `SGD · Tax ${money(taxMinor)}`}
-          </p>
-        </section>
-        <section
-          className="confirmation-section"
-          aria-labelledby="confirmation-disclaimers"
-        >
-          <h2 className="section-title" id="confirmation-disclaimers">
-            Disclaimers
-          </h2>
-          {booking.slots
-            .filter((slot) => slot.rotationAt)
-            .map((slot) => (
-              <p className="rotation-notice" key={`${slot.date}|${slot.start}`}>
-                {dateLabel(slot.date)}, {slot.start}–{endTime(slot.start)}:
-                Crosses the {slot.rotationAt} instructor rotation. Your assigned
-                instructor stays for the full session.
-              </p>
-            ))}
-          <Arrival />
-          <p className="hint">
-            Follow your instructor’s safety guidance. Contact the studio for
-            changes, cancellations or refund enquiries.
-          </p>
-          {preview && (
-            <p className="payment-foot">
-              Payment preview · No money was charged.
-            </p>
-          )}
-        </section>
-      </section>
       {!pending && (
         <div className="confirmation-actions" aria-label="Booking actions">
           <button
@@ -267,28 +163,161 @@ export function BookingConfirmation({
             <Icon name="phone" />
             <span>Need help?</span>
           </a>
+          <Link
+            href="/"
+            className="button secondary confirmation-home"
+            onClick={
+              onHome
+                ? (event) => {
+                    event.preventDefault();
+                    void leave(onHome);
+                  }
+                : undefined
+            }
+          >
+            Back to home
+          </Link>
         </div>
       )}
+      <section className="surface confirmation-card">
+        <div className="confirmation-summary" aria-label="Booking summary">
+          <strong>
+            {booking.slots[0]?.native?.serviceName ?? SERVICE_NAME}
+          </strong>
+          <p>
+            {booking.draft.players}{" "}
+            {booking.draft.players === 1 ? "player" : "players"} ·{" "}
+            {booking.slots.length}{" "}
+            {booking.slots.length === 1 ? "session" : "sessions"} · Singapore
+            time
+          </p>
+          <p>
+            {dateLabel(booking.slots[0].date)} · {booking.slots[0].start}–
+            {endTime(booking.slots[0].start)}
+            {booking.slots.length > 1
+              ? ` · +${booking.slots.length - 1} more below`
+              : ""}
+          </p>
+          <div className="paid">
+            <span className={pending ? undefined : "pill success"}>
+              {pending ? "Total" : preview ? "Paid · Preview" : "Paid"}
+            </span>
+            <strong>{money(booking.totalCents)} SGD</strong>
+          </div>
+        </div>
+        <details className="confirmation-full-details">
+          <summary>View full details</summary>
+          {booking.providerReferences && (
+            <div className="reference">
+              <p>
+                SimplyBook booking ID
+                {booking.providerReferences.bookingIds.length > 1
+                  ? "s"
+                  : ""}:{" "}
+                <strong>
+                  {booking.providerReferences.bookingIds.join(", ")}
+                </strong>
+              </p>
+              <p>
+                SimplyBook invoice ID:{" "}
+                <strong>{booking.providerReferences.invoiceId}</strong>
+              </p>
+            </div>
+          )}
+          <section
+            className="confirmation-section"
+            aria-labelledby="confirmation-client"
+          >
+            <h2 className="section-title" id="confirmation-client">
+              Client Details
+            </h2>
+            <ClientDetails contact={booking.draft.contact} />
+          </section>
+          <section
+            className="confirmation-section"
+            aria-labelledby="confirmation-sessions"
+          >
+            <h2 className="section-title" id="confirmation-sessions">
+              Session Details
+            </h2>
+            <p className="confirmation-service">
+              <strong>
+                {booking.slots[0]?.native?.serviceName ?? SERVICE_NAME}
+              </strong>
+              <br />
+              {booking.draft.players}{" "}
+              {booking.draft.players === 1 ? "player" : "players"} per session ·
+              40 minutes · Singapore time
+            </p>
+            <SessionList slots={booking.slots} showRotation={false} />
+          </section>
+          <section
+            className="confirmation-section"
+            aria-labelledby="confirmation-location"
+          >
+            <h2 className="section-title" id="confirmation-location">
+              Location
+            </h2>
+            <p>
+              <strong>
+                {[...new Set(booking.slots.map((slot) => slot.studio))].join(
+                  ", ",
+                )}
+              </strong>
+              <br />
+              {ADDRESS}
+            </p>
+          </section>
+          <section
+            className="confirmation-section"
+            aria-labelledby="confirmation-amount"
+          >
+            <h2 className="section-title" id="confirmation-amount">
+              Amount
+            </h2>
+            <p className="hint">
+              {preview
+                ? `${booking.slots.length} session${booking.slots.length === 1 ? "" : "s"} · SGD · Inclusive of GST`
+                : `SGD · Tax ${money(taxMinor)}`}
+            </p>
+          </section>
+          <section
+            className="confirmation-section"
+            aria-labelledby="confirmation-disclaimers"
+          >
+            <h2 className="section-title" id="confirmation-disclaimers">
+              Disclaimers
+            </h2>
+            {booking.slots
+              .filter((slot) => slot.rotationAt)
+              .map((slot) => (
+                <p
+                  className="rotation-notice"
+                  key={`${slot.date}|${slot.start}`}
+                >
+                  {dateLabel(slot.date)}, {slot.start}–{endTime(slot.start)}:
+                  Crosses the {slot.rotationAt} instructor rotation. Your
+                  assigned instructor stays for the full session.
+                </p>
+              ))}
+            <Arrival />
+            <p className="hint">
+              Follow your instructor’s safety guidance. Contact the studio for
+              changes, cancellations or refund enquiries.
+            </p>
+            {preview && (
+              <p className="payment-foot">
+                Payment preview · No money was charged.
+              </p>
+            )}
+          </section>
+        </details>
+      </section>
+
       {error && (
         <p className="alert mt-4" role="alert">
           {error}
         </p>
-      )}
-      {!pending && (
-        <Link
-          href="/"
-          className="button secondary confirmation-home"
-          onClick={
-            onHome
-              ? (event) => {
-                  event.preventDefault();
-                  void leave(onHome);
-                }
-              : undefined
-          }
-        >
-          Back to home
-        </Link>
       )}
     </div>
   );

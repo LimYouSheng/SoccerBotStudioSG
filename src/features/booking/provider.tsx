@@ -1,4 +1,5 @@
 "use client";
+import { usePathname } from "next/navigation";
 import { BookingLoadingProvider } from "./booking-loading";
 import {
   protectedCheckoutService,
@@ -10,7 +11,7 @@ import {
 } from "@/services/confirmation";
 import { isHitpayCheckoutUrl } from "@/domain/native-checkout";
 import { todaySG } from "@/domain/dates";
-import { slotKey } from "@/domain/booking";
+import { slotKey, selectionErrors } from "@/domain/booking";
 import { useCalendarAvailability } from "./calendar-availability";
 import {
   createContext,
@@ -40,11 +41,13 @@ import {
 } from "@/services/contracts";
 import {
   loadBooking,
+  loadLiveDraft,
+  saveLiveDraft,
   saveBooking,
   type StoredBooking,
 } from "@/services/storage";
 import { useBookingAvailability } from "./availability";
-type Action = Exclude<BookingOperation, "availability"> | "reserve";
+type Action = Exclude<BookingOperation, "availability"> | "reserve" | "review";
 type ActionState = {
   status:
     "idle" | "loading" | "success" | "failure" | "unavailable" | "cancelled";
@@ -69,6 +72,7 @@ interface BookingContextValue extends StoredBooking {
   cancel: () => void;
   update: (change: Partial<BookingDraft>) => void;
   reserve: () => Promise<boolean>;
+  review: () => Promise<boolean>;
   checkout: () => Promise<boolean>;
   pay: (outcome: Outcome) => Promise<boolean>;
   check: () => Promise<boolean>;
@@ -175,7 +179,16 @@ export function BookingProvider({
       restoredOwner.identityService !== identityService);
   const [calendarMonth, showMonth] = useState(() => todaySG().slice(0, 7));
   const [calendarPaused, pauseCalendar] = useState(false);
-  const [calendarBrowsing, setCalendarBrowsing] = useState(true);
+  const [browsingRequested, setCalendarBrowsing] = useState(true);
+  const pathname = usePathname();
+  // The route is known before the streamed page mounts. A page effect alone
+  // can briefly enable display reads while restoring an editable Review.
+  const calendarBrowsing =
+    browsingRequested &&
+    !!pathname &&
+    !/\/(?:book\/(?:details|review|payment|confirmation)|confirmation)\/?$/.test(
+      pathname,
+    );
   const [date, showDate] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const sessionKey = useCallback(
@@ -205,6 +218,7 @@ export function BookingProvider({
       service.operations.availability !== "live" ||
       !service.publicCalendar ||
       restorationPending ||
+      !calendarBrowsing ||
       !!value.attempt
     )
       return;
@@ -213,7 +227,7 @@ export function BookingProvider({
       // The booking screen owns the recoverable error; no background retry.
     });
     return () => controller.abort();
-  }, [service, restorationPending, value.attempt]);
+  }, [service, restorationPending, calendarBrowsing, value.attempt]);
   const availability = useBookingAvailability(
     service,
     value.attempt ||
@@ -260,16 +274,21 @@ export function BookingProvider({
   const latest = useRef(value);
   const hydrationOwner = useRef({ service, identityService });
   const commit = useCallback(
-    (next: StoredBooking, preserveConfirmation = false) => {
+    (
+      next: StoredBooking,
+      preserveConfirmation = false,
+      preserveOperation = false,
+    ) => {
       const state = {
         ...next,
         ready: true,
-        revision: latest.current.revision + 1,
+        revision: latest.current.revision + (preserveOperation ? 0 : 1),
         confirmationRevision:
           latest.current.confirmationRevision + (preserveConfirmation ? 0 : 1),
       };
       latest.current = state;
       if (service.mode === "demo") saveBooking(next);
+      else saveLiveDraft(next.draft);
       dispatch(state);
     },
     [service],
@@ -303,7 +322,7 @@ export function BookingProvider({
     commit(
       service.mode === "demo"
         ? loadBooking()
-        : { version: 2, draft: blankDraft(), attempt: null },
+        : { version: 2, draft: loadLiveDraft(), attempt: null },
       sameSession,
     );
     const controller = new AbortController();
@@ -362,6 +381,7 @@ export function BookingProvider({
       if (
         operation !== "checkout" &&
         operation !== "reserve" &&
+        operation !== "review" &&
         !current.attempt
       )
         return false;
@@ -405,12 +425,23 @@ export function BookingProvider({
             "Your email session has expired. Verify your email again.",
           );
         const signal = request.controller.signal;
+        if (operation === "review") {
+          // Review is a local draft, not a reservation. The checkout service
+          // owns fresh validation at the write boundary.
+          const errors = selectionErrors(current.draft.slots, Date.now());
+          if (errors.length)
+            throw new BookingServiceError("conflict", errors[0]);
+          setAction({ status: "success", operation });
+          return true;
+        }
         let attempt =
           operation === "checkout" && current.attempt?.held
             ? current.attempt
             : operation === "checkout" || operation === "reserve"
               ? await service.checkout({
-                  holding: operation === "reserve",
+                  holding:
+                    operation === "reserve" ||
+                    (operation === "checkout" && service.mode === "live"),
                   draft: current.draft,
                   previous: current.attempt,
                   signal,
@@ -439,13 +470,15 @@ export function BookingProvider({
         ) {
           // Retain the prepared attempt before the one-use provider write.
           // A missing reply must never cause a new preparation or payment.
-          holdDispatched = operation === "reserve";
+          const startCheckout = operation === "checkout" && !attempt.held;
+          holdDispatched = operation === "reserve" || startCheckout;
           attempt = await service.pay({
             attempt,
             outcome: "pending",
             signal,
-            holding: operation === "reserve",
-            onHoldCreated:
+            holding: operation === "reserve" || startCheckout,
+            startCheckout,
+            onReviewReady:
               operation === "reserve"
                 ? () => {
                     if (!isCurrent()) return;
@@ -456,11 +489,21 @@ export function BookingProvider({
                 : undefined,
           });
           if (!isCurrent()) return false;
+          // Consent may change while the created hold is being verified.
+          // Carry it forward without canceling or recreating the reservation.
+          if (operation === "reserve") {
+            current = latest.current;
+            attempt = { ...attempt, draft: current.draft };
+          }
           commit({ ...current, attempt });
           current = latest.current;
           if (operation === "reserve") {
             setAction({ status: "success", operation });
             return attempt.held === true && attempt.status === "ready";
+          }
+          if (attempt.status === "pending") {
+            setAction({ status: "success", operation });
+            return true;
           }
           const context = await protectedCheckoutService.context({
             attemptId: attempt.id,
@@ -506,12 +549,15 @@ export function BookingProvider({
             restored?.held &&
             restored.status === "ready"
           ) {
-            commit({ ...latest.current, attempt: restored });
+            commit({
+              ...latest.current,
+              attempt: { ...restored, draft: latest.current.draft },
+            });
             setAction({ status: "success", operation });
             return true;
           }
         }
-        if (latest.current.attempt?.verifying) {
+        if (holdDispatched && latest.current.attempt) {
           commit({
             ...latest.current,
             attempt: {
@@ -558,7 +604,9 @@ export function BookingProvider({
           return false;
         }
         const selectionRejected =
-          operation === "reserve" &&
+          (operation === "reserve" ||
+            operation === "review" ||
+            operation === "checkout") &&
           (known.code === "selection_unavailable" ||
             known.code === "selection_changed");
         if (selectionRejected) {
@@ -668,19 +716,28 @@ export function BookingProvider({
         },
         update(change) {
           const current = latest.current;
-          if (current.attempt?.held) {
+          if (current.attempt?.held || current.attempt?.verifying) {
             if (
-              active.current ||
+              (active.current &&
+                !(
+                  current.attempt.verifying &&
+                  active.current.operation === "reserve"
+                )) ||
               current.attempt.status !== "ready" ||
               Object.keys(change).some((key) => key !== "accepted")
             )
               return;
             const draft = { ...current.draft, ...change };
-            commit({
-              ...current,
-              draft,
-              attempt: { ...current.attempt, draft },
-            });
+            // Only consent may change during this same reservation. It does
+            // not invalidate the in-flight hold result or its request guard.
+            const consentingDuringReserve =
+              current.attempt.verifying === true &&
+              active.current?.operation === "reserve";
+            commit(
+              { ...current, draft, attempt: { ...current.attempt, draft } },
+              consentingDuringReserve,
+              consentingDuringReserve,
+            );
             return;
           }
           if (
@@ -698,6 +755,7 @@ export function BookingProvider({
           });
         },
         reserve: () => run("reserve"),
+        review: () => run("review"),
         checkout: () => run("checkout"),
         pay: (outcome) => run("pay", outcome),
         check: () => run("check"),

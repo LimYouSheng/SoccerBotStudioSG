@@ -20,7 +20,10 @@ import { ReviewStep } from "./review-step";
 import { PaymentStep } from "./payment-step";
 
 const navigation = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => navigation }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
+  useRouter: () => navigation,
+}));
 function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (error: unknown) => void;
@@ -399,7 +402,7 @@ test("review waits before navigation and same-turn duplicate checkout has one lo
   expect(checkout).toHaveBeenCalledTimes(1);
   expect(navigation.push).not.toHaveBeenCalled();
   expect(
-    screen.getByRole("button", { name: "Checking your booking…" }),
+    screen.getByRole("button", { name: "Opening secure payment…" }),
   ).toBeDisabled();
   const result = demoBookingModel.checkout(draft(), null);
   await act(async () => {
@@ -768,7 +771,7 @@ test("replacing an adapter cancels its pending action and releases the new revie
   );
   fireEvent.click(screen.getByRole("button", { name: "Continue to payment" }));
   expect(
-    screen.getByRole("button", { name: "Checking your booking…" }),
+    screen.getByRole("button", { name: "Opening secure payment…" }),
   ).toBeDisabled();
   view.rerender(
     <BookingProvider bookingService={replacement}>

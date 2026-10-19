@@ -15,7 +15,10 @@ import type {
   CustomerChallenge,
 } from "@/services/contracts";
 const navigation = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => navigation }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
+  useRouter: () => navigation,
+}));
 test("account waits for owned guest access and duplicate click cannot navigate early", async () => {
   let finish!: () => void;
   const guest = vi.fn(

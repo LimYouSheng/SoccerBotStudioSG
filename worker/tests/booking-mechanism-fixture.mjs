@@ -41,6 +41,7 @@ export async function createBookingMechanism(options = {}) {
     value.lines[0].bookings[0].start_datetime = wall(startMs);
     value.lines[0].bookings[0].end_datetime = wall(startMs + 3000000);
   }
+  if (options.missingCreationDeadline) delete creation.invoice.due_datetime;
   creation.bookings[0].client_hash = "synthetic-client-hash";
   const secondStartMs = startMs + 3000000;
   const secondCreation = structuredClone(creation.bookings[0]);
@@ -142,13 +143,13 @@ export async function createBookingMechanism(options = {}) {
           url.pathname === "/v1/payment-requests" &&
           request.method === "POST"
         ) {
-          assert.equal(body.amount, "88.00");
+          assert.equal(body.amount, options.batch ? "176.00" : "88.00");
           assert.equal(body.currency, "SGD");
           reference = body.reference_number;
           return Response.json({
             id: requestId,
             reference_number: reference,
-            amount: "88.00",
+            amount: options.batch ? "176.00" : "88.00",
             currency: "SGD",
             status: "pending",
             allow_repeated_payments: false,
@@ -167,7 +168,7 @@ export async function createBookingMechanism(options = {}) {
           return Response.json({
             id: requestId,
             reference_number: reference,
-            amount: "88.00",
+            amount: options.batch ? "176.00" : "88.00",
             currency: "SGD",
             status: paymentComplete ? "completed" : "pending",
             allow_repeated_payments: false,
@@ -178,7 +179,7 @@ export async function createBookingMechanism(options = {}) {
               ? [
                   {
                     id: "20000000-0000-4000-8000-000000000004",
-                    amount: "88.00",
+                    amount: options.batch ? "176.00" : "88.00",
                     currency: "SGD",
                     status: "succeeded",
                     refunded_amount: "0",

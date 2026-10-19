@@ -2,9 +2,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ConfirmationError, readConfirmation } from "@/services/confirmation";
 type View = "checking" | "confirmed" | "unavailable" | "unresolved" | "denied";
-type Window = { deadline: number; next: number; count: number };
+type Window = {
+  deadline: number;
+  next: number;
+  count: number;
+  final?: boolean;
+};
 type ServerWindow = { deadlineMs: number; nextCheckMs: number };
-function windowFor(id: string): Window {
+function windowFor(id: string, deadline = Date.now() + 600000): Window {
   try {
     const value = JSON.parse(
       localStorage.getItem(`soccerbot-checking:${id}`) || "null",
@@ -20,7 +25,7 @@ function windowFor(id: string): Window {
   } catch {
     /* Server limits remain authoritative when browser storage fails. */
   }
-  return { deadline: Date.now() + 600000, next: 0, count: 0 };
+  return { deadline, next: 0, count: 0 };
 }
 function save(id: string, window: Window) {
   try {
@@ -33,6 +38,7 @@ export function useConfirmationChecking(
   attemptId: string,
   sessionRevision = 0,
   enabled = true,
+  serverDeadline?: number,
 ) {
   const [result, setResult] = useState<{
     id: string;
@@ -58,7 +64,7 @@ export function useConfirmationChecking(
       generation = 0;
     let controller: AbortController | undefined,
       timer: ReturnType<typeof setTimeout> | undefined;
-    let budget = windowFor(attemptId);
+    let budget = windowFor(attemptId, serverDeadline);
     save(attemptId, budget);
     const show = (view: View) => {
       if (active)
@@ -94,22 +100,28 @@ export function useConfirmationChecking(
     }
     function reserve() {
       const claim = () => {
-        const shared = windowFor(attemptId);
+        const shared = windowFor(attemptId, serverDeadline);
         budget = {
           deadline: Math.min(budget.deadline, shared.deadline),
           next: Math.max(budget.next, shared.next),
           count: Math.max(budget.count, shared.count),
+          final: budget.final || shared.final,
         };
-        if (Date.now() >= budget.deadline || budget.count >= 120) {
+        if (
+          (Date.now() >= budget.deadline && budget.final) ||
+          budget.count >= 120
+        ) {
           terminal = true;
           show("unresolved");
           return false;
         }
-        if (Date.now() < budget.next) return false;
+        if (Date.now() < budget.next && Date.now() < budget.deadline)
+          return false;
         budget = {
           ...budget,
           next: Date.now() + 5000,
           count: budget.count + 1,
+          final: budget.final || Date.now() >= budget.deadline,
         };
         save(attemptId, budget);
         return true;
@@ -152,7 +164,9 @@ export function useConfirmationChecking(
                 requestController.abort();
                 reject(new ConfirmationError("unavailable"));
               },
-              Math.max(1, Math.min(10000, budget.deadline - Date.now())),
+              budget.final
+                ? 10000
+                : Math.max(1, Math.min(10000, budget.deadline - Date.now())),
             );
           }),
         ]);
@@ -168,7 +182,9 @@ export function useConfirmationChecking(
         customerConfirmation =
           "customerConfirmation" in response
             ? response.customerConfirmation
-            : undefined;
+            : response.status === "confirmed"
+              ? customerConfirmation
+              : undefined;
         expired = "expired" in response && response.expired === true;
         paymentReceived =
           response.reason === "payment_received_booking_pending" ||
@@ -232,14 +248,19 @@ export function useConfirmationChecking(
       // Checkout context and confirmation share the same server-owned window.
       // Bind it before exposing checkout, even when the first status read is
       // still pending. Neither a late context nor another tab may extend it.
-      const shared = windowFor(attemptId);
+      const shared = windowFor(attemptId, serverDeadline);
       budget = {
         deadline: Math.min(budget.deadline, shared.deadline, window.deadlineMs),
         next: Math.max(budget.next, shared.next, window.nextCheckMs),
         count: Math.max(budget.count, shared.count),
+        final: budget.final || shared.final,
       };
       save(attemptId, budget);
-      if (!terminal && Date.now() >= budget.deadline) {
+      if (
+        !terminal &&
+        Date.now() >= budget.deadline &&
+        (budget.final || busy)
+      ) {
         terminal = true;
         generation++;
         controller?.abort();
@@ -262,7 +283,7 @@ export function useConfirmationChecking(
       document.removeEventListener("visibilitychange", visibility);
       window.removeEventListener("focus", visibility);
     };
-  }, [attemptId, sessionRevision, enabled]);
+  }, [attemptId, sessionRevision, enabled, serverDeadline]);
   return {
     customerConfirmation:
       result?.id === attemptId && result.revision === sessionRevision

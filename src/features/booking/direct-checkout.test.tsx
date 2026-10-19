@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { BookingProvider, useBooking } from "./provider";
@@ -5,15 +6,25 @@ import { BookingPage } from "./booking-page";
 import { ReviewStep } from "./review-step";
 import type { BookingService } from "@/services/contracts";
 import { liveBookingService } from "@/services/booking";
+import { saveLiveDraft } from "@/services/storage";
+import { demoCustomerIdentity } from "@/services/demo/identity";
 import { blankDraft, type Attempt } from "@/domain/booking";
 
-const navigation = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => navigation }));
+const navigation = vi.hoisted(() => ({
+  push: vi.fn(),
+  replace: vi.fn(),
+  path: "/",
+}));
+vi.mock("next/navigation", () => ({
+  useRouter: () => navigation,
+  usePathname: () => navigation.path,
+}));
 const id = "00000000-0000-4000-8000-000000000001";
 const url = `https://checkout.sandbox.hit-pay.com/payment-request/@soccerbot/${id}/checkout`;
 const draft = {
   ...blankDraft(),
   mode: "guest" as const,
+  nativeServiceId: "2",
   accepted: true,
   contact: {
     name: "Test",
@@ -53,8 +64,50 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   vi.useRealTimers();
+  navigation.path = "/";
   navigation.push.mockReset();
   navigation.replace.mockReset();
+});
+it("restored editable Review avoids background catalogue and calendar reads", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-15T00:00:00Z"));
+  navigation.path = "/SoccerBotStudioSG/book/review/";
+  saveLiveDraft(draft);
+  const fetch = vi.fn(async () => new Response(null, { status: 503 }));
+  vi.stubGlobal("fetch", fetch);
+  const publicCalendar = vi.fn(async ({ month }: { month: string }) => ({
+    month,
+    serviceId: "2",
+    observedAtMs: Date.now(),
+    dates: [],
+  }));
+  const restore = vi.fn(async () => null);
+  function DeferredReview() {
+    const [shown, show] = useState(false);
+    return shown ? (
+      <BookingPage step="review" />
+    ) : (
+      <button onClick={() => show(true)}>Mount Review</button>
+    );
+  }
+  render(
+    <BookingProvider
+      bookingService={{ ...liveBookingService, restore, publicCalendar }}
+      identityService={{ ...demoCustomerIdentity, mode: "live" }}
+    >
+      <DeferredReview />
+    </BookingProvider>,
+  );
+  await act(async () => {});
+  expect(restore).toHaveBeenCalledTimes(1);
+  expect(publicCalendar).not.toHaveBeenCalled();
+  expect(fetch).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Mount Review" }));
+  expect(screen.getByRole("heading", { name: "Review booking" })).toBeVisible();
+  expect(screen.getByRole("checkbox")).not.toBeChecked();
+  expect(restore).toHaveBeenCalledTimes(1);
+  expect(publicCalendar).not.toHaveBeenCalled();
+  expect(fetch).not.toHaveBeenCalled();
 });
 async function directCase(scenario: string) {
   vi.useFakeTimers({ toFake: ["Date"] });
@@ -126,7 +179,7 @@ async function directCase(scenario: string) {
   expect(screen.getByTestId("retained")).toHaveTextContent(id);
   expect(pay).toHaveBeenCalledTimes(1);
   fireEvent.click(
-    screen.getByRole("button", { name: "Checking your booking…" }),
+    screen.getByRole("button", { name: "Opening secure payment…" }),
   );
   expect(checkout).toHaveBeenCalledTimes(1);
   expect(assign).not.toHaveBeenCalled();
@@ -140,13 +193,18 @@ async function directCase(scenario: string) {
     // the checkout destination loads. Never reveal the review form here.
     expect(screen.getByTestId("action")).toHaveTextContent("loading");
     expect(
-      screen.getByRole("status", { name: "Checking your booking…" }),
+      screen.getByRole("status", { name: "Opening secure payment…" }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Opening secure payment… Please don’t close or refresh this page while we finish.",
+      ),
+    ).toBeVisible();
     await act(async () => fireEvent.click(screen.getByText("Repeat checkout")));
     expect(pay).toHaveBeenCalledTimes(1);
     expect(assign).toHaveBeenCalledTimes(1);
     expect(
-      screen.getByRole("button", { name: "Checking your booking…" }),
+      screen.getByRole("button", { name: "Opening secure payment…" }),
     ).toBeDisabled();
     act(() => window.dispatchEvent(new PageTransitionEvent("pageshow")));
     expect(screen.getByTestId("action")).toHaveTextContent("loading");
@@ -408,116 +466,16 @@ it("HitPay HTTP conflict preserves the hold and shows payment failure without se
   expect(navigation.push).not.toHaveBeenCalled();
 });
 
-it("created single hold shows Review before readback and keeps payment disabled until verified", async () => {
+it("Review performs no provider reads and checkout verifies one booking before HitPay", async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-10-15T00:00:00Z"));
   let complete!: (attempt: Attempt) => void;
-  let created: Attempt;
+  let created!: Attempt;
   const assign = vi.fn();
-  const originalLocation = window.location;
-  vi.stubGlobal("location", {
-    assign,
-    get pathname() {
-      return originalLocation.pathname;
-    },
-  });
-  let finishContext!: (response: Response) => void;
-  let contextSignal: AbortSignal | undefined;
-  const fetchContext = vi.fn((_input: unknown, init?: RequestInit) => {
-    contextSignal = init?.signal ?? undefined;
-    return new Promise<Response>((resolve) => {
-      finishContext = resolve;
-    });
-  });
-  vi.stubGlobal("fetch", fetchContext);
-  const pay = vi.fn<BookingService["pay"]>(
-    ({ attempt, onHoldCreated, holding }) => {
-      if (!holding) return Promise.resolve({ ...attempt, status: "checking" });
-      created = attempt;
-      onHoldCreated?.();
-      return new Promise((resolve) => {
-        complete = resolve;
-      });
-    },
-  );
-  render(
-    <BookingProvider
-      bookingService={{
-        ...liveBookingService,
-        restore: undefined,
-        checkout: async ({ draft }) => ({
-          id,
-          draft,
-          status: "ready",
-          outcome: "pending",
-          checkUntil: 0,
-          booking: null,
-        }),
-        pay,
-        availability: async () => [],
-      }}
-    >
-      <Seed accepted={false} />
-      <BookingPage step="details" />
-    </BookingProvider>,
-  );
-  fireEvent.click(screen.getByText("Seed"));
-  const contactMethod = screen.getByLabelText(/Preferred contact method/);
-  expect(contactMethod).toHaveValue("email");
-  expect(
-    Array.from((contactMethod as HTMLSelectElement).options).map(
-      (option) => option.text,
-    ),
-  ).toEqual(["Email", "Call", "SMS", "WhatsApp"]);
-  await act(async () =>
-    fireEvent.click(screen.getByRole("button", { name: "Review booking" })),
-  );
-  expect(
-    screen.getByRole("heading", { name: "Review booking" }),
-  ).toBeInTheDocument();
-  expect(
-    screen.getByRole("button", { name: "Verifying your reservation…" }),
-  ).toBeDisabled();
-  expect(
-    screen.queryByRole("link", { name: "Edit selections" }),
-  ).not.toBeInTheDocument();
-  expect(pay).toHaveBeenCalledTimes(1);
-  expect(screen.queryByRole("link", { name: "Back" })).not.toBeInTheDocument();
-  expect(document.querySelector(".booking-flow-overlay")).toBeNull();
-  expect(document.querySelector(".page-loading-emblem")).toBeNull();
-  expect(screen.getByText("Review", { selector: "li" })).toHaveAttribute(
-    "aria-current",
-    "step",
-  );
-  const mountedReview = screen.getByRole("heading", { name: "Review booking" });
-  await act(async () => complete({ ...created!, held: true, status: "ready" }));
-  expect(screen.getByRole("heading", { name: "Review booking" })).toBe(
-    mountedReview,
-  );
-  expect(
-    screen.queryByRole("button", { name: "Review booking" }),
-  ).not.toBeInTheDocument();
-  expect(navigation.replace).not.toHaveBeenCalledWith("/book/review/");
-  expect(window.location.pathname).toMatch(/\/book\/review\/$/);
-  expect(navigation.push).not.toHaveBeenCalled();
-  expect(screen.getByRole("heading", { name: "Review booking" })).toBeVisible();
-  expect(document.querySelector(".booking-flow-overlay")).toBeNull();
-  expect(document.querySelector(".page-loading-emblem")).toBeNull();
-  expect(pay).toHaveBeenCalledTimes(1);
-  fetchContext.mockClear();
-  fireEvent.click(screen.getByRole("checkbox"));
-  await act(async () =>
-    fireEvent.click(
-      screen.getByRole("button", { name: "Continue to payment" }),
-    ),
-  );
-  expect(fetchContext).toHaveBeenCalledTimes(1);
-  expect(contextSignal?.aborted).toBe(false);
-  expect(navigation.replace).not.toHaveBeenCalledWith("/book/payment/");
-  expect(screen.queryByRole("heading", { name: "Client Details" })).toBeNull();
-  expect(screen.getByTestId("action")).toHaveTextContent("loading");
-  await act(async () =>
-    finishContext(
+  vi.stubGlobal("location", { assign });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
       Response.json({
         attemptId: id,
         mode: "live",
@@ -536,12 +494,74 @@ it("created single hold shows Review before readback and keeps payment disabled 
       }),
     ),
   );
+  const availability = vi.fn(async () =>
+    draft.slots.map((slot) => ({ ...slot, available: true })),
+  );
+  const pay = vi.fn<BookingService["pay"]>(({ attempt, holding }) => {
+    if (!holding) return Promise.resolve({ ...attempt, status: "checking" });
+    created = attempt;
+    return new Promise((resolve) => {
+      complete = resolve;
+    });
+  });
+  const checkout = vi.fn<BookingService["checkout"]>(async ({ draft }) => ({
+    id,
+    draft,
+    status: "ready",
+    outcome: "pending",
+    checkUntil: 0,
+    booking: null,
+  }));
+  function Journey() {
+    const [step, setStep] = useState<"details" | "review">("details");
+    navigation.push.mockImplementation(() => setStep("review"));
+    return <BookingPage step={step} />;
+  }
+  render(
+    <BookingProvider
+      bookingService={{
+        ...liveBookingService,
+        restore: undefined,
+        checkout,
+        pay,
+        availability,
+      }}
+    >
+      <Seed accepted={false} />
+      <Journey />
+    </BookingProvider>,
+  );
+  fireEvent.click(screen.getByText("Seed"));
+  await act(async () =>
+    fireEvent.click(screen.getByRole("button", { name: "Review booking" })),
+  );
+  expect(screen.getByRole("heading", { name: "Review booking" })).toBeVisible();
+  expect(availability).not.toHaveBeenCalled();
+  expect(checkout).not.toHaveBeenCalled();
+  expect(pay).not.toHaveBeenCalled();
+  expect(screen.getByRole("link", { name: "Edit details" })).toBeVisible();
+  expect(screen.getByRole("link", { name: "Edit selections" })).toBeVisible();
+  fireEvent.click(screen.getByRole("checkbox"));
+  await act(async () =>
+    fireEvent.click(
+      screen.getByRole("button", { name: "Continue to payment" }),
+    ),
+  );
+  expect(checkout).toHaveBeenCalledTimes(1);
+  expect(pay).toHaveBeenCalledTimes(1);
+  expect(pay.mock.calls[0][0].holding).toBe(true);
+  expect(assign).not.toHaveBeenCalled();
+  expect(
+    screen.getByRole("button", { name: "Opening secure payment…" }),
+  ).toBeDisabled();
+  fireEvent.click(screen.getByText("Repeat checkout"));
+  expect(pay).toHaveBeenCalledTimes(1);
+  await act(async () => complete({ ...created, status: "checking" }));
+  expect(pay).toHaveBeenCalledTimes(1);
+  expect(pay.mock.calls[0][0].startCheckout).toBe(true);
+  expect(pay.mock.calls[0][0].attempt.draft.accepted).toBe(true);
+  expect(checkout).toHaveBeenCalledTimes(1);
   expect(assign).toHaveBeenCalledExactlyOnceWith(url);
-  await act(async () => fireEvent.click(screen.getByText("Repeat checkout")));
-  expect(pay).toHaveBeenCalledTimes(2);
-  expect(fetchContext).toHaveBeenCalledTimes(1);
-  expect(screen.getByTestId("retained")).toHaveTextContent(id);
-  expect(screen.getByTestId("action")).toHaveTextContent("loading");
 });
 
 it("lost hold response restores only the same verified attempt without repeating the write", async () => {
@@ -557,8 +577,8 @@ it("lost hold response restores only the same verified attempt without repeating
   };
   let restoreResult: Attempt | null = null;
   const restore = vi.fn(async () => restoreResult);
-  const pay = vi.fn<BookingService["pay"]>(async ({ onHoldCreated }) => {
-    onHoldCreated?.();
+  const pay = vi.fn<BookingService["pay"]>(async ({ onReviewReady }) => {
+    onReviewReady?.();
     throw new TypeError("Failed to fetch");
   });
   function Reserve() {
@@ -618,8 +638,8 @@ it("lost hold response cannot adopt a different attempt returned by recovery", a
       id: "00000000-0000-4000-8000-000000000002",
       held: true,
     });
-  const pay = vi.fn<BookingService["pay"]>(async ({ onHoldCreated }) => {
-    onHoldCreated?.();
+  const pay = vi.fn<BookingService["pay"]>(async ({ onReviewReady }) => {
+    onReviewReady?.();
     throw new TypeError("Failed to fetch");
   });
   function Reserve() {

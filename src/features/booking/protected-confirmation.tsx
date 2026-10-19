@@ -63,6 +63,7 @@ export function ProtectedConfirmation({
     attemptId,
     sessionRevision,
     (!checkoutMode || contextSettled) && !saved,
+    contextMatches ? context.value.checking.deadlineMs : undefined,
   );
   const [receipt, setReceipt] = useState<{
     value: BookingReceipt;
@@ -297,7 +298,7 @@ export function ProtectedConfirmation({
         ? "Preparing your confirmation…"
         : checkoutMode && preparation === "loading"
           ? "Preparing checkout…"
-          : "Checking your payment and booking…";
+          : "Verifying your payment…";
     if (current?.details) {
       const details = bookingFromReceipt(current.details);
       return (
@@ -321,9 +322,14 @@ export function ProtectedConfirmation({
                 ? "Preparing your confirmation…"
                 : checkoutMode && preparation === "loading"
                   ? "Preparing checkout…"
-                  : "Checking your payment and booking…"
+                  : "Verifying your payment…"
             }
           />
+          <p className="text-sm text-muted">{pendingLabel}</p>
+          <p>
+            We’re checking your previous payment before another checkout can
+            start. Your details are saved.
+          </p>
           {current && <ConfirmationSummary summary={current.summary} />}
         </section>
       </div>
@@ -351,14 +357,14 @@ export function ProtectedConfirmation({
                 label={
                   checkoutMode && preparation === "loading"
                     ? "Preparing checkout…"
-                    : "Checking your payment and booking…"
+                    : "Verifying your payment…"
                 }
               />
             )
           ) : view === "confirmed" ? (
             "Booking confirmed"
           ) : view === "unresolved" ? (
-            "Your booking needs review"
+            "Payment status unresolved"
           ) : (
             "Confirmation unavailable"
           )}
@@ -374,7 +380,7 @@ export function ProtectedConfirmation({
                   ? "Please wait while we verify your booking."
                   : view === "unavailable"
                     ? "Status checking is temporarily unavailable. Your information is preserved. You can check again shortly."
-                    : "We could not verify this booking. Please contact the studio before trying another payment. The checking deadline does not mean your payment was cancelled."}
+                    : "We haven’t resolved your previous payment yet. Your booking attempt and details are saved. Another checkout remains unavailable until its payment outcome is verified. The checking deadline does not cancel payment."}
         </p>
         {historicalPayment && recordedPayment && (
           <p>

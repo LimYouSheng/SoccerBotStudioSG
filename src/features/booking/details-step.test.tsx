@@ -7,7 +7,10 @@ import { demoCustomerIdentity } from "@/services/demo/identity";
 import type { CustomerIdentityService } from "@/services/contracts";
 
 const mocks = vi.hoisted(() => ({ push: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
+  useRouter: () => ({ push: mocks.push }),
+}));
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();

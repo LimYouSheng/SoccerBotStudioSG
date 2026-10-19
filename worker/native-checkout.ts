@@ -108,6 +108,12 @@ export async function executeNativeCheckout(options: {
   accounting: () => { used: number; active: number };
   holding?: boolean;
   combinedHold?: boolean;
+  onVerifiedHold?: (proof: {
+    attemptId: string;
+    intentHash: string;
+    associationJson: string;
+    verifiedAtMs: number;
+  }) => Promise<{ state: string; paymentAvailable: boolean }>;
 }) {
   const { request, env, attemptId, provider } = options;
   z.string().uuid().parse(attemptId);
@@ -415,7 +421,17 @@ export async function executeNativeCheckout(options: {
       string,
       z.infer<typeof nativeAvailabilitySchema>
     > = {};
+    let creationEvidence:
+      | Parameters<
+          NonNullable<
+            Parameters<typeof nativeBookingOperations>[0]["onCreationEvidence"]
+          >
+        >[0]
+      | undefined;
     const operations = nativeBookingOperations({
+      onCreationEvidence: (value) => {
+        creationEvidence = value;
+      },
       scope,
       exchange,
       additional: { handle_invoice: true },
@@ -493,7 +509,7 @@ export async function executeNativeCheckout(options: {
         await env.STATE.prepare(
           "INSERT INTO checkout_progress(attempt_id,booking_created_ms,payment_window_ms,hold_window_ms) VALUES(?,?,480000,900000) ON CONFLICT(attempt_id) DO NOTHING",
         )
-          .bind(attemptId, createdAtMs)
+          .bind(attemptId, creationEvidence?.receivedAtMs ?? createdAtMs)
           .run();
       };
     operations.onFailure = (error, index) =>
@@ -519,34 +535,53 @@ export async function executeNativeCheckout(options: {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 15000);
       try {
-        const observed = await readNativeAttempt({
-          parallelSingle: true,
-          scope,
-          association: refs,
-          signal: controller.signal,
-          signature: (id) =>
-            storedNativeSignature(env.STATE, attemptId, id, secret),
-          exchange: async (operation, signal) => {
-            const response = await exchange(operation, signal);
-            if (operation.kind === "invoice-read")
-              dueDatetime = z
-                .object({ due_datetime: z.string() })
-                .parse(response.body).due_datetime;
-            return response;
-          },
-        });
-        observation = observed.observation;
+        const reusable =
+          paymentRoute === "hitpay" &&
+          options.onVerifiedHold &&
+          creationEvidence &&
+          scope.intent.sessions.length === 1 &&
+          creationEvidence.association.invoiceId === refs.invoiceId &&
+          creationEvidence.association.nativeCustomerId ===
+            refs.nativeCustomerId &&
+          JSON.stringify(creationEvidence.association.bookingIds) ===
+            JSON.stringify(refs.bookingIds) &&
+          typeof creationEvidence.dueDatetime === "string" &&
+          creationEvidence.receivedAtMs <= Date.now() &&
+          Date.now() - creationEvidence.receivedAtMs < 5000;
+        if (reusable && creationEvidence) {
+          // The strict creation normalizer already proves confirmation, exact
+          // session occupancy, invoice association, amount and unpaid state.
+          dueDatetime = creationEvidence.dueDatetime;
+          observation = creationEvidence.observation;
+        } else {
+          const observed = await readNativeAttempt({
+            parallelSingle: true,
+            scope,
+            association: refs,
+            signal: controller.signal,
+            signature: (id) =>
+              storedNativeSignature(env.STATE, attemptId, id, secret),
+            exchange: async (operation, signal) => {
+              const response = await exchange(operation, signal);
+              if (operation.kind === "invoice-read")
+                dueDatetime = z
+                  .object({ due_datetime: z.string() })
+                  .parse(response.body).due_datetime;
+              return response;
+            },
+          });
+          observation = observed.observation;
+        }
         if (
-          observed.observation.invoice.status !== "unpaid" ||
-          observed.observation.bookings.some(
-            (booking) => booking.status !== "confirmed",
-          )
+          observation.invoice.status !== "unpaid" ||
+          observation.bookings.some((booking) => booking.status !== "confirmed")
         )
           throw new ApiError(409, "native_checkout_state_changed");
       } finally {
         clearTimeout(timer);
         controller.abort();
       }
+      const verifiedAtMs = Date.now();
       await assertGranted();
       const timing = {
         invoiceId: refs.invoiceId,
@@ -570,10 +605,18 @@ export async function executeNativeCheckout(options: {
         observation!,
         Date.now(),
       );
-      result = {
-        state: "associated",
-        paymentAvailable: paymentRoute !== "hitpay",
-      };
+      result =
+        paymentRoute === "hitpay" && options.onVerifiedHold
+          ? await options.onVerifiedHold({
+              attemptId,
+              intentHash: row.intent_hash,
+              associationJson: associated.association_json,
+              verifiedAtMs,
+            })
+          : {
+              state: "associated",
+              paymentAvailable: paymentRoute !== "hitpay",
+            };
     }
   } catch (error) {
     retainFailure(error, "execution");

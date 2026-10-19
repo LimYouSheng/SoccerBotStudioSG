@@ -37,7 +37,8 @@ export type CheckoutInput = BookingRequest & {
   previous: Attempt | null;
 };
 export type PayInput = BookingRequest & {
-  onHoldCreated?: () => void;
+  startCheckout?: boolean;
+  onReviewReady?: () => void;
   attempt: Attempt;
   outcome: Outcome;
   holding?: boolean;

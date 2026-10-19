@@ -52,6 +52,12 @@ export async function payHitpayHold(
   id: string,
   provider: ProviderSession,
   control: ProviderControl,
+  verified?: {
+    attemptId: string;
+    intentHash: string;
+    associationJson: string;
+    verifiedAtMs: number;
+  },
 ) {
   assertHitpayCreation(env);
   const access = await authenticate(request, env, Date.now());
@@ -110,29 +116,37 @@ export async function payHitpayHold(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 20000);
   try {
-    const read = await readNativeAttempt({
-      parallelSingle: true,
-      scope,
-      association: associationSchema.parse(JSON.parse(row.association_json)),
-      signal: controller.signal,
-      signature: (bookingId) =>
-        storedNativeSignature(
-          env.STATE,
-          id,
-          bookingId,
-          hitpaySetting(env, "SIMPLYBOOK_DEV_SIGNING_SECRET"),
-        ),
-      exchange: async (operation, signal) => {
-        await assertHeld();
-        await provider.identity(env, control);
-        return provider.nativeRead(env, control, operation, signal);
-      },
-    });
-    if (
-      read.observation.invoice.status !== "unpaid" ||
-      read.observation.bookings.some((b) => b.status !== "confirmed")
-    )
-      throw new ApiError(409, "hitpay_hold_invalid");
+    const fresh =
+      verified?.attemptId === id &&
+      verified.intentHash === row.intent_hash &&
+      verified.associationJson === row.association_json &&
+      verified.verifiedAtMs <= Date.now() &&
+      Date.now() - verified.verifiedAtMs < 5000;
+    if (!fresh) {
+      const read = await readNativeAttempt({
+        parallelSingle: true,
+        scope,
+        association: associationSchema.parse(JSON.parse(row.association_json)),
+        signal: controller.signal,
+        signature: (bookingId) =>
+          storedNativeSignature(
+            env.STATE,
+            id,
+            bookingId,
+            hitpaySetting(env, "SIMPLYBOOK_DEV_SIGNING_SECRET"),
+          ),
+        exchange: async (operation, signal) => {
+          await assertHeld();
+          await provider.identity(env, control);
+          return provider.nativeRead(env, control, operation, signal);
+        },
+      });
+      if (
+        read.observation.invoice.status !== "unpaid" ||
+        read.observation.bookings.some((b) => b.status !== "confirmed")
+      )
+        throw new ApiError(409, "hitpay_hold_invalid");
+    }
     await prepareHitpay(
       env,
       scope,

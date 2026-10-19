@@ -43,6 +43,7 @@ const checkoutInput = z.object({
 });
 const attemptInput = z.object({ attempt: attemptSchema });
 const payInput = attemptInput.extend({
+  startCheckout: z.boolean().optional(),
   outcome: outcomeSchema,
   holding: z.boolean().optional(),
 });
@@ -290,13 +291,14 @@ export function defineBookingService(adapter: BookingService): BookingService {
         const result = await adapter.pay({
           ...request,
           signal: input.signal,
-          onHoldCreated: input.onHoldCreated,
+          onReviewReady: input.onReviewReady,
         });
         if (request.holding && adapter.mode === "live") {
           const held = resultAttempt(result, previous.draft, previous.id);
           if (!(
             (held.status === "ready" && held.held) ||
-            held.status === "checking"
+            held.status === "checking" ||
+            (request.startCheckout === true && held.status === "pending")
           ))
             throw invalidResponse();
           return held;
@@ -575,7 +577,7 @@ export const liveBookingService: BookingService = defineBookingService({
       booking: null,
     };
   },
-  async pay({ attempt, signal, holding, onHoldCreated }) {
+  async pay({ attempt, signal, holding, onReviewReady, startCheckout }) {
     if (attempt.draft.slots.some((slot) => !slot.native)) return unavailable();
     nativeAttemptId.parse(attempt.id);
     if (
@@ -603,8 +605,11 @@ export const liveBookingService: BookingService = defineBookingService({
               progress.signal,
             ),
           );
-        if (status.attemptId === attempt.id && status.state === "verifying") {
-          if (!progress.signal.aborted) onHoldCreated?.();
+        if (
+          status.attemptId === attempt.id &&
+          (status.state === "reviewing" || status.state === "verifying")
+        ) {
+          if (!progress.signal.aborted) onReviewReady?.();
           return;
         }
       } catch {
@@ -613,7 +618,7 @@ export const liveBookingService: BookingService = defineBookingService({
       if (!progress.signal.aborted && ++checks < 30)
         timer = setTimeout(() => void inspect(), 1000);
     };
-    if (holding && attempt.draft.slots.length === 1 && onHoldCreated)
+    if (holding && attempt.draft.slots.length === 1 && onReviewReady)
       timer = setTimeout(() => void inspect(), 1000);
     let raw: unknown;
     try {
@@ -621,7 +626,7 @@ export const liveBookingService: BookingService = defineBookingService({
         attempt.held
           ? `/api/booking/hitpay/${attempt.id}`
           : holding
-            ? `/api/booking/hold/${attempt.id}`
+            ? `/api/booking/${startCheckout ? "checkout" : "hold"}/${attempt.id}`
             : `/api/booking/native/${attempt.id}`,
         "POST",
         signal,
@@ -673,14 +678,15 @@ export const liveBookingService: BookingService = defineBookingService({
         result.rejectedSessionIndex,
       );
     }
-    if (holding && result.state === "associated")
+    if (holding && !startCheckout && result.state === "associated")
       return { ...attempt, verifying: undefined, held: true, status: "ready" };
     // A response can never mark the browser paid. All ambiguous writes remain
     // under this attempt and the protected confirmation/recovery owner.
     return {
       ...attempt,
       verifying: undefined,
-      status: "checking",
+      status:
+        startCheckout && result.state !== "associated" ? "pending" : "checking",
       outcome: "pending",
       booking: null,
     };

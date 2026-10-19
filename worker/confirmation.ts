@@ -1,4 +1,8 @@
-import { customerConfirmation, checkoutExpired } from "./checkout-progress";
+import {
+  customerConfirmation,
+  checkoutExpired,
+  checkoutCheckingDeadline,
+} from "./checkout-progress";
 import {
   storedHitpayCheckout,
   recordedHitpayPayment,
@@ -46,6 +50,7 @@ export async function confirmation(
     .bind(id, access.owner_id)
     .first<StoredAttempt>();
   if (!row) throw new ApiError(404, "attempt_unavailable");
+  row.deadline_ms = await checkoutCheckingDeadline(env, id, row.deadline_ms);
   const p = policy(env);
   if (now >= row.deadline_ms) {
     report?.({ deadlineMs: row.deadline_ms, nextCheckMs: now, remaining: 0 });
@@ -65,7 +70,9 @@ export async function confirmation(
     .bind(
       now,
       liveCustomerAccess(env) ? 1000 : p.POLL_INTERVAL_MS,
-      p.POLL_INTERVAL_MS,
+      liveCustomerAccess(env)
+        ? Math.max(p.POLL_INTERVAL_MS, 10000)
+        : p.POLL_INTERVAL_MS,
       row.id,
       access.owner_id,
       now,
@@ -315,7 +322,7 @@ export async function checkoutContext(
       })),
     },
     checking: {
-      deadlineMs: row.deadline_ms,
+      deadlineMs: await checkoutCheckingDeadline(env, id, row.deadline_ms),
       nextCheckMs: row.confirmation_next_ms,
       pollAfterMs: policy(env).POLL_INTERVAL_MS,
     },

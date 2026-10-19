@@ -1397,7 +1397,7 @@ test("HitPay creation mismatch retains only a redacted field diagnostic and neve
   assert.equal(creates, 1);
 });
 
-async function seedCustomerProgress() {
+async function seedCustomerProgress(createdAtMs = Date.now() - 1000) {
   const date = new Date(intent.sessions[0].startMs + 28800000)
     .toISOString()
     .slice(0, 10);
@@ -1405,7 +1405,7 @@ async function seedCustomerProgress() {
     .prepare(
       "INSERT INTO checkout_progress(attempt_id,booking_created_ms) VALUES(?,?)",
     )
-    .bind(attemptId, Date.now() - 1000)
+    .bind(attemptId, createdAtMs)
     .run();
   await db
     .prepare("UPDATE attempts SET state='observed' WHERE id=?")
@@ -1538,7 +1538,7 @@ test("verified HitPay payment confirms the retained live hold before accounting 
 
 test("expired unpaid hold releases only its active grant and retains immutable creation and booking history", async () => {
   const options = await seedHold(Date.now() - 1000);
-  await seedCustomerProgress();
+  await seedCustomerProgress(Date.now() - 600001);
   assert.deepEqual(
     await db
       .prepare(
@@ -1623,9 +1623,9 @@ test("expired unpaid hold releases only its active grant and retains immutable c
   );
 });
 
-test("expired checkout retains unknown payment and newer webhook evidence until authoritative unpaid expiry", async () => {
+test("expired checkout retains dispatched payment even after expired status and webhook reconciliation", async () => {
   const options = await seedHold(Date.now() - 1000);
-  await seedCustomerProgress();
+  await seedCustomerProgress(Date.now() - 780001);
   await seedPayment({ expired: true });
   const endpoint = origin + `/api/attempts/${attemptId}/expire`;
   const expire = () =>
@@ -1648,7 +1648,13 @@ test("expired checkout retains unknown payment and newer webhook evidence until 
     )
     .bind(attemptId)
     .run();
-  assert.equal((await expire()).status, 200);
+  assert.equal((await expire()).status, 409);
+  assert.ok(
+    await db
+      .prepare("SELECT 1 FROM native_checkout_grants WHERE attempt_id=?")
+      .bind(attemptId)
+      .first(),
+  );
   assert.ok(await row());
 });
 

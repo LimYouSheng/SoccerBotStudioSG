@@ -1,3 +1,7 @@
+import {
+  SESSION_MINUTES,
+  START_INTERVAL_MINUTES,
+} from "../src/domain/booking-policy";
 import { nativeBookingComment, type NativePrebooking } from "./prebooking";
 import { isNativeCheckoutUrl } from "../src/domain/native-checkout";
 import { z } from "zod";
@@ -66,6 +70,12 @@ export function nativeBookingOperations(options: {
   db: D1Database;
   clientSignature?: (clientId: string, hash: string) => Promise<string>;
   batchSignature?: (batchId: string, hash: string) => Promise<string>;
+  onCreationEvidence?: (evidence: {
+    association: ReturnType<typeof normalizeNativeCreation>["association"];
+    observation: Awaited<ReturnType<typeof readNativeAttempt>>["observation"];
+    dueDatetime: unknown;
+    receivedAtMs: number;
+  }) => void;
 }): BookingOperations {
   const intent = validateScope(options.scope);
   if (!intent.contact)
@@ -277,6 +287,34 @@ export function nativeBookingOperations(options: {
           ...options.scope,
           bookingObservedAtMs: response.receivedAtMs,
           invoiceObservedAtMs: response.receivedAtMs,
+        });
+        options.onCreationEvidence?.({
+          association: created.association,
+          dueDatetime: nativeRecord(envelope.invoice, "creation.invoice")
+            .due_datetime,
+          receivedAtMs: response.receivedAtMs,
+          observation: {
+            invoice: created.invoice,
+            bookings: intent.sessions.map((expected, index) => ({
+              accountId: intent.accountId,
+              environmentId: intent.environmentId,
+              attemptId: options.scope.attemptId,
+              customerId: intent.customerId,
+              invoiceId: created!.association.invoiceId,
+              observedAtMs: response.receivedAtMs,
+              status: "confirmed" as const,
+              session: {
+                bookingId: created!.association.bookingIds[index],
+                serviceId: expected.serviceId,
+                instructorId: expected.instructorId,
+                startMs: expected.startMs,
+                playEndMs: expected.startMs + SESSION_MINUTES * 60000,
+                occupiedStartMs: expected.startMs,
+                occupiedEndMs:
+                  expected.startMs + START_INTERVAL_MINUTES * 60000,
+              },
+            })),
+          },
         });
       }
       return {

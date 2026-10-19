@@ -26,9 +26,7 @@ function ConfirmationRoute() {
 }
 export default function ConfirmationPage() {
   return (
-    <Suspense
-      fallback={<BookingLoading label="Checking your payment and booking…" />}
-    >
+    <Suspense fallback={<BookingLoading label="Verifying your payment…" />}>
       <ConfirmationRoute />
     </Suspense>
   );
