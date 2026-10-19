@@ -1,6 +1,5 @@
 "use client";
 import { BrandLoading as InlineLoading } from "@/components/brand-loading";
-import { BookingLoading as BrandLoading } from "./booking-loading";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -250,7 +249,7 @@ export function BookingConfirmation({
             <Icon name="download" />
             <span>
               {downloading ? (
-                <BrandLoading compact label="Preparing download…" />
+                <InlineLoading compact label="Preparing download…" />
               ) : (
                 "Download booking details"
               )}

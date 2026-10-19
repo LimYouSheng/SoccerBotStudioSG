@@ -1,5 +1,17 @@
 # SoccerBotStudio — Service Contracts
 
+## Checkout progress, expiry and customer success — 19 October 2026 SGT
+
+`checkout_progress` (migration0033) retains the first validated booking creation clock and an immutable customer-confirmation snapshot. New HitPay holds use min(existing authoritative deadline, creation+600000ms); payment requests use min(hold deadline, creation+300000ms). Legacy holds retain their original deadlines. The original payment request is reused, never renewed. A matching verified payment received under a valid hold records customer success before accounting; this does not grant receipt/export authority. The timestamp is server verification time because the integration does not yet validate a provider completion-time field. Delayed verification after expiry remains conservative/manual review.
+
+Protected checkout/confirmation responses may carry `customerConfirmation` independently of reconciled `confirmation` or status=confirmed. The browser may show success from that authenticated snapshot while continuing bounded financial polling. Download clicks wait within that existing checking lifecycle and recheck the protected receipt before creating files. No full-page loading overlay belongs to a download. Saved customer confirmation retains its recorded verification time; native/historical confirmed receipt behavior is preserved.
+
+`POST /api/attempts/{id}/expire` requires current same-origin owner access and account-queue serialization. Only an expired verified hold with no dispatched payment, or an authoritatively expired unpaid payment with no newer receipt, releases its active ongoing complete grant. Archive and release are atomic and idempotent; history is immutable. Paid/unknown/new-webhook outcomes return checkout_expiry_unresolved and retain the original attempt. The browser only clears selected slots after success, keeps contact and shows Your reservation expired on the calendar. HitPay's page cannot be redirected by SoccerBot while the customer remains on its origin.
+
+Test-impact pass includes all shared/standalone return and Review setup, strict frontend/Worker inventories, additive migration/release preservation, download authorization, expired/late/unknown outcomes, one booking/payment/write, restoration and three-device actual-Worker browser journeys. No retries, skipped assertions or enlarged timeouts are introduced.
+
+Owner follow-up: payment expires five minutes after original creation, not five fresh minutes at HitPay opening. Review/verification/navigation all consume that window. A separately valid ten-minute SimplyBook hold would leave roughly five minutes for reconciliation; actual provider expiry and in-progress settlement behavior remain unverified. The existing20-second/whole-minute HitPay safety margin and80-second minimum preparation allowance may shorten usable checkout time further. Preserve late settlement, outage and unknown-write recovery. No claim that a local deadline releases provider capacity.
+
 ## Checkout handoff lifecycle regression — 19 October 2026
 
 BookingPage must retain Review during a live checkout action even when its original step prop is Details and history already displays /book/review/. Provider commits the prepared payment attempt before awaiting protected checkout context; that commit must not route to PaymentStep or invoke Review cleanup/cancel. Only the existing provider owner assigns a validated HitPay URL. Interrupted or unavailable outcomes retain the original attempt and existing recovery behavior.

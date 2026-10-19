@@ -252,7 +252,7 @@ it("verified live receipt uses demo sections and refuses exports after access is
   expect(reads).toBe(2);
 });
 
-const navigation = vi.hoisted(() => ({ push: vi.fn() }));
+const navigation = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
 vi.mock("next/navigation", () => ({
   useRouter: () => navigation,
   useSearchParams: () =>
@@ -673,4 +673,186 @@ it("Back to home starts the shared background exit and navigates without awaitin
   fireEvent.click(screen.getByRole("link", { name: "Back to home" }));
   expect(restart).toHaveBeenCalledWith(first);
   expect(navigation.push).toHaveBeenCalledWith("/");
+});
+
+it("verified payment shows confirmation before reconciliation and only the requested download waits", async () => {
+  const proof = receiptFixture();
+  let finish!: (value: Response) => void;
+  const verification = new Promise<Response>((resolve) => {
+    finish = resolve;
+  });
+  const fetch = vi.fn((url: string) =>
+    Promise.resolve(
+      url.endsWith("/checkout")
+        ? Response.json({
+            attemptId: first,
+            mode: "live",
+            customerConfirmation: proof,
+            details: Object.fromEntries(
+              Object.entries(proof).filter(([key]) => key !== "verifiedAtMs"),
+            ),
+            checkout: { state: "unavailable" },
+            summary: {
+              players: 2,
+              totalMinor: 8800,
+              currency: "SGD",
+              sessions: [{ startMs: proof.sessions[0].startMs, players: 2 }],
+            },
+            checking: {
+              deadlineMs: Date.now() + 600000,
+              nextCheckMs: 0,
+              pollAfterMs: 5000,
+            },
+          })
+        : url.endsWith("/receipt")
+          ? Response.json({ error: "receipt_not_verified" }, { status: 409 })
+          : verification,
+    ),
+  );
+  vi.stubGlobal("fetch", fetch);
+  render(<ProtectedConfirmation attemptId={first} checkoutMode="live" />);
+  await screen.findByRole("heading", { name: "Booking confirmed" });
+  expect(screen.getByText("Paid", { exact: true })).toBeVisible();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Download booking details" }),
+  );
+  await screen.findByRole("status", { name: "Preparing download…" });
+  expect(
+    screen.getByRole("heading", { name: "Booking confirmed" }),
+  ).toBeVisible();
+  expect(
+    document.querySelector(".booking-flow-overlay, .page-loading"),
+  ).toBeNull();
+  expect(
+    fetch.mock.calls.filter(([url]) => url.endsWith("/receipt")),
+  ).toHaveLength(0);
+  await act(async () =>
+    finish(Response.json({ status: "confirmed", reason: "verified" })),
+  );
+  await screen.findByRole("alert");
+  expect(
+    screen.getByRole("heading", { name: "Booking confirmed" }),
+  ).toBeVisible();
+  expect(
+    fetch.mock.calls.filter(([url]) => url.endsWith("/receipt")),
+  ).toHaveLength(1);
+});
+
+it("manual review supersedes an earlier customer confirmation without exposing downloads", async () => {
+  const proof = receiptFixture();
+  let finish!: (value: Response) => void;
+  const verification = new Promise<Response>((resolve) => {
+    finish = resolve;
+  });
+  const fetch = vi.fn((url: string) =>
+    Promise.resolve(
+      url.endsWith("/checkout")
+        ? Response.json({
+            attemptId: first,
+            mode: "live",
+            customerConfirmation: proof,
+            details: Object.fromEntries(
+              Object.entries(proof).filter(([key]) => key !== "verifiedAtMs"),
+            ),
+            checkout: { state: "unavailable" },
+            summary: {
+              players: 2,
+              totalMinor: 8800,
+              currency: "SGD",
+              sessions: [{ startMs: proof.sessions[0].startMs, players: 2 }],
+            },
+            checking: {
+              deadlineMs: Date.now() + 600000,
+              nextCheckMs: 0,
+              pollAfterMs: 5000,
+            },
+          })
+        : url.endsWith("/receipt")
+          ? Response.json({ error: "receipt_not_verified" }, { status: 409 })
+          : verification,
+    ),
+  );
+  vi.stubGlobal("fetch", fetch);
+  render(<ProtectedConfirmation attemptId={first} checkoutMode="live" />);
+  await screen.findByRole("heading", { name: "Booking confirmed" });
+  await act(async () =>
+    finish(
+      Response.json({
+        status: "unresolved",
+        reason: "payment_received_booking_pending",
+      }),
+    ),
+  );
+  await screen.findByRole("heading", {
+    name: "Payment received; booking confirmation pending",
+  });
+  expect(
+    screen.queryByRole("heading", { name: "Booking confirmed" }),
+  ).toBeNull();
+  expect(
+    screen.queryByRole("button", { name: "Download booking details" }),
+  ).toBeNull();
+  expect(
+    fetch.mock.calls.filter(([url]) => url.endsWith("/receipt")),
+  ).toHaveLength(0);
+});
+
+it("authoritative unpaid expiry releases the original attempt before returning to the calendar", async () => {
+  const proof = receiptFixture();
+  const onExpired = vi.fn();
+  let release!: (value: Response) => void;
+  const released = new Promise<Response>((resolve) => {
+    release = resolve;
+  });
+  const fetch = vi.fn((url: string) =>
+    url.endsWith("/expire")
+      ? released
+      : Promise.resolve(
+          Response.json(
+            url.endsWith("/checkout")
+              ? {
+                  attemptId: first,
+                  mode: "live",
+                  expired: true,
+                  details: Object.fromEntries(
+                    Object.entries(proof).filter(
+                      ([key]) => key !== "verifiedAtMs",
+                    ),
+                  ),
+                  checkout: { state: "unavailable" },
+                  summary: {
+                    players: 2,
+                    totalMinor: 8800,
+                    currency: "SGD",
+                    sessions: [
+                      { startMs: proof.sessions[0].startMs, players: 2 },
+                    ],
+                  },
+                  checking: {
+                    deadlineMs: Date.now() + 600000,
+                    nextCheckMs: 0,
+                    pollAfterMs: 5000,
+                  },
+                }
+              : { status: "pending", reason: "payment_verification_pending" },
+          ),
+        ),
+  );
+  vi.stubGlobal("fetch", fetch);
+  render(
+    <ProtectedConfirmation
+      attemptId={first}
+      checkoutMode="live"
+      onExpired={onExpired}
+    />,
+  );
+  await waitFor(() =>
+    expect(fetch.mock.calls.some(([url]) => url.endsWith("/expire"))).toBe(
+      true,
+    ),
+  );
+  expect(onExpired).not.toHaveBeenCalled();
+  await act(async () => release(Response.json({ expired: true })));
+  expect(onExpired).toHaveBeenCalledExactlyOnceWith(first);
+  expect(navigation.replace).toHaveBeenCalledWith("/book/time/");
 });

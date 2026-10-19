@@ -3962,6 +3962,12 @@
 }
 
 /* Full-page booking work retains its screen and scroll position underneath. */
+.booking-flow-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+
 html:has(.booking-flow-overlay) {
   overflow: hidden;
   scrollbar-gutter: stable;

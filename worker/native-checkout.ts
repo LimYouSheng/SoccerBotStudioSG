@@ -488,6 +488,14 @@ export async function executeNativeCheckout(options: {
     });
     if (ongoing && options.combinedHold)
       operations.validationMode = "per-session";
+    if (paymentRoute === "hitpay")
+      operations.onCreated = async (createdAtMs) => {
+        await env.STATE.prepare(
+          "INSERT INTO checkout_progress(attempt_id,booking_created_ms) VALUES(?,?) ON CONFLICT(attempt_id) DO NOTHING",
+        )
+          .bind(attemptId, createdAtMs)
+          .run();
+      };
     operations.onFailure = (error, index) =>
       retainFailure(error, "execution", index);
     result = await orchestrateBooking(request, env, attemptId, operations);

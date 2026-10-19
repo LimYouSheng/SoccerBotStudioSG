@@ -11,8 +11,18 @@ import type { ProtectedCheckoutService } from "./contracts";
 const idSchema = z.string().uuid();
 const decisionSchema = z.discriminatedUnion("status", [
   z.object({ status: z.literal("confirmed"), reason: z.literal("verified") }),
-  z.object({ status: z.literal("pending"), reason: z.string() }),
-  z.object({ status: z.literal("unresolved"), reason: z.string() }),
+  z.object({
+    status: z.literal("pending"),
+    reason: z.string(),
+    customerConfirmation: receiptSchema.optional(),
+    expired: z.boolean().optional(),
+  }),
+  z.object({
+    status: z.literal("unresolved"),
+    reason: z.string(),
+    customerConfirmation: receiptSchema.optional(),
+    expired: z.boolean().optional(),
+  }),
   z.object({ status: z.literal("invalid"), reason: z.string() }),
   z.object({ status: z.literal("denied"), reason: z.literal("access_denied") }),
 ]);
@@ -27,6 +37,8 @@ export class ConfirmationError extends Error {
 }
 const instant = z.number().int().nonnegative().safe();
 const contextSchema = z.strictObject({
+  customerConfirmation: receiptSchema.optional(),
+  expired: z.boolean().optional(),
   details: bookingDetailsSchema.optional(),
   confirmation: receiptSchema.optional(),
   payment: z
@@ -110,7 +122,14 @@ export async function readConfirmation(attemptId: string, signal: AbortSignal) {
     "confirmation",
     signal,
   );
-  return { ...decisionSchema.parse(await response.json()), checking };
+  const decision = decisionSchema.parse(await response.json());
+  if (
+    "customerConfirmation" in decision &&
+    decision.customerConfirmation?.attemptId !== undefined &&
+    decision.customerConfirmation.attemptId !== attemptId
+  )
+    throw new ConfirmationError("unavailable");
+  return { ...decision, checking };
 }
 export async function readBookingReceipt(
   attemptId: string,
@@ -188,7 +207,9 @@ export const protectedCheckoutService: ProtectedCheckoutService = {
       context.attemptId !== attemptId ||
       context.mode !== mode ||
       (context.confirmation && context.confirmation.attemptId !== attemptId) ||
-      (context.details && context.details.attemptId !== attemptId)
+      (context.details && context.details.attemptId !== attemptId) ||
+      (context.customerConfirmation &&
+        context.customerConfirmation.attemptId !== attemptId)
     )
       throw new ConfirmationError("unavailable");
     if (context.checkout.state === "available") {
@@ -220,6 +241,20 @@ export async function startSyntheticCheckout(
   if (!response.ok) throw new ConfirmationError("unavailable");
   return z.strictObject({ attemptId: idSchema }).parse(await response.json())
     .attemptId;
+}
+
+export async function expireBooking(attemptId: string) {
+  const id = idSchema.parse(attemptId);
+  const response = await fetch(`/api/attempts/${id}/expire`, {
+    method: "POST",
+    credentials: "same-origin",
+    redirect: "error",
+    cache: "no-store",
+  });
+  if (!response.ok || !(await response.json()).expired)
+    throw new Error(
+      "Payment status is still being checked. Your original booking has been kept.",
+    );
 }
 
 export async function dismissCompletedBooking(attemptId: string) {

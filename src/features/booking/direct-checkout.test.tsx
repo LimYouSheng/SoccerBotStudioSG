@@ -660,3 +660,91 @@ it("lost hold response cannot adopt a different attempt returned by recovery", a
   expect(pay).toHaveBeenCalledTimes(1);
   expect(restore).toHaveBeenCalledTimes(1);
 });
+
+it("expired Review releases only an authoritatively unpaid attempt and preserves contact on calendar return", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-15T00:00:00Z"));
+  vi.spyOn(crypto, "randomUUID").mockReturnValue(id);
+  let uncertain = true;
+  const calls: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const path = String(input);
+      calls.push(path);
+      if (path === `/api/booking/hold/${id}`)
+        return Response.json({
+          attemptId: id,
+          state: "associated",
+          paymentAvailable: false,
+        });
+      if (path === `/api/booking/hitpay/${id}`)
+        return Response.json({ error: "hitpay_hold_expired" }, { status: 409 });
+      if (path === `/api/attempts/${id}/expire`)
+        return uncertain
+          ? Response.json(
+              { error: "checkout_expiry_unresolved" },
+              { status: 409 },
+            )
+          : Response.json({ expired: true });
+      throw new Error("Unexpected request " + path);
+    }),
+  );
+  function State() {
+    const { update, reserve, attempt, draft: current } = useBooking();
+    return (
+      <>
+        <button
+          onClick={() =>
+            update({ ...draft, nativeServiceId: "2", accepted: false })
+          }
+        >
+          Fill details
+        </button>
+        <button onClick={() => void reserve()}>Reserve</button>
+        <output data-testid="attempt">
+          {attempt?.id ?? "none"}:{current.contact.email}:{current.slots.length}
+        </output>
+      </>
+    );
+  }
+  render(
+    <BookingProvider
+      bookingService={{
+        ...liveBookingService,
+        restore: undefined,
+        publicCalendar: undefined,
+        calendar: undefined,
+      }}
+    >
+      <State />
+      <BookingPage step="details" />
+    </BookingProvider>,
+  );
+  fireEvent.click(screen.getByText("Fill details"));
+  await act(async () => fireEvent.click(screen.getByText("Reserve")));
+  fireEvent.click(screen.getByRole("checkbox"));
+  await act(async () =>
+    fireEvent.click(
+      screen.getByRole("button", { name: "Continue to payment" }),
+    ),
+  );
+  expect(screen.getByTestId("attempt")).toHaveTextContent(id);
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "Your original booking has been kept",
+  );
+  uncertain = false;
+  await act(async () =>
+    fireEvent.click(
+      screen.getByRole("button", { name: "Continue to payment" }),
+    ),
+  );
+  expect(screen.getByTestId("attempt")).toHaveTextContent(
+    `none:${draft.contact.email}:0`,
+  );
+  expect(navigation.replace).toHaveBeenCalledWith("/book/time/");
+  expect(
+    calls.filter((path) => path.startsWith("/api/booking/hold/")),
+  ).toHaveLength(1);
+  expect(calls.filter((path) => path.endsWith("/expire"))).toHaveLength(2);
+});

@@ -358,11 +358,18 @@ async function nativeRequest(
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   if (!response.ok) {
-    if (path.startsWith("/api/booking/hitpay/"))
+    if (path.startsWith("/api/booking/hitpay/")) {
+      const body = await response.json().catch(() => null);
+      if (response.status === 409 && body?.error === "hitpay_hold_expired")
+        throw new BookingServiceError(
+          "reservation_expired",
+          "Your reservation expired. Please choose a time again. Your contact details have been kept.",
+        );
       throw new BookingServiceError(
         "payment_unavailable",
         "Payment checkout could not be verified. Your booking attempt has been kept. Do not start another booking or payment; contact the studio for help.",
       );
+    }
     if (
       response.status === 409 &&
       (path === "/api/booking/prepare" || path.startsWith("/api/booking/hold/"))

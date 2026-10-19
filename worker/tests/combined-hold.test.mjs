@@ -59,6 +59,17 @@ test("combined hold performs one preflight and preserves immutable identity acro
       responses.map((response) => response.json()),
     );
     assert.ok(results.some((result) => result.state === "associated"));
+    const timing = await m.db
+      .prepare(
+        "SELECT c.booking_created_ms,h.expires_ms FROM checkout_progress c JOIN hitpay_holds h USING(attempt_id) WHERE attempt_id=?",
+      )
+      .bind(c.input.key)
+      .first();
+    assert.ok(timing.booking_created_ms <= Date.now());
+    assert.ok(timing.expires_ms <= timing.booking_created_ms + 600000);
+    assert.ok(timing.expires_ms > timing.booking_created_ms);
+    assert.ok(timing.expires_ms > timing.booking_created_ms + 300000);
+
     assert.ok(results.every((result) => result.attemptId === c.input.key));
     for (const method of [
       "getEventList",
@@ -122,6 +133,29 @@ test("combined hold performs one preflight and preserves immutable identity acro
       m.calls.filter((call) => call.body?.method === "book").length,
       1,
     );
+    const checkout = await m.mf.dispatchFetch(
+      m.origin + `/api/booking/hitpay/${c.input.key}`,
+      {
+        method: "POST",
+        headers: c.headers,
+        body: JSON.stringify({ accepted: true }),
+      },
+    );
+    assert.equal(checkout.status, 200, await checkout.clone().text());
+    const payment = await m.db
+      .prepare("SELECT expires_ms FROM hitpay_payments WHERE attempt_id=?")
+      .bind(c.input.key)
+      .first();
+    assert.equal(
+      payment.expires_ms,
+      Math.min(timing.expires_ms, timing.booking_created_ms + 300000),
+    );
+    const creates = m.calls.filter(
+      (call) =>
+        call.url.endsWith("/v1/payment-requests") && call.method === "POST",
+    );
+    assert.equal(creates.length, 1);
+    assert.match(creates[0].body.expires_after, /^[1-4] mins$/);
     assert.deepEqual(m.unexpected, []);
   } finally {
     await m.close();

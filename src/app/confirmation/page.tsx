@@ -9,6 +9,7 @@ function ConfirmationRoute() {
   const {
     reset,
     restartAfterConfirmation,
+    restartAfterExpiry,
     confirmationRevision,
     bookingService,
   } = useBooking();
@@ -17,6 +18,7 @@ function ConfirmationRoute() {
       attemptId={params.get("attempt") || ""}
       sessionRevision={confirmationRevision}
       checkoutMode={bookingService.mode === "live" ? "live" : undefined}
+      onExpired={restartAfterExpiry}
       onAgain={reset}
       onRestart={restartAfterConfirmation}
     />

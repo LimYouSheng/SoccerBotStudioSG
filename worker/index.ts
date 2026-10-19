@@ -250,6 +250,21 @@ export default {
           STATE: env.STATE ? instrumentStorage(env.STATE) : env.STATE,
         };
         await verifyBindings(env);
+        const expire = /^\/api\/attempts\/([a-f0-9-]{36})\/expire$/.exec(
+          url.pathname,
+        );
+        if (expire) {
+          if (request.method !== "POST")
+            throw new ApiError(405, "operation_unavailable");
+          return json(
+            unwrapRpcOutcome(
+              await env.COORDINATOR.getByName(coordinatorName).expireCheckout({
+                attemptId: expire[1],
+                cookie: request.headers.get("Cookie") ?? "",
+              }),
+            ),
+          );
+        }
         const dismiss = /^\/api\/attempts\/([a-f0-9-]{36})\/dismiss$/.exec(
           url.pathname,
         );

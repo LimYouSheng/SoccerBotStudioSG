@@ -1393,3 +1393,319 @@ test("HitPay creation mismatch retains only a redacted field diagnostic and neve
   assert.equal(saved.reason, "hitpay_mismatch_checkout_url_format");
   assert.equal(creates, 1);
 });
+
+async function seedCustomerProgress() {
+  const date = new Date(intent.sessions[0].startMs + 28800000)
+    .toISOString()
+    .slice(0, 10);
+  await db
+    .prepare(
+      "INSERT INTO checkout_progress(attempt_id,booking_created_ms) VALUES(?,?)",
+    )
+    .bind(attemptId, Date.now() - 1000)
+    .run();
+  await db
+    .prepare("UPDATE attempts SET state='observed' WHERE id=?")
+    .bind(attemptId)
+    .run();
+  await db
+    .prepare(
+      "INSERT INTO native_checkout_grants(attempt_id,capability_hash,intent_hash,source_revision,contract_json,not_before_ms,expires_ms,starting_used,maximum_used,state,availability_json,ongoing) VALUES(?,?,?,?,?,?,?,?,?,?,?,1)",
+    )
+    .bind(
+      attemptId,
+      createHash("sha256").update("b".repeat(64)).digest("hex"),
+      scope.intentHash,
+      "a".repeat(40),
+      "{}",
+      Date.now() - 1000,
+      Date.now() + 600000,
+      0,
+      64,
+      "complete",
+      JSON.stringify({
+        [date]: {
+          date,
+          observedAtMs: Date.now(),
+          offers: [
+            {
+              serviceId: "12",
+              instructorId: "14",
+              serviceName: "Synthetic Session",
+              instructorName: "Synthetic Trainer",
+              startMs: intent.sessions[0].startMs,
+              priceMinor: 8800,
+              currency: "SGD",
+            },
+          ],
+        },
+      }),
+    )
+    .run();
+}
+
+test("verified HitPay payment confirms the retained live hold before accounting while exports remain protected", async () => {
+  const options = await seedHold();
+  await seedCustomerProgress();
+  await seedPayment();
+  const provider = providerFixture();
+  const previous = handler;
+  let release, entered;
+  const gate = new Promise((r) => {
+    release = r;
+  });
+  const reading = new Promise((r) => {
+    entered = r;
+  });
+  handler = async (request) => {
+    const body = await request
+      .clone()
+      .json()
+      .catch(() => null);
+    if (body?.method === "getBookingDetails") {
+      entered();
+      await gate;
+    }
+    return previous(request);
+  };
+  const work = recover();
+  try {
+    await reading;
+    const headers = options.headers;
+    const context = await (
+      await mf.dispatchFetch(origin + `/api/attempts/${attemptId}/checkout`, {
+        headers,
+      })
+    ).json();
+    assert.equal(context.customerConfirmation.attemptId, attemptId);
+    assert.equal(context.confirmation, undefined);
+    assert.equal((await row()).state, "claimed");
+    assert.equal(provider.writes(), 0);
+    assert.equal(
+      (
+        await mf.dispatchFetch(origin + `/api/attempts/${attemptId}/receipt`, {
+          headers,
+        })
+      ).status,
+      409,
+    );
+    const decision = await (
+      await mf.dispatchFetch(
+        origin + `/api/attempts/${attemptId}/confirmation`,
+        { headers },
+      )
+    ).json();
+    assert.equal(decision.status, "pending");
+    assert.deepEqual(
+      decision.customerConfirmation,
+      context.customerConfirmation,
+    );
+    release();
+    await work;
+    assert.equal(provider.writes(), 1);
+    assert.equal((await row()).state, "complete");
+    assert.equal(
+      (
+        await mf.dispatchFetch(origin + `/api/attempts/${attemptId}/expire`, {
+          method: "POST",
+          headers,
+        })
+      ).status,
+      409,
+    );
+    const saved = await (
+      await mf.dispatchFetch(origin + `/api/attempts/${attemptId}/checkout`, {
+        headers,
+      })
+    ).json();
+    assert.deepEqual(saved.customerConfirmation, context.customerConfirmation);
+    assert.equal(
+      (
+        await mf.dispatchFetch(origin + `/api/attempts/${attemptId}/receipt`, {
+          headers,
+        })
+      ).status,
+      200,
+    );
+  } finally {
+    release();
+    await work;
+  }
+});
+
+test("expired unpaid hold releases only its active grant and retains immutable creation and booking history", async () => {
+  const options = await seedHold(Date.now() - 1000);
+  await seedCustomerProgress();
+  const endpoint = origin + `/api/attempts/${attemptId}/expire`;
+  assert.equal(
+    (await mf.dispatchFetch(endpoint, { method: "POST", headers: { origin } }))
+      .status,
+    401,
+  );
+  assert.equal(
+    (
+      await mf.dispatchFetch(endpoint, {
+        method: "POST",
+        headers: { ...options.headers, origin: "https://foreign.test" },
+      })
+    ).status,
+    403,
+  );
+  const before = await db
+    .prepare("SELECT * FROM native_checkout_grants WHERE attempt_id=?")
+    .bind(attemptId)
+    .first();
+  for (let i = 0; i < 2; i++)
+    assert.equal(
+      (
+        await mf.dispatchFetch(endpoint, {
+          method: "POST",
+          headers: options.headers,
+        })
+      ).status,
+      200,
+    );
+  assert.equal(
+    await db
+      .prepare("SELECT 1 FROM native_checkout_grants WHERE attempt_id=?")
+      .bind(attemptId)
+      .first(),
+    null,
+  );
+  assert.deepEqual(
+    await db
+      .prepare(
+        "SELECT * FROM expired_native_checkout_grants WHERE attempt_id=?",
+      )
+      .bind(attemptId)
+      .first(),
+    before,
+  );
+  assert.ok(
+    await db
+      .prepare("SELECT 1 FROM hitpay_holds WHERE attempt_id=?")
+      .bind(attemptId)
+      .first(),
+  );
+  assert.ok(
+    await db
+      .prepare("SELECT 1 FROM attempts WHERE id=?")
+      .bind(attemptId)
+      .first(),
+  );
+  await assert.rejects(
+    db
+      .prepare(
+        "UPDATE checkout_progress SET booking_created_ms=? WHERE attempt_id=?",
+      )
+      .bind(Date.now(), attemptId)
+      .run(),
+    /checkout_creation_immutable/,
+  );
+  await assert.rejects(
+    db
+      .prepare("DELETE FROM expired_native_checkout_grants WHERE attempt_id=?")
+      .bind(attemptId)
+      .run(),
+    /expired_native_preserve/,
+  );
+});
+
+test("expired checkout retains unknown payment and newer webhook evidence until authoritative unpaid expiry", async () => {
+  const options = await seedHold(Date.now() - 1000);
+  await seedCustomerProgress();
+  await seedPayment({ expired: true });
+  const endpoint = origin + `/api/attempts/${attemptId}/expire`;
+  const expire = () =>
+    mf.dispatchFetch(endpoint, { method: "POST", headers: options.headers });
+  assert.equal((await expire()).status, 409);
+  await db
+    .prepare(
+      "UPDATE hitpay_payments SET state='manual_review',reason='hitpay_payment_expired' WHERE attempt_id=?",
+    )
+    .bind(attemptId)
+    .run();
+  await db
+    .prepare("INSERT INTO hitpay_receipts VALUES(?,?,?)")
+    .bind("new-receipt", attemptId, Date.now())
+    .run();
+  assert.equal((await expire()).status, 409);
+  await db
+    .prepare(
+      "UPDATE hitpay_payments SET receipt_checkpoint=(SELECT MAX(rowid) FROM hitpay_receipts) WHERE attempt_id=?",
+    )
+    .bind(attemptId)
+    .run();
+  assert.equal((await expire()).status, 200);
+  assert.ok(await row());
+});
+
+test("late verified payment cannot confirm an expired hold or release it for another booking", async () => {
+  const options = await seedHold(Date.now() - 500);
+  await seedCustomerProgress();
+  await seedPayment({ expired: true });
+  const provider = providerFixture();
+  await recover();
+  assert.equal((await row()).reason, "hitpay_late_payment_review");
+  assert.equal(provider.writes(), 0);
+  const context = await (
+    await mf.dispatchFetch(origin + `/api/attempts/${attemptId}/checkout`, {
+      headers: options.headers,
+    })
+  ).json();
+  assert.equal(context.customerConfirmation, undefined);
+  assert.equal(context.expired, false);
+  assert.equal(
+    (
+      await mf.dispatchFetch(origin + `/api/attempts/${attemptId}/expire`, {
+        method: "POST",
+        headers: options.headers,
+      })
+    ).status,
+    409,
+  );
+});
+
+test("on-time HitPay payment reconciles after payment expiry only within the original hold", async () => {
+  await seedHold();
+  await seedPayment({ expired: true });
+  await db
+    .prepare(
+      "UPDATE hitpay_payments SET paid_ms=?,payment_id=? WHERE attempt_id=?",
+    )
+    .bind(Date.now() - 60000, paymentId, attemptId)
+    .run();
+  const provider = providerFixture();
+  await recover();
+  assert.equal((await row()).state, "complete");
+  assert.equal(provider.writes(), 1);
+});
+
+test("on-time HitPay payment cannot finalize after the original hold expires", async () => {
+  await seedHold(Date.now() - 1000);
+  await seedCustomerProgress();
+  await seedPayment({ expired: true });
+  await db
+    .prepare(
+      "UPDATE hitpay_payments SET paid_ms=?,payment_id=? WHERE attempt_id=?",
+    )
+    .bind(Date.now() - 60000, paymentId, attemptId)
+    .run();
+  const provider = providerFixture();
+  await recover();
+  assert.equal((await row()).state, "manual_review");
+  assert.equal((await row()).reason, "hitpay_late_payment_review");
+  assert.equal((await row()).payment_id, paymentId);
+  assert.equal(provider.writes(), 0);
+  assert.equal(
+    (
+      await db
+        .prepare(
+          "SELECT confirmation_json FROM checkout_progress WHERE attempt_id=?",
+        )
+        .bind(attemptId)
+        .first()
+    ).confirmation_json,
+    null,
+  );
+});

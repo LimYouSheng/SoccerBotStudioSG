@@ -1,5 +1,15 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Customer confirmation and shared checkout deadline — 19 October 2026 SGT
+
+Current owner instruction supersedes the earlier all-reconciliation-before-success UI rule. A server-verified matching HitPay payment against the original verified, unexpired hold may show Booking confirmed and Paid immediately. Accounting reconciliation continues durably; downloads wait locally for the original reconciliation and then obtain fresh protected authorization. Customer success evidence is distinct from the reconciled receipt/export decision. Known conflicts/manual review must not gain confirmation.
+
+Persist the first successful validated creation timestamp. Review time counts toward the same five-minute payment deadline; retries, reloads, returning tabs and checkout creation cannot renew it. Cap it by the actual earlier provider/supervision expiry. Retain HitPay's existing remaining-time expiry request/readback checks and safety margin. A payment verified before the deadline remains on-time even if subsequent accounting takes longer. A provider payment-completion timestamp is not currently validated by this integration; first verification after expiry stays in recovery/manual review rather than inventing an on-time payment.
+
+On expired Review or checkout return, return to calendar with contact intact only after the server establishes unpaid expiry and atomically archives/releases the active grant. A payment creation with unknown outcome, recorded payment, unknown external write or newer webhook blocks release. Preserve attempts, holds, payment/receipt/effect journals and archived grants. No provider cancellation, financial reversal or slot reopening is implied. External HitPay expiry navigation remains provider-owned and physically unverified.
+
+Owner follow-up: payment expires five minutes after original creation, not five fresh minutes at HitPay opening. Review/verification/navigation all consume that window. A separately valid ten-minute SimplyBook hold would leave roughly five minutes for reconciliation; actual provider expiry and in-progress settlement behavior remain unverified. The existing20-second/whole-minute HitPay safety margin and80-second minimum preparation allowance may shorten usable checkout time further. Preserve late settlement, outage and unknown-write recovery. No claim that a local deadline releases provider capacity.
+
 ## Pending: controlled account-coordinator concurrency — 19 October 2026 SGT
 
 Owner-requested future implementation, after single-booking checkout is stable. Refresh and review actual latest main before implementation; the current foreground/display queues share one runner. This entry records pending work, not an implemented concurrency contract.

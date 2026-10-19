@@ -1,3 +1,4 @@
+import { customerConfirmation, checkoutExpired } from "./checkout-progress";
 import {
   storedHitpayCheckout,
   recordedHitpayPayment,
@@ -50,10 +51,13 @@ export async function confirmation(
     report?.({ deadlineMs: row.deadline_ms, nextCheckMs: now, remaining: 0 });
     // The deadline ends checking, not the validity of fresh authoritative proof.
     // Preserve the shared booking/money/paid decision without reopening polls.
-    return (
-      (await hitpayConfirmationGuard(env, id)) ??
-      decideStoredConfirmation(row, access, now, p)
-    );
+    const guard = await hitpayConfirmationGuard(env, id);
+    if (!guard) return decideStoredConfirmation(row, access, now, p);
+    return {
+      ...guard,
+      customerConfirmation: await customerConfirmation(env, id),
+      expired: await checkoutExpired(env, id, now),
+    };
   }
   const quota = await env.STATE.prepare(
     "UPDATE attempts SET confirmation_next_ms=? + CASE WHEN confirmation_checks<5 THEN ? ELSE ? END,confirmation_checks=confirmation_checks+1 WHERE id=? AND owner_id=? AND confirmation_next_ms<=? AND confirmation_checks<120 RETURNING confirmation_next_ms,confirmation_checks",
@@ -92,7 +96,12 @@ export async function confirmation(
     remaining: 120 - quota.confirmation_checks,
   });
   const guard = await hitpayConfirmationGuard(env, id);
-  if (guard) return guard;
+  if (guard)
+    return {
+      ...guard,
+      customerConfirmation: await customerConfirmation(env, id),
+      expired: await checkoutExpired(env, id, now),
+    };
   const decision = decideStoredConfirmation(row, access, now, p);
   if (decision.reason === "stale_observation") {
     // A completed payment is not permanently fresh booking evidence. Reuse the
@@ -280,6 +289,10 @@ export async function checkoutContext(
     payment,
     confirmation: savedConfirmation,
     details,
+    customerConfirmation:
+      hitpayCheckout === null ? undefined : await customerConfirmation(env, id),
+    expired:
+      hitpayCheckout === null ? undefined : await checkoutExpired(env, id, now),
     checkout:
       hitpayCheckout ??
       (row.association_json &&
