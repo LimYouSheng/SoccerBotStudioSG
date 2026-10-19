@@ -2,6 +2,8 @@
 
 ## Local Review and fixed payment-checking contract — 19 October 2026 SGT
 
+Restored editable Review suppresses background catalogue/calendar reads. Revoked access at the checkout boundary routes to protected denied feedback, retains only the local draft with consent reset, and creates no server/provider booking.
+
 Review performs local selection/contact validation; it does not call fresh availability or prepare/create a booking. Checkout owns current authentication, pre-write availability/price/capacity and creation. Exact single-booking creation association/confirmed sessions/unpaid invoice evidence is reusable for five seconds, with a validated due-time; batches, missing due-time and stale evidence use existing readback. Failed combined creation returns the retained pending attempt directly to protected recovery without waiting for a checkout-link request.
 
 Protected context/confirmation checking.deadlineMs derives from immutable checkout_progress.booking_created_ms + payment_window_ms +300000. This is780000ms for the current eight-minute policy; historical policies retain their recorded window. Server status reads retain the120-read cap and five initial fast reads, then ongoing reads are spaced at least ten seconds. Browser storage preserves the original deadline and one final read across reload; it cannot authorize payment/cancellation. HitPay recovery keeps its existing claim/try/provider limits, schedules unpaid reads up to the fixed milestone, and retains authenticated newer-webhook wakeups atomically.

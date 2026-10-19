@@ -6,6 +6,8 @@ import { BookingPage } from "./booking-page";
 import { ReviewStep } from "./review-step";
 import type { BookingService } from "@/services/contracts";
 import { liveBookingService } from "@/services/booking";
+import { saveLiveDraft } from "@/services/storage";
+import { demoCustomerIdentity } from "@/services/demo/identity";
 import { blankDraft, type Attempt } from "@/domain/booking";
 
 const navigation = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
@@ -57,6 +59,29 @@ afterEach(() => {
   vi.useRealTimers();
   navigation.push.mockReset();
   navigation.replace.mockReset();
+});
+it("restored editable Review avoids background catalogue and calendar reads", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-15T00:00:00Z"));
+  saveLiveDraft(draft);
+  const fetch = vi.fn(async () => new Response(null, { status: 503 }));
+  vi.stubGlobal("fetch", fetch);
+  const publicCalendar = vi.fn();
+  const restore = vi.fn(async () => null);
+  render(
+    <BookingProvider
+      bookingService={{ ...liveBookingService, restore, publicCalendar }}
+      identityService={{ ...demoCustomerIdentity, mode: "live" }}
+    >
+      <BookingPage step="review" />
+    </BookingProvider>,
+  );
+  await act(async () => {});
+  expect(screen.getByRole("heading", { name: "Review booking" })).toBeVisible();
+  expect(screen.getByRole("checkbox")).not.toBeChecked();
+  expect(restore).toHaveBeenCalledTimes(1);
+  expect(publicCalendar).not.toHaveBeenCalled();
+  expect(fetch).not.toHaveBeenCalled();
 });
 async function directCase(scenario: string) {
   vi.useFakeTimers({ toFake: ["Date"] });

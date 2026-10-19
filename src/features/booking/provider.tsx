@@ -208,6 +208,7 @@ export function BookingProvider({
       service.operations.availability !== "live" ||
       !service.publicCalendar ||
       restorationPending ||
+      !calendarBrowsing ||
       !!value.attempt
     )
       return;
@@ -216,7 +217,7 @@ export function BookingProvider({
       // The booking screen owns the recoverable error; no background retry.
     });
     return () => controller.abort();
-  }, [service, restorationPending, value.attempt]);
+  }, [service, restorationPending, calendarBrowsing, value.attempt]);
   const availability = useBookingAvailability(
     service,
     value.attempt ||

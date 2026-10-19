@@ -381,6 +381,10 @@
   },
   {
     "file": "src/features/booking/direct-checkout.test.tsx",
+    "title": "restored editable Review avoids background catalogue and calendar reads"
+  },
+  {
+    "file": "src/features/booking/direct-checkout.test.tsx",
     "title": "HitPay HTTP conflict preserves the hold and shows payment failure without selection recovery"
   },
   {
@@ -913,7 +917,7 @@
   },
   {
     "file": "tests/live-email.spec.ts",
-    "title": "real API revoked access during Details keeps the form and prevents provider creation"
+    "title": "real API revoked access at checkout retains the draft and denies protected access without provider creation"
   },
   {
     "file": "tests/live-email.spec.ts",

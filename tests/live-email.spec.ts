@@ -1460,7 +1460,7 @@ test("real API failed booking readback retains created references and blocks che
   await uncertainHolding(page, "readback");
 });
 
-test("real API revoked access during Details keeps the form and prevents provider creation", async ({
+test("real API revoked access at checkout retains the draft and denies protected access without provider creation", async ({
   page,
 }) => {
   const mechanism = await createBookingMechanism();
@@ -1474,15 +1474,27 @@ test("real API revoked access during Details keeps the form and prevents provide
     await reviewResponse(page);
     const response = await checkoutHoldResponse(page, undefined, true);
     expect(response.status()).toBe(401);
-    await expect(page.getByRole("main").getByRole("alert")).toContainText(
-      "Online booking is unavailable. Your selections have been kept.",
-    );
+    await expect(page).toHaveURL(/\/book\/payment\/$/);
     await expect(
-      page.getByText("Synthetic Guest", { exact: true }),
+      page.getByRole("heading", {
+        name: "Confirmation unavailable",
+        exact: true,
+      }),
     ).toBeVisible();
     await expect(
-      page.getByText("Synthetic School", { exact: true }),
+      page.getByText(/Your access has expired or was revoked/),
     ).toBeVisible();
+    expect(
+      await page.evaluate(() =>
+        JSON.parse(sessionStorage.getItem("soccerbot-live-draft") || "null"),
+      ),
+    ).toMatchObject({
+      accepted: false,
+      contact: { name: "Synthetic Guest", academy: "Synthetic School" },
+    });
+    expect(
+      await mechanism.db.prepare("SELECT COUNT(*) AS n FROM attempts").first(),
+    ).toEqual({ n: 0 });
     expect(
       mechanism.calls.filter((call) => call.body?.method === "book"),
     ).toHaveLength(0);
@@ -2222,7 +2234,7 @@ test("real API expired unpaid Review retains its hold through the grace window w
     await page
       .getByRole("button", { name: "Continue to payment", exact: true })
       .click();
-    await expect(page.getByRole("alert")).toContainText(
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
       "Your original booking has been kept",
     );
     await expect(page).toHaveURL(/\/book\/review\/$/);
