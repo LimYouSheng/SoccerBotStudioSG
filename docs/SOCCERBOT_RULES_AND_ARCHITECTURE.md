@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Email-code browser interaction repair — 19 October 2026 SGT
+
+Final-policy CI39200175005 frontend passed74/75 browser cases. Tablet WebKit filled the code while main was still inert during the loading transition; the trace retained an empty input, so native required validation prevented the expected incorrect-code response. Wait for the code heading and removal of main inertness, then assert entered values before submitting. Apply the same readiness milestone to the live-email helper. Preserve invalid-code rejection, corrected-code navigation, existing timeout and every case; no forced interaction, sleeps, retries or production behavior change. Final successor CI is required before the owner-authorized PR59 merge.
+
 ## Fifteen-minute hold and eight-minute payment policy — 19 October 2026 SGT
 
 Owner authorizes adding this policy to PR59 and merging only after final-commit required CI passes. Owner reports SimplyBook's timeout changed to15minutes; provider behavior is not independently verified. New creation records retain immutable hold/payment windows of900000/480000ms, anchored to original successful booking creation. Earlier provider/supervision expiry always caps the hold/payment deadline. Review, navigation and checkout consume the same eight-minute window; no renewal on restore/retry. HitPay's existing20-second margin, whole-minute rounding and80-second minimum preparation allowance remain. The shared due-time parser retains its30-second provider margin; only HitPay uses a15-minute handoff ceiling, while historical native-link behavior stays10minutes.

@@ -221,12 +221,19 @@ test("email verification rejects an incorrect code and continues after correctio
   await page.getByRole("button", { name: "Continue with email" }).click();
   await page.getByLabel("Email address").fill("customer@example.com");
   await page.getByRole("button", { name: "Continue with email" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Verify your email", exact: true }),
+  ).toBeVisible();
+  // The code view mounts before the loading overlay releases page inertness.
+  await expect(page.locator("main")).not.toHaveAttribute("inert");
   await page.getByLabel("Verification code").fill("000000");
+  await expect(page.getByLabel("Verification code")).toHaveValue("000000");
   await page.getByRole("button", { name: "Verify and continue" }).click();
   await expect(page.locator("main").getByRole("alert")).toContainText(
     "incorrect",
   );
   await page.getByLabel("Verification code").fill("360360");
+  await expect(page.getByLabel("Verification code")).toHaveValue("360360");
   await page.getByRole("button", { name: "Verify and continue" }).click();
   await expect(
     page.getByRole("heading", { name: "Your session", exact: true }),

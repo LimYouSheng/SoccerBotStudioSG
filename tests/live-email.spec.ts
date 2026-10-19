@@ -200,7 +200,11 @@ test("synthetic live verification reads server identity and keeps native booking
     page.getByRole("heading", { name: "Verify your email", exact: true }),
   ).toBeVisible();
   await expect(page.getByText("Demo code", { exact: false })).toHaveCount(0);
+  await expect(page.locator("main")).not.toHaveAttribute("inert");
   await page.getByLabel("Verification code", { exact: true }).fill("246810");
+  await expect(
+    page.getByLabel("Verification code", { exact: true }),
+  ).toHaveValue("246810");
   await page
     .getByRole("button", { name: "Verify and continue", exact: true })
     .click();
