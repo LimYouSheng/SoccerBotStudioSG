@@ -12,7 +12,10 @@ vi.mock("./provider", () => ({
     identityService: demoCustomerIdentity,
   }),
 }));
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
+  useRouter: () => ({ push: mocks.push }),
+}));
 beforeEach(() => {
   localStorage.clear();
   sessionStorage.clear();

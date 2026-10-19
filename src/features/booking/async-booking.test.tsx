@@ -20,7 +20,10 @@ import { ReviewStep } from "./review-step";
 import { PaymentStep } from "./payment-step";
 
 const navigation = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => navigation }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
+  useRouter: () => navigation,
+}));
 function deferred<T>() {
   let resolve!: (value: T) => void;
   let reject!: (error: unknown) => void;

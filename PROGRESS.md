@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## PR60 streamed Review restoration race — 19 October 2026 SGT
+
+Headbe08170 passed frontend/backend; live-email passed74/75. Tablet WebKit exposed a mount-order race: restoration finished before Review mounted, so the default browsing flag launched calendar/catalogue reads. Delaying the Review component in the regression reproduces the extra read. Provider now combines the page browsing flag with the synchronous pathname, blocks unknown routes until resolved, and suppresses Details/Review/payment/confirmation display prefetch before page effects. Router mocks updated across affected component setup paths;212 component/service tests passed. The existing zero-extra-display-read browser assertion is unchanged. Final exact-head CI and authorized conditional merge remain pending.
+
 ## PR60 final request-count correction — 19 October 2026 SGT
 
 Head13650ab frontend/backend passed; live-email passed72/75. The three device failures reached a second stale availability-count assertion after checkout return: expected1 instead of the agreed0. Earlier Review count was already0. Correct this final count only, preserving one booking/payment, original hold identity and no post-hold provider slot rechecks. Search confirms all four journey availability milestones now require0. Final-head CI and owner-authorized conditional PR60 merge remain pending.

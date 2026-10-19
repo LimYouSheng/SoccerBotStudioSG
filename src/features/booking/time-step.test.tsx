@@ -12,6 +12,7 @@ import { ConfirmationStep } from "./confirmation-step";
 import { demoBookingModel } from "@/services/demo/booking";
 import { loadBooking, saveBooking } from "@/services/storage";
 vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
 }));
 const restoredDate = "2026-10-13";

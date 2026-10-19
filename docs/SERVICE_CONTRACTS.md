@@ -2,7 +2,7 @@
 
 ## Local Review and fixed payment-checking contract — 19 October 2026 SGT
 
-Restored editable Review suppresses background catalogue/calendar reads. Revoked access at the checkout boundary routes to protected denied feedback, retains only the local draft with consent reset, and creates no server/provider booking.
+Restored editable Review suppresses background catalogue/calendar reads from the synchronous route, before page effects mount; an unresolved route cannot start display prefetch. Revoked access at the checkout boundary routes to protected denied feedback, retains only the local draft with consent reset, and creates no server/provider booking.
 
 Review performs local selection/contact validation; it does not call fresh availability or prepare/create a booking. Checkout owns current authentication, pre-write availability/price/capacity and creation. Exact single-booking creation association/confirmed sessions/unpaid invoice evidence is reusable for five seconds, with a validated due-time; batches, missing due-time and stale evidence use existing readback. Failed combined creation returns the retained pending attempt directly to protected recovery without waiting for a checkout-link request.
 

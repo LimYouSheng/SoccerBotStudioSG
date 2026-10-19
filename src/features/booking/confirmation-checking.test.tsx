@@ -8,7 +8,10 @@ import {
   screen,
 } from "@testing-library/react";
 import { useConfirmationChecking } from "./confirmation-checking";
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
+  useRouter: () => ({ push: vi.fn() }),
+}));
 const id = "00000000-0000-4000-8000-000000000001";
 const pending = () =>
   Response.json({ status: "pending", reason: "invoice_pending" });

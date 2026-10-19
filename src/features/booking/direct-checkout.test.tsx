@@ -10,8 +10,15 @@ import { saveLiveDraft } from "@/services/storage";
 import { demoCustomerIdentity } from "@/services/demo/identity";
 import { blankDraft, type Attempt } from "@/domain/booking";
 
-const navigation = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => navigation }));
+const navigation = vi.hoisted(() => ({
+  push: vi.fn(),
+  replace: vi.fn(),
+  path: "/",
+}));
+vi.mock("next/navigation", () => ({
+  useRouter: () => navigation,
+  usePathname: () => navigation.path,
+}));
 const id = "00000000-0000-4000-8000-000000000001";
 const url = `https://checkout.sandbox.hit-pay.com/payment-request/@soccerbot/${id}/checkout`;
 const draft = {
@@ -57,26 +64,45 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   vi.useRealTimers();
+  navigation.path = "/";
   navigation.push.mockReset();
   navigation.replace.mockReset();
 });
 it("restored editable Review avoids background catalogue and calendar reads", async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-10-15T00:00:00Z"));
+  navigation.path = "/SoccerBotStudioSG/book/review/";
   saveLiveDraft(draft);
   const fetch = vi.fn(async () => new Response(null, { status: 503 }));
   vi.stubGlobal("fetch", fetch);
-  const publicCalendar = vi.fn();
+  const publicCalendar = vi.fn(async ({ month }: { month: string }) => ({
+    month,
+    serviceId: "2",
+    observedAtMs: Date.now(),
+    dates: [],
+  }));
   const restore = vi.fn(async () => null);
+  function DeferredReview() {
+    const [shown, show] = useState(false);
+    return shown ? (
+      <BookingPage step="review" />
+    ) : (
+      <button onClick={() => show(true)}>Mount Review</button>
+    );
+  }
   render(
     <BookingProvider
       bookingService={{ ...liveBookingService, restore, publicCalendar }}
       identityService={{ ...demoCustomerIdentity, mode: "live" }}
     >
-      <BookingPage step="review" />
+      <DeferredReview />
     </BookingProvider>,
   );
   await act(async () => {});
+  expect(restore).toHaveBeenCalledTimes(1);
+  expect(publicCalendar).not.toHaveBeenCalled();
+  expect(fetch).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Mount Review" }));
   expect(screen.getByRole("heading", { name: "Review booking" })).toBeVisible();
   expect(screen.getByRole("checkbox")).not.toBeChecked();
   expect(restore).toHaveBeenCalledTimes(1);

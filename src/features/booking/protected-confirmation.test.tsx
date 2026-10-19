@@ -256,6 +256,7 @@ it("verified live receipt uses demo sections and refuses exports after access is
 
 const navigation = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn() }));
 vi.mock("next/navigation", () => ({
+  usePathname: () => "/",
   useRouter: () => navigation,
   useSearchParams: () =>
     new URLSearchParams("attempt=00000000-0000-4000-8000-000000000001"),

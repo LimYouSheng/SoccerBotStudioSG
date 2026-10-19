@@ -1,4 +1,5 @@
 "use client";
+import { usePathname } from "next/navigation";
 import { BookingLoadingProvider } from "./booking-loading";
 import {
   protectedCheckoutService,
@@ -178,7 +179,16 @@ export function BookingProvider({
       restoredOwner.identityService !== identityService);
   const [calendarMonth, showMonth] = useState(() => todaySG().slice(0, 7));
   const [calendarPaused, pauseCalendar] = useState(false);
-  const [calendarBrowsing, setCalendarBrowsing] = useState(true);
+  const [browsingRequested, setCalendarBrowsing] = useState(true);
+  const pathname = usePathname();
+  // The route is known before the streamed page mounts. A page effect alone
+  // can briefly enable display reads while restoring an editable Review.
+  const calendarBrowsing =
+    browsingRequested &&
+    !!pathname &&
+    !/\/(?:book\/(?:details|review|payment|confirmation)|confirmation)\/?$/.test(
+      pathname,
+    );
   const [date, showDate] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const sessionKey = useCallback(
