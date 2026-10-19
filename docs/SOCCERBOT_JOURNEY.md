@@ -1,5 +1,15 @@
 # SoccerBotStudio — Journey
 
+## HAR06 checkout abort and compact pending return — 19 October 2026 SGT
+
+Safely inspected owner HAR06, captured09:11:00–09:13:02 SGT. It records one hold POST200 (15.734s), one HitPay-preparation POST200 (3.407s, paymentAvailable=true), an aborted checkout-context request (28ms), then a successful context read containing an available sandbox HitPay URL. No external host request is present in this capture. Nineteen confirmation reads remain pending/payment_verification_pending. These are captured request durations, not click-to-render latency or proof of external provider failure. No HAR identifiers, contacts, cookies or checkout URL are committed.
+
+PR56 had already merged at08:55 SGT as202ac748. Its final-head PR CI39181463960 succeeded. Current public health reports202ac748/version863a24b6; this read establishes current deployment, not independently the revision at HAR execution time.
+
+Source diagnosis: history replacement leaves BookingPage's original Details prop, while its handoff guard recognized only Review. Committing payment state therefore changes the guarded route, unmounts Review and aborts the provider-owned context read. The expanded component regression fails on the unchanged owner with signal.aborted=true and passes after including retained Details/Review in the handoff guard. Initial fixture corrections (location mock/consent) preceded that reproduction. Existing browser checkout coverage reloaded Review first and missed this retained-route path; extend the optimistic-hold actual-Worker journey without removing the restored journey.
+
+The oversized pending area came from noncompact BrandLoading using booking-loading/min-height65vh. Use its existing compact variant for pending details and context fallback. No provider mutation, merge or deployment is performed. Final exact-commit CI and owner physical acceptance remain separate requirements.
+
 ## Owner requires a test-impact pass after every change — 19 October 2026
 
 Repeated CI repairs exposed an incomplete impact review: the one-month preload updated guestDetails and component expectations but missed a separate native guest journey's warmedMonths wait and two four-call assertions. CI39176339093 passed frontend/backend but failed that journey on all three devices (69/72 live-email). Repair de52174 preserves the journey and changes only those obsolete assumptions; its exact-source CI remains separate evidence.

@@ -612,6 +612,10 @@ it("pending confirmation retains the final detail layout while hiding success an
   render(<ProtectedConfirmation attemptId={first} checkoutMode="live" />);
   await screen.findByRole("heading", { name: "Client Details" });
   const card = document.querySelector(".confirmation-card");
+  expect(document.querySelector(".booking-loading")).toBeNull();
+  expect(
+    document.querySelector(".booking-loading-inline .page-loading-orbit"),
+  ).not.toBeNull();
   for (const name of ["Session Details", "Location", "Amount", "Disclaimers"])
     expect(screen.getByRole("heading", { name })).toBeVisible();
   expect(screen.getByText("Synthetic Customer")).toBeVisible();

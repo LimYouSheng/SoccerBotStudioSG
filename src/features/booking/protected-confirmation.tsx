@@ -230,7 +230,7 @@ export function ProtectedConfirmation({
         <section className="surface confirmation-card" aria-busy="true">
           <h1>Booking confirmation</h1>
           <InlineLoading
-            overlay={false}
+            compact
             label={
               view === "confirmed"
                 ? "Preparing your confirmation…"
@@ -238,7 +238,6 @@ export function ProtectedConfirmation({
                   ? "Preparing checkout…"
                   : "Checking your payment and booking…"
             }
-            message="Please don’t close or refresh this page while we finish."
           />
           {current && <ConfirmationSummary summary={current.summary} />}
         </section>

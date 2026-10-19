@@ -1,5 +1,11 @@
 # SoccerBotStudioSG current progress
 
+## Checkout handoff repair — 19 October 2026 SGT
+
+HAR06 is parsed: successful hold/payment preparation, available sandbox checkout URL, aborted first context request, then pending confirmation polling without captured external navigation. Retained Details-rendered Review was missing from BookingPage's handoff guard; its cleanup aborted the redirect owner. Regression reproduced the aborted signal before the fix. Pending confirmation now uses the compact spinner instead of65vh loading space.
+
+Work is based on actual main202ac748 (PR56 already merged). Final-head PR56 CI39181463960 passed; current public health matches main. Exact HAR-time deployment is not independently established. Extend component and actual-Worker browser coverage through retained Review without reload, retain refresh/recovery/failure coverage and compact pending return assertions. Non-browser validation and final candidate CI belong to the repair PR; no physical booking/payment, merge or deployment is authorized here. Resume deferred batch/latency work only after single checkout acceptance.
+
 ## Mandatory test-impact pass — 19 October 2026
 
 Owner requires one complete test-impact review after every logical change and repair. Follow AGENTS Verify and the [Service Contracts procedure](docs/SERVICE_CONTRACTS.md#mandatory-test-impact-pass-after-every-change--19-october-2026), including all duplicated setup/response waits and final exact-commit CI. The missed warmedMonths four-response wait is the retained counterexample. This checkpoint changes documentation only; application/browser acceptance remains tied to the final PR checks.

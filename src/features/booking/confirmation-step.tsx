@@ -88,11 +88,7 @@ export function BookingConfirmation({
     <div className="status-shell">
       <div className="status-heading">
         {pending ? (
-          <InlineLoading
-            overlay={false}
-            label={pendingLabel}
-            message="Please don’t close or refresh this page while we finish."
-          />
+          <InlineLoading compact label={pendingLabel} />
         ) : (
           <>
             <span className="status-icon">

@@ -1871,7 +1871,20 @@ async function optimisticHold(page: Page, failReadback: boolean) {
       return undefined;
     },
   });
-  const transport = await mechanismTransport(page, mechanism);
+  let releaseCheckout!: () => void;
+  const checkoutGate = new Promise<void>((resolve) => {
+    releaseCheckout = resolve;
+  });
+  let checkoutStarted!: () => void;
+  const preparingCheckout = new Promise<void>((resolve) => {
+    checkoutStarted = resolve;
+  });
+  const transport = await mechanismTransport(page, mechanism, async (path) => {
+    if (path.endsWith("/checkout")) {
+      checkoutStarted();
+      await checkoutGate;
+    }
+  });
   let reviewRequests = 0;
   await page.route("**/book/review/**", async (route) => {
     reviewRequests++;
@@ -1957,7 +1970,40 @@ async function optimisticHold(page: Page, failReadback: boolean) {
       mechanism.calls.filter((call) => call.body?.method === "book"),
     ).toHaveLength(1);
     await assertNoPaymentOrConfirmation(page, mechanism);
+    if (!failReadback) {
+      await page
+        .getByRole("button", { name: "Continue to payment", exact: true })
+        .click();
+      await preparingCheckout;
+      await expect(page.locator(".booking-flow-overlay")).toBeVisible();
+      await expect(
+        page.getByRole("heading", { name: "Client Details", exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByRole("heading", { name: "Booking confirmed", exact: true }),
+      ).toHaveCount(0);
+      expect(await review?.evaluate((element) => element.isConnected)).toBe(
+        true,
+      );
+      expect(
+        transport.calls.filter((call) => call.path.endsWith("/confirmation")),
+      ).toHaveLength(0);
+      releaseCheckout();
+      await expect(page).toHaveURL(mechanism.checkoutUrl);
+      expect(
+        transport.calls.filter((call) =>
+          call.path.startsWith("/api/booking/hitpay/"),
+        ),
+      ).toHaveLength(1);
+      expect(
+        transport.calls.filter((call) => call.path.endsWith("/checkout")),
+      ).toHaveLength(1);
+      expect(
+        mechanism.calls.filter((call) => call.body?.method === "book"),
+      ).toHaveLength(1);
+    }
   } finally {
+    releaseCheckout();
     releaseComment();
     release();
     await stopMechanism(page, mechanism, transport);
@@ -2012,6 +2058,22 @@ test("real API unpaid return shows the pending confirmation layout without claim
       page.getByRole("link", { name: "Back to home", exact: true }),
     ).toHaveCount(0);
     await expect(page.getByText("Paid", { exact: true })).toHaveCount(0);
+    await expect(
+      page.locator(".booking-loading, .booking-flow-overlay"),
+    ).toHaveCount(0);
+    const loader = page.getByRole("status", {
+      name: "Checking your payment and booking…",
+      exact: true,
+    });
+    expect(
+      await loader.evaluate(
+        (element) => element.getBoundingClientRect().height,
+      ),
+    ).toBeLessThan(180);
+    await expect(loader.locator(".page-loading-orbit")).toHaveCSS(
+      "animation-name",
+      "page-loading-orbit",
+    );
     expect(
       mechanism.calls.filter((call) => call.body?.method === "book"),
     ).toHaveLength(1);

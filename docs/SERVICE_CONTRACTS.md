@@ -1,5 +1,11 @@
 # SoccerBotStudio — Service Contracts
 
+## Checkout handoff lifecycle regression — 19 October 2026
+
+BookingPage must retain Review during a live checkout action even when its original step prop is Details and history already displays /book/review/. Provider commits the prepared payment attempt before awaiting protected checkout context; that commit must not route to PaymentStep or invoke Review cleanup/cancel. Only the existing provider owner assigns a validated HitPay URL. Interrupted or unavailable outcomes retain the original attempt and existing recovery behavior.
+
+Test-impact pass: extend the creation-to-Review component case through a delayed checkout-context reply, assert the signal stays active, no premature payment route/details, one handoff and duplicate-effect suppression. Exercise HTTP payment failure through retained Details too. Extend the actual-Worker optimistic-hold browser journey through checkout without reload; preserve the separate native guest refresh/restoration journey. Assert compact pending loader height/spinning and all existing authorization/action gates on return. Existing delayed/cancelled, untrusted URL, unknown hold, restoration, saved receipt and revoked-export coverage remains. No test inventory additions or timeout/retry changes; owner/CI execute browsers.
+
 ## Mandatory test-impact pass after every change — 19 October 2026
 
 After every logical behavior/configuration change, and again after any repair, complete one explicit test-impact pass before committing/publishing. This applies to optimizations and presentation changes as well as new features; it does not require rerunning the entire suite after each keystroke.

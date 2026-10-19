@@ -44,7 +44,7 @@ export function BookingPage({ step }: { step: BookingStep }) {
     router = useRouter();
   const handingOff =
     bookingService.mode === "live" &&
-    step === "review" &&
+    (step === "review" || (step === "details" && attempt?.held)) &&
     !!attempt &&
     (action.status === "loading" || action.status === "success") &&
     action.operation === "checkout";

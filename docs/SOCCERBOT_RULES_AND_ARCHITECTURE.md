@@ -1,5 +1,11 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Retained Review checkout handoff — 19 October 2026
+
+The live checkout handoff guard covers both a Review route and Review retained inside the Details route after history replacement. Keep that owner mounted while payment preparation and protected checkout-context retrieval run, and until external navigation replaces the document. Consent, original hold/attempt identity and the synchronous duplicate-operation guard remain unchanged. Recovery after cancellation, unknown outcomes or browser return remains protected; no automatic new payment is introduced.
+
+Pending protected confirmation uses the compact existing spinning brand loader above details, including the context-loading fallback. It must not inherit the generic 65vh booking loader. Success/paid claims, exports, four actions and Home remain hidden until authoritative confirmation. Saved verification timestamps and fresh export authorization are unchanged.
+
 ## Test-impact review is part of every change — 19 October 2026
 
 Every logical change and repair includes the mandatory [Service Contracts test-impact pass](SERVICE_CONTRACTS.md#mandatory-test-impact-pass-after-every-change--19-october-2026): review all affected test layers and duplicated setup, update obsolete assumptions, run affected permitted checks, and obtain final exact-commit CI before acceptance. Preserve failure coverage, browser ownership and all booking/payment protections. Publication for CI is distinct from readiness; a local pass alone cannot certify the browser journey.
