@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## PR60 final request-count correction — 19 October 2026 SGT
+
+Head13650ab frontend/backend passed; live-email passed72/75. The three device failures reached a second stale availability-count assertion after checkout return: expected1 instead of the agreed0. Earlier Review count was already0. Correct this final count only, preserving one booking/payment, original hold identity and no post-hold provider slot rechecks. Search confirms all four journey availability milestones now require0. Final-head CI and owner-authorized conditional PR60 merge remain pending.
+
 ## PR60 live-email follow-up — 19 October 2026 SGT
 
 Head580f6aa passed frontend and backend including75/75 browser cases each and383 Worker tests. Live-email passed66/75: extra catalogue prefetch on restored editable Review (reproduced in component test), revoked access now correctly enters protected denied UI instead of the old Details alert, and an expiry alert selector also matched the framework route announcer. Suppress background catalogue outside browsing steps; assert denied access, retained draft with consent reset, zero server attempts and zero provider effects; scope expiry alert to main. All43 affected component tests passed after the prefetch fix; original request counts and timeouts retained. Final-head CI remains required.

@@ -706,7 +706,7 @@ test("native guest journey preserves players contact and one checkout across ref
     ).toHaveLength(0);
     expect(
       calls.filter((c) => c.path.startsWith("/api/booking/availability/")),
-    ).toHaveLength(1);
+    ).toHaveLength(0);
     await expect(
       page.getByRole("heading", { name: "Booking confirmed", exact: true }),
     ).toHaveCount(0);
