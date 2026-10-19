@@ -1,5 +1,12 @@
 import { createBookingMechanism } from "../worker/tests/booking-mechanism-fixture.mjs";
-import { expect, test, type Page, type Route } from "@playwright/test";
+import {
+  expect,
+  test,
+  type Page,
+  type Route,
+  type Request as BrowserRequest,
+  type Response as BrowserResponse,
+} from "@playwright/test";
 
 // CI-only synthetic transports. No widget script, email or provider is contacted.
 const sitekey = "0x4AAAAAAFSTbdgbJQsvM5vy";
@@ -380,6 +387,10 @@ async function mechanismTransport(
   const calls: { path: string; method: string; body: unknown }[] = [];
   const unexpected: string[] = [];
   const pending = new Set<Promise<void>>();
+  const responses = new WeakMap<
+    BrowserRequest,
+    { status: number; body: string }
+  >();
   const handle = async (route: Route) => {
     const request = route.request(),
       url = new URL(request.url());
@@ -472,6 +483,9 @@ async function mechanismTransport(
         response.status === 200)
     )
       attemptId = JSON.parse(responseBody).attemptId;
+    // Retain the real Worker body before navigation can discard Chromium's
+    // response resource. Key by request identity, including repeated URLs.
+    responses.set(request, { status: response.status, body: responseBody });
     // Always settle the intercepted route, even when navigation canceled it.
     // Returning without a route action leaves Playwright cleanup waiting.
     try {
@@ -493,6 +507,12 @@ async function mechanismTransport(
     calls,
     unexpected,
     attemptId: () => attemptId,
+    json(response: BrowserResponse) {
+      const captured = responses.get(response.request());
+      expect(captured).toBeDefined();
+      expect(captured!.status).toBe(response.status());
+      return JSON.parse(captured!.body);
+    },
     async drain() {
       // Drain our provider/response work, not Playwright's unresolved internal
       // handled promise for a route canceled by document navigation.
@@ -1305,7 +1325,7 @@ test("real API rejected slot returns to selection and retains contact without cr
     const response = await checkoutHoldResponse(page, () => {
       reject = true;
     });
-    expect((await response.json()).state).toBe("selection_unavailable");
+    expect(transport.json(response).state).toBe("selection_unavailable");
     await expect(page).toHaveURL(/\/book\/time\/$/);
     await expect(
       page.getByText(
@@ -1361,7 +1381,7 @@ test("real API price drift rejects review before creation instead of silently ch
     const response = await checkoutHoldResponse(page, () => {
       drift = true;
     });
-    expect((await response.json()).state).toBe("restart_required");
+    expect(transport.json(response).state).toBe("restart_required");
     await expect(page).toHaveURL(/\/book\/time\/$/);
     expect(
       mechanism.calls.filter((call) => call.body?.method === "book"),
@@ -1400,7 +1420,7 @@ async function uncertainHolding(
       enabled = true;
     });
     expect(response.status()).toBe(200);
-    expect((await response.json()).state).toBe(
+    expect(transport.json(response).state).toBe(
       fault === "preflight" ? "prerequisites_unavailable" : "recovery_required",
     );
     await expect(page).toHaveURL(/\/book\/payment\/$/);
@@ -1800,7 +1820,7 @@ test("real API batch checkout checks each session once and restores one complete
     await reviewResponse(page);
     const before = mechanism.calls.length;
     expect(
-      await (await checkoutHoldResponse(page, undefined, true)).json(),
+      transport.json(await checkoutHoldResponse(page, undefined, true)),
     ).toMatchObject({
       state: "associated",
       paymentAvailable: true,
@@ -1891,7 +1911,7 @@ async function failedBatch(page: Page, unknown: boolean) {
   const transport = await mechanismTransport(page, mechanism);
   try {
     await guestDetails(page, mechanism, true);
-    expect(await (await checkoutHoldResponse(page)).json()).toMatchObject({
+    expect(transport.json(await checkoutHoldResponse(page))).toMatchObject({
       state: "recovery_required",
       paymentAvailable: false,
     });
@@ -2084,7 +2104,7 @@ async function optimisticHold(page: Page, failReadback: boolean) {
     await assertNoPaymentOrConfirmation(page, mechanism);
     readGate.resolve();
     if (failReadback) {
-      expect(await (await result).json()).toMatchObject({
+      expect(transport.json(await result)).toMatchObject({
         state: failReadback ? "recovery_required" : "associated",
         paymentAvailable: !failReadback,
       });
@@ -2103,7 +2123,7 @@ async function optimisticHold(page: Page, failReadback: boolean) {
         transport.calls.filter((call) => call.path.endsWith("/confirmation")),
       ).toHaveLength(0);
       checkoutGate.resolve();
-      expect(await (await result).json()).toMatchObject({
+      expect(transport.json(await result)).toMatchObject({
         state: failReadback ? "recovery_required" : "associated",
         paymentAvailable: !failReadback,
       });

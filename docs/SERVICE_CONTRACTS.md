@@ -1,5 +1,9 @@
 # SoccerBotStudio — Service Contracts
 
+## PR62 checkout transport verification — 20 October 2026 SGT
+
+Owner explicitly authorizes merging PR62 after all three final-head CI gates pass. Initial head0b5a76c passed frontend/backend and73/75 live-email cases; two desktop Chromium checkout assertions lost response resources after immediate HitPay navigation. The test transport now retains the exact Worker response before fulfillment, keyed by request identity; checkout assertions use that retained body while preserving browser response waits, status, navigation, provider counts and duplicate-effect checks. A non-browser regression exercises the actual transport under immediate resource loss and repeated identical URLs. Test-impact review covers every checkoutHoldResponse consumer and both optimisticHold branches; no timeouts, retries or assertions relaxed. Final repaired-head CI remains required. Production checkout code is unchanged by this test repair.
+
 ## Validated batch closure handoff — 20 October 2026 SGT
 
 The ongoing combined HitPay checkout may reuse normalized closeBatch evidence exactly as single creation, only after full invoice/session/customer/money/confirmed-unpaid validation, exact retained booking membership, valid due-time and the existing five-second evidence window. Intermediate book responses cannot authorize payment. Missing deadline or stale evidence uses existing signed booking/invoice readback; malformed closure retains recovery without HitPay creation. Original expiry remains anchored to the first booking, not closure.
