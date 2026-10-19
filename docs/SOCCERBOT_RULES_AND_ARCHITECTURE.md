@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Completed-dismissal CI setup repair — 19 October 2026 SGT
+
+Merged-main50656c9 CI39198249437 passed74/75 live-email cases; phone WebKit timed out before reaching dismissal. Trace shows about22seconds spent creating the synthetic hold/payment before navigation, then waiting for fully reconciled confirmation. Customer confirmation was visible, but the completed-dismissal contract correctly requires full reconciliation. Retain that response wait and all lost-response/retry/receipt/single-effect assertions. Use the current combined hold route for this test setup instead of legacy split preparation/native execution, and assert one preflight. Other standalone setup callers keep their existing contracts. No timeout, retry, provider-limit or production-authority change. Exact-head CI remains required; HitPay upstream rejection and live latency remain unresolved.
+
 ## Pre-creation concurrency ownership — 19 October 2026 SGT
 
 parallel-reads owns bounded two-lane joining and deterministic drained failure, not physical provider admission. ProviderSession owns ongoing token concurrency; NativePrebooking owns independent validation reads and resets failure-operation diagnostics after draining. prepareCustomerNative owns the validation-before-overlap boundary between immutable D1 preparation and provider warm-up. Journal batches dependent preparation SQL to reduce round trips without pretending writes are independent. The account queue continues serializing booking jobs, and provider transport/admission remain the sole physical-call owner. Cross-customer scheduling and payment fairness remain the separately recorded pending task.

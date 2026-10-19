@@ -1,5 +1,9 @@
 # SoccerBotStudio — Service Contracts
 
+## Completed-dismissal CI setup repair — 19 October 2026 SGT
+
+Merged-main50656c9 CI39198249437 passed74/75 live-email cases; phone WebKit timed out before reaching dismissal. Trace shows about22seconds spent creating the synthetic hold/payment before navigation, then waiting for fully reconciled confirmation. Customer confirmation was visible, but the completed-dismissal contract correctly requires full reconciliation. Retain that response wait and all lost-response/retry/receipt/single-effect assertions. Use the current combined hold route for this test setup instead of legacy split preparation/native execution, and assert one preflight. Other standalone setup callers keep their existing contracts. No timeout, retry, provider-limit or production-authority change. Exact-head CI remains required; HitPay upstream rejection and live latency remain unresolved.
+
 ## Pre-creation read concurrency — 19 October 2026 SGT
 
 Ongoing customer preparation validates authentication, contract, selection, price and immutable attempt binding before speculative identity reads. New attempt persistence and provider identity preparation then overlap; both settle before execution. Existing/split preparation callers retain their contract. Attempt insert/readback share one D1 session batch and retain conflicting-intent rejection. No dispatch reservation or creation runs before preparation succeeds.

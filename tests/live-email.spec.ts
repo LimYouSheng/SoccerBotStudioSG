@@ -762,6 +762,7 @@ test("native guest journey preserves players contact and one checkout across ref
 async function prepareBrowserAttempt(
   page: Page,
   mechanism: Awaited<ReturnType<typeof createBookingMechanism>>,
+  combinedHold = false,
 ) {
   // Setup uses the same public routes, auth and coordinator as the browser.
   const access = await mechanism.mf.dispatchFetch(
@@ -785,13 +786,15 @@ async function prepareBrowserAttempt(
     cookie,
     "content-type": "application/json",
   };
+  const key = crypto.randomUUID();
   const prepared = await mechanism.mf.dispatchFetch(
-    mechanism.origin + "/api/booking/prepare",
+    mechanism.origin +
+      (combinedHold ? `/api/booking/hold/${key}` : "/api/booking/prepare"),
     {
       method: "POST",
       headers,
       body: JSON.stringify({
-        key: crypto.randomUUID(),
+        key,
         holding: true,
         accepted: false,
         contact: {
@@ -813,8 +816,11 @@ async function prepareBrowserAttempt(
       }),
     },
   );
-  expect(prepared.status).toBe(201);
-  const { attemptId } = (await prepared.json()) as { attemptId: string };
+  expect(prepared.status).toBe(combinedHold ? 200 : 201);
+  const result = await prepared.json();
+  if (combinedHold)
+    expect(result).toMatchObject({ attemptId: key, state: "associated" });
+  const { attemptId } = result as { attemptId: string };
   return { headers, attemptId };
 }
 
@@ -1552,12 +1558,21 @@ test("real API failed completed dismissal opens the first step and explicit retr
     },
   );
   try {
-    const { headers, attemptId } = await prepareBrowserAttempt(page, mechanism);
-    const held = await mechanism.mf.dispatchFetch(
-      mechanism.origin + `/api/booking/native/${attemptId}?hold=1`,
-      { method: "POST", headers },
+    // Exercise the current single-preflight hold route. The legacy split
+    // prepare/native setup repeats preflight before this dismissal journey.
+    const { headers, attemptId } = await prepareBrowserAttempt(
+      page,
+      mechanism,
+      true,
     );
-    expect(await held.json()).toMatchObject({ state: "associated" });
+    for (const method of [
+      "getAdditionalFields",
+      "getAvailableUnits",
+      "getStartTimeMatrix",
+    ])
+      expect(
+        mechanism.calls.filter((call) => call.body?.method === method),
+      ).toHaveLength(1);
     const payment = await mechanism.mf.dispatchFetch(
       mechanism.origin + `/api/booking/hitpay/${attemptId}`,
       { method: "POST", headers, body: JSON.stringify({ accepted: true }) },

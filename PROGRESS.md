@@ -1,5 +1,10 @@
 # SoccerBotStudioSG current progress
 
+## Completed-dismissal CI setup repair — 19 October 2026 SGT
+
+Merged-main50656c9 CI39198249437 passed74/75 live-email cases; phone WebKit timed out before reaching dismissal. Trace shows about22seconds spent creating the synthetic hold/payment before navigation, then waiting for fully reconciled confirmation. Customer confirmation was visible, but the completed-dismissal contract correctly requires full reconciliation. Retain that response wait and all lost-response/retry/receipt/single-effect assertions. Use the current combined hold route for this test setup instead of legacy split preparation/native execution, and assert one preflight. Other standalone setup callers keep their existing contracts. No timeout, retry, provider-limit or production-authority change. Exact-head CI remains required; HitPay upstream rejection and live latency remain unresolved.
+
+
 ## Bounded pre-creation concurrency — 19 October 2026 SGT
 
 Owner authorizes concurrency after HAR06/07 analysis: booking response arrived11.19/11.33seconds after coordinator start, while first Review-eligible browser response improved14.51→13.64seconds and full hold worsened15.73→16.68seconds. Implement within one serialized booking job: overlap public/admin authentication for ongoing customers; run required-fields, eligibility and availability through two drained read lanes after fresh catalogue; overlap validated local attempt persistence with provider identity preparation. Batch attempt insertion/readback while preserving immutable idempotency checks. Preserve finite paths, fresh pre-write validation, admission pacing/limits, reference retention and single booking effects. Provider account identity still gates tariff; no broader cross-customer runner/cache-policy change.

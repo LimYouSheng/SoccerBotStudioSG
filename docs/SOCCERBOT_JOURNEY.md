@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## Completed-dismissal CI setup repair — 19 October 2026 SGT
+
+Merged-main50656c9 CI39198249437 passed74/75 live-email cases; phone WebKit timed out before reaching dismissal. Trace shows about22seconds spent creating the synthetic hold/payment before navigation, then waiting for fully reconciled confirmation. Customer confirmation was visible, but the completed-dismissal contract correctly requires full reconciliation. Retain that response wait and all lost-response/retry/receipt/single-effect assertions. Use the current combined hold route for this test setup instead of legacy split preparation/native execution, and assert one preflight. Other standalone setup callers keep their existing contracts. No timeout, retry, provider-limit or production-authority change. Exact-head CI remains required; HitPay upstream rejection and live latency remain unresolved.
+
 ## Pre-creation concurrency implementation — 19 October 2026 SGT
 
 Owner requests implementing all safe independent pre-creation overlap. Source audit found sequential token acquisition, independent preflight reads and provider identity preparation after local persistence. Implement bounded overlap with barrier-based simulated provider tests; preserve serialized booking writes and existing recovery/consent/freshness rules. Initial review caught that starting identity before local preparation validation would make invalid price input consume provider calls. Move the overlap boundary after local validation; retain the existing zero-provider-call assertion. Failure diagnostics select the failed operation after siblings drain rather than retaining another read's last completion. Live latency acceptance remains pending; source concurrency does not prove a4–5second journey.
