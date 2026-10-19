@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## Batch closure fast path — 20 October 2026 SGT
+
+Owner authorizes validated final batch-close evidence reuse and fewer persistence round trips. Based on main d0c0be8 and bounded read-only evidence from hometest03: intermediate books accumulate1–4 entries without invoice; closeBatch includes four confirmed nested invoice bookings, unpaid state and due_datetime matching later readback. Implementation reuses strict closure evidence under existing five-second guard; missing deadline/stale proof retains readback. Hold-expiry lookup/insert and observation persistence consolidate from three D1 round trips to one batch; required payment reservation and returned URL save remain on opposite sides of the single HitPay POST. No new provider booking/payment. Focused/full checks and new-PR CI pending; no merge authorization for this successor.
+
 ## Active checkout optimization on PR61
 
 Cache extension checkpoint21000da passed full local code and386 runtime tests; the inventory-order gate failure was identified during the final combined run. Owner now prioritizes deferred comment I/O and returning the saved URL in the authenticated checkout response. Implemented locally with focused Worker3/client28 passes and full verify:code passed218 tests plus tooling/types/lint/build/export; all388 Worker runtime tests passed; strict gate rejected four misplaced inventory entries, now corrected against the saved runtime output without changing tests. Test-impact/inventory updated; final-head CI pending. Required financial writes remain ordered before HitPay creation; no 6–8second measurement claim. Owner explicitly authorizes pushing, repairing CI failures and merging PR61 once all three final-commit gates pass. Keep draft until that evidence; no assistant provider business writes. Existing main pipeline independently verifies/deploys the merge.

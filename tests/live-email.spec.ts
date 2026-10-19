@@ -1821,6 +1821,24 @@ test("real API batch checkout checks each session once and restores one complete
       1,
     );
     expect(methods.filter((method) => method === "closeBatch")).toHaveLength(1);
+    expect(
+      methods.filter((method) => method === "getBookingDetails"),
+    ).toHaveLength(0);
+    expect(
+      mechanism.calls
+        .slice(before)
+        .filter(
+          (call) =>
+            call.url.endsWith("/admin/invoices/901") && call.method === "GET",
+        ),
+    ).toHaveLength(0);
+    expect(
+      mechanism.calls
+        .slice(before)
+        .filter(
+          (call) => call.url.includes("hit-pay.com") && call.method === "POST",
+        ),
+    ).toHaveLength(1);
     const held = await mechanism.db
       .prepare("SELECT attempt_id FROM hitpay_holds")
       .first();

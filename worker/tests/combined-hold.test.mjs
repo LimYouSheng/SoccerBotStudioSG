@@ -1064,6 +1064,25 @@ test("combined batch checkout retains one payment effect and exact booking assoc
       ),
     );
     assert.equal(result.paymentAvailable, true);
+    assert.equal(result.checkout.url, m.checkoutUrl);
+    assert.equal(
+      m.calls.filter((c) => c.body?.method === "getBookingDetails").length,
+      0,
+    );
+    assert.equal(
+      m.calls.filter(
+        (c) => c.url.endsWith("/admin/invoices/901") && c.method === "GET",
+      ).length,
+      0,
+    );
+    const timing = await m.db
+      .prepare(
+        "SELECT h.expires_ms,c.booking_created_ms,c.hold_window_ms FROM hitpay_holds h JOIN checkout_progress c ON c.attempt_id=h.attempt_id",
+      )
+      .first();
+    assert.ok(
+      timing.expires_ms <= timing.booking_created_ms + timing.hold_window_ms,
+    );
     await send();
     assert.equal(m.calls.filter((c) => c.body?.method === "book").length, 2);
     assert.equal(
@@ -1075,6 +1094,78 @@ test("combined batch checkout retains one payment effect and exact booking assoc
     assert.deepEqual(m.unexpected, []);
   } finally {
     await m.close();
+  }
+});
+
+test("batch closure fallback and failed hold persistence preserve one original attempt without unsafe payment", async () => {
+  for (const failure of ["missing-deadline", "hold-save", "observation-save"]) {
+    const m = await createBookingMechanism({
+      batch: true,
+      missingCreationDeadline: failure === "missing-deadline",
+    });
+    try {
+      const c = await customer(m);
+      c.input.sessions.push({
+        ...c.input.sessions[0],
+        startMs: m.startMs + 3000000,
+      });
+      if (failure === "hold-save")
+        await m.db.exec(
+          "CREATE TRIGGER reject_hold BEFORE INSERT ON hitpay_holds BEGIN SELECT RAISE(ABORT,'synthetic hold failure'); END;",
+        );
+      if (failure === "observation-save")
+        await m.db.exec(
+          "CREATE TRIGGER reject_observation BEFORE UPDATE OF observation_json ON attempts WHEN NEW.observation_json IS NOT NULL BEGIN SELECT RAISE(ABORT,'synthetic observation failure'); END;",
+        );
+      const send = () =>
+        m.mf.dispatchFetch(m.origin + `/api/booking/checkout/${c.input.key}`, {
+          method: "POST",
+          headers: c.headers,
+          body: JSON.stringify({ ...c.input, accepted: true }),
+        });
+      const response = await send();
+      assert.equal(response.status, 200);
+      const result = await response.json();
+      assert.equal(result.paymentAvailable, failure === "missing-deadline");
+      assert.equal(
+        m.calls.filter((c) => c.body?.method === "getBookingDetails").length,
+        failure === "missing-deadline" ? 2 : 0,
+      );
+      assert.equal(
+        m.calls.filter(
+          (c) => c.url.endsWith("/admin/invoices/901") && c.method === "GET",
+        ).length,
+        failure === "missing-deadline" ? 1 : 0,
+      );
+      if (failure !== "missing-deadline") {
+        assert.equal(result.checkout, undefined);
+        const retained = await m.db
+          .prepare("SELECT id,association_json,observation_json FROM attempts")
+          .first();
+        assert.equal(retained.id, c.input.key);
+        assert.ok(retained.association_json);
+        assert.equal(retained.observation_json, null);
+        assert.equal(
+          await m.db.prepare("SELECT * FROM hitpay_holds").first(),
+          null,
+        );
+      }
+      await send();
+      assert.equal(m.calls.filter((c) => c.body?.method === "book").length, 2);
+      assert.equal(
+        m.calls.filter((c) => c.body?.method === "closeBatch").length,
+        1,
+      );
+      assert.equal(
+        m.calls.filter(
+          (c) => c.url.includes("hit-pay.com") && c.method === "POST",
+        ).length,
+        failure === "missing-deadline" ? 1 : 0,
+      );
+      assert.deepEqual(m.unexpected, []);
+    } finally {
+      await m.close();
+    }
   }
 });
 

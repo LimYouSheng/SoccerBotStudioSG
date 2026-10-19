@@ -1092,7 +1092,7 @@ export function normalizeNativeBatchClosure(
   if (retained.some((key) => key.nativeCustomerId !== nativeCustomerId))
     rejectNative("creation.booking.client_id", "mismatch");
   // A supplied flag must remain valid and non-conflicting. Absence does not
-  // establish confirmation; the complete invoice and signed reads do that.
+  // establish confirmation; the validated nested invoice bookings do that.
   if (response.require_confirm != null)
     equal(
       flag(response.require_confirm, "creation.require_confirm"),

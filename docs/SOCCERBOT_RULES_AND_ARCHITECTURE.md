@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Batch evidence reuse and bounded persistence — 20 October 2026 SGT
+
+Both single creation and final batch closure emit one normalized evidence contract through native-adapter. Only complete validated final invoice evidence permits readback elision in ongoing combined HitPay checkout. Keep legacy split/native paths, original first-booking deadlines, shared provider limits, all write fences and unknown-outcome recovery. Hold and observation persistence use one D1 batch without moving payment recovery evidence after redirect. HitPay still needs durable state before and after its single creation POST.
+
 ## Checkout handoff optimization — 19 October 2026 SGT
 
 The ongoing combined HitPay checkout queues automatic booking comments durably after validated creation and processes them after the financial handoff through the account scheduler. The minute cron is a bounded fallback for undispatched comments. Existing finite/native and holding-only compositions retain their grant-bound annotation path. Deferred work uses exact retained booking IDs/intent, account/environment/company, original live grant and unrevoked customer access; each provider write is claimed once, and unknown annotation outcomes are never automatically resent. Shared provider limits and foreground financial priority remain.

@@ -1,5 +1,11 @@
 # SoccerBotStudio — Service Contracts
 
+## Validated batch closure handoff — 20 October 2026 SGT
+
+The ongoing combined HitPay checkout may reuse normalized closeBatch evidence exactly as single creation, only after full invoice/session/customer/money/confirmed-unpaid validation, exact retained booking membership, valid due-time and the existing five-second evidence window. Intermediate book responses cannot authorize payment. Missing deadline or stale evidence uses existing signed booking/invoice readback; malformed closure retains recovery without HitPay creation. Original expiry remains anchored to the first booking, not closure.
+
+HitPay hold persistence computes the minimum original-hold/provider deadline in INSERT SELECT and batches the insert with the fenced observation update: one D1 request replaces the prior lookup, insert and update. Database errors prevent payment dispatch. Other necessary effect journaling/authentication remain; this is not one database request for the entire checkout. Payment creation remains one POST after durable reservation; the validated returned ID/URL must be saved before redirect.
+
 ## Direct saved checkout handoff — 19 October 2026 SGT
 
 POST booking/checkout/{attemptId} and POST booking/hitpay/{attemptId} may return checkout:{url,expiresAtMs} only with state=associated/paymentAvailable=true after strict HitPay response validation and successful durable ID/URL save. Failed/unknown writes and repeat dispatches expose no new handoff. The authenticated client validates matching attempt, expected state, allowed destination and expiry, and invokes a transient onCheckoutReady callback; the active provider action navigates once without a redundant checkout-context GET. The original pending/recovery contracts and protected return verification are unchanged.

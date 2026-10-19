@@ -46,6 +46,7 @@
   "checkout reuses complete creation evidence for one HitPay request without redundant reads",
   "combined checkout never creates HitPay after failed booking verification and preserves its attempt",
   "combined batch checkout retains one payment effect and exact booking association",
+  "batch closure fallback and failed hold persistence preserve one original attempt without unsafe payment",
   "scheduled display warming survives idle entry and booking refresh never delays payment handoff",
   "failed scheduled display refresh retains a bounded snapshot without renewing its expiry",
   "checkout returns its durable URL while comments are blocked and annotation failure never repeats effects",
