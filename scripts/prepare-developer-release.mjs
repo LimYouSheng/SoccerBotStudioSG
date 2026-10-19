@@ -134,6 +134,7 @@ const manifest = {
     "0031_rejected_checkout_history.sql",
     "0032_completed_checkout_history.sql",
     "0033_checkout_progress.sql",
+    "0034_checkout_windows.sql",
   ],
   priorWorkerVersion: "fdd603d2-ce9f-4c89-b1be-e20b6be1e1c8",
   acceptance:

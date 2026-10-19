@@ -167,6 +167,7 @@ try {
     "0031_rejected_checkout_history.sql",
     "0032_completed_checkout_history.sql",
     "0033_checkout_progress.sql",
+    "0034_checkout_windows.sql",
   ]);
   // Old-state compatibility remains tested locally, never re-applied remotely.
   for (const name of names.slice(5, 8)) await migrate(name);
@@ -427,6 +428,7 @@ try {
   await migrate("0031_rejected_checkout_history.sql");
   await migrate("0032_completed_checkout_history.sql");
   await migrate("0033_checkout_progress.sql");
+  await migrate("0034_checkout_windows.sql");
   assert.deepEqual(
     (
       await db
