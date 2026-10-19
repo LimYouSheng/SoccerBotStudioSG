@@ -773,6 +773,10 @@
   },
   {
     "file": "src/features/booking/booking-loading.test.tsx",
+    "title": "display loading leaves navigation interactive while payment loading still locks the page"
+  },
+  {
+    "file": "src/features/booking/booking-loading.test.tsx",
     "title": "overlapping booking reads share one full-page loader and preserve the mounted form"
   },
   {
@@ -1046,5 +1050,25 @@
   {
     "file": "tests/live-email.spec.ts",
     "title": "real API expired unpaid Review retains its hold through the grace window without recreating or losing contact"
+  },
+  {
+    "file": "src/services/customer-catalogue.test.ts",
+    "title": "scheduled display catalogue retains original expiry and rejects renewed or overdue snapshots"
+  },
+  {
+    "file": "src/features/booking/booking-parity.test.tsx",
+    "title": "prewarmed calendar remains visible until its original display deadline without refetching"
+  },
+  {
+    "file": "src/features/booking/direct-checkout.test.tsx",
+    "title": "saved URL from checkout navigates once without a context request"
+  },
+  {
+    "file": "src/features/booking/direct-checkout.test.tsx",
+    "title": "cancelled checkout ignores a late saved URL handoff"
+  },
+  {
+    "file": "src/features/booking/direct-checkout.test.tsx",
+    "title": "live checkout validates direct handoff scope expiry and destination without persisting the URL"
   }
 ]

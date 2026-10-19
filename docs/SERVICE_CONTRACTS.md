@@ -1,5 +1,29 @@
 # SoccerBotStudio — Service Contracts
 
+## Direct saved checkout handoff — 19 October 2026 SGT
+
+POST booking/checkout/{attemptId} and POST booking/hitpay/{attemptId} may return checkout:{url,expiresAtMs} only with state=associated/paymentAvailable=true after strict HitPay response validation and successful durable ID/URL save. Failed/unknown writes and repeat dispatches expose no new handoff. The authenticated client validates matching attempt, expected state, allowed destination and expiry, and invokes a transient onCheckoutReady callback; the active provider action navigates once without a redundant checkout-context GET. The original pending/recovery contracts and protected return verification are unchanged.
+
+The combined ongoing flow journals native-comments-pending against its validated exact booking set before association. After completion or retained failure, the account display queue performs annotation; minute scheduling selects at most one eligible attempt per tick after payment recovery. Native-comment claims remain unknown until an exact echoed response is stored, and are never resent after uncertain delivery. Revoked/expired/foreign scopes cannot dispatch. No new migration, business booking/payment operation or public annotation route.
+
+Test-impact pass: searched all native comment assumptions, paymentAvailable response assertions, service wrappers/callbacks, checkout-context waits, fixtures and standalone setups. Existing actual Worker browser handoff gate now delays the HitPay POST instead of the removed context GET and asserts zero context requests, retaining overlay, failure, one-booking/payment and readback assertions. Added Worker blocked/failed-comment and lost-save-fence regressions plus client direct/cancelled/malformed handoff coverage. Full non-browser/final-head CI results remain pending.
+
+## Scheduled public snapshots — 19 October 2026 SGT
+
+PUBLIC_DISPLAY_WARMING=enabled plus ongoing trusted customer access permits coordinator warmDisplay. The existing minute cron invokes recovery first and verifies environment bindings before warming. SQLite display_refresh claims one refresh per fifteen minutes; dirty booking state can claim immediately. Current/previously requested horizon months refresh through the existing display queue, with the same provider accounting, pacing and concurrency limits. No new D1 migration or remote configuration operation occurs during source work.
+
+Public calendar/catalogue may include displayExpiresAtMs, bounded to observedAtMs+1800000. Client schemas reject future observations, overlong/renewed deadlines and expired snapshots; calendar retention and shared metadata cache honor the original deadline. Missing/expired snapshots use ordinary queued reads and explicit failure feedback. Homepage preloads before booking navigation; completed or in-flight browser reads are reused. Protected calendar/prebooking/checkout contracts do not consume this extended display freshness.
+
+Creation/failure invalidates persisted calendar data and queues fresh reads without awaiting them before the checkout response. The actual Worker regression blocks this refresh while requiring paymentAvailable and protected checkout context, exactly one booking/payment, and subsequent removal of the booked slot. Persistent SQLite tests cover restart reconstruction, deadline retention, scope isolation, invalidation fencing and cadence claims. Failed scheduled reads retain a bounded prior snapshot without renewal and refuse expired fallback. The CI guest journey warms through the actual scheduled handler before homepage entry, retaining all request counts, consent and duplicate-effect assertions.
+
+## Public display cache fast path and loading scope — 19 October 2026 SGT
+
+Coordinator publicCalendar/windowCatalogue attempt the existing read owners with cacheOnly before joining the provider queue. Cache-only returns a detached valid snapshot or internal display_cache_miss; it neither starts nor joins pending provider I/O. Only that miss enters the display queue. Closed/invalid scopes propagate their original error. Calendar price, opening-hour/lead-time filters and sixty-second server TTL remain unchanged; no anonymous write authority is granted. Native/protected operations retain authentication and existing queue behavior.
+
+BookingLoading overlay=false now renders the requested local presentation without registering global inertness. Display-only callers explicitly select it; compact alone retains existing blocking behavior for financial actions. Account submission uses stable-layout accessible status and button feedback, disabled conflicting controls, cancellation and existing asynchronous identity/navigation guards. Checkout keeps “Opening secure payment…” and pending confirmation retains “Verifying your payment…”.
+
+Test-impact pass covers all loader callsites, account lifecycle/navigation, shared browser guest/email setup, calendar expiry/failure, cache scope/invalidation/pending reads, and coordinator admission. Actual workerd regression holds a cold provider range request open while existing calendar/catalogue cache hits complete with zero additional provider calls. CI real-Worker guest journey asserts interactive cached entry/calendar; financial overlay and duplicate-effect assertions remain. No browser runs by the assistant.
+
 ## Local Review and fixed payment-checking contract — 19 October 2026 SGT
 
 Restored editable Review suppresses background catalogue/calendar reads from the synchronous route, before page effects mount; an unresolved route cannot start display prefetch. Revoked access at the checkout boundary routes to protected denied feedback, retains only the local draft with consent reset, and creates no server/provider booking.

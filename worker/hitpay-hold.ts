@@ -147,7 +147,7 @@ export async function payHitpayHold(
       )
         throw new ApiError(409, "hitpay_hold_invalid");
     }
-    await prepareHitpay(
+    const checkout = await prepareHitpay(
       env,
       scope,
       row.association_json,
@@ -155,7 +155,13 @@ export async function payHitpayHold(
       paymentDeadline,
       assertHeld,
     );
-    return { attemptId: id, state: "associated", paymentAvailable: true };
+    await assertHeld();
+    return {
+      attemptId: id,
+      state: "associated",
+      paymentAvailable: true,
+      checkout,
+    };
   } finally {
     clearTimeout(timer);
     controller.abort();

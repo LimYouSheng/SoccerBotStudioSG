@@ -1,5 +1,11 @@
+import { annotatePendingBooking } from "./native-comments";
+import { DisplaySnapshots } from "./display-snapshots";
 import { expireCheckout } from "./checkout-progress";
 import { dismissCompletedCheckout } from "./completed-checkout";
+import {
+  BOOKING_LEAD_MS,
+  withinOpeningHours,
+} from "../src/domain/booking-policy";
 import { ProviderQueue } from "./provider-queue";
 import { payHitpayHold } from "./hitpay-hold";
 import { hitpayRecoveryEnabled } from "./hitpay-contract";
@@ -8,6 +14,7 @@ import { ongoingReadbackDue } from "./ongoing-readback";
 import { authorizeCustomerCheckout } from "./customer-authority";
 import {
   publicCalendar,
+  calendarWindow,
   hasPublicCalendarWindow,
   windowCatalogue,
   windowCalendar,
@@ -598,6 +605,8 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
             this.env,
             Date.now(),
           );
+          if (scope.fresh && this.displayWarmingEnabled())
+            this.snapshots().invalidateCalendars();
           const result = await windowAvailability({
             ...this.calendarReadOptions(),
             ...scope,
@@ -628,17 +637,107 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     );
     return rpcOutcome(() => pending);
   }
+  private displayWarmingEnabled() {
+    return (
+      liveCustomerAccess(this.env) &&
+      policy(this.env).PUBLIC_DISPLAY_WARMING === "enabled"
+    );
+  }
+  private snapshots() {
+    const { binding, p } = calendarWindow(this.calendarReadOptions());
+    return new DisplaySnapshots(
+      this.sql,
+      JSON.stringify([binding, p.SOURCE_REVISION, p.PREMIUM_SERVICE_ID]),
+    );
+  }
   async publicCalendar(month: string, correlationId: string) {
-    const pending = this.providerQueue.run("display", () =>
-      traced(correlationId, "coordinator", () =>
-        publicCalendar({
+    return rpcOutcome(() =>
+      traced(correlationId, "coordinator", async () => {
+        const store = this.displayWarmingEnabled()
+          ? this.snapshots()
+          : undefined;
+        const cached = store?.read("calendar", `calendar:${month}`);
+        if (cached && store?.months().includes(month))
+          return this.filterDisplayCalendar(cached);
+        const generation = store?.generation() ?? 0;
+        const value = await this.displayRead((cacheOnly) =>
+          publicCalendar({ ...this.calendarReadOptions(), month, cacheOnly }),
+        );
+        store?.save("calendar", `calendar:${month}`, value, generation);
+        return store?.read("calendar", `calendar:${month}`) ?? value;
+      }),
+    );
+  }
+  private filterDisplayCalendar(
+    value: Awaited<ReturnType<typeof publicCalendar>>,
+  ) {
+    const now = Date.now();
+    return {
+      ...value,
+      dates: value.dates
+        .filter(
+          (day) =>
+            day.date >= new Date(now + 28800000).toISOString().slice(0, 10),
+        )
+        .map((day) => {
+          const offers = day.offers?.filter(
+            (offer) =>
+              withinOpeningHours(offer.startMs) &&
+              offer.startMs - now >= BOOKING_LEAD_MS,
+          );
+          return {
+            ...day,
+            ...(offers ? { offers, available: offers.length > 0 } : {}),
+          };
+        }),
+    };
+  }
+  private invalidateDisplay() {
+    this.calendarReads.invalidate();
+    if (this.displayWarmingEnabled()) this.snapshots().invalidateCalendars();
+  }
+  private refreshDisplayAfterWrite() {
+    this.invalidateDisplay();
+    // Queue behind the current financial operation; do not wait before redirect.
+    this.ctx.waitUntil(
+      this.warmDisplay().catch(() => {
+        console.error(JSON.stringify({ event: "display_refresh_unavailable" }));
+      }),
+    );
+  }
+  async warmDisplay() {
+    if (!this.displayWarmingEnabled()) return;
+    const store = this.snapshots();
+    const months = store.months();
+    if (!store.claimRefresh(Date.now())) return;
+    for (const month of months)
+      await this.providerQueue.run("display", async () => {
+        const generation = store.generation();
+        // Force fresh range evidence without discarding the last retained display.
+        this.calendarReads.invalidate();
+        const calendar = await publicCalendar({
           ...this.calendarReadOptions(),
           month,
-        }),
-      ),
-    );
-    return rpcOutcome(() => pending);
+        });
+        const catalogue = await windowCatalogue(this.calendarReadOptions());
+        store.save("calendar", `calendar:${month}`, calendar, generation);
+        store.save("catalogue", "catalogue", catalogue, generation);
+      });
   }
+  private async displayRead<T>(
+    read: (cacheOnly: boolean) => Promise<T>,
+  ): Promise<T> {
+    try {
+      // Valid public display snapshots need no provider runner. A miss may not
+      // dispatch or wait for provider I/O outside the existing bounded admission.
+      return await read(true);
+    } catch (error) {
+      if (!(error instanceof ApiError) || error.code !== "display_cache_miss")
+        throw error;
+      return this.providerQueue.run("display", () => read(false));
+    }
+  }
+
   private calendarReadOptions() {
     return {
       env: this.env,
@@ -687,13 +786,23 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     );
   }
   async windowCatalogue(correlationId: string) {
-    const pending = this.providerQueue.run("display", () =>
-      traced(correlationId, "coordinator", () =>
-        windowCatalogue(this.calendarReadOptions()),
-      ),
+    return rpcOutcome(() =>
+      traced(correlationId, "coordinator", async () => {
+        const store = this.displayWarmingEnabled()
+          ? this.snapshots()
+          : undefined;
+        const cached = store?.read("catalogue", "catalogue");
+        if (cached) return cached;
+        const generation = store?.generation() ?? 0;
+        const value = await this.displayRead((cacheOnly) =>
+          windowCatalogue({ ...this.calendarReadOptions(), cacheOnly }),
+        );
+        store?.save("catalogue", "catalogue", value, generation);
+        return store?.read("catalogue", "catalogue") ?? value;
+      }),
     );
-    return rpcOutcome(() => pending);
   }
+
   async nativeCalendar(
     scope: { month: string; serviceId: string; cookie: string },
     correlationId: string,
@@ -793,7 +902,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         await prepareCustomerNative(request, env, input, attemptId, () =>
           this.provider.identity(env, this.providerControl(false, true)),
         );
-        this.calendarReads.invalidate();
+        this.invalidateDisplay();
         return executeNativeCheckout({
           request,
           env,
@@ -815,16 +924,36 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           control: this.providerControl(false, true),
           recoveryControl: this.providerControl(true, true),
           accounting: () => this.providerAccounting(),
-        }).finally(() => this.calendarReads.invalidate());
+        }).finally(() => {
+          if (scope.checkout)
+            this.ctx.waitUntil(
+              this.bookingComments(attemptId).catch(() => {
+                console.error(
+                  JSON.stringify({ event: "booking_comments_deferred" }),
+                );
+              }),
+            );
+          this.refreshDisplayAfterWrite();
+        });
       }),
     );
     return rpcOutcome(() => pending);
+  }
+  async bookingComments(attemptId?: string) {
+    return this.providerQueue.run("display", () =>
+      annotatePendingBooking(
+        this.env,
+        this.provider,
+        this.providerControl(false, true),
+        attemptId,
+      ),
+    );
   }
   async nativeCheckout(
     scope: { attemptId: string; cookie: string; holding?: boolean },
     correlationId: string,
   ) {
-    this.calendarReads.invalidate();
+    this.invalidateDisplay();
     const pending = this.providerQueue.run("foreground", () =>
       traced(correlationId, "coordinator", () =>
         executeNativeCheckout({
@@ -838,7 +967,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           control: this.providerControl(false, true),
           recoveryControl: this.providerControl(true, true),
           accounting: () => this.providerAccounting(),
-        }).finally(() => this.calendarReads.invalidate()),
+        }).finally(() => this.refreshDisplayAfterWrite()),
       ),
     );
     return rpcOutcome(() => pending);

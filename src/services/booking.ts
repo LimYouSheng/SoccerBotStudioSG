@@ -1,5 +1,6 @@
 import {
   CATALOGUE_MAX_AGE_MS,
+  displayDeadline,
   catalogueSchema,
   catalogueBindingSchema,
   type CatalogueBinding,
@@ -26,6 +27,7 @@ import {
   nativeDisplaySlots,
   nativeAvailabilitySchema,
   nativeCalendarSchema,
+  hitpayHandoffSchema,
   nativePrepareSchema,
   nativeCurrentSchema,
 } from "@/domain/native-checkout";
@@ -206,7 +208,7 @@ export function defineBookingService(adapter: BookingService): BookingService {
               if (
                 value.month !== input.month ||
                 value.observedAtMs > Date.now() ||
-                Date.now() - value.observedAtMs >= CATALOGUE_MAX_AGE_MS
+                Date.now() >= displayDeadline(value, CATALOGUE_MAX_AGE_MS)
               )
                 throw invalidResponse();
               return value;
@@ -292,6 +294,7 @@ export function defineBookingService(adapter: BookingService): BookingService {
           ...request,
           signal: input.signal,
           onReviewReady: input.onReviewReady,
+          onCheckoutReady: input.onCheckoutReady,
         });
         if (request.holding && adapter.mode === "live") {
           const held = resultAttempt(result, previous.draft, previous.id);
@@ -577,7 +580,14 @@ export const liveBookingService: BookingService = defineBookingService({
       booking: null,
     };
   },
-  async pay({ attempt, signal, holding, onReviewReady, startCheckout }) {
+  async pay({
+    attempt,
+    signal,
+    holding,
+    onReviewReady,
+    startCheckout,
+    onCheckoutReady,
+  }) {
     if (attempt.draft.slots.some((slot) => !slot.native)) return unavailable();
     nativeAttemptId.parse(attempt.id);
     if (
@@ -652,14 +662,16 @@ export const liveBookingService: BookingService = defineBookingService({
       stop();
       signal?.removeEventListener("abort", stop);
     }
-    const result = z
-      .object({
+    const result = decode(
+      z.object({
         attemptId: nativeAttemptId,
         state: z.string(),
         paymentAvailable: z.boolean(),
+        checkout: hitpayHandoffSchema.optional(),
         rejectedSessionIndex: z.number().int().min(0).max(11).optional(),
-      })
-      .parse(raw);
+      }),
+      raw,
+    );
     if (result.attemptId !== attempt.id) throw invalidResponse();
     if (
       result.state === "restart_required" ||
@@ -677,6 +689,16 @@ export const liveBookingService: BookingService = defineBookingService({
         "This selection is no longer available or has changed. Please choose again. Your details have been kept.",
         result.rejectedSessionIndex,
       );
+    }
+    if (result.checkout) {
+      if (
+        !result.paymentAvailable ||
+        result.state !== "associated" ||
+        !(startCheckout || attempt.held) ||
+        result.checkout.expiresAtMs <= Date.now()
+      )
+        throw invalidResponse();
+      onCheckoutReady?.(result.checkout);
     }
     if (holding && !startCheckout && result.state === "associated")
       return { ...attempt, verifying: undefined, held: true, status: "ready" };

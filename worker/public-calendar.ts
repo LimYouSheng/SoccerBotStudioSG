@@ -37,6 +37,7 @@ export type ReadOptions = {
   control: ProviderControl;
   accounting: () => { used: number; active: number };
   lastDispatchMs?: () => number;
+  cacheOnly?: boolean;
 };
 export function hasPublicCalendarWindow(env: Env) {
   return (
@@ -129,8 +130,13 @@ export function calendarWindow(options: ReadOptions) {
 // customer-specific write authority; checkout still requires its exact grant.
 export async function windowCatalogue(options: ReadOptions) {
   const { window, control, assertOpen } = calendarWindow(options);
-  await options.provider.identity(options.env, control);
-  const value = await options.provider.catalogue(options.env, control);
+  if (!options.cacheOnly) await options.provider.identity(options.env, control);
+  const value = await options.provider.catalogue(
+    options.env,
+    control,
+    false,
+    options.cacheOnly,
+  );
   assertOpen();
   const services = value.services.filter(
     (service) => service.id === window.serviceId,
@@ -193,6 +199,7 @@ export async function windowCalendar(
     })());
   const read = (serviceId: string) =>
     options.cache.read({
+      cacheOnly: options.cacheOnly,
       scope: JSON.stringify([binding, p.SOURCE_REVISION]),
       month,
       serviceId,

@@ -14,9 +14,11 @@ import type {
 } from "@/services/contracts";
 
 const retention = (entry: CalendarAvailability) =>
-  entry.dates.every((day) => day.offers !== undefined)
-    ? BROWSER_CALENDAR_MAX_AGE_MS
-    : CATALOGUE_MAX_AGE_MS;
+  entry.displayExpiresAtMs !== undefined
+    ? entry.displayExpiresAtMs - entry.observedAtMs
+    : entry.dates.every((day) => day.offers !== undefined)
+      ? BROWSER_CALENDAR_MAX_AGE_MS
+      : CATALOGUE_MAX_AGE_MS;
 // Load only the displayed month. Other months load on navigation, never as
 // background prefetch or an empty-result polling loop.
 export function useCalendarAvailability(

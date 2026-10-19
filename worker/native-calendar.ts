@@ -65,6 +65,7 @@ export class NativeCalendarReads {
     month: string;
     serviceId: string;
     dates: string[];
+    cacheOnly?: boolean;
     catalogue: () => Promise<ProviderCatalogue>;
     exchange: NativeExchange;
   }): Promise<Calendar> {
@@ -82,6 +83,7 @@ export class NativeCalendarReads {
       Date.now() - entry.value.observedAtMs < CALENDAR_CACHE_MS
     )
       return structuredClone(entry.value);
+    if (input.cacheOnly) throw new ApiError(503, "display_cache_miss");
     if (entry?.pending) return structuredClone(await entry.pending);
     if (!entry) {
       if (this.entries.size >= 8)

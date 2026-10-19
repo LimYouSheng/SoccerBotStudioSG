@@ -505,9 +505,10 @@ async function mechanismTransport(
 test("native guest journey preserves players contact and one checkout across refresh", async ({
   page,
 }) => {
-  const mechanism = await createBookingMechanism();
+  const mechanism = await createBookingMechanism({ displayWarming: true });
   const transport = await mechanismTransport(page, mechanism);
   try {
+    await mechanism.recover();
     const { date, startMs, checkoutUrl } = mechanism;
     const { calls, unexpected } = transport;
     const warmedMonths = new Set<string>();
@@ -539,6 +540,8 @@ test("native guest journey preserves players contact and one checkout across ref
     });
     await expect(guest).toBeVisible();
     await expect(email).toBeVisible();
+    await expect(page.locator(".booking-flow-overlay")).toHaveCount(0);
+    await expect(guest).toBeEnabled();
     const guestBox = (await guest.boundingBox())!;
     const emailBox = (await email.boundingBox())!;
     expect(Math.abs(guestBox.width - emailBox.width)).toBeLessThanOrEqual(1);
@@ -554,6 +557,8 @@ test("native guest journey preserves players contact and one checkout across ref
     await page
       .getByRole("link", { name: "See available times", exact: true })
       .click();
+    await expect(page.locator(".booking-flow-overlay")).toHaveCount(0);
+    await expect(page.locator("main")).not.toHaveAttribute("inert");
     const today = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Singapore",
       year: "numeric",
@@ -2008,15 +2013,14 @@ async function optimisticHold(page: Page, failReadback: boolean) {
         await readGate.promise;
         if (failReadback) return new Response(null, { status: 503 });
       }
+      if (call.url.includes("hit-pay.com") && call.method === "POST") {
+        checkoutStarted.resolve();
+        await checkoutGate.promise;
+      }
       return undefined;
     },
   });
-  const transport = await mechanismTransport(page, mechanism, async (path) => {
-    if (path.endsWith("/checkout")) {
-      checkoutStarted.resolve();
-      await checkoutGate.promise;
-    }
-  });
+  const transport = await mechanismTransport(page, mechanism);
   try {
     await guestDetails(page, mechanism);
     await reviewResponse(page);
@@ -2061,11 +2065,11 @@ async function optimisticHold(page: Page, failReadback: boolean) {
     await readStarted.promise;
     await assertNoPaymentOrConfirmation(page, mechanism);
     readGate.resolve();
-    expect(await (await result).json()).toMatchObject({
-      state: failReadback ? "recovery_required" : "associated",
-      paymentAvailable: !failReadback,
-    });
     if (failReadback) {
+      expect(await (await result).json()).toMatchObject({
+        state: failReadback ? "recovery_required" : "associated",
+        paymentAvailable: !failReadback,
+      });
       await expect(page).toHaveURL(/\/book\/payment\/$/);
       await assertNoPaymentOrConfirmation(page, mechanism);
     } else {
@@ -2081,6 +2085,10 @@ async function optimisticHold(page: Page, failReadback: boolean) {
         transport.calls.filter((call) => call.path.endsWith("/confirmation")),
       ).toHaveLength(0);
       checkoutGate.resolve();
+      expect(await (await result).json()).toMatchObject({
+        state: failReadback ? "recovery_required" : "associated",
+        paymentAvailable: !failReadback,
+      });
       await expect(page).toHaveURL(mechanism.checkoutUrl);
       expect(
         transport.calls.filter((call) =>
@@ -2089,7 +2097,7 @@ async function optimisticHold(page: Page, failReadback: boolean) {
       ).toHaveLength(0);
       expect(
         transport.calls.filter((call) => call.path.endsWith("/checkout")),
-      ).toHaveLength(1);
+      ).toHaveLength(0);
       expect(
         mechanism.calls.filter(
           (call) => call.body?.method === "getBookingDetails",

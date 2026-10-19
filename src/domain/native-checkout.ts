@@ -1,3 +1,5 @@
+import { z } from "zod";
+import { validDisplayDeadline } from "./catalog";
 import { providerReferencesSchema } from "./provider-references";
 // Initial sandbox checkout URL only; the server binds merchant and request ID.
 export function isHitpayCheckoutUrl(value: string): boolean {
@@ -9,6 +11,11 @@ export function isHitpayCheckoutUrl(value: string): boolean {
   );
 }
 
+export const hitpayHandoffSchema = z.strictObject({
+  url: z.string().max(2048).refine(isHitpayCheckoutUrl),
+  expiresAtMs: z.number().int().positive().safe(),
+});
+
 // Owner-supplied token-free historical native destination shape, 9 October 2026.
 // Validating this initial URL does not attest downstream redirects or sandbox mode.
 export function isNativeCheckoutUrl(value: string): boolean {
@@ -19,7 +26,6 @@ export function isNativeCheckoutUrl(value: string): boolean {
 
 // Provider-ID DTOs for the protected customer flow. Browser labels and reviewed
 // totals are display/consent snapshots; the Worker revalidates provider truth.
-import { z } from "zod";
 import { isDate } from "./dates";
 import { providerIdentifier } from "./catalog";
 import { contactSchema } from "./contact";
@@ -41,6 +47,7 @@ export const nativeAvailabilitySchema = z.strictObject({
 });
 export const publicCalendarSchema = z
   .strictObject({
+    displayExpiresAtMs: z.number().int().nonnegative().safe().optional(),
     month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
     serviceId: providerIdentifier,
     observedAtMs: z.number().int().nonnegative().safe(),
@@ -54,6 +61,7 @@ export const publicCalendarSchema = z
       )
       .max(31),
   })
+  .refine(validDisplayDeadline)
   .refine(
     (value) =>
       new Set(value.dates.map((day) => day.date)).size === value.dates.length &&

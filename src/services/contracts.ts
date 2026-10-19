@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import type {
+  hitpayHandoffSchema,
   nativeOfferSchema,
   receiptSchema,
   bookingDetailsSchema,
@@ -23,6 +24,7 @@ export type AvailabilityInput = BookingRequest & {
   fresh?: boolean;
 };
 export type CalendarAvailability = {
+  displayExpiresAtMs?: number;
   month: string;
   observedAtMs: number;
   dates: {
@@ -39,6 +41,7 @@ export type CheckoutInput = BookingRequest & {
 export type PayInput = BookingRequest & {
   startCheckout?: boolean;
   onReviewReady?: () => void;
+  onCheckoutReady?: (checkout: z.infer<typeof hitpayHandoffSchema>) => void;
   attempt: Attempt;
   outcome: Outcome;
   holding?: boolean;

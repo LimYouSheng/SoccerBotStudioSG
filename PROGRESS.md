@@ -1,5 +1,17 @@
 # SoccerBotStudioSG current progress
 
+## Active checkout optimization on PR61
+
+Cache extension checkpoint21000da passed full local code and386 runtime tests; the inventory-order gate failure was identified during the final combined run. Owner now prioritizes deferred comment I/O and returning the saved URL in the authenticated checkout response. Implemented locally with focused Worker3/client28 passes and full verify:code passed218 tests plus tooling/types/lint/build/export; all388 Worker runtime tests passed; strict gate rejected four misplaced inventory entries, now corrected against the saved runtime output without changing tests. Test-impact/inventory updated; final-head CI pending. Required financial writes remain ordered before HitPay creation; no 6–8second measurement claim. Owner explicitly authorizes pushing, repairing CI failures and merging PR61 once all three final-commit gates pass. Keep draft until that evidence; no assistant provider business writes. Existing main pipeline independently verifies/deploys the merge.
+
+## PR61 extension — persistent display snapshots
+
+Owner authorizes fifteen-minute scheduled warming plus booking-triggered refresh, with eager browser download on site entry. Source implemented and focused persistence/scheduled/failure/checkout-handoff/client/release checks passed; full verify:code passed215 tests plus tooling/types/lint/build/export and 386/386 Worker runtime tests passed; the inventory-order gate failure was subsequently identified and corrected during the final combined run; final-head CI pending. No merge/deployment. Initial published d46b336 CI39264502349 covers loading/cache-priority only; the snapshot extension must be pushed and verified separately. Checkout target6–8seconds is under investigation; awaited comments and remaining read/persistence barriers identified without attributing unmeasured provider timings.
+
+## Browsing-loading successor — 19 October 2026 SGT
+
+Baseline main d15caba; branch fix/browsing-loading-cache. Fix explicit local display loading and stable guest feedback; serve valid public calendar/catalogue cache hits before provider queue; start short catalogue prefetch before month work. Financial overlays, shared provider limits and serialized booking writes remain. Focused50 frontend/30 catalogue/one actual workerd mixed cache/queue case passed. Full verify:code passed213 tests plus tooling/types/lint/build/export; full Worker gate and exact-head CI pending; successor PR requires its own merge approval. Awaited booking-comment optimization is identified but deferred pending durable background effect ownership. Canonical owners contain contracts and test impact.
+
 ## PR60 streamed Review restoration race — 19 October 2026 SGT
 
 Headbe08170 passed frontend/backend; live-email passed74/75. Tablet WebKit exposed a mount-order race: restoration finished before Review mounted, so the default browsing flag launched calendar/catalogue reads. Delaying the Review component in the regression reproduces the extra read. Provider now combines the page browsing flag with the synchronous pathname, blocks unknown routes until resolved, and suppresses Details/Review/payment/confirmation display prefetch before page effects. Router mocks updated across affected component setup paths;212 component/service tests passed. The existing zero-extra-display-read browser assertion is unchanged. Final exact-head CI and authorized conditional merge remain pending.

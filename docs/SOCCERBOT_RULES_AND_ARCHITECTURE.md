@@ -1,5 +1,27 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Checkout handoff optimization — 19 October 2026 SGT
+
+The ongoing combined HitPay checkout queues automatic booking comments durably after validated creation and processes them after the financial handoff through the account scheduler. The minute cron is a bounded fallback for undispatched comments. Existing finite/native and holding-only compositions retain their grant-bound annotation path. Deferred work uses exact retained booking IDs/intent, account/environment/company, original live grant and unrevoked customer access; each provider write is claimed once, and unknown annotation outcomes are never automatically resent. Shared provider limits and foreground financial priority remain.
+
+HitPay creation still follows durable booking association, anchored deadlines and unique payment reservation. Return the validated checkout URL/expiry only after its original payment row is saved, with final authentication; a lost save fence cannot expose a URL. The browser uses this response only for the active initial handoff, keeps Opening secure payment feedback and never persists the URL in its local attempt. Protected context remains for restoration, legacy replies and recovery. No confirmed/paid state is inferred. Measured 6–8second acceptance remains pending.
+
+## Persistent display warming and booking-triggered refresh — 19 October 2026 SGT
+
+Owner adds the previously deferred recurring warm-up to PR61. The existing minute scheduled handler runs recovery first, then asks the account coordinator for a display refresh due every fifteen minutes. A persisted claim prevents duplicate cron/booking triggers across restart. Warm only the current Singapore month and other already-requested months within the existing four-month horizon, not four mandatory browser preloads. Jobs enter the existing display queue individually; provider limits and financial priority remain unchanged.
+
+PUBLIC_DISPLAY_WARMING stays closed by default and is enabled in the tested live release profile. Account-coordinator SQLite stores bounded public calendar/catalogue DTOs scoped to account/environment/company/source/pricing configuration. No customer data or financial authority is stored. Snapshots carry the original observation plus a thirty-minute display deadline: one missed fifteen-minute refresh can retain valid old data, never indefinitely or with a renewed timestamp. Browser entry downloads these snapshots and retains them through Book now/guest/email entry. Legacy responses retain their existing five-minute browser/sixty-second receive rules. Time/lead filters still apply on cached reads, and checkout retains short authoritative freshness.
+
+Booking execution invalidates retained calendars before writes and again on completion/failure, then queues a non-blocking refresh under ctx.waitUntil. Invalidation generations prevent a prior read from repopulating obsolete data. Retained dirty month keys survive invalidation so non-current booked months are refreshed too. A failed refresh preserves the prior valid display only when it has not been invalidated; no booking/payment retry, cancellation or speculative success. Persistent dirty state and scheduled cadence provide restart recovery. Known financial uncertainty keeps original attempt recovery protections.
+
+## Browsing cache priority and local loading — 19 October 2026 SGT
+
+Public calendar/catalogue first attempt a cache-only read outside the account provider runner. Valid display data retains existing scope, window, freshness, pricing and lead-time filters; a miss cannot dispatch or await provider work outside the queue. Cold/expired reads use the existing shared runner, bounded provider admission and fairness. Booking writes remain serialized. This is not the deferred full two-lane concurrency change or a new cache TTL. History audit found the proposed fifteen-minute calendar warmer explicitly excluded on15October; current release cron is minute-based recovery only. Scheduled persistent display snapshots remain unimplemented.
+
+Calendar/session/basket display loaders are local and do not make the whole page inert. Guest/email submission preserves mounted content, duplicate-action guards and navigation waiting, with local status and disabled action controls. Financial submission keeps the shared blocking overlay. Initial homepage prefetch starts session metadata before the longer month read; only the displayed month is loaded.
+
+Redirect audit: native adapter finalize still awaits booking comments before association and HitPay preparation. Failure is non-fatal but latency is on the critical path; a slow comment can also age the five-second creation evidence into fresh readback. Moving annotation off-path needs durable deferred-effect ownership, guarded dispatch and restart recovery; it is not implemented here. Required hold/payment persistence and authoritative booking/payment checks remain awaited. No new payment concurrency or provider experiment.
+
 ## Local Review and anchored return checking — 19 October 2026 SGT
 
 Owner replaces fresh-read Review and checkout resume with editable local Review and a fixed checking window. Details validates the draft locally; checkout retains fresh server write-boundary checks, original attempt identity, shared capacity and consent. Session-scoped live draft persistence restores edits without restoring consent or financial authority. Protected server restoration always owns existing attempts.

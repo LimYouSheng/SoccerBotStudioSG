@@ -237,7 +237,11 @@ export function TimeStep() {
             ) : calendar.failed.includes(month.slice(0, 7)) ? (
               "Availability could not be checked. Your selections are saved."
             ) : (
-              <BrandLoading compact label="Checking available dates…" />
+              <BrandLoading
+                overlay={false}
+                compact
+                label="Checking available dates…"
+              />
             )}{" "}
             <button className="text-link" onClick={calendar.retry}>
               Refresh availability
@@ -265,7 +269,11 @@ export function TimeStep() {
             Refresh availability to choose a session. Your selections are saved.
           </p>
         ) : (
-          <BrandLoading compact label="Checking available times…" />
+          <BrandLoading
+            overlay={false}
+            compact
+            label="Checking available times…"
+          />
         )
       ) : result.status !== "success" ? (
         <div className="alert" role="alert">

@@ -24,7 +24,13 @@ import {
   clearAccessCookie,
 } from "./access";
 import { confirmation, checkoutContext } from "./confirmation";
-import { ApiError, digest, policy, unwrapRpcOutcome } from "./policy";
+import {
+  ApiError,
+  digest,
+  policy,
+  liveCustomerAccess,
+  unwrapRpcOutcome,
+} from "./policy";
 import { verifyBindings } from "./bindings";
 import { traced, instrumentStorage, traceStatus } from "./diagnostics";
 import { developerOperation } from "./developer-operation";
@@ -71,6 +77,22 @@ export default {
       console.error(
         JSON.stringify({ event: "scheduled_recovery_unavailable" }),
       );
+    }
+    try {
+      if (liveCustomerAccess(env)) {
+        await verifyBindings(env);
+        await env.COORDINATOR.getByName(coordinatorName).bookingComments();
+      }
+    } catch {
+      console.error(JSON.stringify({ event: "booking_comments_deferred" }));
+    }
+    try {
+      if (policy(env).PUBLIC_DISPLAY_WARMING === "enabled") {
+        await verifyBindings(env);
+        await env.COORDINATOR.getByName(coordinatorName).warmDisplay();
+      }
+    } catch {
+      console.error(JSON.stringify({ event: "display_refresh_unavailable" }));
     }
   },
   async fetch(request: Request, env: Env): Promise<Response> {

@@ -38,7 +38,10 @@ test("account waits for owned guest access and duplicate click cannot navigate e
   fireEvent.click(button);
   expect(
     screen.getByRole("status", { name: "Preparing your booking…" }),
-  ).toHaveClass("page-loading");
+  ).toHaveClass("sr-only");
+  expect(document.querySelector(".booking-flow-overlay")).toBeNull();
+  expect(button.closest("[inert]")).toBeNull();
+  expect(button).toHaveTextContent("Preparing your booking…");
   expect(document.querySelector(".booking-loading-inline")).toBeNull();
   expect(
     screen.getByRole("button", { name: /Continue with email/ }),

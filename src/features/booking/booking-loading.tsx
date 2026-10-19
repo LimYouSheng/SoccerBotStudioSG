@@ -65,17 +65,27 @@ export function BookingLoadingProvider({ children }: { children: ReactNode }) {
 }
 export function BookingLoading({
   label = "Preparing your booking…",
+  compact = false,
+  overlay = true,
 }: {
   label?: string;
   compact?: boolean;
   overlay?: boolean;
 }) {
   const register = useContext(Loading);
-  useEffect(() => register?.(label), [register, label]);
+  useEffect(
+    () => (overlay ? register?.(label) : undefined),
+    [register, label, overlay],
+  );
   // A standalone screen can still render the same loading presentation.
-  return register ? (
+  return register && overlay ? (
     <span className="sr-only">{label}</span>
   ) : (
-    <BrandLoading label={label} message={feedbackMessage(label)} />
+    <BrandLoading
+      compact={compact}
+      overlay={overlay}
+      label={label}
+      message={overlay ? feedbackMessage(label) : undefined}
+    />
   );
 }

@@ -24,6 +24,7 @@ const schema = z.object({
     .string()
     .regex(/^(?:[1-9]\d{0,14})?$/)
     .default(""),
+  PUBLIC_DISPLAY_WARMING: z.enum(["disabled", "enabled"]).default("disabled"),
   LIVE_CUSTOMER_ACCESS: z.enum(["disabled", "enabled"]).default("disabled"),
   PROVIDER_ACCESS: z.enum(["disabled", "trusted-reads"]),
   PROVIDER_CALL_CEILING: z

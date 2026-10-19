@@ -1,3 +1,4 @@
+import { DatabaseSync } from "node:sqlite";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { build } from "esbuild";
@@ -5,7 +6,7 @@ import { readFileSync } from "node:fs";
 import ts from "typescript";
 const bundle = await build({
   stdin: {
-    contents: `export * from './worker/parallel-reads'; export * from './worker/customer-catalogue'; export * from './worker/public-calendar'; export * from './worker/native-calendar'; export * from './worker/catalogue'; export * from './worker/prebooking'; export * from './worker/provider-session'; export * from './worker/provider-transport';`,
+    contents: `export * from './worker/display-snapshots'; export * from './worker/parallel-reads'; export * from './worker/customer-catalogue'; export * from './worker/public-calendar'; export * from './worker/native-calendar'; export * from './worker/catalogue'; export * from './worker/prebooking'; export * from './worker/provider-session'; export * from './worker/provider-transport';`,
     resolveDir: process.cwd(),
   },
   bundle: true,
@@ -14,6 +15,7 @@ const bundle = await build({
   format: "esm",
 });
 const {
+  DisplaySnapshots,
   parallelReads,
   customerCatalogue,
   publicCalendar,
@@ -165,12 +167,21 @@ test("catalogue shares bounded reads isolates account environment and protects c
   const data = fixtures(),
     read = exchangeFor(data),
     cache = new CatalogueReads();
+  await assert.rejects(
+    cache.read(binding, read.exchange, false, false, true),
+    /display_cache_miss/,
+  );
+  assert.equal(read.calls.length, 0);
   const [a, b] = await Promise.all([
     cache.read(binding, read.exchange),
     cache.read(binding, read.exchange),
   ]);
   assert.equal(read.calls.length, 2);
   assert.deepEqual(a, b);
+  assert.deepEqual(
+    await cache.read(binding, read.exchange, false, false, true),
+    b,
+  );
   a.instructors[0].name = "Mutation";
   assert.equal(
     (await cache.read(binding, read.exchange)).instructors[0].name,
@@ -205,6 +216,10 @@ test("catalogue overlaps independent reads and waits for both before caching", a
   const shared = cache.read(binding, exchange, false, true);
   try {
     assert.deepEqual(started, ["catalogue-services", "catalogue-instructors"]);
+    await assert.rejects(
+      cache.read(binding, exchange, false, true, true),
+      /display_cache_miss/,
+    );
     gates.get("catalogue-instructors")();
     await new Promise(setImmediate);
     assert.equal(read.calls.length, 1);
@@ -1046,6 +1061,11 @@ function monthFixture() {
 test("calendar range cache batches a month shares reads and preserves explicit empty versus unknown days", async () => {
   const { input, calls } = monthFixture();
   const cache = new NativeCalendarReads();
+  await assert.rejects(
+    cache.read({ ...input, cacheOnly: true }),
+    /display_cache_miss/,
+  );
+  assert.equal(calls.length, 0);
   const [first, second] = await Promise.all([
     cache.read(input),
     cache.read(input),
@@ -1054,6 +1074,7 @@ test("calendar range cache batches a month shares reads and preserves explicit e
   assert.equal(first.dates.length, 31);
   assert.equal(first.dates[1].offers.length, 0);
   assert.deepEqual(first, second);
+  assert.deepEqual(await cache.read({ ...input, cacheOnly: true }), second);
   first.dates[0].offers.length = 0;
   assert.equal((await cache.read(input)).dates[0].offers.length, 1);
   assert.equal(calls.length, 3);
@@ -1103,6 +1124,10 @@ test("calendar cache isolates scope and invalidates changed dates without stale 
   assert.equal(calls.length, 6);
   cache.invalidateDate("2027-01-01");
   await assert.rejects(
+    cache.read({ ...input, cacheOnly: true }),
+    /display_cache_miss/,
+  );
+  await assert.rejects(
     cache.read({
       ...input,
       exchange: async () => {
@@ -1118,6 +1143,10 @@ test("calendar cache isolates scope and invalidates changed dates without stale 
   const expiredAt = next.observedAtMs + 60001;
   Date.now = () => expiredAt;
   try {
+    await assert.rejects(
+      cache.read({ ...input, cacheOnly: true }),
+      /display_cache_miss/,
+    );
     await assert.rejects(
       cache.read({
         ...input,
@@ -1232,6 +1261,11 @@ test("anonymous calendar is bounded and shared without exposing provider slots o
       },
     },
   };
+  await assert.rejects(
+    publicCalendar({ ...input, cacheOnly: true }),
+    /display_cache_miss/,
+  );
+  assert.equal(calls, 0);
   const first = await publicCalendar(input);
   assert.deepEqual(first.dates, [{ date, available: true }]);
   assert.deepEqual(Object.keys(first).sort(), [
@@ -1241,7 +1275,7 @@ test("anonymous calendar is bounded and shared without exposing provider slots o
     "serviceId",
   ]);
   assert.equal(calls, 1);
-  await publicCalendar(input);
+  assert.deepEqual(await publicCalendar({ ...input, cacheOnly: true }), first);
   assert.equal(calls, 1);
   const catalogue = await windowCatalogue(input);
   assert.deepEqual(
@@ -1795,4 +1829,61 @@ test("bounded read groups reuse two lanes and drain failure without starting que
     await parallelReads([async () => 1, async () => 2, async () => 3]),
     [1, 2, 3],
   );
+});
+
+test("persistent display snapshots retain original deadlines across restarts and fence invalidation", () => {
+  const db = new DatabaseSync(":memory:");
+  const sql = {
+    exec(query, ...args) {
+      const rows = db.prepare(query).all(...args);
+      return {
+        toArray: () => rows,
+        one: () => {
+          assert.equal(rows.length, 1);
+          return rows[0];
+        },
+      };
+    },
+  };
+  const clock = Date.now;
+  let now = 2000000000000;
+  Date.now = () => now;
+  try {
+    const store = new DisplaySnapshots(sql, "account/source");
+    const month = new Date(now + 28800000).toISOString().slice(0, 7);
+    const key = `calendar:${month}`;
+    const value = { month, serviceId: "2", observedAtMs: now, dates: [] };
+    store.save("calendar", key, value, store.generation());
+    const expected = store.read("calendar", key);
+    assert.equal(expected.displayExpiresAtMs, now + 1800000);
+    assert.equal(store.claimRefresh(now), true);
+    assert.equal(
+      new DisplaySnapshots(sql, "account/source").claimRefresh(now),
+      false,
+    );
+    now += 900000;
+    const restarted = new DisplaySnapshots(sql, "account/source");
+    assert.deepEqual(restarted.read("calendar", key), expected);
+    assert.equal(restarted.claimRefresh(now), true);
+    // A failed refresh changes neither content nor its original deadline.
+    assert.deepEqual(restarted.read("calendar", key), expected);
+    const oldGeneration = restarted.generation();
+    restarted.invalidateCalendars();
+    assert.equal(restarted.read("calendar", key), undefined);
+    assert.ok(restarted.months().includes(month));
+    restarted.save("calendar", key, value, oldGeneration);
+    assert.equal(restarted.read("calendar", key), undefined);
+    assert.equal(restarted.claimRefresh(now), true);
+    restarted.save("calendar", key, value, restarted.generation());
+    assert.deepEqual(restarted.read("calendar", key), expected);
+    assert.equal(
+      new DisplaySnapshots(sql, "different-source").read("calendar", key),
+      undefined,
+    );
+    now = expected.displayExpiresAtMs;
+    assert.equal(restarted.read("calendar", key), undefined);
+  } finally {
+    Date.now = clock;
+    db.close();
+  }
 });

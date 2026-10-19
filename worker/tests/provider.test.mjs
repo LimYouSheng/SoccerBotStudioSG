@@ -2760,6 +2760,8 @@ test("ongoing customer access survives campaign closure and preserves fresh cons
   let available = true,
     books = 0,
     comments = 0;
+  let browsingGate;
+  let browsingStarted;
   const f = await fixture({
     full: true,
     end: 0,
@@ -2768,7 +2770,11 @@ test("ongoing customer access survives campaign closure and preserves fresh cons
       LIVE_CUSTOMER_ACCESS: "enabled",
       SIMPLYBOOK_DEV_SIGNING_SECRET: "synthetic-signing-secret",
     },
-    respond: (request, body) => {
+    respond: async (request, body) => {
+      if (body?.method === "getStartTimeMatrix" && browsingGate) {
+        browsingStarted.resolve();
+        await browsingGate.promise;
+      }
       if (request.url.endsWith("/admin/bookings/701/comment")) {
         assert.equal(request.method, "PUT");
         assert.match(body.comment, /^Number of players: [1-4]/);
@@ -2869,6 +2875,46 @@ test("ongoing customer access survives campaign closure and preserves fresh cons
       beforeAnonymous,
       "homepage metadata reuses the shared catalogue",
     );
+    // A cold month owns the runner; valid existing display hits must not wait.
+    const nextMonth = new Date(date.slice(0, 7) + "-01T00:00:00Z");
+    nextMonth.setUTCMonth(nextMonth.getUTCMonth() + 1);
+    browsingGate = Promise.withResolvers();
+    browsingStarted = Promise.withResolvers();
+    const cold = f.mf.dispatchFetch(
+      origin + "/api/calendar/" + nextMonth.toISOString().slice(0, 7),
+    );
+    let timer;
+    try {
+      await browsingStarted.promise;
+      const callsWhileBlocked = f.calls.length;
+      const hits = await Promise.race([
+        Promise.all([
+          f.mf.dispatchFetch(origin + "/api/calendar/" + date.slice(0, 7)),
+          f.mf.dispatchFetch(origin + "/api/catalogue"),
+        ]),
+        new Promise((_, reject) => {
+          timer = setTimeout(
+            () => reject(new Error("cache hits waited for provider runner")),
+            2000,
+          );
+        }),
+      ]);
+      assert.deepEqual(
+        hits.map((response) => response.status),
+        [200, 200],
+      );
+      assert.equal(
+        f.calls.length,
+        callsWhileBlocked,
+        "cache hits dispatch no provider calls",
+      );
+    } finally {
+      clearTimeout(timer);
+      browsingGate.resolve();
+      await cold;
+      browsingGate = undefined;
+    }
+
     assert.equal(
       (await f.mf.dispatchFetch(origin + "/api/booking/availability/2/" + date))
         .status,

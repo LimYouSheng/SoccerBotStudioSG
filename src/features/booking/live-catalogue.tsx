@@ -44,7 +44,9 @@ export function LiveCatalogue({
   const current =
     result?.owner === service && result.revision === revision ? result : null;
   if (!current)
-    return <BrandLoading compact label="Loading current sessions…" />;
+    return (
+      <BrandLoading overlay={false} compact label="Loading current sessions…" />
+    );
   if (current.failed)
     return (
       <section className="surface">

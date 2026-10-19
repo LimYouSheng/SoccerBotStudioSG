@@ -198,20 +198,6 @@ export function BookingProvider({
         : "guest",
     [value.draft.mode, identityService],
   );
-  const calendar = useCalendarAvailability(
-    service,
-    value.ready && value.draft.mode ? value.draft.nativeServiceId : undefined,
-    calendarMonth,
-    JSON.stringify([
-      service.publicCalendar ? "public" : sessionKey(),
-      availabilityRevision,
-    ]),
-    !value.ready ||
-      restorationPending ||
-      !calendarBrowsing ||
-      calendarPaused ||
-      !!value.attempt,
-  );
   useEffect(() => {
     if (
       service.mode !== "live" ||
@@ -228,6 +214,20 @@ export function BookingProvider({
     });
     return () => controller.abort();
   }, [service, restorationPending, calendarBrowsing, value.attempt]);
+  const calendar = useCalendarAvailability(
+    service,
+    value.ready && value.draft.mode ? value.draft.nativeServiceId : undefined,
+    calendarMonth,
+    JSON.stringify([
+      service.publicCalendar ? "public" : sessionKey(),
+      availabilityRevision,
+    ]),
+    !value.ready ||
+      restorationPending ||
+      !calendarBrowsing ||
+      calendarPaused ||
+      !!value.attempt,
+  );
   const availability = useBookingAvailability(
     service,
     value.attempt ||
@@ -472,12 +472,16 @@ export function BookingProvider({
           // A missing reply must never cause a new preparation or payment.
           const startCheckout = operation === "checkout" && !attempt.held;
           holdDispatched = operation === "reserve" || startCheckout;
+          let handoff: { url: string; expiresAtMs: number } | undefined;
           attempt = await service.pay({
             attempt,
             outcome: "pending",
             signal,
             holding: operation === "reserve" || startCheckout,
             startCheckout,
+            onCheckoutReady: (value) => {
+              handoff = value;
+            },
             onReviewReady:
               operation === "reserve"
                 ? () => {
@@ -504,6 +508,15 @@ export function BookingProvider({
           if (attempt.status === "pending") {
             setAction({ status: "success", operation });
             return true;
+          }
+          if (
+            handoff &&
+            handoff.expiresAtMs > Date.now() &&
+            isHitpayCheckoutUrl(handoff.url)
+          ) {
+            location.assign(handoff.url);
+            checkoutNavigationStarted = true;
+            return false;
           }
           const context = await protectedCheckoutService.context({
             attemptId: attempt.id,
