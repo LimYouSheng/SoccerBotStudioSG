@@ -1,5 +1,17 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Pending: controlled account-coordinator concurrency — 19 October 2026 SGT
+
+Owner-requested future implementation, after single-booking checkout is stable. Refresh and review actual latest main before implementation; the current foreground/display queues share one runner. This entry records pending work, not an implemented concurrency contract.
+
+- Allow browsing reads to overlap booking/payment work under the existing shared provider limits.
+- Let valid cache hits avoid slow provider work.
+- Keep booking writes serialized initially; preserve studio-capacity checks, authentication, freshness, idempotency and unknown-write recovery.
+- Prevent payment reconciliation from starving; bound queue waiting and return clear busy responses.
+- Test mixed workloads with1,3,5 and10 concurrent customers using simulated providers. Measure queue wait, booking/payment latency and errors; assert no duplicate effects.
+
+Use the existing coordinator, queue, cache and admission owners. Simulated measurements do not establish live-provider throughput or authorize physical bookings/payments. Retain mandatory test-impact review and final exact-source CI; merge/deployment remain separate.
+
 ## Retained Review checkout handoff — 19 October 2026
 
 The live checkout handoff guard covers both a Review route and Review retained inside the Details route after history replacement. Keep that owner mounted while payment preparation and protected checkout-context retrieval run, and until external navigation replaces the document. Consent, original hold/attempt identity and the synchronous duplicate-operation guard remain unchanged. Recovery after cancellation, unknown outcomes or browser return remains protected; no automatic new payment is introduced.
