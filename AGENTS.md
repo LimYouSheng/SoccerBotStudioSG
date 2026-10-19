@@ -449,6 +449,8 @@ Every booking automatically attempts a Comments entry `Number of players: N` (de
 
 ## 4. Verify
 
+- After every logical change, complete the mandatory [change test-impact pass](docs/SERVICE_CONTRACTS.md#mandatory-test-impact-pass-after-every-change--19-october-2026) before publishing: search every affected test/setup owner for obsolete assumptions, update meaningful coverage and run the affected permitted checks. A passing component test does not establish browser coverage. Repeat the pass after each repair; final exact-commit CI is required before calling the candidate ready.
+
 - Run focused non-browser checks while iterating. Browser execution belongs to YS and CI; Codex must not launch browsers, Playwright, screenshots or browser-running verification/installers.
 - Require the exact GitHub Actions check `verify / frontend`, including desktop Chromium, phone WebKit and tablet WebKit. Require `verify / backend` for Workers runtime and independent root-path browser gates. A fresh Cloud setup also needs its own scoped execution evidence.
 - Never weaken assertions, skip coverage, lower required counts, add retries, raise timeouts or alter runner settings to obtain green results.

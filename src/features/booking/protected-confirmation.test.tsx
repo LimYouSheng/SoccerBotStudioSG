@@ -252,8 +252,9 @@ it("verified live receipt uses demo sections and refuses exports after access is
   expect(reads).toBe(2);
 });
 
+const navigation = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
+  useRouter: () => navigation,
   useSearchParams: () =>
     new URLSearchParams("attempt=00000000-0000-4000-8000-000000000001"),
 }));
@@ -570,4 +571,102 @@ it("pending checkout context retains preparation status and exposes no checkout 
   expect(
     screen.queryByRole("link", { name: /Open checkout/ }),
   ).not.toBeInTheDocument();
+});
+
+it("pending confirmation retains the final detail layout while hiding success and every action", async () => {
+  const receipt = receiptFixture();
+  const details = { ...receipt };
+  Reflect.deleteProperty(details, "verifiedAtMs");
+  let complete!: (value: Response) => void;
+  const pending = new Promise<Response>((resolve) => {
+    complete = resolve;
+  });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn((url: string) => {
+      if (url.endsWith("/checkout"))
+        return Promise.resolve(
+          Response.json({
+            attemptId: first,
+            mode: "live",
+            details,
+            checkout: { state: "unavailable" },
+            summary: {
+              players: 2,
+              totalMinor: 8800,
+              currency: "SGD",
+              sessions: [{ startMs: details.sessions[0].startMs, players: 2 }],
+            },
+            checking: {
+              deadlineMs: Date.now() + 600000,
+              nextCheckMs: 0,
+              pollAfterMs: 5000,
+            },
+          }),
+        );
+      return url.endsWith("/receipt")
+        ? Promise.resolve(Response.json(receipt))
+        : pending;
+    }),
+  );
+  render(<ProtectedConfirmation attemptId={first} checkoutMode="live" />);
+  await screen.findByRole("heading", { name: "Client Details" });
+  const card = document.querySelector(".confirmation-card");
+  for (const name of ["Session Details", "Location", "Amount", "Disclaimers"])
+    expect(screen.getByRole("heading", { name })).toBeVisible();
+  expect(screen.getByText("Synthetic Customer")).toBeVisible();
+  expect(
+    screen.getByRole("status", { name: "Checking your payment and booking…" }),
+  ).toBeVisible();
+  expect(screen.queryByText("Paid", { exact: true })).toBeNull();
+  expect(screen.queryByLabelText("Booking actions")).toBeNull();
+  expect(screen.queryByRole("link", { name: "Back to home" })).toBeNull();
+  expect(
+    screen.queryByRole("heading", { name: "Booking confirmed" }),
+  ).toBeNull();
+  await act(async () =>
+    complete(Response.json({ status: "confirmed", reason: "verified" })),
+  );
+  await screen.findByRole("heading", { name: "Booking confirmed" });
+  expect(document.querySelector(".confirmation-card")).toBe(card);
+  expect(screen.getByLabelText("Booking actions")).toBeVisible();
+  expect(screen.getByRole("link", { name: "Back to home" })).toBeVisible();
+});
+
+it("Back to home starts the shared background exit and navigates without awaiting dismissal", async () => {
+  const receipt = receiptFixture();
+  const restart = vi.fn();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        attemptId: first,
+        mode: "live",
+        confirmation: receipt,
+        checkout: { state: "unavailable" },
+        summary: {
+          players: 2,
+          totalMinor: 8800,
+          currency: "SGD",
+          sessions: [{ startMs: receipt.sessions[0].startMs, players: 2 }],
+        },
+        checking: {
+          deadlineMs: Date.now() + 600000,
+          nextCheckMs: 0,
+          pollAfterMs: 5000,
+        },
+      }),
+    ),
+  );
+  render(
+    <ProtectedConfirmation
+      attemptId={first}
+      checkoutMode="live"
+      onRestart={restart}
+    />,
+  );
+  await screen.findByRole("heading", { name: "Booking confirmed" });
+  fireEvent.click(screen.getByRole("link", { name: "Back to home" }));
+  expect(restart).toHaveBeenCalledWith(first);
+  expect(navigation.push).toHaveBeenCalledWith("/");
 });

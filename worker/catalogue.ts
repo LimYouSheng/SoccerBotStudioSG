@@ -126,6 +126,7 @@ export class CatalogueReads {
     binding: CatalogueBinding,
     exchange: NativeExchange,
     fresh = false,
+    parallel = false,
   ): Promise<ProviderCatalogue> {
     const key = this.key(binding);
     if (fresh) this.invalidate(binding);
@@ -149,8 +150,23 @@ export class CatalogueReads {
     const generation = entry.generation;
     const selected = entry;
     const pending = (async () => {
-      const services = await exchange({ kind: "catalogue-services" });
-      const instructors = await exchange({ kind: "catalogue-instructors" });
+      let services: Awaited<ReturnType<NativeExchange>>;
+      let instructors: Awaited<ReturnType<NativeExchange>>;
+      if (parallel) {
+        // Only ongoing customer admission serializes pacing for concurrent reads.
+        // Drain both before returning a failure; never leave a sibling running.
+        const results = await Promise.allSettled([
+          exchange({ kind: "catalogue-services" }),
+          exchange({ kind: "catalogue-instructors" }),
+        ]);
+        if (results[0].status === "rejected") throw results[0].reason;
+        if (results[1].status === "rejected") throw results[1].reason;
+        services = results[0].value;
+        instructors = results[1].value;
+      } else {
+        services = await exchange({ kind: "catalogue-services" });
+        instructors = await exchange({ kind: "catalogue-instructors" });
+      }
       freshReceipt(services.receivedAtMs, Date.now());
       freshReceipt(instructors.receivedAtMs, Date.now());
       const value = normalizeCatalogue(

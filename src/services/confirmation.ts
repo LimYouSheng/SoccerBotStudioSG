@@ -1,4 +1,4 @@
-import { receiptSchema } from "@/domain/native-checkout";
+import { receiptSchema, bookingDetailsSchema } from "@/domain/native-checkout";
 import type { Booking } from "@/domain/booking";
 import { LOCATION } from "@/domain/catalog";
 import { MAX_PLAYERS } from "@/domain/booking-policy";
@@ -27,6 +27,7 @@ export class ConfirmationError extends Error {
 }
 const instant = z.number().int().nonnegative().safe();
 const contextSchema = z.strictObject({
+  details: bookingDetailsSchema.optional(),
   confirmation: receiptSchema.optional(),
   payment: z
     .strictObject({ status: z.literal("recorded"), paidAtMs: instant })
@@ -65,6 +66,7 @@ async function protectedRead(
   attemptId: string,
   operation: string,
   signal: AbortSignal,
+  displayDetails = false,
 ) {
   idSchema.parse(attemptId);
   const response = await fetch(
@@ -74,7 +76,10 @@ async function protectedRead(
       cache: "no-store",
       redirect: "error",
       signal,
-      headers: { Accept: "application/json" },
+      headers: {
+        Accept: "application/json",
+        ...(displayDetails ? { "X-Booking-Details": "1" } : {}),
+      },
     },
   );
   const value = (name: string) => {
@@ -127,7 +132,9 @@ export async function readBookingReceipt(
     throw new ConfirmationError("unavailable");
   return bookingFromReceipt(receipt);
 }
-export function bookingFromReceipt(receipt: z.infer<typeof receiptSchema>) {
+export function bookingFromReceipt<
+  T extends z.infer<typeof bookingDetailsSchema>,
+>(receipt: T) {
   const slots = receipt.sessions.map((offer) => {
     const wall = new Date(offer.startMs + 28800000).toISOString();
     return {
@@ -170,12 +177,18 @@ export function bookingFromReceipt(receipt: z.infer<typeof receiptSchema>) {
 }
 export const protectedCheckoutService: ProtectedCheckoutService = {
   async context({ attemptId, mode, signal }) {
-    const { response } = await protectedRead(attemptId, "checkout", signal);
+    const { response } = await protectedRead(
+      attemptId,
+      "checkout",
+      signal,
+      true,
+    );
     const context = contextSchema.parse(await response.json());
     if (
       context.attemptId !== attemptId ||
       context.mode !== mode ||
-      (context.confirmation && context.confirmation.attemptId !== attemptId)
+      (context.confirmation && context.confirmation.attemptId !== attemptId) ||
+      (context.details && context.details.attemptId !== attemptId)
     )
       throw new ConfirmationError("unavailable");
     if (context.checkout.state === "available") {

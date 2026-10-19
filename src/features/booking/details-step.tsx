@@ -161,7 +161,6 @@ export function DetailsStep({
           aria-describedby={errors[key] ? `${key}-error` : undefined}
           onChange={(e) => change(key, e.target.value)}
         >
-          <option value="">Select {label.toLowerCase()}</option>
           {Object.entries(options).map(([value, name]) => (
             <option key={value} value={value}>
               {name}

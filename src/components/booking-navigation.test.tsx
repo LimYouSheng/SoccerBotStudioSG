@@ -2,12 +2,16 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, afterEach, expect, test, vi } from "vitest";
 import { BookingLink, BookingNavigation } from "./booking-navigation";
 import { Arena } from "./arena";
-const navigation = vi.hoisted(() => ({ path: "/", push: vi.fn() }));
+const navigation = vi.hoisted(() => ({
+  path: "/",
+  push: vi.fn(),
+  replace: vi.fn(),
+}));
 vi.mock("next/navigation", () => ({
   usePathname: () => navigation.path,
   useRouter: () => router,
 }));
-const router = { push: navigation.push };
+const router = { push: navigation.push, replace: navigation.replace };
 vi.mock("next/link", () => ({
   default: ({
     href,
@@ -33,6 +37,7 @@ beforeEach(() => {
   vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "performance"] });
   navigation.path = "/";
   navigation.push.mockClear();
+  navigation.replace.mockClear();
   reduced = false;
   listeners.clear();
   vi.stubGlobal("matchMedia", (query: string) => ({
@@ -96,9 +101,9 @@ test("keeps the hero scene separate from the logo and commits booking only once"
     30,
   );
   act(() => vi.advanceTimersByTime(2999));
-  expect(navigation.push).not.toHaveBeenCalled();
+  expect(navigation.replace).not.toHaveBeenCalled();
   act(() => vi.advanceTimersByTime(1));
-  expect(navigation.push).toHaveBeenCalledExactlyOnceWith("/book/account/");
+  expect(navigation.replace).toHaveBeenCalledExactlyOnceWith("/book/account/");
   navigation.path = "/book/account/";
   view.rerender(<App arena />);
   act(() => vi.advanceTimersByTime(900));
@@ -115,7 +120,7 @@ test("clicking the hero transition skips directly to booking without a delayed d
   navigation.path = "/book/account/";
   view.rerender(<App arena />);
   act(() => vi.advanceTimersByTime(5000));
-  expect(navigation.push).toHaveBeenCalledTimes(1);
+  expect(navigation.replace).toHaveBeenCalledTimes(1);
   expect(
     screen.queryByRole("button", { name: "Skip arena transition" }),
   ).not.toBeInTheDocument();
@@ -137,11 +142,14 @@ test("modifier clicks retain native link navigation without a loading overlay", 
   expect(screen.queryByRole("status")).not.toBeInTheDocument();
 });
 test("browser back cancels the pending hero and restores scrolling", () => {
+  const before = window.history.length;
   render(<App arena />);
   fireEvent.click(screen.getByRole("link", { name: /^Book now/ }));
+  expect(window.history.length).toBe(before + 1);
   fireEvent.popState(window);
   act(() => vi.advanceTimersByTime(5000));
   expect(navigation.push).not.toHaveBeenCalled();
+  expect(navigation.replace).not.toHaveBeenCalled();
   expect(document.documentElement.style.overflow).toBe("");
 });
 test("unmount cleans the animation timers and preserves the previous scroll style", () => {
@@ -160,7 +168,7 @@ test("a changed motion preference finishes an active entry and removes its scrol
   reduced = true;
   act(() => listeners.forEach((listener) => listener()));
   act(() => vi.advanceTimersByTime(5000));
-  expect(navigation.push).toHaveBeenCalledTimes(1);
+  expect(navigation.replace).toHaveBeenCalledTimes(1);
   expect(document.documentElement.style.overflow).toBe("");
   expect(
     screen.queryByRole("button", { name: "Skip arena transition" }),

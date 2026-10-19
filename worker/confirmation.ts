@@ -7,7 +7,7 @@ import {
   START_INTERVAL_MINUTES,
   SESSION_MINUTES,
 } from "../src/domain/booking-policy";
-import { receiptData } from "./receipt-data";
+import { receiptData, bookingDetailsData } from "./receipt-data";
 import { storedNativeCheckout } from "./native-adapter";
 import {
   verifyConfirmation,
@@ -257,12 +257,29 @@ export async function checkoutContext(
           throw error;
       }
   }
+  let details;
+  if (
+    request.headers.get("X-Booking-Details") === "1" &&
+    !savedConfirmation &&
+    row.association_json
+  ) {
+    try {
+      details = await bookingDetailsData(env, row);
+    } catch (error) {
+      if (
+        !(error instanceof ApiError) ||
+        error.code !== "receipt_details_unavailable"
+      )
+        throw error;
+    }
+  }
   await authenticate(request, env, Date.now());
   return {
     attemptId: id,
     mode: "live" as const,
     payment,
     confirmation: savedConfirmation,
+    details,
     checkout:
       hitpayCheckout ??
       (row.association_json &&

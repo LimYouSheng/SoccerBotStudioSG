@@ -1,4 +1,5 @@
 "use client";
+import { BrandLoading as InlineLoading } from "@/components/brand-loading";
 import { BookingLoading as BrandLoading } from "./booking-loading";
 import Link from "next/link";
 import { useState } from "react";
@@ -35,6 +36,8 @@ export function ConfirmationStep() {
 export function BookingConfirmation({
   booking,
   preview = false,
+  pending = false,
+  pendingLabel = "Checking your payment and booking…",
   taxMinor = 0,
   verifiedAtMs,
   onAgain,
@@ -44,6 +47,8 @@ export function BookingConfirmation({
 }: {
   booking: Booking;
   preview?: boolean;
+  pending?: boolean;
+  pendingLabel?: string;
   taxMinor?: number;
   verifiedAtMs?: number;
   onAgain: () => void | Promise<void>;
@@ -82,11 +87,21 @@ export function BookingConfirmation({
   return (
     <div className="status-shell">
       <div className="status-heading">
-        <span className="status-icon">
-          <Icon name="check" />
-        </span>
-        <h1>Booking confirmed</h1>
-        {verifiedAtMs !== undefined && (
+        {pending ? (
+          <InlineLoading
+            overlay={false}
+            label={pendingLabel}
+            message="Please don’t close or refresh this page while we finish."
+          />
+        ) : (
+          <>
+            <span className="status-icon">
+              <Icon name="check" />
+            </span>
+            <h1>Booking confirmed</h1>
+          </>
+        )}
+        {!pending && verifiedAtMs !== undefined && (
           <p>
             Saved confirmation · Verified{" "}
             {new Intl.DateTimeFormat("en-SG", {
@@ -172,9 +187,13 @@ export function BookingConfirmation({
             Amount
           </h2>
           <div className="paid">
-            <span className="pill success">
-              {preview ? "Paid · Preview" : "Paid"}
-            </span>
+            {pending ? (
+              <span aria-hidden="true" />
+            ) : (
+              <span className="pill success">
+                {preview ? "Paid · Preview" : "Paid"}
+              </span>
+            )}
             <strong>{money(booking.totalCents)}</strong>
           </div>
           <p className="hint">
@@ -211,65 +230,71 @@ export function BookingConfirmation({
           )}
         </section>
       </section>
-      <div className="confirmation-actions" aria-label="Booking actions">
-        <button
-          className="button"
-          disabled={downloading}
-          onClick={() =>
-            void download(calendarDownload ?? (() => downloadCalendar(booking)))
-          }
-        >
-          <Icon name="calendar" />
-          <span>Add to calendar</span>
-        </button>
-        <button
-          className="button"
-          disabled={downloading}
-          onClick={() =>
-            void download(detailsDownload ?? (() => downloadBooking(booking)))
-          }
-        >
-          <Icon name="download" />
-          <span>
-            {downloading ? (
-              <BrandLoading compact label="Preparing download…" />
-            ) : (
-              "Download booking details"
-            )}
-          </span>
-        </button>
-        <button
-          className="button secondary"
-          disabled={leaving}
-          onClick={() => void leave(onAgain)}
-        >
-          <Icon name="plus" />
-          <span>Make another booking</span>
-        </button>
-        <a className="button secondary" href={`tel:${CONTACT.phone}`}>
-          <Icon name="phone" />
-          <span>Need help?</span>
-        </a>
-      </div>
+      {!pending && (
+        <div className="confirmation-actions" aria-label="Booking actions">
+          <button
+            className="button"
+            disabled={downloading}
+            onClick={() =>
+              void download(
+                calendarDownload ?? (() => downloadCalendar(booking)),
+              )
+            }
+          >
+            <Icon name="calendar" />
+            <span>Add to calendar</span>
+          </button>
+          <button
+            className="button"
+            disabled={downloading}
+            onClick={() =>
+              void download(detailsDownload ?? (() => downloadBooking(booking)))
+            }
+          >
+            <Icon name="download" />
+            <span>
+              {downloading ? (
+                <BrandLoading compact label="Preparing download…" />
+              ) : (
+                "Download booking details"
+              )}
+            </span>
+          </button>
+          <button
+            className="button secondary"
+            disabled={leaving}
+            onClick={() => void leave(onAgain)}
+          >
+            <Icon name="plus" />
+            <span>Make another booking</span>
+          </button>
+          <a className="button secondary" href={`tel:${CONTACT.phone}`}>
+            <Icon name="phone" />
+            <span>Need help?</span>
+          </a>
+        </div>
+      )}
       {error && (
         <p className="alert mt-4" role="alert">
           {error}
         </p>
       )}
-      <Link
-        href="/"
-        className="text-link mt-5 block text-center"
-        onClick={
-          onHome
-            ? (event) => {
-                event.preventDefault();
-                void leave(onHome);
-              }
-            : undefined
-        }
-      >
-        Back to home
-      </Link>
+      {!pending && (
+        <Link
+          href="/"
+          className="button secondary confirmation-home"
+          onClick={
+            onHome
+              ? (event) => {
+                  event.preventDefault();
+                  void leave(onHome);
+                }
+              : undefined
+          }
+        >
+          Back to home
+        </Link>
+      )}
     </div>
   );
 }

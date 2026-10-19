@@ -51,6 +51,7 @@ test("combined hold performs one preflight and preserves immutable identity acro
   const m = await createBookingMechanism();
   try {
     const c = await customer(m);
+    c.input.contact.contactMethod = "sms";
     const responses = await Promise.all([c.send(), c.send()]);
     for (const response of responses)
       assert.equal(response.status, 200, await response.clone().text());
@@ -80,6 +81,10 @@ test("combined hold performs one preflight and preserves immutable identity acro
     assert.equal(
       m.calls.some((call) => call.url.includes("hit-pay.com")),
       false,
+    );
+    assert.match(
+      m.calls.find((call) => call.url.endsWith("/comment")).body.comment,
+      /Preferred communication: SMS/,
     );
     const creation = m.calls.findIndex((call) => call.body?.method === "book");
     assert.equal(
@@ -425,9 +430,20 @@ test("single hold exposes creation progress while independent readbacks are pend
     );
     const checkout = await m.mf.dispatchFetch(
       m.origin + `/api/attempts/${c.input.key}/checkout`,
+      { headers: { ...c.headers, "X-Booking-Details": "1" } },
+    );
+    const pendingContext = await checkout.json();
+    assert.notEqual(pendingContext.checkout?.state, "available");
+    assert.equal(pendingContext.details.attemptId, c.input.key);
+    assert.equal(pendingContext.details.sessions.length, 1);
+    assert.equal(pendingContext.details.totalMinor, 8800);
+    assert.equal("verifiedAtMs" in pendingContext.details, false);
+    assert.equal(pendingContext.confirmation, undefined);
+    const legacyContext = await m.mf.dispatchFetch(
+      m.origin + `/api/attempts/${c.input.key}/checkout`,
       { headers: c.headers },
     );
-    assert.notEqual((await checkout.json()).checkout?.state, "available");
+    assert.equal((await legacyContext.json()).details, undefined);
     release();
     assert.equal((await (await holding).json()).state, "associated");
     assert.equal(

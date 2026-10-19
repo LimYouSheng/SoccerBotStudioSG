@@ -118,11 +118,10 @@ export const nativeCurrentSchema = z.union([
   }),
 ]);
 
-export const receiptSchema = z
+export const bookingDetailsSchema = z
   .strictObject({
     providerReferences: providerReferencesSchema.optional(),
     attemptId: z.string().uuid(),
-    verifiedAtMs: z.number().int().nonnegative().safe(),
     createdAtMs: z.number().int().nonnegative().safe(),
     totalMinor: z.number().int().nonnegative().safe(),
     taxMinor: z.number().int().nonnegative().safe(),
@@ -142,6 +141,11 @@ export const receiptSchema = z
       value.sessions.reduce((sum, session) => sum + session.priceMinor, 0) ===
         value.totalMinor,
   );
+
+// Display details carry no payment/confirmation authority or verification time.
+export const receiptSchema = bookingDetailsSchema.safeExtend({
+  verifiedAtMs: z.number().int().nonnegative().safe(),
+});
 
 // Display-only conversion shared by calendar prefetch and fresh daily reads.
 export function nativeDisplaySlots(

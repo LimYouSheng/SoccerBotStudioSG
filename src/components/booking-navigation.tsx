@@ -20,6 +20,7 @@ import {
   type Viewport,
 } from "./arena-geometry";
 type Entry = {
+  generation: number;
   kind: "logo" | "arena";
   from: string;
   to: string;
@@ -42,6 +43,7 @@ export function BookingNavigation({ children }: { children: ReactNode }) {
     pathname = usePathname();
   const [entry, setEntry] = useState<Entry | null>(null),
     [leaving, setLeaving] = useState(false);
+  const generation = useRef(0);
   const active = useRef(false),
     committed = useRef(false);
   const arrived = !!entry && pathname !== entry.from;
@@ -55,9 +57,20 @@ export function BookingNavigation({ children }: { children: ReactNode }) {
       return;
     }
     active.current = true;
+    const id = ++generation.current;
+    if (arena) {
+      // Back must cancel this transition on its origin page, not jump to the
+      // page visited before it. The eventual destination replaces this entry.
+      window.history.pushState(
+        { ...window.history.state, soccerbotArena: id },
+        "",
+        window.location.href,
+      );
+    }
     committed.current = !arena;
     setLeaving(false);
     setEntry({
+      generation: id,
       kind: arena ? "arena" : "logo",
       from: pathname,
       to,
@@ -72,10 +85,11 @@ export function BookingNavigation({ children }: { children: ReactNode }) {
     if (!arena) router.push(to);
   }
   function finish() {
-    if (!entry) return;
+    if (!entry || entry.generation !== generation.current || !active.current)
+      return;
     if (!committed.current) {
       committed.current = true;
-      router.push(entry.to);
+      router.replace(entry.to);
     }
     if (arrived) {
       setEntry(null);
@@ -87,6 +101,7 @@ export function BookingNavigation({ children }: { children: ReactNode }) {
     const previousOverflow = document.documentElement.style.overflow;
     document.documentElement.style.overflow = "hidden";
     const cancel = () => {
+      generation.current++;
       setEntry(null);
       active.current = false;
     };
@@ -95,7 +110,7 @@ export function BookingNavigation({ children }: { children: ReactNode }) {
       if (motion.matches) {
         if (!committed.current) {
           committed.current = true;
-          router.push(entry.to);
+          router.replace(entry.to);
         }
         cancel();
       }
@@ -114,8 +129,9 @@ export function BookingNavigation({ children }: { children: ReactNode }) {
     if (!entry || entry.kind !== "arena" || committed.current) return;
     const timer = setTimeout(
       () => {
+        if (!active.current || entry.generation !== generation.current) return;
         committed.current = true;
-        router.push(entry.to);
+        router.replace(entry.to);
       },
       Math.max(0, PITCH_ENTER_MS - (performance.now() - entry.started)),
     );

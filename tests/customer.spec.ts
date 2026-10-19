@@ -844,7 +844,10 @@ test("hero location opens its map only on demand without entering booking and he
     name: "View studio location",
     exact: true,
   });
-  await location.click();
+  const target = await location.boundingBox();
+  expect(target?.height).toBeGreaterThanOrEqual(68);
+  // The padded corner must open the map rather than the underlying hero.
+  await location.click({ position: { x: 5, y: 5 } });
   const dialog = page.getByRole("dialog", {
     name: "Find the studio",
     exact: true,
@@ -872,4 +875,26 @@ test("hero location opens its map only on demand without entering booking and he
   await expect(dialog).toHaveCount(0);
   await expect(location).toBeFocused();
   await expect(page.locator("iframe")).toHaveCount(0);
+});
+
+test("Back during hero entry stays on home even when the previous page was Studio", async ({
+  page,
+}) => {
+  await openSite(page, "/studio/");
+  await page.goto(sitePath("/"));
+  await expect(page.getByRole("link", { name: /^Book now —/ })).toBeVisible();
+  await page.clock.install();
+  await page.getByRole("link", { name: /^Book now —/ }).click();
+  await expect(
+    page.getByRole("button", { name: "Skip arena transition" }),
+  ).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(new RegExp(sitePath("/") + "$"));
+  await page.clock.runFor(5000);
+  await expect(page).toHaveURL(new RegExp(sitePath("/") + "$"));
+  await expect(
+    page.getByRole("button", { name: "Skip arena transition" }),
+  ).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /^Book now —/ })).toBeVisible();
+  await expect(page.getByRole("main")).not.toHaveAttribute("inert");
 });

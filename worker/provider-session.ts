@@ -89,6 +89,7 @@ export class ProviderSession {
         return this.nativeRead(env, control, request, signal);
       },
       fresh,
+      !!control.liveCustomer && liveCustomerAccess(env),
     );
   }
   prebooking(
@@ -117,6 +118,7 @@ export class ProviderSession {
         return response;
       },
       contract,
+      !!control.liveCustomer && liveCustomerAccess(env),
     );
   }
   // One named discovery only. Caller supplies the existing durable admission owner,

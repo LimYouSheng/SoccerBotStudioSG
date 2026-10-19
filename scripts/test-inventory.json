@@ -305,7 +305,7 @@
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",
-    "title": "Details pauses future month prefetch and calendar return reuses the loaded month"
+    "title": "Details aborts an explicitly opened month and calendar return retains loaded months"
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",
@@ -317,7 +317,7 @@
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",
-    "title": "calendar prefetch publishes the first month before sequential background months and discards an old scope reply"
+    "title": "calendar loads only the displayed month and discards an old scope reply"
   },
   {
     "file": "src/features/booking/booking-parity.test.tsx",
@@ -998,5 +998,17 @@
   {
     "file": "src/features/booking/direct-checkout.test.tsx",
     "title": "lost hold response cannot adopt a different attempt returned by recovery"
+  },
+  {
+    "file": "src/features/booking/protected-confirmation.test.tsx",
+    "title": "pending confirmation retains the final detail layout while hiding success and every action"
+  },
+  {
+    "file": "src/features/booking/protected-confirmation.test.tsx",
+    "title": "Back to home starts the shared background exit and navigates without awaiting dismissal"
+  },
+  {
+    "file": "tests/customer.spec.ts",
+    "title": "Back during hero entry stays on home even when the previous page was Studio"
   }
 ]

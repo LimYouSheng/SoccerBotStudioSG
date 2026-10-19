@@ -2,6 +2,8 @@
   "catalogue IDs survive rename addition deactivation and duplicate display names",
   "catalogue rejects partial paginated malformed and unsupported relationship envelopes",
   "catalogue shares bounded reads isolates account environment and protects cached objects",
+  "catalogue overlaps independent reads and waits for both before caching",
+  "catalogue drains a failed read sibling and does not cache partial success",
   "catalogue invalidation fences delayed reads and never serves stale fallback",
   "prebooking refreshes current price and names without rewriting approved intent",
   "prebooking rejects unknown inactive reassigned and no longer eligible instructors",
