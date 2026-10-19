@@ -44,6 +44,7 @@
   "concurrent preflight attributes invalid fields correctly and creates no booking",
   "checkout reuses complete creation evidence for one HitPay request without redundant reads",
   "combined checkout never creates HitPay after failed booking verification and preserves its attempt",
+  "combined batch checkout retains one payment effect and exact booking association",
   "foundation valid bindings emit correlated storage evidence without secret markers",
   "foundation missing and malformed configuration denies before protected reads",
   "foundation foreign database and coordinator namespace identities fail closed",
@@ -380,6 +381,5 @@
   "webhook body limits and HTTP boundaries reject before capture",
   "webhook slow streamed bodies time out and never acknowledge a receipt",
   "webhook comparison channels isolate capture deduplication caps and closure",
-  "invoice capture retains authentication boundaries and immutable event authority",
-  "combined batch checkout retains one payment effect and exact booking association"
+  "invoice capture retains authentication boundaries and immutable event authority"
 ]
