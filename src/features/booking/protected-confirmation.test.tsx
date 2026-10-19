@@ -43,6 +43,7 @@ const receiptFixture = (now = Date.now()) => ({
 });
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   localStorage.clear();
   vi.unstubAllGlobals();
 });
@@ -611,6 +612,11 @@ it("pending confirmation retains the final detail layout while hiding success an
   );
   render(<ProtectedConfirmation attemptId={first} checkoutMode="live" />);
   await screen.findByRole("heading", { name: "Client Details" });
+  expect(
+    screen.getByText(
+      "Please don’t close or refresh this page while we finish.",
+    ),
+  ).toBeVisible();
   const card = document.querySelector(".confirmation-card");
   expect(document.querySelector(".booking-loading")).toBeNull();
   expect(
@@ -855,4 +861,59 @@ it("authoritative unpaid expiry releases the original attempt before returning t
   await act(async () => release(Response.json({ expired: true })));
   expect(onExpired).toHaveBeenCalledExactlyOnceWith(first);
   expect(navigation.replace).toHaveBeenCalledWith("/book/time/");
+});
+
+it("poll-confirmed payment retains its displayed proof while the final receipt is delayed", async () => {
+  vi.useFakeTimers();
+  const proof = receiptFixture();
+  let finishReceipt!: (response: Response) => void;
+  const receipt = new Promise<Response>((resolve) => {
+    finishReceipt = resolve;
+  });
+  let polls = 0;
+  const fetch = vi.fn((url: string) =>
+    url.endsWith("/receipt")
+      ? receipt
+      : Promise.resolve(
+          Response.json(
+            ++polls === 1
+              ? {
+                  status: "pending",
+                  reason: "payment_received_booking_pending",
+                  customerConfirmation: proof,
+                }
+              : { status: "confirmed", reason: "verified" },
+          ),
+        ),
+  );
+  vi.stubGlobal("fetch", fetch);
+  render(<ProtectedConfirmation attemptId={first} />);
+  await act(async () => {});
+  const heading = screen.getByRole("heading", { name: "Booking confirmed" });
+  const verified = screen.getByText(/Saved confirmation/).textContent;
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(5000);
+  });
+  expect(
+    fetch.mock.calls.filter(([url]) => url.endsWith("/receipt")),
+  ).toHaveLength(1);
+  expect(screen.getByRole("heading", { name: "Booking confirmed" })).toBe(
+    heading,
+  );
+  expect(
+    screen.queryByRole("status", { name: "Preparing your confirmation…" }),
+  ).toBeNull();
+  expect(
+    screen.queryByText(
+      "Please don’t close or refresh this page while we finish.",
+    ),
+  ).toBeNull();
+  expect(screen.getByText(/Saved confirmation/).textContent).toBe(verified);
+  await act(async () => {
+    finishReceipt(Response.json(proof));
+  });
+  expect(screen.getByRole("heading", { name: "Booking confirmed" })).toBe(
+    heading,
+  );
+  expect(screen.getByText(/Saved confirmation/).textContent).toBe(verified);
 });

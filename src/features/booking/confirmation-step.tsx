@@ -1,4 +1,5 @@
 "use client";
+import { loadingMessage } from "./booking-loading";
 import { BrandLoading as InlineLoading } from "@/components/brand-loading";
 import Link from "next/link";
 import { useState } from "react";
@@ -87,7 +88,10 @@ export function BookingConfirmation({
     <div className="status-shell">
       <div className="status-heading">
         {pending ? (
-          <InlineLoading compact label={pendingLabel} />
+          <>
+            <InlineLoading compact label={pendingLabel} />
+            <p className="text-sm text-muted">{loadingMessage}</p>
+          </>
         ) : (
           <>
             <span className="status-icon">

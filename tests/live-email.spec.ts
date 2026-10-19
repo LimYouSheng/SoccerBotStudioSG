@@ -852,9 +852,21 @@ test("real payment recovery confirms the browser return from verified provider s
   let dismissGate = new Promise<void>((resolve) => {
     releaseDismiss = resolve;
   });
-  const transport = await mechanismTransport(page, mechanism, (path) =>
-    path.endsWith("/dismiss") ? dismissGate : Promise.resolve(),
-  );
+  let releaseReceipt!: () => void;
+  const receiptGate = new Promise<void>((resolve) => {
+    releaseReceipt = resolve;
+  });
+  let receiptStarted!: () => void;
+  const receiptRead = new Promise<void>((resolve) => {
+    receiptStarted = resolve;
+  });
+  const transport = await mechanismTransport(page, mechanism, (path) => {
+    if (path.endsWith("/receipt")) {
+      receiptStarted();
+      return receiptGate;
+    }
+    return path.endsWith("/dismiss") ? dismissGate : Promise.resolve();
+  });
   try {
     const { headers, attemptId } = await prepareBrowserAttempt(page, mechanism);
     const held = await mechanism.mf.dispatchFetch(
@@ -921,6 +933,17 @@ test("real payment recovery confirms the browser return from verified provider s
       page.getByRole("heading", { name: "Booking confirmed", exact: true }),
     ).toBeVisible();
     releaseAccounting();
+    await receiptRead;
+    await expect(
+      page.getByRole("heading", { name: "Booking confirmed", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("status", {
+        name: "Preparing your confirmation…",
+        exact: true,
+      }),
+    ).toHaveCount(0);
+    releaseReceipt();
     await download;
     const verifiedResponse = await (await savedConfirmation).json();
     expect(
@@ -1018,6 +1041,7 @@ test("real payment recovery confirms the browser return from verified provider s
     ).toHaveLength(1);
     expect(mechanism.unexpected).toEqual([]);
   } finally {
+    releaseReceipt();
     releaseAccounting();
     releaseDismiss();
     try {
@@ -2123,6 +2147,12 @@ test("real API unpaid return shows the pending confirmation layout without claim
     await expect(
       page.locator(".booking-loading, .booking-flow-overlay"),
     ).toHaveCount(0);
+    await expect(
+      page.getByText(
+        "Please don’t close or refresh this page while we finish.",
+        { exact: true },
+      ),
+    ).toBeVisible();
     const loader = page.getByRole("status", {
       name: "Checking your payment and booking…",
       exact: true,

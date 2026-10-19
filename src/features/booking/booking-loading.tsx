@@ -9,7 +9,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { BrandLoading } from "@/components/brand-loading";
-const loadingMessage =
+export const loadingMessage =
   "Please don’t close or refresh this page while we finish.";
 const Loading = createContext<((label: string) => () => void) | null>(null);
 

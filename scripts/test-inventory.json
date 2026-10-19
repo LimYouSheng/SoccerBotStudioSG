@@ -1030,5 +1030,9 @@
   {
     "file": "tests/live-email.spec.ts",
     "title": "real API expired unpaid Review returns to calendar without recreating the booking or losing contact"
+  },
+  {
+    "file": "src/features/booking/protected-confirmation.test.tsx",
+    "title": "poll-confirmed payment retains its displayed proof while the final receipt is delayed"
   }
 ]

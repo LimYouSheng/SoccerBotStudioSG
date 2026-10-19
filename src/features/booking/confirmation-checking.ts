@@ -168,7 +168,9 @@ export function useConfirmationChecking(
         customerConfirmation =
           "customerConfirmation" in response
             ? response.customerConfirmation
-            : undefined;
+            : response.status === "confirmed"
+              ? customerConfirmation
+              : undefined;
         expired = "expired" in response && response.expired === true;
         paymentReceived =
           response.reason === "payment_received_booking_pending" ||
