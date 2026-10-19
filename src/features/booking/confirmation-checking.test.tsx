@@ -223,3 +223,53 @@ it("uses a server-granted early check without extending the deadline or resettin
   expect(saved.count).toBe(2);
   hook.unmount();
 });
+
+it("a return at minute seven keeps six minutes of checking and makes one final read without renewing on reload", async () => {
+  vi.useFakeTimers();
+  const created = Date.now() - 7 * 60000;
+  const deadline = created + 13 * 60000;
+  const times: number[] = [];
+  const fetch = vi.fn(async () => {
+    times.push(Date.now());
+    return Response.json(
+      { status: "pending", reason: "payment_pending" },
+      {
+        headers: {
+          "X-Checking-Deadline": String(deadline),
+          "X-Next-Check": String(Date.now() + 10000),
+        },
+      },
+    );
+  });
+  vi.stubGlobal("fetch", fetch);
+  const first = renderHook(() =>
+    useConfirmationChecking(id, 0, true, deadline),
+  );
+  await act(async () => {});
+  expect(
+    JSON.parse(localStorage.getItem(`soccerbot-checking:${id}`)!).deadline -
+      Date.now(),
+  ).toBe(6 * 60000);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(180000);
+  });
+  first.unmount();
+  const second = renderHook(() =>
+    useConfirmationChecking(id, 0, true, deadline),
+  );
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(180001);
+  });
+  expect(second.result.current.view).toBe("unresolved");
+  expect(times.filter((time) => time >= deadline)).toHaveLength(1);
+  const count = fetch.mock.calls.length;
+  second.unmount();
+  renderHook(() => useConfirmationChecking(id, 0, true, deadline));
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(30000);
+  });
+  expect(fetch).toHaveBeenCalledTimes(count);
+  expect(
+    JSON.parse(localStorage.getItem(`soccerbot-checking:${id}`)!).deadline,
+  ).toBe(deadline);
+});

@@ -625,7 +625,7 @@ test("native guest journey preserves players contact and one checkout across ref
     ).toBeVisible();
     expect(
       calls.filter((c) => c.path.startsWith("/api/booking/availability/")),
-    ).toHaveLength(1);
+    ).toHaveLength(0);
     expect(
       calls.filter((c) => c.path.startsWith("/api/booking/checkout/")),
     ).toHaveLength(0);
@@ -1237,23 +1237,19 @@ async function stopMechanism(
   }
 }
 async function reviewResponse(page: Page) {
-  const response = page.waitForResponse(
-    (response) =>
-      new URL(response.url()).pathname.startsWith(
-        "/api/booking/availability/",
-      ) && new URL(response.url()).search === "?refresh=1",
-  );
   await page
     .getByRole("button", { name: "Review booking", exact: true })
     .click();
-  return response;
+  await expect(
+    page.getByRole("heading", { name: "Review booking", exact: true }),
+  ).toBeVisible();
 }
 async function checkoutHoldResponse(
   page: Page,
   beforeCheckout?: () => void,
   alreadyReviewed = false,
 ) {
-  if (!alreadyReviewed) expect((await reviewResponse(page)).status()).toBe(200);
+  if (!alreadyReviewed) await reviewResponse(page);
   await expect(
     page.getByRole("heading", { name: "Review booking", exact: true }),
   ).toBeVisible();
@@ -1386,6 +1382,7 @@ async function uncertainHolding(
     readback: "getBookingDetails",
   }[fault];
   const mechanism = await createBookingMechanism({
+    missingCreationDeadline: fault === "readback",
     respond: async (call) =>
       enabled && call.body?.method === method
         ? new Response(null, { status: 503 })
@@ -1474,17 +1471,18 @@ test("real API revoked access during Details keeps the form and prevents provide
       .prepare("UPDATE guest_access SET revoked_ms=?")
       .bind(Date.now())
       .run();
-    const response = await reviewResponse(page);
+    await reviewResponse(page);
+    const response = await checkoutHoldResponse(page, undefined, true);
     expect(response.status()).toBe(401);
     await expect(page.getByRole("main").getByRole("alert")).toContainText(
       "Online booking is unavailable. Your selections have been kept.",
     );
-    await expect(page.getByLabel("Full name", { exact: false })).toHaveValue(
-      "Synthetic Guest",
-    );
     await expect(
-      page.getByLabel("Academy / school / organisation", { exact: false }),
-    ).toHaveValue("Synthetic School");
+      page.getByText("Synthetic Guest", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Synthetic School", { exact: true }),
+    ).toBeVisible();
     expect(
       mechanism.calls.filter((call) => call.body?.method === "book"),
     ).toHaveLength(0);
@@ -1570,7 +1568,7 @@ test("real API payment creation failure preserves the hold and never returns to 
   const transport = await mechanismTransport(page, mechanism);
   try {
     await guestDetails(page, mechanism);
-    expect((await reviewResponse(page)).status()).toBe(200);
+    await reviewResponse(page);
     await expect(page).toHaveURL(/\/book\/review\/$/);
     await page.getByRole("checkbox").check();
     await page
@@ -1952,7 +1950,7 @@ test("real API exhausted browser checking window retains the original deadline a
       .click();
     await expect(
       page.getByRole("heading", {
-        name: "Your booking needs review",
+        name: "Payment status unresolved",
         exact: true,
       }),
     ).toBeVisible();
@@ -1987,6 +1985,7 @@ async function optimisticHold(page: Page, failReadback: boolean) {
   const checkoutGate = Promise.withResolvers<void>();
   const checkoutStarted = Promise.withResolvers<void>();
   const mechanism = await createBookingMechanism({
+    missingCreationDeadline: true,
     respond: async (call) => {
       if (call.body?.method === "book") {
         bookStarted.resolve();
@@ -2008,7 +2007,7 @@ async function optimisticHold(page: Page, failReadback: boolean) {
   });
   try {
     await guestDetails(page, mechanism);
-    expect((await reviewResponse(page)).status()).toBe(200);
+    await reviewResponse(page);
     await expect(
       page.getByRole("heading", { name: "Review booking", exact: true }),
     ).toBeVisible();
@@ -2183,7 +2182,7 @@ test("real API unpaid return shows the pending confirmation layout without claim
   }
 });
 
-test("real API expired unpaid Review returns to calendar without recreating the booking or losing contact", async ({
+test("real API expired unpaid Review retains its hold through the grace window without recreating or losing contact", async ({
   page,
 }) => {
   const mechanism = await createBookingMechanism();
@@ -2223,19 +2222,16 @@ test("real API expired unpaid Review returns to calendar without recreating the 
     await page
       .getByRole("button", { name: "Continue to payment", exact: true })
       .click();
-    await expect(page).toHaveURL(/\/book\/time\/$/);
-    await expect(
-      page.getByText(
-        "Your reservation expired. Please choose a time again. Your contact details have been kept.",
-        { exact: true },
-      ),
-    ).toBeVisible();
+    await expect(page.getByRole("alert")).toContainText(
+      "Your original booking has been kept",
+    );
+    await expect(page).toHaveURL(/\/book\/review\/$/);
     expect(
       await mechanism.db
         .prepare("SELECT 1 FROM native_checkout_grants WHERE attempt_id=?")
         .bind(attemptId)
         .first(),
-    ).toBeNull();
+    ).not.toBeNull();
     expect(
       await mechanism.db
         .prepare(
@@ -2243,7 +2239,7 @@ test("real API expired unpaid Review returns to calendar without recreating the 
         )
         .bind(attemptId)
         .first(),
-    ).not.toBeNull();
+    ).toBeNull();
     expect(
       await mechanism.db
         .prepare("SELECT intent_json FROM attempts WHERE id=?")

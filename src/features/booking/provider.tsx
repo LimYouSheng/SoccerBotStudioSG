@@ -10,7 +10,7 @@ import {
 } from "@/services/confirmation";
 import { isHitpayCheckoutUrl } from "@/domain/native-checkout";
 import { todaySG } from "@/domain/dates";
-import { slotKey } from "@/domain/booking";
+import { slotKey, selectionErrors } from "@/domain/booking";
 import { useCalendarAvailability } from "./calendar-availability";
 import {
   createContext,
@@ -40,6 +40,8 @@ import {
 } from "@/services/contracts";
 import {
   loadBooking,
+  loadLiveDraft,
+  saveLiveDraft,
   saveBooking,
   type StoredBooking,
 } from "@/services/storage";
@@ -275,6 +277,7 @@ export function BookingProvider({
       };
       latest.current = state;
       if (service.mode === "demo") saveBooking(next);
+      else saveLiveDraft(next.draft);
       dispatch(state);
     },
     [service],
@@ -308,7 +311,7 @@ export function BookingProvider({
     commit(
       service.mode === "demo"
         ? loadBooking()
-        : { version: 2, draft: blankDraft(), attempt: null },
+        : { version: 2, draft: loadLiveDraft(), attempt: null },
       sameSession,
     );
     const controller = new AbortController();
@@ -412,39 +415,11 @@ export function BookingProvider({
           );
         const signal = request.controller.signal;
         if (operation === "review") {
-          const dates = [
-            ...new Set(current.draft.slots.map((slot) => slot.date)),
-          ];
-          const available = (
-            await Promise.all(
-              dates.map((date) =>
-                service.availability({
-                  date,
-                  players: current.draft.players,
-                  serviceId: current.draft.nativeServiceId,
-                  fresh: true,
-                  signal,
-                }),
-              ),
-            )
-          ).flat();
-          if (!isCurrent()) return false;
-          const rejected = current.draft.slots.findIndex(
-            (slot) =>
-              !available.some(
-                (offer) =>
-                  offer.available &&
-                  slotKey(offer) === slotKey(slot) &&
-                  offer.native?.priceMinor === slot.native?.priceMinor &&
-                  offer.native?.serviceId === slot.native?.serviceId,
-              ),
-          );
-          if (rejected >= 0)
-            throw new BookingServiceError(
-              "selection_changed",
-              "A selected session is no longer available. Please choose another time.",
-              rejected,
-            );
+          // Review is a local draft, not a reservation. The checkout service
+          // owns fresh validation at the write boundary.
+          const errors = selectionErrors(current.draft.slots, Date.now());
+          if (errors.length)
+            throw new BookingServiceError("conflict", errors[0]);
           setAction({ status: "success", operation });
           return true;
         }
@@ -514,6 +489,10 @@ export function BookingProvider({
           if (operation === "reserve") {
             setAction({ status: "success", operation });
             return attempt.held === true && attempt.status === "ready";
+          }
+          if (attempt.status === "pending") {
+            setAction({ status: "success", operation });
+            return true;
           }
           const context = await protectedCheckoutService.context({
             attemptId: attempt.id,

@@ -297,7 +297,8 @@ export function defineBookingService(adapter: BookingService): BookingService {
           const held = resultAttempt(result, previous.draft, previous.id);
           if (!(
             (held.status === "ready" && held.held) ||
-            held.status === "checking"
+            held.status === "checking" ||
+            (request.startCheckout === true && held.status === "pending")
           ))
             throw invalidResponse();
           return held;
@@ -684,7 +685,8 @@ export const liveBookingService: BookingService = defineBookingService({
     return {
       ...attempt,
       verifying: undefined,
-      status: "checking",
+      status:
+        startCheckout && result.state !== "associated" ? "pending" : "checking",
       outcome: "pending",
       booking: null,
     };

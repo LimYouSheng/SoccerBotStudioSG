@@ -314,7 +314,7 @@ export async function hitpayConfirmationGuard(env: Env, id: string) {
 export function reopenHitpayReview(db: D1Database, id: string, now: number) {
   return db
     .prepare(
-      "UPDATE hitpay_payments SET state='due',reason='webhook_recheck_pending',ready_ms=?,retry_limit=MIN(16,MAX(retry_limit,tries+1)),receipt_checkpoint=(SELECT MAX(rowid) FROM hitpay_receipts WHERE attempt_id=hitpay_payments.attempt_id) WHERE attempt_id=? AND state='manual_review' AND reason IN ('hitpay_payment_failed','hitpay_payment_expired','hitpay_payment_canceled','recovery_exhausted') AND tries<16 AND recovery_end_ms>? AND EXISTS(SELECT 1 FROM hitpay_receipts WHERE attempt_id=hitpay_payments.attempt_id AND rowid>hitpay_payments.receipt_checkpoint)",
+      "UPDATE hitpay_payments SET state='due',reason='webhook_recheck_pending',ready_ms=?,retry_limit=MIN(16,MAX(retry_limit,tries+1)),receipt_checkpoint=(SELECT MAX(rowid) FROM hitpay_receipts WHERE attempt_id=hitpay_payments.attempt_id) WHERE attempt_id=? AND state IN ('manual_review','due') AND reason IN ('hitpay_payment_failed','hitpay_payment_expired','hitpay_payment_canceled','recovery_exhausted') AND tries<16 AND recovery_end_ms>? AND EXISTS(SELECT 1 FROM hitpay_receipts WHERE attempt_id=hitpay_payments.attempt_id AND rowid>hitpay_payments.receipt_checkpoint)",
     )
     .bind(now, id, now);
 }

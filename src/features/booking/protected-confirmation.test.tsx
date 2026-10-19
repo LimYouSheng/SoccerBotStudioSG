@@ -120,7 +120,7 @@ it("a late reply from a previous attempt cannot confirm the current attempt", as
   const view = render(<ProtectedConfirmation attemptId={first} />);
   view.rerender(<ProtectedConfirmation attemptId={second} />);
   expect(
-    await screen.findByRole("heading", { name: "Your booking needs review" }),
+    await screen.findByRole("heading", { name: "Payment status unresolved" }),
   ).toBeInTheDocument();
   finishFirst(Response.json({ status: "confirmed", reason: "verified" }));
   await waitFor(() =>
@@ -351,8 +351,13 @@ it("expired checking shows authenticated recorded payment without confirming or 
     JSON.stringify({ deadline, next: 0, count: 1 }),
   );
   const fetch = vi.fn(async (url: string) => {
+    if (url.endsWith("/confirmation"))
+      return Response.json({
+        status: "unresolved",
+        reason: "payment_received_booking_pending",
+      });
     if (!url.endsWith("/checkout"))
-      throw new Error("Unexpected confirmation or receipt request");
+      throw new Error("Unexpected receipt request");
     return Response.json({
       attemptId: first,
       mode: "live",
@@ -393,7 +398,7 @@ it("expired checking shows authenticated recorded payment without confirming or 
   expect(
     screen.queryByRole("link", { name: /Open checkout/ }),
   ).not.toBeInTheDocument();
-  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(fetch).toHaveBeenCalledTimes(2);
   expect(
     JSON.parse(localStorage.getItem(`soccerbot-checking:${first}`)!).deadline,
   ).toBe(deadline);

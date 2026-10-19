@@ -121,6 +121,7 @@ test("guest multi-date booking survives reload and exports calendar and PDF", as
   await expect(
     page.getByRole("heading", { name: "Booking confirmed", exact: true }),
   ).toBeVisible();
+  await page.getByText("View full details", { exact: true }).click();
   await expect(page.getByText("Studio 1", { exact: true })).toBeVisible();
   expect(
     await page.evaluate(
@@ -767,6 +768,7 @@ test("elapsed selections block checkout on an open page and remain removable bef
   await expect(
     page.getByRole("heading", { name: "Booking confirmed", exact: true }),
   ).toBeVisible();
+  await page.getByText("View full details", { exact: true }).click();
   await expect(
     page.getByRole("list", { name: "Selected sessions" }).getByRole("listitem"),
   ).toHaveCount(2);

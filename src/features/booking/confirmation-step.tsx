@@ -91,6 +91,10 @@ export function BookingConfirmation({
           <>
             <InlineLoading compact label={pendingLabel} />
             <p className="text-sm text-muted">{pendingLabel}</p>
+            <p className="text-sm text-muted">
+              We’re checking your previous payment before another checkout can
+              start. Your details are saved.
+            </p>
             <p className="text-sm text-muted">{loadingMessage}</p>
           </>
         ) : (

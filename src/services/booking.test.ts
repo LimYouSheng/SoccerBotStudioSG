@@ -22,7 +22,13 @@ import {
   DEMO_CODE,
 } from "@/services/demo/identity";
 import { demoSession } from "@/services/demo/schedule";
-import { loadBooking, saveBooking, safeWrite } from "@/services/storage";
+import {
+  loadBooking,
+  saveBooking,
+  safeWrite,
+  loadLiveDraft,
+  saveLiveDraft,
+} from "@/services/storage";
 import { calendarText } from "@/services/exports";
 class StorageMock {
   private values = new Map<string, string>();
@@ -562,4 +568,14 @@ it("formats Singapore booking dates independently of locale date order", () => {
   );
   expect(todaySG(new Date("2026-12-31T15:59:59.999Z"))).toBe("2026-12-31");
   expect(todaySG(new Date("2026-12-31T16:00:00Z"))).toBe("2027-01-01");
+});
+
+it("live draft reload preserves edits but never restores consent or payment authority", () => {
+  const draft = validDraft();
+  saveLiveDraft(draft);
+  expect(loadLiveDraft()).toEqual({ ...draft, accepted: false });
+  safeWrite("soccerbot-live-draft", { ...draft, attempt: { status: "paid" } });
+  expect(loadLiveDraft()).not.toHaveProperty("attempt");
+  saveLiveDraft(blankDraft());
+  expect(loadLiveDraft()).toEqual(blankDraft());
 });

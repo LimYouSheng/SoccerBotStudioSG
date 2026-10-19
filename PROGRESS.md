@@ -1,5 +1,11 @@
 # SoccerBotStudioSG current progress
 
+## Active PR60 implementation — 19 October 2026 SGT
+
+Working branch fix/confirmation-return-loading, starting headf03049e; main0fd2c6e. Run39209839579 failed browser gates; underlying Worker checks passed. Implement local Review, single-creation evidence reuse, session draft restoration and fixed creation+13-minute checking, no return checkout resume. Repair stale disclosure assertions, exact batch-price fixture and failed-write recovery navigation. Frontend non-browser gate passed211 tests plus type/lint/build/export. Full Worker run passed374/383; nine standalone confirmation failures traced to checkout migrations being applied only in a later receipt test. Moving those migrations into shared setup (including0034) preserves assertions; focused runtime suite then passed50/50. Final-head CI remains required. Do not merge or deploy.
+
+Remaining provider question: whether HitPay expired rules out later settlement. Experiment paused after422 creation response without retained diagnostics. Dispatched payment attempts remain blocked; do not describe automatic cancellation/new-session release as implemented or accepted. Preserve all financial evidence.
+
 ## Editable Review, combined checkout and compact confirmation — 19 October 2026 SGT
 
 Owner supersedes creation-during-Review and queued provider edits: Details runs fresh read-only availability checks, then opens editable Review without creating a customer, booking or payment. Changed details reset consent. Continue to payment starts one combined checkout under the existing coordinator and durable attempt identity. Fresh pre-write validation remains necessary because Review can be left open; a read-only offer is not a reservation.

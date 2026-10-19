@@ -1,5 +1,13 @@
 # SoccerBotStudio — Journey
 
+## PR60 flow implementation and CI diagnosis — 19 October 2026 SGT
+
+Inspected failed run39209839579 atf03049e. Frontend/backend browser lanes each failed two journeys on all three devices: assertions targeted Studio1 and Selected sessions inside the new collapsed full-details disclosure. Live-email failed three journeys on each device: unsaved local Review disappeared on reload; the batch provider double hard-coded SGD88 against the valid SGD176 request; failed creation waited unnecessarily for checkout context while the browser test held that response. Worker tests had passed. Repairs retain the disclosure assertions after expansion, save only a local draft, validate exact batch totals and route failed combined creation to retained pending recovery. No browser execution by the assistant.
+
+Owner pauses HitPay expiry experimentation and authorizes local Review, creation-response reuse and original-creation+13-minute return checking with no resume option. Immediate deletion test stopped payment; ten-second deletion returned400 with a succeeded charge. Neither proves expiry excludes late settlement. Standalone eight-minute sandbox creation returned422 without validation details. These are owner-run observations, not live-provider acceptance of automatic cancellation. Dispatched expired attempts stay blocked; remaining terminal-unpaid/cancellation contract is explicit in Rules and Service Contracts.
+
+Test-impact review includes shared browser Review setup, revoked-access checkout, draft reload/consent, failed creation routing, batch pricing, collapsed details, original clock/no-renewal/final-read behavior, and expired/new-webhook protection. Verification results and final-head CI belong in Progress/PR; no merge/deployment is authorized for PR60.
+
 ## Editable Review, combined checkout and compact confirmation — 19 October 2026 SGT
 
 Owner supersedes creation-during-Review and queued provider edits: Details runs fresh read-only availability checks, then opens editable Review without creating a customer, booking or payment. Changed details reset consent. Continue to payment starts one combined checkout under the existing coordinator and durable attempt identity. Fresh pre-write validation remains necessary because Review can be left open; a read-only offer is not a reservation.

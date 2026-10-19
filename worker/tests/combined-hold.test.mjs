@@ -65,6 +65,14 @@ test("combined hold performs one preflight and preserves immutable identity acro
       )
       .bind(c.input.key)
       .first();
+    const context = await m.mf.dispatchFetch(
+      m.origin + `/api/attempts/${c.input.key}/checkout`,
+      { headers: c.headers },
+    );
+    assert.equal(
+      (await context.json()).checking.deadlineMs,
+      timing.booking_created_ms + 780000,
+    );
     assert.equal(timing.payment_window_ms, 480000);
     assert.equal(timing.hold_window_ms, 900000);
     await assert.rejects(
@@ -578,7 +586,7 @@ test("ongoing confirmation grants five fast stored-status checks while retaining
       );
       assert.equal(response.status, 200);
       const next = Number(response.headers.get("X-Next-Check"));
-      const delay = i < 5 ? 1000 : 5000;
+      const delay = i < 5 ? 1000 : 10000;
       assert.ok(next >= start + delay && next <= Date.now() + delay);
       const repeated = await m.mf.dispatchFetch(
         m.origin + `/api/attempts/${c.input.key}/confirmation`,
@@ -929,7 +937,7 @@ test("concurrent preflight attributes invalid fields correctly and creates no bo
   }
 });
 
-test("checkout creates one verified booking and reuses its fresh readback for one HitPay request", async () => {
+test("checkout reuses complete creation evidence for one HitPay request without redundant reads", async () => {
   const m = await createBookingMechanism();
   try {
     const c = await customer(m);
@@ -951,13 +959,13 @@ test("checkout creates one verified booking and reuses its fresh readback for on
     assert.equal(m.calls.filter((c) => c.body?.method === "book").length, 1);
     assert.equal(
       m.calls.filter((c) => c.body?.method === "getBookingDetails").length,
-      1,
+      0,
     );
     assert.equal(
       m.calls.filter(
         (c) => c.url.endsWith("/admin/invoices/901") && c.method === "GET",
       ).length,
-      1,
+      0,
     );
     assert.equal(
       m.calls.filter(
@@ -982,6 +990,7 @@ test("checkout creates one verified booking and reuses its fresh readback for on
 
 test("combined checkout never creates HitPay after failed booking verification and preserves its attempt", async () => {
   const m = await createBookingMechanism({
+    missingCreationDeadline: true,
     respond: async (call) =>
       call.body?.method === "getBookingDetails"
         ? new Response(null, { status: 503 })
@@ -1017,6 +1026,47 @@ test("combined checkout never creates HitPay after failed booking verification a
       (await m.db.prepare("SELECT COUNT(*) AS n FROM attempts").first()).n,
       1,
     );
+  } finally {
+    await m.close();
+  }
+});
+
+test("combined batch checkout retains one payment effect and exact booking association", async () => {
+  const m = await createBookingMechanism({ batch: true });
+  try {
+    const c = await customer(m);
+    c.input.sessions.push({
+      ...c.input.sessions[0],
+      startMs: m.startMs + 3000000,
+    });
+    const send = () =>
+      m.mf.dispatchFetch(m.origin + `/api/booking/checkout/${c.input.key}`, {
+        method: "POST",
+        headers: c.headers,
+        body: JSON.stringify({ ...c.input, accepted: true }),
+      });
+    const response = await send();
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    assert.equal(
+      result.state,
+      "associated",
+      JSON.stringify(
+        await m.db
+          .prepare("SELECT result_json FROM native_checkout_grants")
+          .first(),
+      ),
+    );
+    assert.equal(result.paymentAvailable, true);
+    await send();
+    assert.equal(m.calls.filter((c) => c.body?.method === "book").length, 2);
+    assert.equal(
+      m.calls.filter(
+        (c) => c.url.includes("hit-pay.com") && c.method === "POST",
+      ).length,
+      1,
+    );
+    assert.deepEqual(m.unexpected, []);
   } finally {
     await m.close();
   }

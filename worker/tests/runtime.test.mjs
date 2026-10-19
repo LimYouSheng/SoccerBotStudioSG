@@ -211,6 +211,26 @@ before(async () => {
       .replace(/^--.*$/gm, "")
       .replace(/\n/g, " "),
   );
+  await db.exec(
+    readFileSync("migrations/0016_native_checkout_grants.sql", "utf8")
+      .replace(/^--.*$/gm, "")
+      .replace(/\n/g, " "),
+  );
+  await db.exec(
+    readFileSync("migrations/0032_completed_checkout_history.sql", "utf8")
+      .replace(/^--.*$/gm, "")
+      .replace(/\n/g, " "),
+  );
+  await db.exec(
+    readFileSync("migrations/0033_checkout_progress.sql", "utf8")
+      .replace(/^--.*$/gm, "")
+      .replace(/\n/g, " "),
+  );
+  await db.exec(
+    readFileSync("migrations/0034_checkout_windows.sql", "utf8")
+      .replace(/^--.*$/gm, "")
+      .replace(/\n/g, " "),
+  );
 });
 after(async () => {
   if (mf) await mf.dispose();
@@ -1327,21 +1347,6 @@ test("fresh availability and holding queries reach authentication and reject arb
 });
 
 test("receipt export rechecks ownership paid evidence and revocation without provider calls", async () => {
-  await db.exec(
-    readFileSync("migrations/0016_native_checkout_grants.sql", "utf8")
-      .replace(/^--.*$/gm, "")
-      .replace(/\n/g, " "),
-  );
-  await db.exec(
-    readFileSync("migrations/0032_completed_checkout_history.sql", "utf8")
-      .replace(/^--.*$/gm, "")
-      .replace(/\n/g, " "),
-  );
-  await db.exec(
-    readFileSync("migrations/0033_checkout_progress.sql", "utf8")
-      .replace(/^--.*$/gm, "")
-      .replace(/\n/g, " "),
-  );
   const approved = {
     ...intent(),
     contact: {

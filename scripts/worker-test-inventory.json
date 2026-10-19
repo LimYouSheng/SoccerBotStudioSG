@@ -42,7 +42,7 @@
   "concurrent preflight drains siblings and rejects revocation before creation",
   "combined preparation overlaps public and admin authentication without premature booking",
   "concurrent preflight attributes invalid fields correctly and creates no booking",
-  "checkout creates one verified booking and reuses its fresh readback for one HitPay request",
+  "checkout reuses complete creation evidence for one HitPay request without redundant reads",
   "combined checkout never creates HitPay after failed booking verification and preserves its attempt",
   "foundation valid bindings emit correlated storage evidence without secret markers",
   "foundation missing and malformed configuration denies before protected reads",
@@ -80,7 +80,7 @@
   "HitPay creation mismatch retains only a redacted field diagnostic and never repeats creation",
   "verified HitPay payment confirms the retained live hold before accounting while exports remain protected",
   "expired unpaid hold releases only its active grant and retains immutable creation and booking history",
-  "expired checkout retains unknown payment and newer webhook evidence until authoritative unpaid expiry",
+  "expired checkout retains dispatched payment even after expired status and webhook reconciliation",
   "late verified payment cannot confirm an expired hold or release it for another booking",
   "on-time HitPay payment reconciles after payment expiry only within the original hold",
   "on-time HitPay payment cannot finalize after the original hold expires",
@@ -380,5 +380,6 @@
   "webhook body limits and HTTP boundaries reject before capture",
   "webhook slow streamed bodies time out and never acknowledge a receipt",
   "webhook comparison channels isolate capture deduplication caps and closure",
-  "invoice capture retains authentication boundaries and immutable event authority"
+  "invoice capture retains authentication boundaries and immutable event authority",
+  "combined batch checkout retains one payment effect and exact booking association"
 ]

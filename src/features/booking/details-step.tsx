@@ -206,8 +206,7 @@ export function DetailsStep({
               try {
                 if (draft.mode === "member" && remember && !(await save()))
                   return;
-                // Preparation validates the selection server-side before the
-                // one-use holding operation; no duplicate browser day read.
+                // Review uses the local draft; checkout owns server validation.
                 if (!mounted.current) return;
                 if (bookingService.mode === "live") {
                   if (!(await review())) return;
@@ -224,8 +223,8 @@ export function DetailsStep({
       >
         {!profileOnly && bookingService.mode === "live" && (
           <p>
-            Review booking checks your selected times. Your booking is created
-            when you continue to payment.
+            Review your selected times and details. Your booking is created when
+            you continue to payment.
           </p>
         )}
         <p className="booking-required">* Required fields</p>

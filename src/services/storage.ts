@@ -122,3 +122,13 @@ export function loadBooking(): StoredBooking {
 export function saveBooking(value: StoredBooking) {
   safeWrite(KEY, value);
 }
+
+// An editable live draft is display data only. Attempts and payment authority
+// are always restored from the authenticated server, never browser storage.
+export function loadLiveDraft() {
+  const parsed = draftSchema.safeParse(safeRead("soccerbot-live-draft"));
+  return parsed.success ? { ...parsed.data, accepted: false } : blankDraft();
+}
+export function saveLiveDraft(draft: StoredBooking["draft"]) {
+  safeWrite("soccerbot-live-draft", { ...draft, accepted: false });
+}

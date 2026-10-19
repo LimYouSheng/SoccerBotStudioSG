@@ -1,5 +1,15 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Local Review and anchored return checking — 19 October 2026 SGT
+
+Owner replaces fresh-read Review and checkout resume with editable local Review and a fixed checking window. Details validates the draft locally; checkout retains fresh server write-boundary checks, original attempt identity, shared capacity and consent. Session-scoped live draft persistence restores edits without restoring consent or financial authority. Protected server restoration always owns existing attempts.
+
+A complete, strictly validated single-booking creation response may supply the immediate booking/invoice evidence for combined checkout. Missing deadline evidence, stale evidence, batches and recovery retain authenticated readback. No unconfirmed booking authorizes HitPay. Creation receipt time anchors the existing immutable eight-minute payment/fifteen-minute hold policy. Required recovery persistence remains awaited.
+
+Return/re-entry offers no HitPay resume action. New-policy checking ends at original creation plus thirteen minutes; return at minute seven leaves six minutes, never thirteen fresh minutes. Paid verification can complete earlier. Financial recovery remains durable, bounded and independent of the page. The five-minute grace is a scheduling buffer, not proof of terminal nonpayment. Pending/expired provider states are rechecked through that window; unknown outcomes remain blocked afterward.
+
+Automatic replacement after a dispatched payment is deliberately blocked pending proof that the provider's terminal state excludes late settlement. The existing expired-request grant-release predicate is removed for dispatched payments. No cancellation/refund/provider experiment or claim of safe automatic cancellation is included. Final expiry/late-settlement experiment remains paused after the standalone sandbox creation returned422 without retained field errors. Implement verified cancellation/release only after that contract is established; preserve original attempts and history meanwhile.
+
 ## Editable Review, combined checkout and compact confirmation — 19 October 2026 SGT
 
 Owner supersedes creation-during-Review and queued provider edits: Details runs fresh read-only availability checks, then opens editable Review without creating a customer, booking or payment. Changed details reset consent. Continue to payment starts one combined checkout under the existing coordinator and durable attempt identity. Fresh pre-write validation remains necessary because Review can be left open; a read-only offer is not a reservation.

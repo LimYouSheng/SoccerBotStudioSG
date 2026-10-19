@@ -415,7 +415,7 @@ it("HitPay HTTP conflict preserves the hold and shows payment failure without se
   expect(navigation.push).not.toHaveBeenCalled();
 });
 
-it("Review checks availability without creation and checkout verifies one booking before HitPay", async () => {
+it("Review performs no provider reads and checkout verifies one booking before HitPay", async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-10-15T00:00:00Z"));
   let complete!: (attempt: Attempt) => void;
@@ -485,9 +485,7 @@ it("Review checks availability without creation and checkout verifies one bookin
     fireEvent.click(screen.getByRole("button", { name: "Review booking" })),
   );
   expect(screen.getByRole("heading", { name: "Review booking" })).toBeVisible();
-  expect(availability).toHaveBeenCalledWith(
-    expect.objectContaining({ fresh: true }),
-  );
+  expect(availability).not.toHaveBeenCalled();
   expect(checkout).not.toHaveBeenCalled();
   expect(pay).not.toHaveBeenCalled();
   expect(screen.getByRole("link", { name: "Edit details" })).toBeVisible();
