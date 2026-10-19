@@ -509,7 +509,7 @@ test("native guest journey preserves players contact and one checkout across ref
       const path = new URL(response.url()).pathname;
       if (path.startsWith("/api/calendar/") && response.status() === 200)
         warmedMonths.add(path);
-      return warmedMonths.size === 4;
+      return warmedMonths.size === 1;
     });
     await page.goto("/");
     await page
@@ -519,7 +519,7 @@ test("native guest journey preserves players contact and one checkout across ref
     await calendarReady;
     expect(
       calls.filter((c) => c.path.startsWith("/api/calendar/")),
-    ).toHaveLength(4);
+    ).toHaveLength(1);
     expect(calls.filter((c) => c.path === "/api/catalogue")).toHaveLength(1);
     expect(calls.filter((c) => c.path === "/api/access")).toHaveLength(0);
     await page.getByRole("link", { name: "Book now", exact: true }).click();
@@ -575,7 +575,7 @@ test("native guest journey preserves players contact and one checkout across ref
       .click();
     expect(
       calls.filter((c) => c.path.startsWith("/api/calendar/")),
-    ).toHaveLength(4);
+    ).toHaveLength(monthOffset === 0 ? 1 : 2);
     expect(calls.filter((c) => c.path === "/api/catalogue")).toHaveLength(1);
     expect(
       calls.filter((c) => c.path.startsWith("/api/booking/availability/")),

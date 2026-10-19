@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## One-month browser expectation repair — 19 October 2026 SGT
+
+CI39176339093 on3a34e2a passed frontend/backend, but live-email passed69/72: the same native guest journey timed out on all three engines. Its separate warmedMonths setup still waited for four responses, then asserted four calendar calls twice. Update it to one initial response/call and exactly one additional call only if the selected month differs. Preserve all contact/player, hold/payment effect counts, restore, no post-hold availability and access assertions. No timeout/retry change or product change. Final exact-source browser CI remains required.
+
 ## One-month calendar preload — 19 October 2026 SGT
 
 Owner reduces eager calendar loading from four months to the displayed month only. Homepage preloads the current Singapore calendar month; another month is fetched only when opened. The existing four-month navigation horizon is unchanged. Empty results are cached, cache expiry does not poll, fresh entries are reused, and Details/Review/payment still abort or pause calendar work. This reduces eager month requests from four to one, not a measured end-to-end latency claim. Update component call-count expectations, preserve stale-reply/expiry/conflict assertions and explicitly test next-month loading, abort and return reuse. Actual-Worker browser setup now waits for one preload rather than warming all four months.
