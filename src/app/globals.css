@@ -3533,10 +3533,34 @@
     letter-spacing: 0.02em;
     margin-top: 9px;
   }
-  .confirmation-section + .confirmation-section {
+  .confirmation-details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+    gap: 20px 24px;
+  }
+  .confirmation-details-grid .confirmation-section {
+    min-width: 0;
     border-top: 1px solid var(--color-line);
-    margin-top: var(--space-section);
-    padding-top: var(--space-section);
+    padding-top: 16px;
+  }
+  .confirmation-details-grid .section-title {
+    margin-bottom: 12px;
+  }
+  .confirmation-details-grid .booking-facts {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .confirmation-details-grid .booking-facts dd {
+    margin-bottom: 10px;
+    overflow-wrap: anywhere;
+  }
+  .confirmation-provider-references {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--color-line);
+    padding-top: 12px;
+    font-size: var(--text-meta);
+    color: var(--color-muted);
+    overflow-wrap: anywhere;
   }
   .confirmation-service {
     margin-bottom: 16px;

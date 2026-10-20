@@ -898,7 +898,25 @@ export async function prepareCustomerNative(
     prepareProvider(),
   ] as const);
   if (results[0].status === "rejected") throw results[0].reason;
-  if (results[1].status === "rejected") throw results[1].reason;
+  if (results[1].status === "rejected") {
+    // Identity warming contains reads only. Expose a retryable result only
+    // after durable proof that no booking/payment effect was dispatched.
+    const stopped = await env.STATE.prepare(
+      "UPDATE native_checkout_grants SET state='blocked',result_json=? WHERE attempt_id=? AND capability_hash=? AND ongoing=1 AND state='granted' AND EXISTS(SELECT 1 FROM attempts a WHERE a.id=native_checkout_grants.attempt_id AND a.state='prepared' AND a.association_json IS NULL) AND NOT EXISTS(SELECT 1 FROM dispatches d WHERE d.attempt_id=native_checkout_grants.attempt_id) AND NOT EXISTS(SELECT 1 FROM session_effects e WHERE e.attempt_id=native_checkout_grants.attempt_id) AND NOT EXISTS(SELECT 1 FROM hitpay_payments p WHERE p.attempt_id=native_checkout_grants.attempt_id)",
+    )
+      .bind(
+        JSON.stringify({
+          state: "checkout_not_started",
+          paymentAvailable: false,
+        }),
+        results[0].value.attemptId,
+        access.capability_hash,
+      )
+      .run();
+    if (stopped.meta.changes === 1)
+      throw new ApiError(503, "checkout_not_started");
+    throw results[1].reason;
+  }
   return results[0].value;
 }
 export async function customerNativeAvailability(options: {
@@ -1071,9 +1089,11 @@ export async function currentCustomerNative(request: Request, env: Env) {
   if (
     row.state === "prepared" &&
     row.grant_state === "blocked" &&
-    ["selection_unavailable", "restart_required"].includes(
-      JSON.parse(row.result_json || "{}").state,
-    )
+    [
+      "selection_unavailable",
+      "restart_required",
+      "checkout_not_started",
+    ].includes(JSON.parse(row.result_json || "{}").state)
   )
     return { state: "empty" as const };
   const intent = intentSchema.parse(JSON.parse(row.intent_json));

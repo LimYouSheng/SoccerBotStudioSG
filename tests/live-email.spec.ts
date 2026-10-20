@@ -2334,3 +2334,63 @@ test("real API expired unpaid Review retains its hold through the grace window w
     await stopMechanism(page, mechanism, transport);
   }
 });
+
+test("real API failed identity warming stays on Review without booking or payment effects", async ({
+  page,
+}) => {
+  let denied = false;
+  const mechanism = await createBookingMechanism({
+    displayWarming: true,
+    respond: async (call) =>
+      denied && call.url.endsWith("/admin/auth")
+        ? new Response(null, { status: 403 })
+        : undefined,
+  });
+  const transport = await mechanismTransport(page, mechanism);
+  try {
+    await guestDetails(page, mechanism);
+    await reviewResponse(page);
+    const storage = await mechanism.mf.unsafeGetDurableObjectStorage(
+      "booking-mechanism",
+      "SoccerBotAccountCoordinator",
+      { name: "simplybook-developer-account" },
+    );
+    await storage.exec("UPDATE refreshes SET expires_ms=0");
+    await mechanism.mf.unsafeEvictDurableObject(
+      "booking-mechanism",
+      "SoccerBotAccountCoordinator",
+      { name: "simplybook-developer-account" },
+    );
+    denied = true;
+    const response = await checkoutHoldResponse(page, undefined, true);
+    expect(response.status()).toBe(503);
+    expect(transport.json(response).error).toBe("checkout_not_started");
+    await expect(
+      page.getByRole("heading", { name: "Review booking", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/No booking or payment was started/),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Continue to payment", exact: true }),
+    ).toBeEnabled();
+    await assertNoPaymentOrConfirmation(page, mechanism);
+    expect(
+      mechanism.calls.filter((call) => call.body?.method === "book"),
+    ).toHaveLength(0);
+    for (const table of ["dispatches", "session_effects", "hitpay_payments"])
+      expect(
+        (await mechanism.db
+          .prepare(`SELECT COUNT(*) AS n FROM ${table}`)
+          .first<{ n: number }>())!.n,
+      ).toBe(0);
+    const current = await page.evaluate(async () => {
+      const response = await fetch("/api/booking/current");
+      return { status: response.status, body: await response.json() };
+    });
+    expect(current.status).toBe(200);
+    expect(current.body.state).toBe("empty");
+  } finally {
+    await stopMechanism(page, mechanism, transport);
+  }
+});
