@@ -2384,17 +2384,12 @@ test("real API failed identity warming stays on Review without booking or paymen
           .prepare(`SELECT COUNT(*) AS n FROM ${table}`)
           .first<{ n: number }>())!.n,
       ).toBe(0);
-    const current = await mechanism.mf.dispatchFetch(
-      mechanism.origin + "/api/booking/current",
-      {
-        headers: {
-          cookie: (await page.context().cookies())
-            .map((c) => `${c.name}=${c.value}`)
-            .join("; "),
-        },
-      },
-    );
-    expect(((await current.json()) as { state: string }).state).toBe("empty");
+    const current = await page.evaluate(async () => {
+      const response = await fetch("/api/booking/current");
+      return { status: response.status, body: await response.json() };
+    });
+    expect(current.status).toBe(200);
+    expect(current.body.state).toBe("empty");
   } finally {
     await stopMechanism(page, mechanism, transport);
   }

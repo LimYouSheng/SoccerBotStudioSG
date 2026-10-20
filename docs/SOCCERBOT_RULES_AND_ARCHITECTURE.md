@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## PR66 CI cookie-adapter correction — 20 October 2026 SGT
+
+Run39365196455 on77f06d3 passed frontend/backend and75/78 live-email cases. Only the new identity-warming test failed on all three devices, after its UI/no-effect assertions passed: its direct current-status fetch copied the preview cookie name instead of using the existing adapter that maps it to the real Worker cookie. Route this read through browser fetch and the shared transport, assert HTTP200 before the unchanged empty-state assertion. No production authentication change, invented capability, timeout increase, retry or skipped coverage. Test-impact search reviewed direct dispatch/cookie setup paths; existing prepared-attempt helpers already use the actual server cookie. Local types/lint/source/policy/format checks and final-head CI remain required; no assistant browser execution.
+
 ## Authentication rejection diagnostic follow-up — 20 October 2026 SGT
 
 The60-second admin-token cache already refreshes on the next identity operation after expiry; HAR10 failed during fresh admin-auth, not a missing refresh. Existing logs discarded the exact401/403 distinction. Provider failure telemetry now retains only the numeric HTTP status alongside the existing operation/correlation; no response bodies, credentials, headers or customer values. A status alone does not prove the provider's underlying rejection reason. The existing cooldown/no-retry test now covers both public/admin authentication with401,403,429 and verifies exact status, budget/no replay and diagnostic privacy. Ordinary catalogue authentication can expose this evidence without another booking/payment. No token lifetime, retry, provider configuration or financial behavior change;60-second retention remains conservative pending authoritative admin expiry evidence. Final-head CI is required.
