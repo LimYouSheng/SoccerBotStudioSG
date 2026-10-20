@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## PR70 browser reconciliation-gate correction — 20 October 2026 SGT
+
+Run39391908409 passed frontend/backend and75/78 live-email cases. The same payment-recovery journey failed on all three devices because it deliberately blocked accept-payment but still expected Booking confirmed before releasing that gate. This was an obsolete early-confirmation assumption missed in the original test-impact pass. Align that browser journey with current rules: assert payment-received feedback, no confirmed heading/actions and no server confirmation proof while reconciliation is blocked; release the original operation, require authoritative confirmation, then retain delayed-download, stable receipt/reload, dismissal and one-payment-effect assertions. No production change, timeout increase, retries or skipped coverage. Browser execution remains in CI; final-head CI pending.
+
 ## Active audit repair — 20 October 2026
 
 Branch fix/confirmation-and-queue-guards from main194cb5f. Implement current-booking confirmation gate, bounded queue admission/recovery priority, and canonical current-rule summaries. Final local checks passed:404/404 Worker tests and223/223 frontend unit/component tests, plus source/policy, types, lint, build/export. Publish a draft PR and require exact-commit CI; no readiness claim while CI is pending. Owner confirms studio capacity is enforced in SimplyBook; no separate capacity acceptance task is required. PR69 tracing is preserved separately. No merge/deployment is authorized for this new PR.

@@ -946,18 +946,48 @@ test("real payment recovery confirms the browser return from verified provider s
       .getByRole("dialog", { name: "Get the SoccerBot Player App" })
       .getByRole("button", { name: "Not now", exact: true })
       .click();
+    await accounting;
+    await expect(
+      page.getByRole("status", {
+        name: "Payment received—verifying booking…",
+        exact: true,
+      }),
+    ).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Booking confirmed", exact: true }),
-    ).toBeVisible();
-    await accounting;
+    ).toHaveCount(0);
+    await expect(page.locator(".confirmation-actions")).toHaveCount(0);
+    const pendingContext = await mechanism.mf.dispatchFetch(
+      mechanism.origin + `/api/attempts/${attemptId}/checkout`,
+      { headers },
+    );
+    expect(pendingContext.status).toBe(200);
+    const pending = await pendingContext.json();
+    expect(pending).not.toHaveProperty("customerConfirmation");
+    expect(pending).not.toHaveProperty("confirmation");
     expect(
       await mechanism.db
         .prepare(
-          "SELECT state,external_state FROM hitpay_payments WHERE attempt_id=?",
+          "SELECT state,external_state,paid_ms,payment_id FROM hitpay_payments WHERE attempt_id=?",
         )
         .bind(attemptId)
         .first(),
-    ).toMatchObject({ state: "claimed", external_state: "unknown" });
+    ).toMatchObject({
+      state: "claimed",
+      external_state: "unknown",
+      paid_ms: expect.any(Number),
+      payment_id: expect.any(String),
+    });
+    releaseAccounting();
+    const verifiedResponse = await (await savedConfirmation).json();
+    expect(
+      verifiedResponse.confirmation?.attemptId === attemptId ||
+        verifiedResponse.status === "confirmed",
+    ).toBe(true);
+    await receiptRead;
+    await expect(
+      page.getByRole("heading", { name: "Booking confirmed", exact: true }),
+    ).toBeVisible();
     const download = page.waitForEvent("download");
     await page
       .getByRole("button", { name: "Download booking details", exact: true })
@@ -969,11 +999,6 @@ test("real payment recovery confirms the browser return from verified provider s
     await expect(
       page.getByRole("heading", { name: "Booking confirmed", exact: true }),
     ).toBeVisible();
-    releaseAccounting();
-    await receiptRead;
-    await expect(
-      page.getByRole("heading", { name: "Booking confirmed", exact: true }),
-    ).toBeVisible();
     await expect(
       page.getByRole("status", {
         name: "Preparing your confirmation…",
@@ -982,11 +1007,6 @@ test("real payment recovery confirms the browser return from verified provider s
     ).toHaveCount(0);
     releaseReceipt();
     await download;
-    const verifiedResponse = await (await savedConfirmation).json();
-    expect(
-      verifiedResponse.confirmation?.attemptId === attemptId ||
-        verifiedResponse.status === "confirmed",
-    ).toBe(true);
     await expect(
       page.getByRole("heading", { name: "Booking confirmed", exact: true }),
     ).toBeVisible();

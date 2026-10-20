@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## PR70 browser reconciliation-gate correction — 20 October 2026 SGT
+
+Run39391908409 passed frontend/backend and75/78 live-email cases. The same payment-recovery journey failed on all three devices because it deliberately blocked accept-payment but still expected Booking confirmed before releasing that gate. This was an obsolete early-confirmation assumption missed in the original test-impact pass. Align that browser journey with current rules: assert payment-received feedback, no confirmed heading/actions and no server confirmation proof while reconciliation is blocked; release the original operation, require authoritative confirmation, then retain delayed-download, stable receipt/reload, dismissal and one-payment-effect assertions. No production change, timeout increase, retries or skipped coverage. Browser execution remains in CI; final-head CI pending.
+
 ## Confirmation and queue audit repair — 20 October 2026
 
 Against main194cb5f, owner identified early customer confirmation before SimplyBook readback, unbounded workflow queues, missing physical capacity acceptance and conflicting documentation. The candidate moves success retention after current confirmed-booking/paid-invoice observation and rejects legacy premature proof until reconciliation. Payment-received feedback remains immediate. Queue admission now has finite capacity/waiting, reserved recovery space and bounded recovery priority without provider concurrency changes. Current design and runtime contracts now have explicit authoritative sections; historical evidence remains below rather than being treated as current instructions.
