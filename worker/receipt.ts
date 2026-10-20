@@ -20,8 +20,10 @@ export async function bookingReceipt(
     .bind(id, access.owner_id)
     .first<StoredAttempt>();
   if (!row) throw new ApiError(404, "attempt_unavailable");
+  const guard = await hitpayConfirmationGuard(env, id);
+  now = Math.max(now, Date.now());
   if (
-    (await hitpayConfirmationGuard(env, id)) ||
+    guard ||
     decideStoredConfirmation(row, access, now, policy(env)).status !==
       "confirmed"
   )

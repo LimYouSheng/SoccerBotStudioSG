@@ -51,6 +51,9 @@ export async function confirmation(
     .first<StoredAttempt>();
   if (!row) throw new ApiError(404, "attempt_unavailable");
   row.deadline_ms = await checkoutCheckingDeadline(env, id, row.deadline_ms);
+  // D1 may return evidence committed after this HTTP request began.
+  // Evaluate against the current clock, never against the evidence timestamp.
+  now = Math.max(now, Date.now());
   const p = policy(env);
   if (now >= row.deadline_ms) {
     report?.({ deadlineMs: row.deadline_ms, nextCheckMs: now, remaining: 0 });
@@ -260,8 +263,13 @@ export async function checkoutContext(
       ? Math.max(...times)
       : NaN;
     if (
-      decideStoredConfirmation(row, access, now, policy(env), recordedAt)
-        .status === "confirmed"
+      decideStoredConfirmation(
+        row,
+        access,
+        Math.max(now, Date.now()),
+        policy(env),
+        recordedAt,
+      ).status === "confirmed"
     )
       try {
         savedConfirmation = await receiptData(env, row, recordedAt);

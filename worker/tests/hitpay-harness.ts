@@ -1,4 +1,5 @@
-import { checkoutContext } from "../confirmation";
+import { bookingReceipt } from "../receipt";
+import { confirmation, checkoutContext } from "../confirmation";
 import { ApiError } from "../policy";
 import { intentSchema } from "../journal";
 // Synthetic-only harness. This entry is excluded from deployed routing.
@@ -26,6 +27,28 @@ export class SoccerBotAccountCoordinator extends ProductionCoordinator {
 const harness = {
   async fetch(request: Request, env: Env) {
     const url = new URL(request.url);
+    if (url.pathname.startsWith("/test/request-start/")) {
+      const read = url.pathname.endsWith("/confirmation")
+        ? confirmation
+        : url.pathname.endsWith("/receipt")
+          ? bookingReceipt
+          : checkoutContext;
+      try {
+        return Response.json(
+          await read(
+            request,
+            env,
+            "00000000-0000-4000-8000-000000000001",
+            Date.now() - 10000,
+          ),
+        );
+      } catch (error) {
+        if (error instanceof ApiError)
+          return Response.json({ code: error.code }, { status: error.status });
+        throw error;
+      }
+    }
+
     if (
       ["/test/late-checkout", "/test/foreign-checkout"].includes(url.pathname)
     ) {
