@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { BookingProvider, useBooking } from "./provider";
 import { BookingPage } from "./booking-page";
@@ -860,4 +866,40 @@ it("proven unstarted checkout stays editable without entering payment recovery",
   expect(screen.getByTestId("action")).toHaveTextContent("failure");
   expect(navigation.push).not.toHaveBeenCalled();
   expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+it("queue rejection keeps the original attempt on Review for an explicit retry", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-15T00:00:00Z"));
+  const fetch = vi.fn<typeof globalThis.fetch>(async () =>
+    Response.json({ error: "provider_queue_busy" }, { status: 503 }),
+  );
+  vi.stubGlobal("fetch", fetch);
+  render(
+    <BookingProvider
+      bookingService={{
+        ...liveBookingService,
+        restore: undefined,
+        calendar: undefined,
+        publicCalendar: undefined,
+      }}
+      identityService={demoCustomerIdentity}
+    >
+      <Seed />
+      <ReviewStep />
+    </BookingProvider>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Seed" }));
+  fireEvent.click(screen.getByRole("button", { name: "Repeat checkout" }));
+  await screen.findByText(/The booking service is busy/);
+  const original = screen.getByTestId("retained").textContent;
+  expect(original).toMatch(/^[0-9a-f-]{36}$/);
+  expect(screen.getByTestId("action")).toHaveTextContent("failure");
+  expect(navigation.push).not.toHaveBeenCalled();
+  expect(fetch).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole("button", { name: "Repeat checkout" }));
+  await waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+  expect(screen.getByTestId("retained")).toHaveTextContent(original!);
+  expect(fetch.mock.calls[1][0]).toBe(fetch.mock.calls[0][0]);
+  expect(fetch.mock.calls[1][1]?.body).toBe(fetch.mock.calls[0][1]?.body);
 });

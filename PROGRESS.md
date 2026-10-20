@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## Active audit repair — 20 October 2026
+
+Branch fix/confirmation-and-queue-guards from main194cb5f. Implement current-booking confirmation gate, bounded queue admission/recovery priority, and canonical current-rule summaries. Final local checks passed:404/404 Worker tests and223/223 frontend unit/component tests, plus source/policy, types, lint, build/export. Publish a draft PR and require exact-commit CI; no readiness claim while CI is pending. Owner confirms studio capacity is enforced in SimplyBook; no separate capacity acceptance task is required. PR69 tracing is preserved separately. No merge/deployment is authorized for this new PR.
+
 ## Batch checkout creation path — 20 October 2026 SGT
 
 After HAR13 single checkout reached HitPay in7.60seconds, owner stops single optimization and authorizes the same provider strategy for direct batch checkout. Extend the ongoing creation-only path to batch: public token, createBatch, one sequential book per session, closeBatch, validated complete unpaid invoice and one HitPay request. Skip repeated account/catalogue/eligibility/availability reads; SimplyBook configuration enforces studio capacity. Validate server-owned rules for the entire cart before effects, save one complete restoration snapshot, and recheck local time-sensitive rules before later item writes. Strict response association, original expiry, durable per-item effects and guarded fallback/recovery remain. Batch close is an external write and retains its separate reservation; do not apply single-only local finalization.

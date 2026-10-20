@@ -1489,94 +1489,189 @@ async function seedCustomerProgress(createdAtMs = Date.now() - 1000) {
     .run();
 }
 
-test("verified HitPay payment confirms the retained live hold before accounting while exports remain protected", async () => {
-  const options = await seedHold();
-  await seedCustomerProgress();
-  await seedPayment();
-  const provider = providerFixture();
-  const previous = handler;
-  let release, entered;
-  const gate = new Promise((r) => {
-    release = r;
-  });
-  const reading = new Promise((r) => {
-    entered = r;
-  });
-  handler = async (request) => {
-    const body = await request
-      .clone()
-      .json()
-      .catch(() => null);
-    if (body?.method === "getBookingDetails") {
-      entered();
-      await gate;
-    }
-    return previous(request);
-  };
-  const work = recover();
-  try {
-    await reading;
-    const headers = options.headers;
+for (const legacy of [false, true]) {
+  test(
+    legacy
+      ? "legacy customer snapshot remains hidden until current booking reconciliation"
+      : "verified HitPay payment waits for current booking and invoice evidence before customer confirmation",
+    async () => {
+      const options = await seedHold();
+      await seedCustomerProgress();
+      await seedPayment();
+      const provider = providerFixture();
+      const previous = handler;
+      let release, entered;
+      const gate = new Promise((r) => {
+        release = r;
+      });
+      const reading = new Promise((r) => {
+        entered = r;
+      });
+      handler = async (request) => {
+        const body = await request
+          .clone()
+          .json()
+          .catch(() => null);
+        if (body?.method === "getBookingDetails") {
+          entered();
+          await gate;
+        }
+        return previous(request);
+      };
+      if (legacy) {
+        // A legacy early-payment snapshot must not bypass the new evidence gate.
+        const details = await (
+          await mf.dispatchFetch(
+            origin + `/api/attempts/${attemptId}/checkout`,
+            {
+              headers: { ...options.headers, "X-Booking-Details": "1" },
+            },
+          )
+        ).json();
+        assert.equal(details.details.attemptId, attemptId);
+        await db
+          .prepare(
+            "UPDATE checkout_progress SET confirmation_json=? WHERE attempt_id=?",
+          )
+          .bind(
+            JSON.stringify({
+              ...details.details,
+              verifiedAtMs: Date.now() - 1000,
+            }),
+            attemptId,
+          )
+          .run();
+      }
+      const work = recover();
+      try {
+        await reading;
+        const headers = options.headers;
+        const context = await (
+          await mf.dispatchFetch(
+            origin + `/api/attempts/${attemptId}/checkout`,
+            {
+              headers,
+            },
+          )
+        ).json();
+        assert.equal(context.customerConfirmation, undefined);
+        assert.equal(context.confirmation, undefined);
+        assert.equal((await row()).state, "claimed");
+        assert.equal(provider.writes(), 0);
+        assert.equal(
+          (
+            await mf.dispatchFetch(
+              origin + `/api/attempts/${attemptId}/receipt`,
+              {
+                headers,
+              },
+            )
+          ).status,
+          409,
+        );
+        const decision = await (
+          await mf.dispatchFetch(
+            origin + `/api/attempts/${attemptId}/confirmation`,
+            { headers },
+          )
+        ).json();
+        assert.equal(decision.status, "pending");
+        assert.deepEqual(
+          decision.customerConfirmation,
+          context.customerConfirmation,
+        );
+        release();
+        await work;
+        assert.equal(provider.writes(), 1);
+        assert.equal((await row()).state, "complete");
+        assert.equal(
+          (
+            await mf.dispatchFetch(
+              origin + `/api/attempts/${attemptId}/expire`,
+              {
+                method: "POST",
+                headers,
+              },
+            )
+          ).status,
+          409,
+        );
+        const saved = await (
+          await mf.dispatchFetch(
+            origin + `/api/attempts/${attemptId}/checkout`,
+            {
+              headers,
+            },
+          )
+        ).json();
+        assert.equal(saved.customerConfirmation.attemptId, attemptId);
+        const revisit = await (
+          await mf.dispatchFetch(
+            origin + `/api/attempts/${attemptId}/checkout`,
+            {
+              headers,
+            },
+          )
+        ).json();
+        assert.deepEqual(
+          revisit.customerConfirmation,
+          saved.customerConfirmation,
+        );
+        assert.equal(
+          (
+            await mf.dispatchFetch(
+              origin + `/api/attempts/${attemptId}/receipt`,
+              {
+                headers,
+              },
+            )
+          ).status,
+          200,
+        );
+      } finally {
+        release();
+        await work;
+      }
+    },
+  );
+}
+
+for (const failure of ["cancelled", "read-failure"]) {
+  test(`current booking ${failure} with verified payment never publishes customer success`, async () => {
+    const options = await seedHold();
+    await seedCustomerProgress();
+    await seedPayment();
+    const provider = providerFixture({ cancelled: failure === "cancelled" });
+    const previous = handler;
+    handler = async (request) => {
+      const body = await request
+        .clone()
+        .json()
+        .catch(() => null);
+      if (failure === "read-failure" && body?.method === "getBookingDetails")
+        return new Response("synthetic read unavailable", { status: 503 });
+      return previous(request);
+    };
+    await recover();
+    assert.equal(provider.writes(), 0);
+    assert.equal((await row()).payment_id, paymentId);
     const context = await (
       await mf.dispatchFetch(origin + `/api/attempts/${attemptId}/checkout`, {
-        headers,
+        headers: options.headers,
       })
     ).json();
-    assert.equal(context.customerConfirmation.attemptId, attemptId);
+    assert.equal(context.customerConfirmation, undefined);
     assert.equal(context.confirmation, undefined);
-    assert.equal((await row()).state, "claimed");
-    assert.equal(provider.writes(), 0);
     assert.equal(
       (
         await mf.dispatchFetch(origin + `/api/attempts/${attemptId}/receipt`, {
-          headers,
+          headers: options.headers,
         })
       ).status,
       409,
     );
-    const decision = await (
-      await mf.dispatchFetch(
-        origin + `/api/attempts/${attemptId}/confirmation`,
-        { headers },
-      )
-    ).json();
-    assert.equal(decision.status, "pending");
-    assert.deepEqual(
-      decision.customerConfirmation,
-      context.customerConfirmation,
-    );
-    release();
-    await work;
-    assert.equal(provider.writes(), 1);
-    assert.equal((await row()).state, "complete");
-    assert.equal(
-      (
-        await mf.dispatchFetch(origin + `/api/attempts/${attemptId}/expire`, {
-          method: "POST",
-          headers,
-        })
-      ).status,
-      409,
-    );
-    const saved = await (
-      await mf.dispatchFetch(origin + `/api/attempts/${attemptId}/checkout`, {
-        headers,
-      })
-    ).json();
-    assert.deepEqual(saved.customerConfirmation, context.customerConfirmation);
-    assert.equal(
-      (
-        await mf.dispatchFetch(origin + `/api/attempts/${attemptId}/receipt`, {
-          headers,
-        })
-      ).status,
-      200,
-    );
-  } finally {
-    release();
-    await work;
-  }
-});
+  });
+}
 
 test("expired unpaid hold releases only its active grant and retains immutable creation and booking history", async () => {
   const options = await seedHold(Date.now() - 1000);

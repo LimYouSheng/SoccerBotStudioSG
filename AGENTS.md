@@ -1,5 +1,9 @@
 # SoccerBotStudioSG engineering
 
+## Current authority — 20 October 2026
+
+Start with [current implementation rules](docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md#current-implementation-rules--20-october-2026) and [current runtime contracts](docs/SERVICE_CONTRACTS.md#current-checkout-and-queue-contracts--20-october-2026). Journey retains evidence; PROGRESS tracks the active checkpoint. The dated entries below are historical orientation, not current checkout instructions. They do not reinstate superseded Details-time creation, direct-checkout availability preflight or early payment-only confirmation. General engineering, test and delivery safeguards remain in force.
+
 ## Holding HTTP query repair — 15 October 2026
 
 PR32 merged/deployed as40cca80; sandbox settings were restored and verified after deployment reset them. Owner HAR03 reaches fresh availability200 and holding preparation201; bounded backend logs show a subsequent HTTP400 with zero provider/storage/coordinator work. The HTTP query allowlist omitted POST native/{id}?hold=1. Repair that exact route/query only, retain authentication and reject malformed/duplicate/unrelated parameters. Reproduced400 before fix; regression reaches401 authentication afterward with zero provider calls. No assistant booking/payment. Require new exact-source CI and specific merge approval; deployment will again require verified sandbox reactivation.

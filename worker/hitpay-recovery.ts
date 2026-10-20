@@ -123,9 +123,6 @@ export async function recoverHitpay(
       .run();
     if (row.payment_id !== null && row.payment_id !== verified.paymentId)
       throw new ApiError(409, "hitpay_payment_identity_changed");
-    // Persist customer success before slow accounting. Failure retains payment
-    // evidence and the existing recovery claim; it never replays creation.
-    await retainCustomerConfirmation(env, row, paidAtMs);
     const secret = hitpaySetting(env, "SIMPLYBOOK_DEV_SIGNING_SECRET");
     if (!secret) throw new ApiError(503, "native_signing_unavailable");
     const read = async () => {
@@ -246,6 +243,8 @@ export async function recoverHitpay(
     const retained = await paymentRow(env.STATE, id);
     if (retained?.external_reservation)
       base.reconciled?.(retained.external_reservation, id);
+    // Publish only after current booking and paid invoice evidence is stored.
+    await retainCustomerConfirmation(env, row, Date.now());
     result = "complete";
     reason = "verified";
   } catch (error) {

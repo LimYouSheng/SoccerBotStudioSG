@@ -1097,7 +1097,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       await this.ctx.storage.setAlarm(Date.now());
   }
   async hitpayRecovery(attemptId: string, correlationId: string) {
-    const run = this.providerQueue.run("foreground", () =>
+    const run = this.providerQueue.run("recovery", () =>
       traced(correlationId, "coordinator", () =>
         recoverHitpay(
           { ...this.env, STATE: instrumentStorage(this.env.STATE, "d1") },
@@ -1110,7 +1110,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     return run;
   }
   async ongoingRecovery(attemptId: string, correlationId: string) {
-    const run = this.providerQueue.run("foreground", async () => {
+    const run = this.providerQueue.run("recovery", async () => {
       const due = await ongoingReadbackDue(this.env, Date.now(), attemptId);
       if (!due) return { outcomes: [], reads: 0 };
       const used = this.providerAccounting().used;

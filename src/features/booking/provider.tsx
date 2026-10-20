@@ -133,6 +133,7 @@ export function BookingProvider({
     controller: AbortController;
     operation: Action;
   } | null>(null);
+  const queueRetry = useRef<{ id: string; revision: number } | null>(null);
   const mounted = useRef(false);
   const exitWork = useRef<{
     id: string;
@@ -434,8 +435,15 @@ export function BookingProvider({
           setAction({ status: "success", operation });
           return true;
         }
+        const retry = queueRetry.current;
+        queueRetry.current = null;
         let attempt =
-          operation === "checkout" && current.attempt?.held
+          operation === "checkout" &&
+          current.attempt &&
+          (current.attempt.held ||
+            (current.attempt.status === "ready" &&
+              retry?.id === current.attempt.id &&
+              retry.revision === current.revision))
             ? current.attempt
             : operation === "checkout" || operation === "reserve"
               ? await service.checkout({
@@ -542,6 +550,20 @@ export function BookingProvider({
         return true;
       } catch (error) {
         if (!isCurrent()) return false;
+        if (
+          error instanceof BookingServiceError &&
+          error.code === "queue_busy"
+        ) {
+          // Admission failed before this operation started. Keep the same
+          // prepared attempt available for an explicit retry.
+          if (latest.current.attempt)
+            queueRetry.current = {
+              id: latest.current.attempt.id,
+              revision: latest.current.revision,
+            };
+          setAction({ status: "failure", operation, error: error.message });
+          return false;
+        }
         // A lost write response is not permission to create another booking.
         // Resolve it once through the protected current-attempt read, accepting
         // only the exact original attempt with a fully verified hold.
