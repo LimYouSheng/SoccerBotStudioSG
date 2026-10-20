@@ -1549,10 +1549,19 @@ test("real API lost successful hold response restores the existing reservation w
   try {
     await guestDetails(page, mechanism);
     await reviewResponse(page);
+    // Recovery cannot navigate until the successful Worker response is lost.
+    // Register before clicking so even an immediate abort is observed.
+    const lost = page.waitForEvent(
+      "requestfailed",
+      (request) =>
+        request.method() === "POST" &&
+        new URL(request.url()).pathname.startsWith("/api/booking/checkout/"),
+    );
     await page.getByRole("checkbox").check();
     await page
       .getByRole("button", { name: "Continue to payment", exact: true })
       .click();
+    await lost;
     await expect(page).toHaveURL(/\/book\/payment\/$/);
     expect(dropped).toBe(true);
     const held = await mechanism.db
@@ -1565,7 +1574,7 @@ test("real API lost successful hold response restores the existing reservation w
         response.status() === 200,
     );
     await page.reload();
-    expect(await (await restored).json()).toMatchObject({
+    expect(transport.json(await restored)).toMatchObject({
       attemptId: held!.attempt_id,
       state: "checking",
     });
@@ -1607,10 +1616,7 @@ test("real API payment creation failure preserves the hold and never returns to 
     await guestDetails(page, mechanism);
     await reviewResponse(page);
     await expect(page).toHaveURL(/\/book\/review\/$/);
-    await page.getByRole("checkbox").check();
-    await page
-      .getByRole("button", { name: "Continue to payment", exact: true })
-      .click();
+    await checkoutHoldResponse(page, undefined, true);
     await expect(page).toHaveURL(/\/book\/payment\/$/);
     await expect(
       page.getByRole("status", {
