@@ -1,5 +1,10 @@
 # SoccerBotStudioSG current progress
 
+
+## Authentication rejection diagnostic follow-up — 20 October 2026 SGT
+
+The60-second admin-token cache already refreshes on the next identity operation after expiry; HAR10 failed during fresh admin-auth, not a missing refresh. Existing logs discarded the exact401/403 distinction. Provider failure telemetry now retains only the numeric HTTP status alongside the existing operation/correlation; no response bodies, credentials, headers or customer values. A status alone does not prove the provider's underlying rejection reason. The existing cooldown/no-retry test now covers both public/admin authentication with401,403,429 and verifies exact status, budget/no replay and diagnostic privacy. Ordinary catalogue authentication can expose this evidence without another booking/payment. No token lifetime, retry, provider configuration or financial behavior change;60-second retention remains conservative pending authoritative admin expiry evidence. Final-head CI is required.
+
 ## HAR10 confirmation stability and pre-dispatch authentication failure — 20 October 2026 SGT
 
 Owner HAR10 ran deployed5e9e2d8 after PR65. Its first checkout returned the HitPay handoff in14.8seconds and payment subsequently reconciled. Two later pending responses omitted customerConfirmation while retaining payment_received_booking_pending; the browser discarded earlier authenticated proof and flashed the loader. Retain that proof across pending omissions; explicit denial/manual-review outcomes and session/attempt isolation still supersede it. Downloads continue to require fresh authorization. Replace the misleading previous-payment message with this-booking status wording and organize expanded details into responsive sections, with provider references last.

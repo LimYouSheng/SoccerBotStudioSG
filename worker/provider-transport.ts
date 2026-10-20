@@ -520,6 +520,7 @@ export async function providerRequest(
     controller.abort();
   }, 15000);
   let complete = false;
+  let httpStatus: number | undefined;
   let cooldown = 0;
   return await measure("provider", async () => {
     try {
@@ -539,6 +540,7 @@ export async function providerRequest(
         redirect: "manual",
         signal: controller.signal,
       });
+      httpStatus = response.status;
       if (response.status >= 300 && response.status < 400) {
         await response.body?.cancel();
         complete = true;
@@ -635,6 +637,7 @@ export async function providerRequest(
       console.log(
         JSON.stringify({
           event: "provider_failure",
+          ...(httpStatus === undefined ? {} : { httpStatus }),
           correlationId: traceId(),
           operation: operation === "native" ? native?.kind : operation,
           durationMs: Math.max(0, performance.now() - started),

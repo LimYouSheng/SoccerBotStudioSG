@@ -336,19 +336,49 @@ test("provider identity mismatch prevents tariff read and never exposes account 
   }
 });
 test("provider rate failures consume budget enforce cooldown and never retry", async () => {
-  const f = await fixture({
-    respond: () => new Response(null, { status: 429 }),
-  });
-  try {
-    assert.equal(
-      (await f.call(await f.grant())).body.result.reason,
-      "provider_http_failed",
-    );
-    await f.call(await f.grant());
-    assert.equal(f.calls.length, 1);
-    assert.equal((await f.sql("SELECT used FROM budget"))[0].used, 1);
-  } finally {
-    await f.mf.dispose();
+  for (const operation of ["public-auth", "admin-auth"]) {
+    const count = operation === "public-auth" ? 1 : 2;
+    for (const status of [401, 403, 429]) {
+      const f = await fixture({
+        respond: (request) =>
+          operation === "public-auth" || request.url.endsWith("/admin/auth")
+            ? Response.json(
+                {
+                  message: "private-auth-response",
+                  token: "private-auth-token",
+                },
+                { status },
+              )
+            : undefined,
+      });
+      try {
+        assert.equal(
+          (await f.call(await f.grant())).body.result.reason,
+          status === 429 ? "provider_http_failed" : "provider_auth_failed",
+        );
+        await f.call(await f.grant());
+        assert.equal(f.calls.length, count);
+        assert.equal((await f.sql("SELECT used FROM budget"))[0].used, count);
+        const failures = f.logs
+          .flatMap((message) => {
+            try {
+              return [JSON.parse(message)];
+            } catch {
+              return [];
+            }
+          })
+          .filter((entry) => entry.event === "provider_failure");
+        assert.equal(failures.length, 1);
+        assert.equal(failures[0].httpStatus, status);
+        assert.equal(failures[0].operation, operation);
+        assert.doesNotMatch(
+          JSON.stringify({ logs: f.logs }),
+          /private-auth-response|private-auth-token|synthetic-public-secret/,
+        );
+      } finally {
+        await f.mf.dispose();
+      }
+    }
   }
 });
 test("catalogue retries during provider cooldown preserve its original deadline and resume after expiry", async () => {
