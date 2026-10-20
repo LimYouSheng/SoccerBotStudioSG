@@ -56,6 +56,7 @@ export type BookingOperations = {
   // The native transport owns the atomic claim at its write boundary.
   stagedDispatchClaim?: {
     stage: (version: number) => number;
+    claimed?: () => boolean;
     assertCurrent: () => Promise<void>;
   };
   // Single native creation already returned the invoice; finalization has no external write.
@@ -343,7 +344,8 @@ export async function orchestrateBooking(
     // not payment, confirmation, a provider settlement or permission to retry.
     return { state: "associated", paymentAvailable: false };
   } catch (error) {
-    await requireRecovery(env.STATE, id, fence);
+    if (operations.stagedDispatchClaim?.claimed?.() !== false)
+      await requireRecovery(env.STATE, id, fence);
     operations.onFailure?.(error, failedSessionIndex);
     return { state: "recovery_required", paymentAvailable: false };
   }

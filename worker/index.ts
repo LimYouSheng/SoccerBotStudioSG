@@ -25,6 +25,7 @@ import { inputBody } from "./identity-delivery";
 import { identityDelivery, assertIdentityProofOpen } from "./identity-delivery";
 import {
   createAccess,
+  authenticateCheckout,
   authenticate,
   revokeAccess,
   clearAccessCookie,
@@ -218,18 +219,31 @@ export default {
         if (holdMatch) {
           if (request.method !== "POST")
             throw new ApiError(405, "operation_unavailable");
-          await verifyBindings({
-            ...env,
-            STATE: instrumentStorage(env.STATE, "d1"),
-          });
+          const value = await inputBody(request);
+          const checkoutAccess =
+            holdMatch[1] === "checkout" &&
+            z
+              .object({ sessions: z.array(z.unknown()).length(1) })
+              .safeParse(value).success
+              ? await authenticateCheckout(request, {
+                  ...env,
+                  STATE: instrumentStorage(env.STATE, "d1"),
+                })
+              : undefined;
+          if (!checkoutAccess)
+            await verifyBindings({
+              ...env,
+              STATE: instrumentStorage(env.STATE, "d1"),
+            });
           const outcome = await env.COORDINATOR.getByName(
             coordinatorName,
           ).holdCustomer(
             {
               attemptId: holdMatch[2],
+              checkoutAccess,
               checkout: holdMatch[1] === "checkout",
               cookie: request.headers.get("cookie") || "",
-              value: await inputBody(request),
+              value,
             },
             correlationId,
           );

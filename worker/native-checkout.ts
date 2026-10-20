@@ -1,6 +1,9 @@
 import { claimNativeDispatch, claimNativeEffect } from "./native-dispatch";
 import type { Grant } from "./customer-authority";
-import { retainHoldEvidence } from "./native-hold-evidence";
+import {
+  retainHoldEvidence,
+  holdEvidenceStatement,
+} from "./native-hold-evidence";
 import { hitpayHoldStatement, type VerifiedHold } from "./hitpay-hold";
 import { assertHitpayCreation, hitpaySetting } from "./hitpay-contract";
 import { selectPaymentRoute } from "./hitpay-journal";
@@ -93,7 +96,11 @@ type AttemptSnapshot = {
   deadline_ms: number;
   association_json: string | null;
 };
-type PreparedCheckout = { grant: Grant; row: AttemptSnapshot };
+type PreparedCheckout = {
+  grant: Grant;
+  row: AttemptSnapshot;
+  preparation?: D1PreparedStatement[];
+};
 export async function executeNativeCheckout(options: {
   request: Request;
   env: Env;
@@ -214,6 +221,10 @@ export async function executeNativeCheckout(options: {
         .run();
   if (claimed && claimed.meta.changes !== 1)
     return nativeCheckoutStatus(request, env, attemptId);
+  const rawEvidence: { statement?: D1PreparedStatement } = {};
+  let ensureHold: (() => Promise<void>) | undefined;
+  let reservePayment:
+    ((statement: D1PreparedStatement) => Promise<void>) | undefined;
   let stagedVersion: number | undefined;
   let claimedDispatch = false;
   let claimedBookings = 0;
@@ -264,6 +275,7 @@ export async function executeNativeCheckout(options: {
           grant,
           selectionSnapshot,
           step,
+          options.prepared?.preparation,
         );
       claimedDispatch = true;
       if (lastOperation === "book") claimedBookings++;
@@ -429,7 +441,19 @@ export async function executeNativeCheckout(options: {
         undefined,
         !!options.creationOnly && !cleanupMode,
       );
-      if (options.holding)
+      if (
+        consolidated &&
+        intent.sessions.length === 1 &&
+        operation.kind === "book"
+      )
+        rawEvidence.statement = holdEvidenceStatement(
+          env.STATE,
+          attemptId,
+          operation.kind,
+          response.body,
+          response.receivedAtMs,
+        );
+      else if (options.holding)
         await retainHoldEvidence(
           env.STATE,
           attemptId,
@@ -490,6 +514,7 @@ export async function executeNativeCheckout(options: {
     const operations = nativeBookingOperations({
       localFinalization: options.creationOnly,
       retainCurrentFence: consolidated,
+      rawEvidence,
       transportClaims: consolidated,
       deferComments:
         ongoing && paymentRoute === "hitpay" && !!options.onVerifiedHold,
@@ -629,6 +654,7 @@ export async function executeNativeCheckout(options: {
       operations.validationMode = "per-session";
     if (consolidated)
       operations.stagedDispatchClaim = {
+        claimed: () => claimedDispatch,
         stage: (version) => {
           stagedVersion = version;
           return version + 1;
@@ -695,14 +721,10 @@ export async function executeNativeCheckout(options: {
           ),
         );
         const associationJson = JSON.stringify(associationSchema.parse(refs));
-        const version = await bindAssociation(
-          env.STATE,
-          attemptId,
-          fence,
-          refs,
-          currentAccess,
-          {
-            createdAtMs,
+        const originalCreatedAtMs = createdAtMs;
+        const commit = async (payment?: D1PreparedStatement) =>
+          bindAssociation(env.STATE, attemptId, fence, refs, currentAccess, {
+            createdAtMs: originalCreatedAtMs,
             grant,
             after: (version) => [
               hitpayHoldStatement(
@@ -722,11 +744,27 @@ export async function executeNativeCheckout(options: {
                 version,
                 associationJson,
               ),
+              ...(payment ? [payment] : []),
             ],
-          },
-        );
+          });
+        if (options.prepared?.preparation && intent.sessions.length === 1) {
+          let committed = false;
+          ensureHold = async () => {
+            if (!committed) {
+              await commit();
+              committed = true;
+            }
+          };
+          reservePayment = async (statement) => {
+            if (!committed) {
+              await commit(statement);
+              committed = true;
+            } else if ((await statement.run()).meta.changes !== 1)
+              throw new ApiError(409, "hitpay_creation_already_reserved");
+          };
+        } else await commit();
         integratedHold = { expiresMs, verifiedAtMs, createdAtMs };
-        return version;
+        return fence + 1;
       };
     operations.onFailure = (error, index) =>
       retainFailure(error, "execution", index);
@@ -743,6 +781,12 @@ export async function executeNativeCheckout(options: {
       access,
       row,
     );
+    if (rawEvidence.statement) {
+      const retained = await rawEvidence.statement.run();
+      if (retained.meta.changes !== 1)
+        throw new ApiError(503, "native_hold_evidence_unavailable");
+      rawEvidence.statement = undefined;
+    }
     if (result.state === "associated") {
       const associated =
         committedAssociation ??
@@ -858,6 +902,8 @@ export async function executeNativeCheckout(options: {
               access: options.creationOnly ? access : undefined,
               ...(integratedHold
                 ? {
+                    reservePayment,
+                    ensureHold,
                     finishPayment: async (save) => {
                       const complete = env.STATE.prepare(
                         "UPDATE native_checkout_grants SET state='complete',result_json=json_patch(COALESCE(result_json,'{}'),?) WHERE attempt_id=? AND state='running' AND changes()=1",
@@ -910,6 +956,12 @@ export async function executeNativeCheckout(options: {
             };
     }
   } catch (error) {
+    if (rawEvidence.statement) {
+      const retained = await rawEvidence.statement.run();
+      if (retained.meta.changes !== 1)
+        throw new ApiError(503, "native_hold_evidence_unavailable");
+      rawEvidence.statement = undefined;
+    }
     retainFailure(error, "execution");
     // A lost reply may have created native state. Retain the original attempt;
     // this one-use grant never resumes writes or exposes raw provider errors.
@@ -917,6 +969,10 @@ export async function executeNativeCheckout(options: {
       await requireRecovery(env.STATE, attemptId, dispatchFence);
     result = { state: "recovery_required", paymentAvailable: false };
   }
+  // A speculative snapshot is not ownership of an existing colliding ID.
+  // Without our own committed claim, do not mutate its recovery/grant state.
+  if (options.prepared?.preparation && !claimedDispatch)
+    throw new ApiError(409, "native_attempt_unavailable");
   if (
     result.state === "recovery_required" &&
     paymentRoute !== "hitpay" &&
@@ -1146,6 +1202,76 @@ export async function prepareCustomerNative(
     )
       throw new ApiError(409, "native_attempt_already_bound");
     return { attemptId: grant.attempt_id, state: "prepared" as const };
+  }
+  if (retainedGrant?.preparation && attemptId && intent.sessions.length === 1) {
+    // Stage only a new single attempt. No provider write is authorized until
+    // these statements and the fresh dispatch predicates commit together.
+    try {
+      await prepareProvider?.();
+    } catch (error) {
+      // Preserve the existing explicit failed-warmup evidence and safe rollover.
+      // This failure path is deliberately outside the successful-path budget.
+      await env.STATE.batch(retainedGrant.preparation);
+      return prepareCustomerNative(
+        request,
+        env,
+        value,
+        attemptId,
+        async () => {
+          throw error;
+        },
+        verifiedAccess,
+        { ...retainedGrant, preparation: undefined },
+      );
+    }
+    const preparation = [
+      ...retainedGrant.preparation,
+      env.STATE.prepare(
+        "INSERT INTO attempts(id,owner_id,idempotency_key,intent_json,intent_hash,created_ms,deadline_ms,state) SELECT ?,?,?,?,?,?,?,'prepared' WHERE EXISTS(SELECT 1 FROM native_checkout_grants WHERE capability_hash=? AND state='granted' AND attempt_id IS NULL AND contract_json=? AND source_revision=?) ON CONFLICT DO NOTHING",
+      ).bind(
+        attemptId,
+        access.owner_id,
+        input.key,
+        JSON.stringify(intent),
+        hash,
+        now,
+        grant.expires_ms,
+        access.capability_hash,
+        grant.contract_json,
+        p.SOURCE_REVISION,
+      ),
+      env.STATE.prepare(
+        "UPDATE native_checkout_grants SET attempt_id=?,intent_hash=? WHERE capability_hash=? AND state='granted' AND attempt_id IS NULL AND intent_hash IS NULL AND contract_json=? AND source_revision=? AND EXISTS(SELECT 1 FROM attempts WHERE id=? AND owner_id=? AND idempotency_key=? AND intent_hash=? AND state='prepared' AND version=0 AND association_json IS NULL) AND NOT EXISTS(SELECT 1 FROM dispatches WHERE attempt_id=?) AND NOT EXISTS(SELECT 1 FROM session_effects WHERE attempt_id=?)",
+      ).bind(
+        attemptId,
+        hash,
+        access.capability_hash,
+        grant.contract_json,
+        p.SOURCE_REVISION,
+        attemptId,
+        access.owner_id,
+        input.key,
+        hash,
+        attemptId,
+        attemptId,
+      ),
+    ];
+    return {
+      attemptId,
+      state: "prepared" as const,
+      snapshot: {
+        grant: { ...grant, attempt_id: attemptId, intent_hash: hash },
+        row: {
+          intent_json: JSON.stringify(intent),
+          intent_hash: hash,
+          state: "prepared",
+          version: 0,
+          deadline_ms: grant.expires_ms,
+          association_json: null,
+        },
+        preparation,
+      } satisfies PreparedCheckout,
+    };
   }
   // All customer/selection checks above precede speculative provider reads.
   // Persist the immutable attempt while warming provider identity; both must

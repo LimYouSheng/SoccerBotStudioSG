@@ -1,3 +1,8 @@
+import {
+  assertBindingShape,
+  assertFoundation,
+  foundationStatement,
+} from "./bindings";
 import { ApiError, capability, digest, policy } from "./policy";
 const cookieName = "__Host-soccerbot-access";
 export type Access = {
@@ -5,6 +10,7 @@ export type Access = {
   capability_hash: string;
   issued_ms: number;
   expires_ms: number;
+  fresh_checkout?: number;
 };
 export async function authenticate(
   request: Request,
@@ -13,6 +19,7 @@ export async function authenticate(
   // Only already-authorized bookkeeping may precede this final response check.
   preceding: D1PreparedStatement[] = [],
   inspect?: (results: D1Result[]) => void,
+  inspectFreshCheckout = false,
 ): Promise<Access> {
   const cookies = (request.headers.get("cookie") || "")
     .split(";")
@@ -25,7 +32,11 @@ export async function authenticate(
   const db = env.STATE.withSession("first-primary");
   const statement = db
     .prepare(
-      "SELECT owner_id, capability_hash, issued_ms, expires_ms FROM guest_access WHERE capability_hash = ? AND revoked_ms IS NULL AND issued_ms <= ? AND expires_ms > ?",
+      "SELECT owner_id, capability_hash, issued_ms, expires_ms" +
+        (inspectFreshCheckout
+          ? ", NOT EXISTS(SELECT 1 FROM native_checkout_grants g WHERE g.capability_hash=guest_access.capability_hash) AS fresh_checkout"
+          : "") +
+        " FROM guest_access WHERE capability_hash = ? AND revoked_ms IS NULL AND issued_ms <= ? AND expires_ms > ?",
     )
     .bind(hash, now, now);
   const results = preceding.length
@@ -60,4 +71,23 @@ export async function revokeAccess(env: Env, access: Access, now: number) {
 
 export function clearAccessCookie() {
   return `${cookieName}=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0`;
+}
+
+// Internal HTTP-to-coordinator context. SQL write fences still recheck access
+// after token warming and before either provider effect.
+export async function authenticateCheckout(request: Request, env: Env) {
+  assertBindingShape(env);
+  return authenticate(
+    request,
+    env,
+    Date.now(),
+    [foundationStatement(env)],
+    (results) => {
+      assertFoundation(
+        env,
+        results[0].results[0] as Parameters<typeof assertFoundation>[1],
+      );
+    },
+    true,
+  );
 }

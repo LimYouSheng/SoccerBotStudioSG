@@ -27,6 +27,7 @@ export type Grant = {
   availability_json: string | null;
   read_state: string;
   ongoing: number;
+  preparation?: D1PreparedStatement[];
 };
 
 // Ordinary customer consent creates one short-lived, immutable checkout grant.
@@ -38,6 +39,7 @@ export async function authorizeCustomerCheckout(
   combinedHold = false,
   verifiedAccess?: Access,
   retainGrant = false,
+  deferFresh = false,
 ) {
   const { env } = options;
   if (!liveCustomerAccess(env))
@@ -137,6 +139,32 @@ export async function authorizeCustomerCheckout(
     JSON.stringify(dates),
     JSON.stringify(available),
   );
+  if (
+    deferFresh &&
+    retainGrant &&
+    verifiedAccess?.fresh_checkout === 1 &&
+    input.sessions.length === 1
+  ) {
+    return {
+      capability_hash: access.capability_hash,
+      attempt_id: null,
+      intent_hash: null,
+      source_revision: p.SOURCE_REVISION,
+      contract_json: JSON.stringify(contract),
+      not_before_ms: now,
+      expires_ms: expires,
+      starting_used: used,
+      maximum_used: maximum,
+      cleanup_allowed: 0,
+      state: "granted",
+      result_json: null,
+      available_dates_json: JSON.stringify(dates),
+      availability_json: JSON.stringify(available),
+      read_state: "available",
+      ongoing: 1,
+      preparation: [insert],
+    } satisfies Grant;
+  }
   if (!retainGrant) {
     await insert.run();
     return;

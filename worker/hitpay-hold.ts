@@ -58,6 +58,8 @@ export type VerifiedHold = {
     has_payment: number;
   };
   finishPayment?: (save: D1PreparedStatement) => Promise<void>;
+  ensureHold?: () => Promise<void>;
+  reservePayment?: (statement: D1PreparedStatement) => Promise<void>;
 };
 // A held slot must be unavailable to others. Payment validates the existing
 // booking/invoice identities and state, never the availability of their slots.
@@ -133,6 +135,7 @@ export async function payHitpayHold(
       verified.verifiedAtMs <= Date.now() &&
       Date.now() - verified.verifiedAtMs < 5000;
     if (!fresh) {
+      await verified?.ensureHold?.();
       const read = await readNativeAttempt({
         parallelSingle: true,
         scope,
@@ -164,7 +167,13 @@ export async function payHitpayHold(
       row.intent_hash,
       paymentDeadline,
       assertHeld,
-      verified?.hold ? { access, finish: verified.finishPayment } : undefined,
+      verified?.hold
+        ? {
+            access,
+            finish: verified.finishPayment,
+            reserve: verified.reservePayment,
+          }
+        : undefined,
     );
     if (!verified?.access) await assertHeld();
     else if (Date.now() + 80000 >= paymentDeadline)

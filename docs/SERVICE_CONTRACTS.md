@@ -1,5 +1,9 @@
 # SoccerBotStudio — Service Contracts
 
+## Experimental five-call single checkout — not deployed
+
+Fresh single-checkout candidate combines foundation/authentication, new grant/attempt/dispatch, raw evidence/key retention, validated hold/payment reservation, and final URL save/response authorization into five D1 round trips. An internal speculative snapshot never authorizes a provider effect: the conditional dispatch transaction must claim it first. Failed predicates cannot mutate a colliding foreign attempt or trigger its recovery bookkeeping. Existing/restored grants, failed token preparation, malformed responses and stale-proof readback keep additional recovery work. Raw evidence and booking keys precede normalized association/payment admission; original deadlines and final-save-before-redirect remain mandatory. This is experiment scope, not a replacement for deployed contracts until final-source validation and integration.
+
 ## Batch consolidation and recovery read contract
 
 Direct batch checkout retains the prepared owner/grant snapshot and claims the first provider effect atomically with dispatch. Each later book and close reserves its own unknown effect while checking current capability, grant, intent, source revision, deadline and dispatch fence. Raw response evidence and every booking key survive validation or finalization failure. The final association/hold/observation transaction and payment handoff reuse the single-checkout boundary. Expected successful coordinator D1 budget is16+3×(sessions−2) for batch, plus the unchanged outer binding read; single remains9+1. Failure/recovery paths are not capped by that budget.
