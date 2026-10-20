@@ -1,5 +1,9 @@
 # SoccerBotStudio — Service Contracts
 
+## Confirmation read snapshot contract
+
+Protected context consolidates attempt, route, payment, progress and stored availability into one owner-scoped primary snapshot per request. Status reads retain independent authentication and atomic poll quota; successful admission is followed by a new primary snapshot before deciding confirmation. No snapshot survives an HTTP request or write boundary. Scope validation, current booking evidence, stale-proof recovery, immutable verification timestamps and fresh export authorization remain required. Normal observed counts, excluding outer binding lookup: context4, pending status5, confirmed status4, receipt5. These are round trips, not a limit on recovery or failure work.
+
 ## Current checkout and queue contracts — 20 October 2026
 
 [Current implementation rules](SOCCERBOT_RULES_AND_ARCHITECTURE.md#current-implementation-rules--20-october-2026) own the design. This section owns its runtime contracts; dated evidence belongs in Journey.

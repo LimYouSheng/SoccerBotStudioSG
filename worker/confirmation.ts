@@ -1,8 +1,5 @@
-import {
-  customerConfirmation,
-  checkoutExpired,
-  checkoutCheckingDeadline,
-} from "./checkout-progress";
+import { confirmationSnapshot } from "./confirmation-snapshot";
+import { customerConfirmation, checkoutExpired } from "./checkout-progress";
 import {
   storedHitpayCheckout,
   recordedHitpayPayment,
@@ -21,15 +18,8 @@ import {
 import { authenticate, type Access } from "./access";
 import { intentSchema, associationSchema } from "./journal";
 import { ApiError, policy, liveCustomerAccess } from "./policy";
-export type StoredAttempt = {
-  id: string;
-  created_ms: number;
-  deadline_ms: number;
-  state: string;
-  intent_json: string;
-  association_json: string | null;
-  observation_json: string | null;
-};
+export type { StoredAttempt } from "./confirmation-snapshot";
+import type { StoredAttempt } from "./confirmation-snapshot";
 export type CheckingWindow = {
   deadlineMs: number;
   nextCheckMs: number;
@@ -43,14 +33,9 @@ export async function confirmation(
   report?: (window: CheckingWindow) => void,
 ) {
   const access = await authenticate(request, env, now);
-  const row = await env.STATE.withSession("first-primary")
-    .prepare(
-      "SELECT id,created_ms,deadline_ms,state,intent_json,association_json,observation_json FROM attempts WHERE id=? AND owner_id=?",
-    )
-    .bind(id, access.owner_id)
-    .first<StoredAttempt>();
-  if (!row) throw new ApiError(404, "attempt_unavailable");
-  row.deadline_ms = await checkoutCheckingDeadline(env, id, row.deadline_ms);
+  let snapshot = await confirmationSnapshot(env, id, access.owner_id);
+  let row = snapshot.row;
+  row.deadline_ms = snapshot.deadline;
   // D1 may return evidence committed after this HTTP request began.
   // Evaluate against the current clock, never against the evidence timestamp.
   now = Math.max(now, Date.now());
@@ -59,11 +44,11 @@ export async function confirmation(
     report?.({ deadlineMs: row.deadline_ms, nextCheckMs: now, remaining: 0 });
     // The deadline ends checking, not the validity of fresh authoritative proof.
     // Preserve the shared booking/money/paid decision without reopening polls.
-    const guard = await hitpayConfirmationGuard(env, id);
+    const guard = await hitpayConfirmationGuard(env, id, snapshot.payment);
     if (!guard) return decideStoredConfirmation(row, access, now, p);
     return {
       ...guard,
-      customerConfirmation: await customerConfirmation(env, id),
+      customerConfirmation: await customerConfirmation(env, id, snapshot.proof),
       expired: await checkoutExpired(env, id, now),
     };
   }
@@ -105,11 +90,17 @@ export async function confirmation(
     nextCheckMs: quota.confirmation_next_ms,
     remaining: 120 - quota.confirmation_checks,
   });
-  const guard = await hitpayConfirmationGuard(env, id);
+  // Admission is a write boundary: re-read current evidence after it. An
+  // intervening manual-review decision must supersede the initial snapshot.
+  snapshot = await confirmationSnapshot(env, id, access.owner_id);
+  row = snapshot.row;
+  row.deadline_ms = snapshot.deadline;
+  now = Math.max(now, Date.now());
+  const guard = await hitpayConfirmationGuard(env, id, snapshot.payment);
   if (guard)
     return {
       ...guard,
-      customerConfirmation: await customerConfirmation(env, id),
+      customerConfirmation: await customerConfirmation(env, id, snapshot.proof),
       expired: await checkoutExpired(env, id, now),
     };
   const decision = decideStoredConfirmation(row, access, now, p);
@@ -221,23 +212,15 @@ export async function checkoutContext(
   now: number,
 ) {
   const access = await authenticate(request, env, now);
-  const row = await env.STATE.withSession("first-primary")
-    .prepare(
-      "SELECT id,created_ms,state,observation_json,intent_json,intent_hash,association_json,deadline_ms,confirmation_next_ms FROM attempts WHERE id=? AND owner_id=?",
-    )
-    .bind(id, access.owner_id)
-    .first<
-      StoredAttempt & {
-        intent_json: string;
-        intent_hash: string;
-        association_json: string | null;
-        deadline_ms: number;
-        confirmation_next_ms: number;
-      }
-    >();
-  if (!row) throw new ApiError(404, "attempt_unavailable");
+  const snapshot = await confirmationSnapshot(env, id, access.owner_id);
+  const row = snapshot.row;
   const intent = intentSchema.parse(JSON.parse(row.intent_json));
-  const hitpayCheckout = await storedHitpayCheckout(env, id, now);
+  const hitpayCheckout = await storedHitpayCheckout(
+    env,
+    id,
+    now,
+    snapshot.payment,
+  );
   const payment =
     hitpayCheckout === null
       ? undefined
@@ -247,6 +230,7 @@ export async function checkoutContext(
           row.intent_hash,
           row.association_json,
           row.intent_json,
+          snapshot.payment.payment,
         );
   let savedConfirmation;
   if (payment && row.observation_json) {
@@ -305,7 +289,9 @@ export async function checkoutContext(
     confirmation: savedConfirmation,
     details,
     customerConfirmation:
-      hitpayCheckout === null ? undefined : await customerConfirmation(env, id),
+      hitpayCheckout === null
+        ? undefined
+        : await customerConfirmation(env, id, snapshot.proof),
     expired:
       hitpayCheckout === null ? undefined : await checkoutExpired(env, id, now),
     checkout:
@@ -330,7 +316,7 @@ export async function checkoutContext(
       })),
     },
     checking: {
-      deadlineMs: await checkoutCheckingDeadline(env, id, row.deadline_ms),
+      deadlineMs: snapshot.deadline,
       nextCheckMs: row.confirmation_next_ms,
       pollAfterMs: policy(env).POLL_INTERVAL_MS,
     },

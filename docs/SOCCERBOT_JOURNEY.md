@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## Confirmation read experiment — 20 October 2026 SGT
+
+The first consolidation candidate failed a deterministic manual-review-during-admission race: it returned confirmed from its old snapshot. It was rejected. Re-reading after admission preserves unresolved/no-proof behavior; baseline and revised candidate both pass that race. Revised candidate passed119 Worker tests and simulated five concurrent polls admitted one/throttled four with one booking, payment creation and accounting write. Local timings do not establish live speedup. Hometest05 per-trip costs suggest approximately1.4seconds less context D1 waiting and0.5seconds per pending response, but recovery overlaps and live measurement remains required. Integrated permanent regression retains counts and race; source changes do not establish deployment or browser acceptance.
+
 ## Hometest05 telemetry — 20 October 2026 SGT
 
 PR72 main2c19288 passed CI/deployment39421510974. Owner HAR checkout-to-HitPay navigation5.521seconds: one creation1.696seconds, one HitPay1.016seconds, nine coordinator D1 executions1.301seconds, public-token miss941ms, zero queue wait. Return-to-first customer-proof response14.109seconds; explicit confirmed15.801seconds; receipt17.488seconds. These are network milestones, not measured paint.

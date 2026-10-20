@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## Confirmation read consolidation — 20 October 2026 SGT
+
+Integrate the safe local experiment onto main e178bf6 (PR73). Request-local primary snapshots reduce context D1 executions10→4, pending status7→5 and confirmed status5→4; receipt remains5. These exclude the unchanged outer binding lookup. Re-read after atomic poll admission so an intervening manual-review decision hides prior confirmation. Permanent mechanism regression asserts counts, that race and one booking/payment/accounting effect. Prior experiment passed119 Worker tests; integrated full Worker gate passed410/410 with zero skips. Source, policy, types, changed-file lint/format and test inventory checks passed; exact-head PR CI remains required. No merge or deployment is authorized. Batch standardization follows this integration at owner request.
+
 ## Unified pending confirmation presentation — 20 October 2026 SGT
 
 Branch fix/confirmation-pending-layout starts from merged PR72/main2c19288. Owner hometest05 shows protected context followed by pending payment-received status and verified confirmation; request success does not establish browser paint. Standardize the confirmation-route Suspense fallback and context-loading presentation with the existing compact loader/header and details card. Before authorized details arrive show a booking-details placeholder; status messages change without introducing a large upper loading card or page overlay. No authority, polling, provider, expiry, export or payment changes. Focused45 confirmation/checking/checkout component tests passed. Review both live-email and synthetic experiment pending-context assertions; gate the real Worker context read in browser CI to inspect initial and loaded layouts. Full code verification passed223 frontend tests, types/lint/build/export and tooling. Exact-head CI remains pending. No new-PR merge authorization.

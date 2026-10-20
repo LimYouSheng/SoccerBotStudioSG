@@ -13,16 +13,20 @@ export async function bookingDetailsData(
     intent_json: string;
     created_ms: number;
     association_json: string | null;
+    availability_json?: string | null;
   },
 ) {
   const intent = intentSchema.parse(JSON.parse(row.intent_json));
   if (!intent.contact) throw new ApiError(503, "receipt_details_unavailable");
-  const snapshot = await env.STATE.withSession("first-primary")
-    .prepare(
-      "SELECT availability_json FROM native_checkout_grants WHERE attempt_id=? UNION ALL SELECT availability_json FROM completed_native_checkout_grants WHERE attempt_id=? UNION ALL SELECT availability_json FROM expired_native_checkout_grants WHERE attempt_id=?",
-    )
-    .bind(row.id, row.id, row.id)
-    .first<{ availability_json: string | null }>();
+  const snapshot =
+    "availability_json" in row
+      ? row
+      : await env.STATE.withSession("first-primary")
+          .prepare(
+            "SELECT availability_json FROM native_checkout_grants WHERE attempt_id=? UNION ALL SELECT availability_json FROM completed_native_checkout_grants WHERE attempt_id=? UNION ALL SELECT availability_json FROM expired_native_checkout_grants WHERE attempt_id=?",
+          )
+          .bind(row.id, row.id, row.id)
+          .first<{ availability_json: string | null }>();
   const offers = Object.values(
     z
       .record(z.string(), nativeAvailabilitySchema)
