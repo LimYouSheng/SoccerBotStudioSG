@@ -474,51 +474,60 @@ export async function executeNativeCheckout(options: {
           try {
             assertWindow();
             if (options.creationOnly) {
-              const session = value.sessions[index ?? 0];
-              const selection = nativeContractSelection(
-                contract,
-                session.startMs,
-              );
-              if (
-                selection.serviceId !== session.serviceId ||
-                selection.priceMinor !== session.totalMinor ||
-                !nativeCustomerHours(contract, session.startMs) ||
-                session.startMs - Date.now() <
-                  nativeTrialLeadMs(
-                    contract,
-                    {
-                      accountId: p.DEPLOYMENT_ACCOUNT_ID,
-                      environmentId: p.ENVIRONMENT,
-                      companyLogin: company,
-                    },
-                    session,
-                    Date.now(),
-                  )
-              )
-                throw new ApiError(409, "native_selection_changed");
-              const date = new Date(session.startMs + 28800000)
-                .toISOString()
-                .slice(0, 10);
-              const day = (validatedDates[date] ??= {
-                date,
-                observedAtMs: Date.now(),
-                offers: [],
-              });
-              day.offers.push({
-                serviceId: session.serviceId,
-                productServiceId: contract.serviceId,
-                serviceName: "SoccerBot session",
-                instructorId: session.instructorId,
-                instructorName: "Selected instructor",
-                startMs: session.startMs,
-                priceMinor: session.totalMinor,
-                currency: value.currency,
-              });
-              await env.STATE.prepare(
-                "UPDATE native_checkout_grants SET availability_json=? WHERE attempt_id=? AND state='running'",
-              )
-                .bind(JSON.stringify(validatedDates), attemptId)
-                .run();
+              // Validate the whole cart before the first provider effect, then recheck
+              // time-sensitive local rules at each subsequent write boundary.
+              const first = (index ?? 0) === 0;
+              const sessions = first
+                ? value.sessions
+                : [value.sessions[index ?? 0]];
+              for (const session of sessions) {
+                const selection = nativeContractSelection(
+                  contract,
+                  session.startMs,
+                );
+                if (
+                  selection.serviceId !== session.serviceId ||
+                  selection.priceMinor !== session.totalMinor ||
+                  !nativeCustomerHours(contract, session.startMs) ||
+                  session.startMs - Date.now() <
+                    nativeTrialLeadMs(
+                      contract,
+                      {
+                        accountId: p.DEPLOYMENT_ACCOUNT_ID,
+                        environmentId: p.ENVIRONMENT,
+                        companyLogin: company,
+                      },
+                      session,
+                      Date.now(),
+                    )
+                )
+                  throw new ApiError(409, "native_selection_changed");
+                if (!first) continue;
+                const date = new Date(session.startMs + 28800000)
+                  .toISOString()
+                  .slice(0, 10);
+                const day = (validatedDates[date] ??= {
+                  date,
+                  observedAtMs: Date.now(),
+                  offers: [],
+                });
+                day.offers.push({
+                  serviceId: session.serviceId,
+                  productServiceId: contract.serviceId,
+                  serviceName: "SoccerBot session",
+                  instructorId: session.instructorId,
+                  instructorName: "Selected instructor",
+                  startMs: session.startMs,
+                  priceMinor: session.totalMinor,
+                  currency: value.currency,
+                });
+              }
+              if (first)
+                await env.STATE.prepare(
+                  "UPDATE native_checkout_grants SET availability_json=? WHERE attempt_id=? AND state='running'",
+                )
+                  .bind(JSON.stringify(validatedDates), attemptId)
+                  .run();
               return value;
             }
             const identity = await provider.identity(env, control);

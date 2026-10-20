@@ -1851,7 +1851,7 @@ test("real API catalogue outage exposes retry without inventing sessions or rene
   }
 });
 
-test("real API batch checkout checks each session once and restores one complete unpaid reservation", async ({
+test("real API batch checkout uses creation evidence and restores one complete unpaid reservation", async ({
   page,
 }) => {
   const mechanism = await createBookingMechanism({ batch: true });
@@ -1870,13 +1870,19 @@ test("real API batch checkout checks each session once and restores one complete
     const methods = mechanism.calls
       .slice(before)
       .map((call) => call.body?.method)
-      .filter(Boolean);
+      .filter((method): method is string => typeof method === "string");
     expect(
       methods.filter((method) => method === "getAvailableUnits"),
-    ).toHaveLength(2);
+    ).toHaveLength(0);
     expect(
       methods.filter((method) => method === "getStartTimeMatrix"),
-    ).toHaveLength(2);
+    ).toHaveLength(0);
+    expect(
+      methods.filter(
+        (method) =>
+          !["getToken", "createBatch", "book", "closeBatch"].includes(method),
+      ),
+    ).toEqual([]);
     expect(methods.filter((method) => method === "book")).toHaveLength(2);
     expect(methods.filter((method) => method === "createBatch")).toHaveLength(
       1,
@@ -1940,12 +1946,12 @@ async function failedBatch(page: Page, unknown: boolean) {
         if (unknown && creations === 2)
           return new Response(null, { status: 503 });
       }
-      if (
-        !unknown &&
-        creations === 1 &&
-        call.body?.method === "getAvailableUnits"
-      )
-        return Response.json({ jsonrpc: "2.0", id: call.body.id, result: [] });
+      if (!unknown && creations === 2 && call.body?.method === "book")
+        return Response.json({
+          jsonrpc: "2.0",
+          id: call.body.id,
+          error: { code: -32000, message: "Synthetic creation rejection" },
+        });
       return undefined;
     },
   });
@@ -1962,14 +1968,10 @@ async function failedBatch(page: Page, unknown: boolean) {
         "SELECT step,outcome,reference_id FROM session_effects WHERE step LIKE 'session:%' ORDER BY step",
       )
       .all();
-    expect(rows.results).toEqual(
-      unknown
-        ? [
-            { step: "session:0", outcome: "observed", reference_id: "701" },
-            { step: "session:1", outcome: "unknown", reference_id: null },
-          ]
-        : [{ step: "session:0", outcome: "observed", reference_id: "701" }],
-    );
+    expect(rows.results).toEqual([
+      { step: "session:0", outcome: "observed", reference_id: "701" },
+      { step: "session:1", outcome: "unknown", reference_id: null },
+    ]);
     expect(
       mechanism.calls.filter((call) => call.body?.method === "closeBatch"),
     ).toHaveLength(0);
@@ -1985,7 +1987,7 @@ async function failedBatch(page: Page, unknown: boolean) {
         exact: true,
       }),
     ).toBeVisible();
-    expect(creations).toBe(unknown ? 2 : 1);
+    expect(creations).toBe(2);
     expect(
       await mechanism.db
         .prepare(
@@ -1998,7 +2000,7 @@ async function failedBatch(page: Page, unknown: boolean) {
     await stopMechanism(page, mechanism, transport);
   }
 }
-test("real API later batch conflict retains the first booking without checkout or recreation", async ({
+test("real API rejected second batch creation retains the first booking without checkout or recreation", async ({
   page,
 }) => {
   await failedBatch(page, false);

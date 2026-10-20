@@ -42,34 +42,46 @@ export async function createBookingMechanism(options = {}) {
     value.lines[0].bookings[0].end_datetime = wall(startMs + 3000000);
   }
   if (options.missingCreationDeadline) delete creation.invoice.due_datetime;
-  if (options.creationPriceDrift) creation.invoice.amount = 89;
   creation.bookings[0].client_hash = "synthetic-client-hash";
-  const secondStartMs = startMs + 3000000;
-  const secondCreation = structuredClone(creation.bookings[0]);
-  const secondBooking = structuredClone(booking);
+  const batchSize = options.batch ? (options.batchSize ?? 2) : 1;
+  assert.ok(Number.isInteger(batchSize) && batchSize >= 1 && batchSize <= 12);
+  const total = (88 * batchSize).toFixed(2);
+  const bookingDetails = [booking];
   if (options.batch) {
-    for (const item of [secondCreation, secondBooking]) {
-      item.id = "702";
-      item.start_date_time = wall(secondStartMs);
-      item.end_date_time = wall(secondStartMs + 3000000);
+    for (let index = 1; index < batchSize; index++) {
+      const itemStartMs = startMs + index * 3000000;
+      const item = structuredClone(creation.bookings[0]);
+      const details = structuredClone(booking);
+      for (const value of [item, details]) {
+        value.id = String(701 + index);
+        value.start_date_time = wall(itemStartMs);
+        value.end_date_time = wall(itemStartMs + 3000000);
+      }
+      item.hash =
+        index === 1
+          ? "synthetic-second-hash"
+          : `synthetic-booking-hash-${index}`;
+      details.invoice_line_id = String(801 + index);
+      bookingDetails.push(details);
+      creation.bookings.push(item);
+      for (const value of [invoice, creation.invoice]) {
+        const line = structuredClone(value.lines[0]);
+        line.id = String(801 + index);
+        line.booking_ids = [701 + index];
+        line.bookings[0].id = 701 + index;
+        line.bookings[0].start_datetime = wall(itemStartMs);
+        line.bookings[0].end_datetime = wall(itemStartMs + 3000000);
+        value.lines.push(line);
+      }
     }
-    secondCreation.hash = "synthetic-second-hash";
-    secondBooking.invoice_line_id = "802";
-    for (const item of [booking, secondBooking])
-      item.invoice_amount = "176.0000";
+    for (const value of bookingDetails)
+      value.invoice_amount = (88 * batchSize).toFixed(4);
     for (const value of [invoice, creation.invoice]) {
-      value.amount = 176;
-      value.deposit = 176;
-      const line = structuredClone(value.lines[0]);
-      line.id = "802";
-      line.booking_ids = [702];
-      line.bookings[0].id = 702;
-      line.bookings[0].start_datetime = wall(secondStartMs);
-      line.bookings[0].end_datetime = wall(secondStartMs + 3000000);
-      value.lines.push(line);
+      value.amount = 88 * batchSize;
+      value.deposit = 88 * batchSize;
     }
-    creation.bookings.push(secondCreation);
   }
+  if (options.creationPriceDrift) creation.invoice.amount += 1;
   let batchBooks = 0;
   const requestId = "20000000-0000-4000-8000-000000000002";
   const checkoutUrl = `https://checkout.sandbox.hit-pay.com/payment-request/@soccerbot/${requestId}/checkout`;
@@ -145,13 +157,13 @@ export async function createBookingMechanism(options = {}) {
           url.pathname === "/v1/payment-requests" &&
           request.method === "POST"
         ) {
-          assert.equal(body.amount, options.batch ? "176.00" : "88.00");
+          assert.equal(body.amount, total);
           assert.equal(body.currency, "SGD");
           reference = body.reference_number;
           return Response.json({
             id: requestId,
             reference_number: reference,
-            amount: options.batch ? "176.00" : "88.00",
+            amount: total,
             currency: "SGD",
             status: "pending",
             allow_repeated_payments: false,
@@ -170,7 +182,7 @@ export async function createBookingMechanism(options = {}) {
           return Response.json({
             id: requestId,
             reference_number: reference,
-            amount: options.batch ? "176.00" : "88.00",
+            amount: total,
             currency: "SGD",
             status: paymentComplete ? "completed" : "pending",
             allow_repeated_payments: false,
@@ -181,7 +193,7 @@ export async function createBookingMechanism(options = {}) {
               ? [
                   {
                     id: "20000000-0000-4000-8000-000000000004",
-                    amount: options.batch ? "176.00" : "88.00",
+                    amount: total,
                     currency: "SGD",
                     status: "succeeded",
                     refunded_amount: "0",
@@ -243,14 +255,16 @@ export async function createBookingMechanism(options = {}) {
               matrix[key] =
                 key === date
                   ? options.batch
-                    ? ["12:10:00", "13:00:00"].slice(batchBooks)
+                    ? Array.from({ length: batchSize }, (_, i) =>
+                        wall(startMs + i * 3000000).slice(11),
+                      ).slice(batchBooks)
                     : !booked
                       ? ["12:10:00"]
                       : []
                   : [];
             }
           if (options.batch && body?.method === "book") {
-            assert.ok(batchBooks < 2, "batch creation must not replay");
+            assert.ok(batchBooks < batchSize, "batch creation must not replay");
             batchBooks++;
             return Response.json({
               jsonrpc: "2.0",
@@ -284,7 +298,7 @@ export async function createBookingMechanism(options = {}) {
             },
             getAdditionalFields: [],
             getAvailableUnits: options.batch
-              ? batchBooks < 2
+              ? batchBooks < batchSize
                 ? [14]
                 : []
               : booked
@@ -293,9 +307,9 @@ export async function createBookingMechanism(options = {}) {
             getStartTimeMatrix: matrix,
             book: creation,
             getBookingDetails:
-              options.batch && String(body?.params?.[0]) === "702"
-                ? secondBooking
-                : booking,
+              bookingDetails.find(
+                (item) => String(item.id) === String(body?.params?.[0]),
+              ) ?? booking,
             ...(options.batch
               ? {
                   createBatch: 601,
