@@ -226,11 +226,14 @@ export async function providerRequest(
   secrets: ProviderSecrets,
   token: string | undefined,
   dispatch: {
-    reserve: () => Promise<string>;
+    reserve: (metadata?: {
+      operation: string;
+      readOnly: boolean;
+    }) => Promise<string>;
     finish: (
       id: string,
       cooldown: number,
-      reason?: "read_transport_ended",
+      reason?: "read_transport_ended" | "write_transport_ended",
     ) => void;
   },
   native?: NativeRequest,
@@ -500,8 +503,12 @@ export async function providerRequest(
     headers["X-Token"] = token;
   }
   signal?.throwIfAborted();
-  const id = await dispatch.reserve();
-  // Reservation precedes dispatch; uncertain writes keep their slot held.
+  const id = await dispatch.reserve({
+    operation: native?.kind ?? operation,
+    readOnly,
+  });
+  // Reservation precedes dispatch. Durable effect journals retain uncertain
+  // writes independently of the physical transport slot.
   const controller = new AbortController();
   const abort = () => controller.abort();
   signal?.addEventListener("abort", abort, { once: true });
@@ -653,12 +660,15 @@ export async function providerRequest(
     } finally {
       clearTimeout(timer);
       signal?.removeEventListener("abort", abort);
-      if (complete || readOnly)
-        dispatch.finish(
-          id,
-          cooldown,
-          complete ? undefined : "read_transport_ended",
-        );
+      dispatch.finish(
+        id,
+        cooldown,
+        complete
+          ? undefined
+          : readOnly
+            ? "read_transport_ended"
+            : "write_transport_ended",
+      );
     }
   });
 }

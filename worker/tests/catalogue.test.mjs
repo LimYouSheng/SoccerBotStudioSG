@@ -618,7 +618,7 @@ test("catalogue transport uses documented named calls and remains denied in clos
   }
 });
 
-test("failed read transport releases its slot while uncertain native writes retain theirs", async () => {
+test("ended provider transports release capacity without replaying uncertain writes", async () => {
   const original = globalThis.fetch;
   const secrets = {
     company: "synthetic",
@@ -743,7 +743,13 @@ test("failed read transport releases its slot while uncertain native writes reta
           assert.equal(dispatched, 1);
           assert.deepEqual(
             finished,
-            expected ? [["1", 60000, "read_transport_ended"]] : [],
+            [
+              [
+                "1",
+                60000,
+                expected ? "read_transport_ended" : "write_transport_ended",
+              ],
+            ],
             JSON.stringify({ operation, native, partialBody }),
           );
         }
@@ -1886,4 +1892,68 @@ test("persistent display snapshots retain original deadlines across restarts and
     Date.now = clock;
     db.close();
   }
+});
+
+test("failed pre-dispatch evidence persistence releases the transport reservation without sending a write", async (t) => {
+  const config = ts.parseConfigFileTextToJson(
+    "wrangler.jsonc",
+    readFileSync("wrangler.jsonc", "utf8"),
+  ).config;
+  const env = {
+    ...config.vars,
+    PROVIDER_ACCESS: "trusted-reads",
+    CAMPAIGN_END_MS: String(Date.now() + 3600000),
+    SIMPLYBOOK_DEV_COMPANY_LOGIN: "synthetic-company",
+    SIMPLYBOOK_DEV_ADMIN_LOGIN: "synthetic-admin",
+    SIMPLYBOOK_DEV_API_KEY: "synthetic-public-key",
+    SIMPLYBOOK_DEV_ADMIN_API_USER_KEY: "synthetic-admin-key",
+  };
+  let sent = 0,
+    reserved = 0;
+  const finished = [];
+  const control = {
+    reserve: async () => String(++reserved),
+    finish: (...args) => finished.push(args),
+    claim: () => ({ generation: 1, claim: "synthetic" }),
+    complete: () => true,
+    pause: () => {},
+  };
+  t.mock.method(globalThis, "fetch", async (url, options) => {
+    sent++;
+    const pathname = new URL(url).pathname;
+    if (pathname === "/login")
+      return Response.json({
+        id: JSON.parse(options.body).id,
+        result: "synthetic-public-token",
+      });
+    if (pathname === "/admin/auth")
+      return Response.json({ token: "synthetic-admin-token" });
+    if (pathname === "/admin/company/info")
+      return Response.json({ login: "synthetic-company" });
+    if (pathname === "/admin/tariff/current")
+      return Response.json({ limits: [] });
+    assert.fail("write must not reach transport");
+  });
+  const session = new ProviderSession();
+  await session.identity(env, control);
+  const before = sent;
+  await assert.rejects(
+    session.nativeWrite(
+      env,
+      control,
+      { kind: "payment-link", invoiceId: "901" },
+      async () => {},
+      async () => {
+        throw new Error("evidence-save-failed");
+      },
+    ),
+    /evidence-save-failed/,
+  );
+  assert.equal(sent, before);
+  assert.equal(reserved, before + 1);
+  assert.deepEqual(finished.at(-1), [
+    String(reserved),
+    0,
+    "write_transport_ended",
+  ]);
 });

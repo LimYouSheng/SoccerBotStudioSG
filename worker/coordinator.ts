@@ -55,6 +55,7 @@ import { ApiError, policy, rpcOutcome, liveCustomerAccess } from "./policy";
 import { ProviderSession, type ProviderControl } from "./provider-session";
 // One instance per actual provider account. No booking or customer data here.
 export class SoccerBotAccountCoordinator extends DurableObject<Env> {
+  private readonly instanceId = crypto.randomUUID();
   private provider = new ProviderSession();
   private calendarReads = new NativeCalendarReads();
   private providerQueue = new ProviderQueue();
@@ -95,6 +96,12 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     ctx.storage.sql.exec(
       "CREATE TABLE IF NOT EXISTS payment_wakeups(attempt_id TEXT PRIMARY KEY, correlation_id TEXT NOT NULL, generation INTEGER NOT NULL)",
     );
+    ctx.storage.sql.exec(
+      "CREATE TABLE IF NOT EXISTS provider_request_admissions(id TEXT PRIMARY KEY,operation TEXT NOT NULL,read_only INTEGER NOT NULL CHECK(read_only IN (0,1)),instance_id TEXT NOT NULL,expires_ms INTEGER NOT NULL)",
+    );
+    ctx.storage.sql.exec(
+      "CREATE TABLE IF NOT EXISTS provider_transport_releases(id TEXT PRIMARY KEY,operation TEXT NOT NULL,read_only INTEGER NOT NULL,recorded_ms INTEGER NOT NULL,reason TEXT NOT NULL)",
+    );
     // Keep pacing/rate reads independent of retained admission history. The
     // partial index contains only reservations that still hold concurrency.
     ctx.storage.sql.exec(
@@ -104,7 +111,35 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       "CREATE INDEX IF NOT EXISTS admissions_unfinished ON admissions(finished) WHERE finished=0",
     );
   }
-  admit(recovery: boolean, customer = false, financial = false) {
+  private recoverInterruptedTransports() {
+    const now = Date.now();
+    this.ctx.storage.transactionSync(() => {
+      this.sql.exec(
+        "INSERT INTO admission_releases(id,campaign,started_ms,reason,recorded_ms,evidence) SELECT a.id,a.campaign,a.started_ms,'read_transport_ended',?,r.operation FROM admissions a INDEXED BY admissions_unfinished JOIN provider_request_admissions r ON r.id=a.id WHERE a.finished=0 AND r.expires_ms<=? AND r.instance_id<>? AND r.read_only=1 ON CONFLICT(id) DO NOTHING",
+        now,
+        now,
+        this.instanceId,
+      );
+      this.sql.exec(
+        "INSERT INTO provider_transport_releases SELECT a.id,r.operation,r.read_only,?,'instance_ended' FROM admissions a INDEXED BY admissions_unfinished JOIN provider_request_admissions r ON r.id=a.id WHERE a.finished=0 AND r.expires_ms<=? AND r.instance_id<>? ON CONFLICT(id) DO NOTHING",
+        now,
+        now,
+        this.instanceId,
+      );
+      this.sql.exec(
+        "UPDATE admissions SET finished=1 WHERE id IN (SELECT a.id FROM admissions a INDEXED BY admissions_unfinished JOIN provider_request_admissions r ON r.id=a.id WHERE a.finished=0 AND r.expires_ms<=? AND r.instance_id<>?)",
+        now,
+        this.instanceId,
+      );
+    });
+  }
+  admit(
+    recovery: boolean,
+    customer = false,
+    financial = false,
+    metadata?: { operation: string; readOnly: boolean },
+  ) {
+    this.recoverInterruptedTransports();
     const p = policy(this.env);
     const now = Date.now();
     const ongoing =
@@ -138,7 +173,8 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         return { allowed: false, reason: "budget_exhausted" };
       if (budget.cooldown_ms > now)
         return { allowed: false, reason: "cooldown" };
-      // Unknown in-flight requests survive restart and hold admission closed.
+      // Active transports and unidentified legacy reservations retain their slots.
+      // Identified ended transports are independent of durable write outcomes.
       if (
         sql
           .exec<{ n: number }>(
@@ -163,6 +199,15 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
         this.env.CAMPAIGN_ID,
         now,
       );
+      if (metadata)
+        sql.exec(
+          "INSERT INTO provider_request_admissions(id,operation,read_only,instance_id,expires_ms) VALUES(?,?,?,?,?)",
+          id,
+          metadata.operation,
+          metadata.readOnly ? 1 : 0,
+          this.instanceId,
+          now + 30000,
+        );
       sql.exec(
         "UPDATE budget SET used=used+1 WHERE campaign=?",
         this.env.CAMPAIGN_ID,
@@ -175,8 +220,12 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     customer = false,
     financial = false,
   ): ProviderControl {
+    this.recoverInterruptedTransports();
     return {
       liveCustomer: customer,
+      // A retained unknown request still owns its physical slot. Use the one
+      // remaining slot sequentially rather than launching a two-read burst.
+      parallelReads: this.providerAccounting().active === 0,
       financialRecovery: financial,
       reconciled: (id, attemptId) => {
         if (!financial || !recovery)
@@ -194,7 +243,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           );
         });
       },
-      reserve: async () =>
+      reserve: async (metadata) =>
         this.reserveInOrder(() =>
           measure("coordinator", async () => {
             if (
@@ -211,7 +260,12 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
               if (delay)
                 await new Promise((resolve) => setTimeout(resolve, delay));
             }
-            const admitted = this.admit(recovery, customer, financial);
+            const admitted = this.admit(
+              recovery,
+              customer,
+              financial,
+              metadata,
+            );
             if (!admitted.allowed || !admitted.id)
               throw new ApiError(
                 503,
@@ -280,9 +334,9 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
             throw new ApiError(503, "discovery_accounting_changed");
           let reserved = 0;
           let lastDispatch = 0;
-          const bounded = {
+          const bounded: ProviderControl = {
             ...control,
-            reserve: async () => {
+            reserve: async (metadata) => {
               const delay = Math.max(0, lastDispatch + 300 - Date.now());
               if (delay)
                 await new Promise((resolve) => setTimeout(resolve, delay));
@@ -294,7 +348,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
                 throw new ApiError(503, "discovery_limit_reached");
               reserved++;
               lastDispatch = Date.now();
-              return control.reserve();
+              return control.reserve(metadata);
             },
           };
           const result = await this.provider.discoverFields(this.env, bounded);
@@ -379,7 +433,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           last = Date.now();
         const bounded: ProviderControl = {
           ...control,
-          reserve: async () => {
+          reserve: async (metadata) => {
             const delay = Math.max(0, last + 300 - Date.now());
             if (delay)
               await new Promise((resolve) => setTimeout(resolve, delay));
@@ -391,7 +445,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
               throw new ApiError(503, "webhook_inspection_exhausted");
             count++;
             last = Date.now();
-            return control.reserve();
+            return control.reserve(metadata);
           },
         };
         await this.provider.identity(this.env, bounded);
@@ -453,9 +507,9 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       const control = this.providerControl();
       let count = 0,
         last = 0;
-      const bounded = {
+      const bounded: ProviderControl = {
         ...control,
-        reserve: async () => {
+        reserve: async (metadata) => {
           const delay = Math.max(0, last + 300 - Date.now());
           if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
           if (
@@ -467,7 +521,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
             throw new ApiError(503, "calendar_scope_exhausted");
           count++;
           last = Date.now();
-          return control.reserve();
+          return control.reserve(metadata);
         },
       };
       try {
@@ -563,9 +617,9 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       const control = this.providerControl();
       let count = 0,
         last = 0;
-      const bounded = {
+      const bounded: ProviderControl = {
         ...control,
-        reserve: async () => {
+        reserve: async (metadata) => {
           const delay = Math.max(0, last + 300 - Date.now());
           if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
           if (
@@ -577,7 +631,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
             throw new ApiError(503, "catalogue_scope_exhausted");
           count++;
           last = Date.now();
-          return control.reserve();
+          return control.reserve(metadata);
         },
       };
       await this.provider.identity(this.env, bounded);
@@ -1150,9 +1204,9 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       );
       let count = 0,
         last = 0;
-      const bounded = {
+      const bounded: ProviderControl = {
         ...control,
-        reserve: async () => {
+        reserve: async (metadata) => {
           if (scope.residual)
             await residualGrant(this.env, {
               ...scope,
@@ -1172,7 +1226,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
             throw new ApiError(503, "recovery_window_exhausted");
           count++;
           last = Date.now();
-          return control.reserve();
+          return control.reserve(metadata);
         },
       };
       if (scope.residual) {
@@ -1277,9 +1331,9 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           ? (signal) =>
               this.provider.identity(this.env, {
                 ...bounded,
-                reserve: () => {
+                reserve: (metadata) => {
                   signal.throwIfAborted();
-                  return bounded.reserve();
+                  return bounded.reserve(metadata);
                 },
               })
           : undefined,
@@ -1340,16 +1394,28 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       recoveryReserve: 16,
     };
   }
-  finish(id: string, cooldownMs = 0, reason?: "read_transport_ended") {
+  finish(
+    id: string,
+    cooldownMs = 0,
+    reason?: "read_transport_ended" | "write_transport_ended",
+  ) {
     if (!Number.isInteger(cooldownMs) || cooldownMs < 0 || cooldownMs > 3600000)
       throw new Error("Invalid cooldown");
-    if (reason !== undefined) z.literal("read_transport_ended").parse(reason);
+    if (reason !== undefined)
+      z.enum(["read_transport_ended", "write_transport_ended"]).parse(reason);
     this.ctx.storage.transactionSync(() => {
-      if (reason)
+      if (reason === "read_transport_ended")
         this.sql.exec(
           "INSERT INTO admission_releases(id,campaign,started_ms,reason,recorded_ms) SELECT id,campaign,started_ms,?,? FROM admissions WHERE id=? AND finished=0 ON CONFLICT(id) DO NOTHING",
           reason,
           Date.now(),
+          id,
+        );
+      if (reason)
+        this.sql.exec(
+          "INSERT INTO provider_transport_releases SELECT id,operation,read_only,?,? FROM provider_request_admissions WHERE id=? ON CONFLICT(id) DO NOTHING",
+          Date.now(),
+          reason,
           id,
         );
       this.sql.exec(

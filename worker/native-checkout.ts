@@ -250,9 +250,9 @@ export async function executeNativeCheckout(options: {
   let count = 0,
     last = 0,
     cleanupCount = 0;
-  const control = {
+  const control: ProviderControl = {
     ...options.control,
-    reserve: async () => {
+    reserve: async (metadata) => {
       const delay = Math.max(0, last + 300 - Date.now());
       if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
       if (cleanupMode) await assertGranted();
@@ -269,9 +269,9 @@ export async function executeNativeCheckout(options: {
       count++;
       if (cleanupMode) cleanupCount++;
       last = Date.now();
-      return (
-        cleanupMode ? options.recoveryControl : options.control
-      ).reserve();
+      return (cleanupMode ? options.recoveryControl : options.control).reserve(
+        metadata,
+      );
     },
   };
   const scope = {
@@ -936,9 +936,9 @@ export async function customerNativeAvailability(options: {
   if (claimed.meta.changes !== 1)
     throw new ApiError(503, "native_availability_busy");
   let last = 0;
-  const control = {
+  const control: ProviderControl = {
     ...options.control,
-    reserve: async () => {
+    reserve: async (metadata) => {
       const delay = Math.max(0, last + 300 - Date.now());
       if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
       const current = await customerNativeWindow(request, env);
@@ -951,7 +951,7 @@ export async function customerNativeAvailability(options: {
       )
         throw new ApiError(503, "native_availability_budget_exhausted");
       last = Date.now();
-      return options.control.reserve();
+      return options.control.reserve(metadata);
     },
   };
   try {
@@ -1153,9 +1153,9 @@ export async function customerNativeCalendar(options: {
   if (claimed.meta.changes !== 1)
     throw new ApiError(503, "native_availability_busy");
   let last = 0;
-  const control = {
+  const control: ProviderControl = {
     ...options.control,
-    reserve: async () => {
+    reserve: async (metadata) => {
       const wait = Math.max(0, last + 300 - Date.now());
       if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
       const current = await customerNativeWindow(request, env);
@@ -1168,7 +1168,7 @@ export async function customerNativeCalendar(options: {
       )
         throw new ApiError(503, "native_availability_budget_exhausted");
       last = Date.now();
-      return options.control.reserve();
+      return options.control.reserve(metadata);
     },
   };
   try {

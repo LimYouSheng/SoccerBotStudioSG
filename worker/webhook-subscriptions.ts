@@ -110,7 +110,7 @@ export async function manageWebhookSubscription(
   };
   const bounded: ProviderControl = {
     ...control,
-    reserve: async () => {
+    reserve: async (metadata) => {
       const wait = Math.max(0, last + 300 - Date.now());
       if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
       await assertGranted();
@@ -123,7 +123,7 @@ export async function manageWebhookSubscription(
         .first();
       if (!reserved) throw denied();
       last = Date.now();
-      return control.reserve();
+      return control.reserve(metadata);
     },
   };
   const move = async (
