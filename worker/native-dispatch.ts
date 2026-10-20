@@ -12,14 +12,23 @@ export async function claimNativeDispatch(
   grant: Grant,
   availability: string,
   firstStep = "session:0",
+  preparation: D1PreparedStatement[] = [],
 ) {
   const now = Date.now();
-  const results = await db.batch([
+  const all = await db.batch([
+    ...preparation,
     db
       .prepare(
-        "INSERT INTO checkout_payment_routes VALUES(?,'hitpay') ON CONFLICT(attempt_id) DO NOTHING",
+        "INSERT INTO checkout_payment_routes(attempt_id,route) SELECT a.id,'hitpay' FROM attempts a JOIN native_checkout_grants g ON g.attempt_id=a.id WHERE a.id=? AND a.owner_id=? AND a.intent_hash=? AND a.state='prepared' AND a.version=? AND g.capability_hash=? AND g.state='granted' AND g.contract_json=? AND g.intent_hash=a.intent_hash ON CONFLICT(attempt_id) DO NOTHING",
       )
-      .bind(id),
+      .bind(
+        id,
+        access.owner_id,
+        grant.intent_hash,
+        version,
+        access.capability_hash,
+        grant.contract_json,
+      ),
     db
       .prepare("SELECT route FROM checkout_payment_routes WHERE attempt_id=?")
       .bind(id),
@@ -59,6 +68,7 @@ export async function claimNativeDispatch(
       )
       .bind(firstStep, id, version + 1),
   ]);
+  const results = all.slice(preparation.length);
   if (
     (results[1].results[0] as { route?: string } | undefined)?.route !==
     "hitpay"

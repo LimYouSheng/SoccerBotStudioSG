@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## Five-call experiment accepted for integration — 21 October 2026 SGT
+
+Owner requested integration and CI after the fresh single-checkout prototype reached five total D1 round trips including HTTP foundation/authentication. Matched simulations with150ms per D1 execution,900ms token,1200ms booking and800ms HitPay gave cold4344→3744ms and warm3576→2824ms means across two fixtures each. These are simulated wall times, not live guarantees. Failed-warmup evidence and speculative foreign-ID recovery mutations were caught and repaired; final local Worker gate418/418 passed with zero skips. Preserve the original417-test inventory failure and corrected ordered inventory. Integration remains stacked on open PR75; no merge or deployment is inferred.
+
 ## Hometest06 and optimization experiments — 20 October 2026 SGT
 
 Owner two-session HAR: checkout HTTP11.444seconds, redirect starts11.454seconds after checkout request. Preparation15 D1/2007ms; booking work27 D1/3580ms; payment save2 D1/264ms. SimplyBook4calls3319ms (createBatch/book/book/closeBatch); HitPay1call1011ms; public token miss908ms; queue0. D1 phase total44calls5851ms excludes the outer binding read.

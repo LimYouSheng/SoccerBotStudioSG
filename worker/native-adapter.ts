@@ -72,6 +72,7 @@ export function nativeBookingOperations(options: {
   deferComments?: boolean;
   localFinalization?: boolean;
   retainCurrentFence?: boolean;
+  rawEvidence?: { statement?: D1PreparedStatement };
   transportClaims?: boolean;
   clientSignature?: (clientId: string, hash: string) => Promise<string>;
   batchSignature?: (batchId: string, hash: string) => Promise<string>;
@@ -272,6 +273,7 @@ export function nativeBookingOperations(options: {
         intent.sessions.length,
         receiptCustomerId,
         options.retainCurrentFence ? context.fence : undefined,
+        options.rawEvidence,
       );
       if (currentReference)
         retained.set(`session:${context.sessionIndex}`, {
@@ -740,6 +742,7 @@ async function retainNativeBookingKey(
   sessionCount: number,
   nativeCustomerId?: string,
   fence?: number,
+  rawEvidence?: { statement?: D1PreparedStatement },
 ) {
   const statements = [
     db
@@ -766,7 +769,9 @@ async function retainNativeBookingKey(
           attemptId,
         ),
     );
-  const result = await db.batch([
+  const evidence = rawEvidence?.statement;
+  const all = await db.batch([
+    ...(evidence ? [evidence] : []),
     ...statements,
     ...(fence === undefined
       ? []
@@ -778,6 +783,10 @@ async function retainNativeBookingKey(
             .bind(attemptId, `session:${sessionIndex}`, bookingId, fence),
         ]),
   ]);
+  if (rawEvidence) rawEvidence.statement = undefined;
+  if (evidence && all[0].meta.changes !== 1)
+    throw new ApiError(503, "native_hold_evidence_unavailable");
+  const result = evidence ? all.slice(1) : all;
   if (
     result
       .slice(0, statements.length)

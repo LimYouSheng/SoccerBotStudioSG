@@ -937,6 +937,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       cookie: string;
       value: unknown;
       checkout?: boolean;
+      checkoutAccess?: import("./access").Access;
     },
     correlationId: string,
   ) {
@@ -963,7 +964,9 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
             STATE: instrumentStorage(this.env.STATE, "d1"),
           };
           const creationOnly = !!scope.checkout;
-          const access = await authenticate(request, env, Date.now());
+          const access =
+            scope.checkoutAccess ??
+            (await authenticate(request, env, Date.now()));
           const retainedGrant = await authorizeCustomerCheckout(
             request,
             input,
@@ -971,6 +974,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
             true,
             access,
             !!scope.checkout,
+            !!scope.checkout && access.fresh_checkout === 1,
           );
           const preparation = await prepareCustomerNative(
             request,

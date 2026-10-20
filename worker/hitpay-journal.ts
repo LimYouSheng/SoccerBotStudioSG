@@ -71,6 +71,7 @@ export async function prepareHitpay(
   consolidated?: {
     access: Access;
     finish?: (save: D1PreparedStatement) => Promise<void>;
+    reserve?: (statement: D1PreparedStatement) => Promise<void>;
   },
 ) {
   assertHitpayCreation(env);
@@ -97,37 +98,40 @@ export async function prepareHitpay(
   const reference = `soccerbot-dev-${scope.attemptId}`;
   const reserveCreation = async () => {
     const now = Date.now();
-    const intent = await env.STATE.prepare(
+    const statement = env.STATE.prepare(
       "INSERT INTO hitpay_payments(attempt_id,scope_json,reference,expires_ms,created_ms,recovery_end_ms,state,reason,ready_ms) " +
         (consolidated
           ? "SELECT ?,?,?,?,?,?,'due','creation_unknown',? WHERE EXISTS(SELECT 1 FROM guest_access c JOIN attempts a ON a.owner_id=c.owner_id JOIN hitpay_holds h ON h.attempt_id=a.id JOIN checkout_progress p ON p.attempt_id=a.id JOIN checkout_payment_routes r ON r.attempt_id=a.id WHERE c.capability_hash=? AND c.owner_id=? AND c.revoked_ms IS NULL AND c.issued_ms<=? AND c.expires_ms>? AND a.id=? AND a.state='observed' AND a.association_json=? AND a.intent_hash=? AND h.association_json=a.association_json AND h.intent_hash=a.intent_hash AND r.route='hitpay' AND MIN(h.expires_ms,p.booking_created_ms+p.payment_window_ms)>=? AND ?>?)"
           : "VALUES(?,?,?,?,?,?,'due','creation_unknown',?)") +
         " ON CONFLICT(attempt_id) DO NOTHING",
-    )
-      .bind(
-        scope.attemptId,
-        JSON.stringify(paymentScope),
-        reference,
-        expires,
-        now,
-        now + 86400000,
-        now + 90000,
-        ...(consolidated
-          ? [
-              consolidated.access.capability_hash,
-              consolidated.access.owner_id,
-              now,
-              now,
-              scope.attemptId,
-              associationJson,
-              intentHash,
-              expires,
-              expires,
-              now + 80000,
-            ]
-          : []),
-      )
-      .run();
+    ).bind(
+      scope.attemptId,
+      JSON.stringify(paymentScope),
+      reference,
+      expires,
+      now,
+      now + 86400000,
+      now + 90000,
+      ...(consolidated
+        ? [
+            consolidated.access.capability_hash,
+            consolidated.access.owner_id,
+            now,
+            now,
+            scope.attemptId,
+            associationJson,
+            intentHash,
+            expires,
+            expires,
+            now + 80000,
+          ]
+        : []),
+    );
+    if (consolidated?.reserve) {
+      await consolidated.reserve(statement);
+      return;
+    }
+    const intent = await statement.run();
     if (intent.meta.changes !== 1)
       throw new ApiError(409, "hitpay_creation_already_reserved");
   };

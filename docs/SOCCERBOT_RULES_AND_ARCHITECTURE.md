@@ -1,5 +1,7 @@
 # SoccerBotStudio — Rules & Architecture
 
+Five-round-trip single-checkout integration is a not-yet-deployed candidate described in [Service Contracts](SERVICE_CONTRACTS.md#five-call-single-checkout-integration-candidate--not-deployed). Fresh requests combine durable transactions; restored and failed attempts retain additional recovery work. No provider effect may precede its durable claim, and no redirect may precede the saved checkout URL.
+
 ## Current implementation rules — 20 October 2026
 
 This section is the authoritative current design. Service Contracts owns operation semantics; Journey owns dated evidence. Historical entries below describe their original revisions and do not override this section.

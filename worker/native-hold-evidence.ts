@@ -92,7 +92,7 @@ function invoice(value: unknown) {
 }
 // Private observational evidence only. Persist before strict normalization; never
 // feed these fields into booking authority or expose them in customer responses.
-export async function retainHoldEvidence(
+export function holdEvidenceStatement(
   db: D1Database,
   attemptId: string,
   operation: string,
@@ -118,12 +118,19 @@ export async function retainHoldEvidence(
           : [],
     invoice: invoice(operation === "invoice-read" ? body : envelope.invoice),
   };
-  const saved = await db
+  return db
     .prepare(
       "UPDATE native_checkout_grants SET result_json=json_insert(CASE WHEN json_type(COALESCE(result_json,'{}'),'$.holdEvidence')='array' THEN result_json ELSE json_set(COALESCE(result_json,'{}'),'$.holdEvidence',json('[]')) END,'$.holdEvidence[#]',json(?)) WHERE attempt_id=? AND state='running' AND COALESCE(json_array_length(result_json,'$.holdEvidence'),0)<32",
     )
-    .bind(JSON.stringify(evidence), attemptId)
-    .run();
+    .bind(JSON.stringify(evidence), attemptId);
+}
+
+export async function retainHoldEvidence(
+  ...args: Parameters<typeof holdEvidenceStatement>
+) {
+  const statement = holdEvidenceStatement(...args);
+  if (!statement) return;
+  const saved = await statement.run();
   if (saved.meta.changes !== 1)
     throw new ApiError(503, "native_hold_evidence_unavailable");
 }

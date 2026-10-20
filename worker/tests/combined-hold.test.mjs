@@ -1919,8 +1919,8 @@ test("direct single checkout uses only public authentication and creation before
       );
       assert.ok(http, "outer binding read is measured");
       assert.equal(http.spans.d1.count, 1);
-      assert.equal(checkout.spans.d1.count, 9);
-      assert.equal(checkout.spans.d1.count + http.spans.d1.count, 10);
+      assert.equal(checkout.spans.d1.count, 4);
+      assert.equal(checkout.spans.d1.count + http.spans.d1.count, 5);
       console.log(`single checkout D1 executions: ${checkout.spans.d1.count}`);
       const payment = await m.db
         .prepare(
@@ -2734,6 +2734,229 @@ test("single and batch recovery retain verified evidence with bounded read overl
         1,
       );
       assert.deepEqual(m.unexpected, []);
+    } finally {
+      await m.close();
+    }
+  }
+});
+
+test("five-call single checkout rejects failed foundation and conditional preparation without provider writes", async () => {
+  for (const fault of ["foundation", "grant", "binding", "effect"]) {
+    const m = await createBookingMechanism();
+    try {
+      const c = await customer(m);
+      if (fault === "foundation")
+        await m.db.exec(
+          "DROP TRIGGER immutable_foundation_identity_update; UPDATE foundation_identity SET account_id='wrong-account'",
+        );
+      if (fault === "grant")
+        await m.db.exec(
+          "CREATE TRIGGER ignore_grant BEFORE INSERT ON native_checkout_grants BEGIN SELECT RAISE(IGNORE); END",
+        );
+      if (fault === "binding")
+        await m.db.exec(
+          "CREATE TRIGGER ignore_binding BEFORE UPDATE OF attempt_id ON native_checkout_grants BEGIN SELECT RAISE(IGNORE); END",
+        );
+      if (fault === "effect")
+        await m.db.exec(
+          "CREATE TRIGGER ignore_effect BEFORE INSERT ON session_effects WHEN NEW.step='session:0' BEGIN SELECT RAISE(IGNORE); END",
+        );
+      const response = await m.mf.dispatchFetch(
+        m.origin + `/api/booking/checkout/${c.input.key}`,
+        {
+          method: "POST",
+          headers: c.headers,
+          body: JSON.stringify({ ...c.input, accepted: true }),
+        },
+      );
+      const result = await response.json();
+      assert.notEqual(result.paymentAvailable, true, fault);
+      assert.equal(result.checkout, undefined, fault);
+      assert.equal(
+        m.calls.filter((c) => c.body?.method === "book").length,
+        0,
+        fault,
+      );
+      assert.equal(
+        m.calls.filter(
+          (c) => c.url.includes("hit-pay.com") && c.method === "POST",
+        ).length,
+        0,
+        fault,
+      );
+      if (fault === "foundation") assert.equal(m.calls.length, 0);
+    } finally {
+      await m.close();
+    }
+  }
+});
+
+test("five-call single checkout retains malformed response evidence and blocks payment after failed reservation predicates", async () => {
+  for (const fault of ["malformed", "key-rollback", "reservation-revoked"]) {
+    const m = await createBookingMechanism({
+      respond: async (call) => {
+        if (fault === "malformed" && call.body?.method === "book")
+          return Response.json({
+            jsonrpc: "2.0",
+            id: call.body.id,
+            result: { bookings: [], invoice: null },
+          });
+      },
+    });
+    try {
+      const c = await customer(m);
+      if (fault === "key-rollback")
+        await m.db.exec(
+          "CREATE TRIGGER reject_key BEFORE INSERT ON session_effects WHEN NEW.step='native-booking-key' BEGIN SELECT RAISE(ABORT,'synthetic_key_failure'); END",
+        );
+      if (fault === "reservation-revoked")
+        await m.db.exec(
+          "CREATE TRIGGER revoke_at_hold AFTER INSERT ON hitpay_holds BEGIN UPDATE guest_access SET revoked_ms=issued_ms; END",
+        );
+      const send = () =>
+        m.mf.dispatchFetch(m.origin + `/api/booking/checkout/${c.input.key}`, {
+          method: "POST",
+          headers: c.headers,
+          body: JSON.stringify({ ...c.input, accepted: true }),
+        });
+      const result = await (await send()).json();
+      assert.notEqual(result.paymentAvailable, true, fault);
+      assert.equal(result.checkout, undefined, fault);
+      const row = await m.db
+        .prepare(
+          "SELECT result_json FROM native_checkout_grants WHERE attempt_id=?",
+        )
+        .bind(c.input.key)
+        .first();
+      assert.ok(JSON.parse(row.result_json).holdEvidence.length, fault);
+      assert.equal(
+        (
+          await m.db
+            .prepare("SELECT COUNT(*) AS n FROM hitpay_payments")
+            .first()
+        ).n,
+        0,
+        fault,
+      );
+      await m.mf.dispatchFetch(
+        m.origin + `/__fixture/drain-annotations?attempt=${c.input.key}`,
+      );
+      await m.mf.unsafeEvictDurableObject(
+        "booking-mechanism",
+        "SoccerBotAccountCoordinator",
+        { name: "simplybook-developer-account" },
+      );
+      await send();
+      assert.equal(
+        m.calls.filter((c) => c.body?.method === "book").length,
+        1,
+        fault,
+      );
+      assert.equal(
+        m.calls.filter(
+          (c) => c.url.includes("hit-pay.com") && c.method === "POST",
+        ).length,
+        0,
+        fault,
+      );
+    } finally {
+      await m.close();
+    }
+  }
+});
+
+test("five-call fresh snapshots cannot duplicate checkout across overlapping requests", async () => {
+  const m = await createBookingMechanism({
+    respond: async (call) => {
+      if (call.body?.method === "getToken")
+        await new Promise((resolve) => setTimeout(resolve, 100));
+    },
+  });
+  try {
+    const c = await customer(m);
+    const send = () =>
+      m.mf.dispatchFetch(m.origin + `/api/booking/checkout/${c.input.key}`, {
+        method: "POST",
+        headers: c.headers,
+        body: JSON.stringify({ ...c.input, accepted: true }),
+      });
+    const results = await Promise.all([send(), send()]);
+    const bodies = await Promise.all(results.map((r) => r.json()));
+    assert.ok(bodies.some((r) => r.paymentAvailable === true));
+    assert.equal(m.calls.filter((c) => c.body?.method === "book").length, 1);
+    assert.equal(
+      m.calls.filter(
+        (c) => c.url.includes("hit-pay.com") && c.method === "POST",
+      ).length,
+      1,
+    );
+    assert.equal(
+      (await m.db.prepare("SELECT COUNT(*) AS n FROM attempts").first()).n,
+      1,
+    );
+  } finally {
+    await m.close();
+  }
+});
+
+test("five-call speculative preparation cannot change a colliding foreign attempt", async () => {
+  for (const [state, version] of [
+    ["prepared", 0],
+    ["dispatching", 1],
+  ]) {
+    const m = await createBookingMechanism();
+    try {
+      const c = await customer(m);
+      await m.db
+        .prepare(
+          "INSERT INTO attempts(id,owner_id,idempotency_key,intent_json,intent_hash,created_ms,deadline_ms,state,version) VALUES(?,'other-owner','other-key','{}',?,?,?, ?,?)",
+        )
+        .bind(
+          c.input.key,
+          "a".repeat(64),
+          Date.now(),
+          Date.now() + 1200000,
+          state,
+          version,
+        )
+        .run();
+      const before = await m.db
+        .prepare("SELECT * FROM attempts WHERE id=?")
+        .bind(c.input.key)
+        .first();
+      const response = await m.mf.dispatchFetch(
+        m.origin + `/api/booking/checkout/${c.input.key}`,
+        {
+          method: "POST",
+          headers: c.headers,
+          body: JSON.stringify({ ...c.input, accepted: true }),
+        },
+      );
+      assert.equal(response.status, 409);
+      assert.deepEqual(
+        await m.db
+          .prepare("SELECT * FROM attempts WHERE id=?")
+          .bind(c.input.key)
+          .first(),
+        before,
+      );
+      assert.equal(
+        (
+          await m.db
+            .prepare("SELECT COUNT(*) AS n FROM checkout_payment_routes")
+            .first()
+        ).n,
+        0,
+      );
+      assert.equal(
+        (await m.db.prepare("SELECT COUNT(*) AS n FROM dispatches").first()).n,
+        0,
+      );
+      assert.equal(m.calls.filter((c) => c.body?.method === "book").length, 0);
+      assert.equal(
+        m.calls.filter((c) => c.url.includes("hit-pay.com")).length,
+        0,
+      );
     } finally {
       await m.close();
     }
