@@ -272,6 +272,20 @@ export class ProviderSession {
 
   // Trusted finite-grant composition only. The callback checks the durable
   // grant, guest capability, attempt and budget immediately before each write.
+  // Checkout creation needs only the public API token. Account configuration
+  // and studio capacity are enforced by SimplyBook and response validation.
+  async checkoutToken(env: Env, control: ProviderControl) {
+    const secrets = this.bindScope(env);
+    if (
+      !control.liveCustomer ||
+      !liveCustomerAccess(env) ||
+      policy(env).PROVIDER_ACCESS !== "trusted-reads" ||
+      secrets.company.toLowerCase() === "soccerbotstudio"
+    )
+      throw new ApiError(503, "provider_access_disabled");
+    await this.token("public", env, control);
+  }
+
   async nativeWrite(
     env: Env,
     control: ProviderControl,
@@ -283,6 +297,7 @@ export class ProviderSession {
           beforeWrite: () => Promise<void>;
         },
     onReserved?: (id: string) => Promise<void>,
+    creationOnly = false,
   ) {
     const p = policy(env);
     if (
@@ -319,7 +334,11 @@ export class ProviderSession {
     await (typeof authority === "function"
       ? authority()
       : authority.beforeIdentity());
-    await this.identity(env, control);
+    if (creationOnly) {
+      if (!["book", "batch-create", "batch-close"].includes(request.kind))
+        throw new ApiError(503, "provider_operation_unavailable");
+      await this.checkoutToken(env, control);
+    } else await this.identity(env, control);
     const secrets = this.bindScope(env);
     const family = [
       "invoice-external-payment",

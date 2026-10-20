@@ -42,6 +42,7 @@ export async function createBookingMechanism(options = {}) {
     value.lines[0].bookings[0].end_datetime = wall(startMs + 3000000);
   }
   if (options.missingCreationDeadline) delete creation.invoice.due_datetime;
+  if (options.creationPriceDrift) creation.invoice.amount = 89;
   creation.bookings[0].client_hash = "synthetic-client-hash";
   const secondStartMs = startMs + 3000000;
   const secondCreation = structuredClone(creation.bookings[0]);
@@ -94,7 +95,7 @@ export async function createBookingMechanism(options = {}) {
       modules: true,
       script,
       cf: false,
-      handleStructuredLogs: () => {},
+      handleStructuredLogs: (entry) => options.onLog?.(entry.message),
       compatibilityDate: config.compatibility_date,
       compatibilityFlags: config.compatibility_flags,
       bindings: {

@@ -674,6 +674,7 @@ test("native guest journey preserves players contact and one checkout across ref
     await expect(
       page.getByText("Synthetic Guest", { exact: true }),
     ).toBeVisible();
+    const checkoutProviderStart = mechanism.calls.length;
     await page
       .getByRole("checkbox", { name: /I’ve reviewed all selected/ })
       .check();
@@ -748,6 +749,16 @@ test("native guest journey preserves players contact and one checkout across ref
       ),
     ).toHaveLength(0);
     expect(unexpected).toEqual([]);
+    const paymentIndex = mechanism.calls.findIndex(
+      (c) => c.url.includes("hit-pay.com") && c.method === "POST",
+    );
+    expect(paymentIndex).toBeGreaterThan(checkoutProviderStart);
+    expect(
+      mechanism.calls
+        .slice(checkoutProviderStart, paymentIndex)
+        .filter((c) => c.url.includes("simplybook.me"))
+        .every((c) => ["getToken", "book"].includes(String(c.body?.method))),
+    ).toBe(true);
     const bookingIndex = mechanism.calls.findIndex(
       (c) => c.body?.method === "book",
     );
@@ -1309,87 +1320,74 @@ async function assertNoPaymentOrConfirmation(
   expect(mechanism.unexpected).toEqual([]);
 }
 
-test("real API rejected slot returns to selection and retains contact without creating a booking", async ({
+test("real API rejected creation retains contact and original attempt without payment or replay", async ({
   page,
 }) => {
-  let reject = false;
   const mechanism = await createBookingMechanism({
     respond: async (call) =>
-      reject && call.body?.method === "getAvailableUnits"
-        ? Response.json({ jsonrpc: "2.0", id: call.body.id, result: [] })
-        : undefined,
-  });
-  const transport = await mechanismTransport(page, mechanism);
-  try {
-    await guestDetails(page, mechanism);
-    const response = await checkoutHoldResponse(page, () => {
-      reject = true;
-    });
-    expect(transport.json(response).state).toBe("selection_unavailable");
-    await expect(page).toHaveURL(/\/book\/time\/$/);
-    await expect(
-      page.getByText(
-        "This selection is no longer available or has changed. Please choose again. Your details have been kept.",
-        { exact: true },
-      ),
-    ).toBeVisible();
-    expect(
-      mechanism.calls.filter((call) => call.body?.method === "book"),
-    ).toHaveLength(0);
-    const row = await mechanism.db
-      .prepare("SELECT intent_json FROM attempts")
-      .first<{ intent_json: string }>();
-    expect(JSON.parse(row!.intent_json).contact).toMatchObject({
-      name: "Synthetic Guest",
-      academy: "Synthetic School",
-    });
-    await assertNoPaymentOrConfirmation(page, mechanism);
-  } finally {
-    await stopMechanism(page, mechanism, transport);
-  }
-});
-
-test("real API price drift rejects review before creation instead of silently changing the total", async ({
-  page,
-}) => {
-  let drift = false;
-  const mechanism = await createBookingMechanism({
-    respond: async (call) =>
-      drift && call.body?.method === "getEventList"
+      call.body?.method === "book"
         ? Response.json({
             jsonrpc: "2.0",
             id: call.body.id,
-            result: {
-              2: {
-                id: 2,
-                name: "Native Session",
-                duration: "40",
-                is_active: "1",
-                is_public: "1",
-                is_recurring: "0",
-                price: "89",
-                currency: "SGD",
-                unit_map: [14],
-              },
-            },
+            error: { code: -32000, message: "Synthetic rejected creation" },
           })
         : undefined,
   });
   const transport = await mechanismTransport(page, mechanism);
   try {
     await guestDetails(page, mechanism);
-    const response = await checkoutHoldResponse(page, () => {
-      drift = true;
+    const response = await checkoutHoldResponse(page);
+    expect(transport.json(response).state).toBe("recovery_required");
+    await expect(page).toHaveURL(/\/book\/payment\/$/);
+    const row = await mechanism.db
+      .prepare("SELECT id,intent_json FROM attempts")
+      .first<{ id: string; intent_json: string }>();
+    expect(JSON.parse(row!.intent_json).contact).toMatchObject({
+      name: "Synthetic Guest",
+      academy: "Synthetic School",
     });
-    expect(transport.json(response).state).toBe("restart_required");
-    await expect(page).toHaveURL(/\/book\/time\/$/);
+    await assertNoPaymentOrConfirmation(page, mechanism);
+    const restored = page.waitForResponse(
+      (r) => new URL(r.url()).pathname === "/api/booking/current",
+    );
+    await page.reload();
+    await restored;
+    expect(
+      await mechanism.db.prepare("SELECT id,intent_json FROM attempts").first(),
+    ).toEqual(row);
     expect(
       mechanism.calls.filter((call) => call.body?.method === "book"),
-    ).toHaveLength(0);
+    ).toHaveLength(1);
+    await assertNoPaymentOrConfirmation(page, mechanism);
+  } finally {
+    await stopMechanism(page, mechanism, transport);
+  }
+});
+
+test("real API creation price drift retains booking evidence and blocks payment without changing the approved total", async ({
+  page,
+}) => {
+  const mechanism = await createBookingMechanism({ creationPriceDrift: true });
+  const transport = await mechanismTransport(page, mechanism);
+  try {
+    await guestDetails(page, mechanism);
+    const response = await checkoutHoldResponse(page);
+    expect(transport.json(response).state).toBe("recovery_required");
+    await expect(page).toHaveURL(/\/book\/payment\/$/);
+    expect(
+      mechanism.calls.filter((call) => call.body?.method === "book"),
+    ).toHaveLength(1);
     const row = await mechanism.db
       .prepare("SELECT intent_json FROM attempts")
       .first<{ intent_json: string }>();
     expect(JSON.parse(row!.intent_json).totalMinor).toBe(8800);
+    expect(
+      await mechanism.db
+        .prepare(
+          "SELECT outcome,reference_id FROM session_effects WHERE step='session:0'",
+        )
+        .first(),
+    ).toEqual({ outcome: "observed", reference_id: "701" });
     await assertNoPaymentOrConfirmation(page, mechanism);
   } finally {
     await stopMechanism(page, mechanism, transport);
@@ -1402,11 +1400,12 @@ async function uncertainHolding(
 ) {
   let enabled = false;
   const method = {
-    preflight: "getEventList",
+    preflight: "getToken",
     creation: "book",
     readback: "getBookingDetails",
   }[fault];
   const mechanism = await createBookingMechanism({
+    displayWarming: fault === "preflight",
     missingCreationDeadline: fault === "readback",
     respond: async (call) =>
       enabled && call.body?.method === method
@@ -1416,13 +1415,49 @@ async function uncertainHolding(
   const transport = await mechanismTransport(page, mechanism);
   try {
     await guestDetails(page, mechanism);
+    if (fault === "preflight") {
+      const storage = await mechanism.mf.unsafeGetDurableObjectStorage(
+        "booking-mechanism",
+        "SoccerBotAccountCoordinator",
+        { name: "simplybook-developer-account" },
+      );
+      await storage.exec("UPDATE refreshes SET expires_ms=0");
+      await mechanism.mf.unsafeEvictDurableObject(
+        "booking-mechanism",
+        "SoccerBotAccountCoordinator",
+        { name: "simplybook-developer-account" },
+      );
+    }
     const response = await checkoutHoldResponse(page, () => {
       enabled = true;
     });
+    if (fault === "preflight") {
+      expect(response.status()).toBe(503);
+      expect(transport.json(response).error).toBe("checkout_not_started");
+      await expect(
+        page.getByRole("heading", { name: "Review booking", exact: true }),
+      ).toBeVisible();
+      await expect(
+        page.getByText(/No booking or payment was started/),
+      ).toBeVisible();
+      expect(
+        mechanism.calls.filter((call) => call.body?.method === "book"),
+      ).toHaveLength(0);
+      for (const table of [
+        "session_effects",
+        "hitpay_holds",
+        "hitpay_payments",
+      ])
+        expect(
+          await mechanism.db
+            .prepare(`SELECT COUNT(*) AS n FROM ${table}`)
+            .first(),
+        ).toEqual({ n: 0 });
+      await assertNoPaymentOrConfirmation(page, mechanism);
+      return;
+    }
     expect(response.status()).toBe(200);
-    expect(transport.json(response).state).toBe(
-      fault === "preflight" ? "prerequisites_unavailable" : "recovery_required",
-    );
+    expect(transport.json(response).state).toBe("recovery_required");
     await expect(page).toHaveURL(/\/book\/payment\/$/);
     await expect(
       page.getByRole("status", {
@@ -1440,7 +1475,7 @@ async function uncertainHolding(
     expect(Boolean(row!.association_json)).toBe(fault === "readback");
     expect(
       mechanism.calls.filter((call) => call.body?.method === "book"),
-    ).toHaveLength(fault === "preflight" ? 0 : 1);
+    ).toHaveLength(1);
     const restored = page.waitForResponse(
       (response) => new URL(response.url()).pathname === "/api/booking/current",
     );
@@ -1458,7 +1493,7 @@ async function uncertainHolding(
     ).toEqual(row);
     expect(
       mechanism.calls.filter((call) => call.body?.method === "book"),
-    ).toHaveLength(fault === "preflight" ? 0 : 1);
+    ).toHaveLength(1);
     expect(
       (await mechanism.db
         .prepare("SELECT COUNT(*) AS n FROM hitpay_holds")
@@ -1469,7 +1504,7 @@ async function uncertainHolding(
   }
 }
 
-test("real API provider outage before creation shows unresolved state and cannot create a payment", async ({
+test("real API public authentication outage before creation keeps Review editable without booking or payment", async ({
   page,
 }) => {
   await uncertainHolding(page, "preflight");
@@ -2342,7 +2377,7 @@ test("real API failed identity warming stays on Review without booking or paymen
   const mechanism = await createBookingMechanism({
     displayWarming: true,
     respond: async (call) =>
-      denied && call.url.endsWith("/admin/auth")
+      denied && call.body?.method === "getToken"
         ? new Response(null, { status: 403 })
         : undefined,
   });

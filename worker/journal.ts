@@ -1,3 +1,4 @@
+import type { Access } from "./access";
 import { contactSchema, contactErrors } from "../src/domain/contact";
 import {
   START_INTERVAL_MINUTES,
@@ -177,34 +178,59 @@ export async function bindAssociation(
   id: string,
   fence: number,
   references: unknown,
+  localFinalization?: Access,
 ) {
   const refs = associationSchema.parse(references);
-  const row = await db
-    .withSession("first-primary")
-    .prepare(
-      "SELECT intent_json FROM attempts WHERE id=? AND version=? AND state='dispatching'",
-    )
-    .bind(id, fence)
-    .first<{ intent_json: string }>();
-  if (
-    !row ||
-    intentSchema.parse(JSON.parse(row.intent_json)).sessions.length !==
-      refs.bookingIds.length
-  )
-    throw new ApiError(409, "association_conflict");
-  const result = await db.batch([
+  const now = Date.now();
+  const authority = localFinalization
+    ? " AND deadline_ms>? AND EXISTS(SELECT 1 FROM guest_access WHERE capability_hash=? AND owner_id=? AND revoked_ms IS NULL AND issued_ms<=? AND expires_ms>?)"
+    : "";
+  const statements = [
     db
       .prepare(
-        "UPDATE attempts SET association_json=?,version=version+1 WHERE id=? AND version=? AND state='dispatching' AND association_json IS NULL",
+        "UPDATE attempts SET association_json=?,version=version+1 WHERE id=? AND version=? AND state='dispatching' AND association_json IS NULL AND json_array_length(intent_json,'$.sessions')=?" +
+          authority,
       )
-      .bind(JSON.stringify(refs), id, fence),
+      .bind(
+        JSON.stringify(refs),
+        id,
+        fence,
+        refs.bookingIds.length,
+        ...(localFinalization
+          ? [
+              now,
+              localFinalization.capability_hash,
+              localFinalization.owner_id,
+              now,
+              now,
+            ]
+          : []),
+      ),
     db
       .prepare(
         "UPDATE dispatches SET outcome='observed' WHERE attempt_id=? AND fence=? AND outcome='unknown' AND changes()=1",
       )
       .bind(id, fence),
-  ]);
-  if (result[0].meta.changes !== 1)
+  ];
+  if (localFinalization) {
+    statements.push(
+      db
+        .prepare(
+          "INSERT INTO session_effects(attempt_id,step,outcome,reference_id) SELECT id,'finalize','observed',? FROM attempts WHERE id=? AND version=? AND state='dispatching' AND changes()=1",
+        )
+        .bind(refs.invoiceId, id, fence + 1),
+      db
+        .prepare(
+          "INSERT INTO session_effects(attempt_id,step,outcome,reference_id) SELECT id,'native-comments-pending','observed',? FROM attempts WHERE id=? AND version=? AND state='dispatching' AND changes()=1",
+        )
+        .bind(JSON.stringify(refs.bookingIds), id, fence + 1),
+    );
+  }
+  const result = await db.batch(statements);
+  if (
+    result[0].meta.changes !== 1 ||
+    (localFinalization && result.some((entry) => entry.meta.changes !== 1))
+  )
     throw new ApiError(409, "association_conflict");
   return fence + 1;
 }

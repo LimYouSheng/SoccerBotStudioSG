@@ -6,7 +6,7 @@ import { NativeCalendarReads, calendarDates } from "./native-calendar";
 import { nativeValidationReason } from "./provider-normalization";
 import { safeNativeFailure } from "./native-residual";
 import { z } from "zod";
-import { authenticate } from "./access";
+import { authenticate, type Access } from "./access";
 import { ApiError, digest, policy, liveCustomerAccess } from "./policy";
 import {
   intentSchema,
@@ -109,11 +109,14 @@ export async function executeNativeCheckout(options: {
   accounting: () => { used: number; active: number };
   holding?: boolean;
   combinedHold?: boolean;
+  creationOnly?: boolean;
+  access?: Access;
   onVerifiedHold?: (proof: {
     attemptId: string;
     intentHash: string;
     associationJson: string;
     verifiedAtMs: number;
+    access?: Access;
   }) => Promise<{
     state: string;
     paymentAvailable: boolean;
@@ -129,30 +132,37 @@ export async function executeNativeCheckout(options: {
     (p.CAMPAIGN_END_MS <= now && !liveCustomerAccess(env))
   )
     throw new ApiError(503, "provider_access_disabled");
-  const access = await authenticate(request, env, now);
-  const grant = await env.STATE.withSession("first-primary")
-    .prepare(
-      "SELECT * FROM native_checkout_grants WHERE attempt_id=? AND capability_hash=?",
-    )
-    .bind(attemptId, access.capability_hash)
-    .first<Grant>();
+  const access = options.access ?? (await authenticate(request, env, now));
+  const db = env.STATE.withSession("first-primary");
+  const snapshots = await db.batch([
+    db
+      .prepare(
+        "SELECT * FROM native_checkout_grants WHERE attempt_id=? AND capability_hash=?",
+      )
+      .bind(attemptId, access.capability_hash),
+    db
+      .prepare(
+        "SELECT intent_json,intent_hash,state,version,deadline_ms,association_json FROM attempts WHERE id=? AND owner_id=?",
+      )
+      .bind(attemptId, access.owner_id),
+  ]);
+  const grant = snapshots[0].results[0] as Grant | undefined;
   if (!grant) throw new ApiError(503, "native_write_grant_unavailable");
   const ongoing = grant.ongoing === 1 && liveCustomerAccess(env);
   if (grant.ongoing === 1 && !ongoing)
     throw new ApiError(503, "provider_access_disabled");
   if (grant.state !== "granted")
     return nativeCheckoutStatus(request, env, attemptId);
-  const row = await env.STATE.withSession("first-primary")
-    .prepare(
-      "SELECT intent_json,intent_hash,state,deadline_ms FROM attempts WHERE id=? AND owner_id=?",
-    )
-    .bind(attemptId, access.owner_id)
-    .first<{
-      intent_json: string;
-      intent_hash: string;
-      state: string;
-      deadline_ms: number;
-    }>();
+  const row = snapshots[1].results[0] as
+    | {
+        intent_json: string;
+        intent_hash: string;
+        state: string;
+        version: number;
+        deadline_ms: number;
+        association_json: string | null;
+      }
+    | undefined;
   if (!row || row.state !== "prepared")
     throw new ApiError(409, "native_attempt_unavailable");
   const intent = intentSchema.parse(JSON.parse(row.intent_json));
@@ -376,11 +386,18 @@ export async function executeNativeCheckout(options: {
         "booking-cancel",
       ].includes(operation.kind)
     ) {
-      const response = await provider.nativeWrite(env, control, operation, {
-        beforeIdentity: async () =>
-          cleanupMode ? assertGranted() : assertWindow(),
-        beforeWrite: assertGranted,
-      });
+      const response = await provider.nativeWrite(
+        env,
+        control,
+        operation,
+        {
+          beforeIdentity: async () =>
+            cleanupMode ? assertGranted() : assertWindow(),
+          beforeWrite: assertGranted,
+        },
+        undefined,
+        !!options.creationOnly && !cleanupMode,
+      );
       if (options.holding)
         await retainHoldEvidence(
           env.STATE,
@@ -435,6 +452,7 @@ export async function executeNativeCheckout(options: {
         >[0]
       | undefined;
     const operations = nativeBookingOperations({
+      localFinalization: options.creationOnly,
       deferComments:
         ongoing && paymentRoute === "hitpay" && !!options.onVerifiedHold,
       onCreationEvidence: (value) => {
@@ -455,6 +473,54 @@ export async function executeNativeCheckout(options: {
           representation = undefined;
           try {
             assertWindow();
+            if (options.creationOnly) {
+              const session = value.sessions[index ?? 0];
+              const selection = nativeContractSelection(
+                contract,
+                session.startMs,
+              );
+              if (
+                selection.serviceId !== session.serviceId ||
+                selection.priceMinor !== session.totalMinor ||
+                !nativeCustomerHours(contract, session.startMs) ||
+                session.startMs - Date.now() <
+                  nativeTrialLeadMs(
+                    contract,
+                    {
+                      accountId: p.DEPLOYMENT_ACCOUNT_ID,
+                      environmentId: p.ENVIRONMENT,
+                      companyLogin: company,
+                    },
+                    session,
+                    Date.now(),
+                  )
+              )
+                throw new ApiError(409, "native_selection_changed");
+              const date = new Date(session.startMs + 28800000)
+                .toISOString()
+                .slice(0, 10);
+              const day = (validatedDates[date] ??= {
+                date,
+                observedAtMs: Date.now(),
+                offers: [],
+              });
+              day.offers.push({
+                serviceId: session.serviceId,
+                productServiceId: contract.serviceId,
+                serviceName: "SoccerBot session",
+                instructorId: session.instructorId,
+                instructorName: "Selected instructor",
+                startMs: session.startMs,
+                priceMinor: session.totalMinor,
+                currency: value.currency,
+              });
+              await env.STATE.prepare(
+                "UPDATE native_checkout_grants SET availability_json=? WHERE attempt_id=? AND state='running'",
+              )
+                .bind(JSON.stringify(validatedDates), attemptId)
+                .run();
+              return value;
+            }
             const identity = await provider.identity(env, control);
             stage = "allowance";
             const allowance = z
@@ -522,20 +588,34 @@ export async function executeNativeCheckout(options: {
       };
     operations.onFailure = (error, index) =>
       retainFailure(error, "execution", index);
-    result = await orchestrateBooking(request, env, attemptId, operations);
+    let committedAssociation:
+      { association_json: string; version: number } | undefined;
+    operations.onAssociated = (association) => {
+      committedAssociation = association;
+    };
+    result = await orchestrateBooking(
+      request,
+      env,
+      attemptId,
+      operations,
+      access,
+      row,
+    );
     if (result.state === "associated") {
-      const associated = await env.STATE.withSession("first-primary")
-        .prepare(
-          "SELECT association_json,version FROM attempts WHERE id=? AND owner_id=? AND state='dispatching'",
-        )
-        .bind(attemptId, access.owner_id)
-        .first<{ association_json: string; version: number }>();
+      const associated =
+        committedAssociation ??
+        (await env.STATE.withSession("first-primary")
+          .prepare(
+            "SELECT association_json,version FROM attempts WHERE id=? AND owner_id=? AND state='dispatching'",
+          )
+          .bind(attemptId, access.owner_id)
+          .first<{ association_json: string; version: number }>());
       if (!associated) throw new ApiError(409, "native_association_missing");
       dispatchFence = associated.version;
       const refs = associationSchema.parse(
         JSON.parse(associated.association_json),
       );
-      await provider.identity(env, control);
+      if (!options.creationOnly) await provider.identity(env, control);
       let dueDatetime: unknown;
       let observation: Awaited<
         ReturnType<typeof readNativeAttempt>
@@ -628,6 +708,7 @@ export async function executeNativeCheckout(options: {
               intentHash: row.intent_hash,
               associationJson: associated.association_json,
               verifiedAtMs,
+              access: options.creationOnly ? access : undefined,
             })
           : {
               state: "associated",
@@ -674,21 +755,19 @@ export async function executeNativeCheckout(options: {
       controller.abort();
     }
   }
-  await env.STATE.prepare(
+  const completion = env.STATE.prepare(
     "UPDATE native_checkout_grants SET state=?,result_json=json_patch(COALESCE(result_json,'{}'),?) WHERE attempt_id=? AND state='running'",
-  )
-    .bind(
-      result.state === "associated" ? "complete" : "blocked",
-      JSON.stringify({
-        ...result,
-        checkout: undefined,
-        ...(diagnostic ? { diagnostic } : {}),
-        ...(cleanupDiagnostic ? { cleanupDiagnostic } : {}),
-      }),
-      attemptId,
-    )
-    .run();
-  await authenticate(request, env, Date.now());
+  ).bind(
+    result.state === "associated" ? "complete" : "blocked",
+    JSON.stringify({
+      ...result,
+      checkout: undefined,
+      ...(diagnostic ? { diagnostic } : {}),
+      ...(cleanupDiagnostic ? { cleanupDiagnostic } : {}),
+    }),
+    attemptId,
+  );
+  await authenticate(request, env, Date.now(), [completion]);
   return { attemptId, ...result };
 }
 
@@ -696,10 +775,11 @@ async function customerNativeWindow(
   request: Request,
   env: Env,
   attemptId?: string,
+  verifiedAccess?: Access,
 ) {
   const p = policy(env),
     now = Date.now();
-  const access = await authenticate(request, env, now);
+  const access = verifiedAccess ?? (await authenticate(request, env, now));
   const grant = await env.STATE.withSession("first-primary")
     .prepare("SELECT * FROM native_checkout_grants WHERE capability_hash=?")
     .bind(access.capability_hash)
@@ -774,9 +854,10 @@ export async function prepareCustomerNative(
   value: unknown,
   attemptId?: string,
   prepareProvider?: () => Promise<unknown>,
+  verifiedAccess?: Access,
 ) {
   const { p, access, grant, contract, dates, binding } =
-    await customerNativeWindow(request, env, attemptId);
+    await customerNativeWindow(request, env, attemptId, verifiedAccess);
   const input = nativePrepareSchema.parse(value);
   if (
     input.holding &&
@@ -889,7 +970,7 @@ export async function prepareCustomerNative(
       .run();
     if (bound.meta.changes !== 1)
       throw new ApiError(409, "native_attempt_already_bound");
-    await authenticate(request, env, Date.now());
+    if (!verifiedAccess) await authenticate(request, env, Date.now());
     return { attemptId: attempt.id, state: "prepared" as const };
   };
   if (!prepareProvider) return persist();

@@ -1,6 +1,6 @@
 import { MAX_PLAYERS } from "../src/domain/booking-policy";
 import { z } from "zod";
-import { authenticate } from "./access";
+import { authenticate, type Access } from "./access";
 import { ApiError, digest } from "./policy";
 import {
   intentSchema,
@@ -50,9 +50,15 @@ const finalizedInvoice = z.strictObject({
 // admission. It does not establish provider acceptance or production readiness.
 export type BookingOperations = {
   validationMode?: "per-session";
+  // Single native creation already returned the invoice; finalization has no external write.
+  localFinalization?: boolean;
   // Native creation retains the raw receipt before normalization can fail.
   retainsSessionReferences?: boolean;
   onCreated?: (receivedAtMs: number) => Promise<void>;
+  onAssociated?: (association: {
+    association_json: string;
+    version: number;
+  }) => void;
   onFailure?: (error: unknown, sessionIndex?: number) => void;
   supported: boolean;
   hasRecoveryCapacity: (sessions: number) => Promise<boolean>;
@@ -75,21 +81,33 @@ export async function orchestrateBooking(
   env: Env,
   id: string,
   operations: BookingOperations,
+  verifiedAccess?: Access,
+  prepared?: {
+    intent_json: string;
+    intent_hash: string;
+    state: string;
+    version: number;
+    deadline_ms: number;
+    association_json: string | null;
+  },
 ) {
-  const access = await authenticate(request, env, Date.now());
-  const row = await env.STATE.withSession("first-primary")
-    .prepare(
-      "SELECT intent_json,intent_hash,state,version,deadline_ms,association_json FROM attempts WHERE id=? AND owner_id=?",
-    )
-    .bind(id, access.owner_id)
-    .first<{
-      intent_json: string;
-      intent_hash: string;
-      state: string;
-      version: number;
-      deadline_ms: number;
-      association_json: string | null;
-    }>();
+  const access =
+    verifiedAccess ?? (await authenticate(request, env, Date.now()));
+  const row =
+    prepared ??
+    (await env.STATE.withSession("first-primary")
+      .prepare(
+        "SELECT intent_json,intent_hash,state,version,deadline_ms,association_json FROM attempts WHERE id=? AND owner_id=?",
+      )
+      .bind(id, access.owner_id)
+      .first<{
+        intent_json: string;
+        intent_hash: string;
+        state: string;
+        version: number;
+        deadline_ms: number;
+        association_json: string | null;
+      }>());
   if (!row) throw new ApiError(404, "attempt_unavailable");
   if (!operations.supported)
     return { state: "contracts_unavailable", paymentAvailable: false };
@@ -261,9 +279,10 @@ export async function orchestrateBooking(
       ids.push(accepted.bookingId);
     }
     failedSessionIndex = undefined;
-    await reserve("finalize");
+    if (!operations.localFinalization) await reserve("finalize");
     const raw = await operations.finalize(ids, intent, id, assertCurrent);
     if (
+      !operations.localFinalization &&
       raw &&
       typeof raw === "object" &&
       "invoiceId" in raw &&
@@ -282,10 +301,21 @@ export async function orchestrateBooking(
       !ids.every((bookingId) => invoice.bookingIds.includes(bookingId))
     )
       throw new ApiError(409, "invoice_association_invalid");
-    await bindAssociation(env.STATE, id, fence, {
+    const association = {
       invoiceId: invoice.invoiceId,
       bookingIds: ids,
       ...(nativeCustomerId ? { nativeCustomerId } : {}),
+    };
+    const version = await bindAssociation(
+      env.STATE,
+      id,
+      fence,
+      association,
+      operations.localFinalization ? access : undefined,
+    );
+    operations.onAssociated?.({
+      association_json: JSON.stringify(associationSchema.parse(association)),
+      version,
     });
     // Native checkout/return contract is separately unavailable. Association is
     // not payment, confirmation, a provider settlement or permission to retry.

@@ -901,15 +901,15 @@
   },
   {
     "file": "tests/live-email.spec.ts",
-    "title": "real API rejected slot returns to selection and retains contact without creating a booking"
+    "title": "real API rejected creation retains contact and original attempt without payment or replay"
   },
   {
     "file": "tests/live-email.spec.ts",
-    "title": "real API price drift rejects review before creation instead of silently changing the total"
+    "title": "real API creation price drift retains booking evidence and blocks payment without changing the approved total"
   },
   {
     "file": "tests/live-email.spec.ts",
-    "title": "real API provider outage before creation shows unresolved state and cannot create a payment"
+    "title": "real API public authentication outage before creation keeps Review editable without booking or payment"
   },
   {
     "file": "tests/live-email.spec.ts",

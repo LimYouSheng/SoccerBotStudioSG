@@ -1,5 +1,5 @@
 import { BOOKING_LEAD_MINUTES } from "../src/domain/booking-policy";
-import { authenticate } from "./access";
+import { authenticate, type Access } from "./access";
 import { ApiError, liveCustomerAccess, policy } from "./policy";
 import { nativePrepareSchema } from "../src/domain/native-checkout";
 import { nativeAccountContractSchema } from "./prebooking";
@@ -17,18 +17,19 @@ export async function authorizeCustomerCheckout(
   value: unknown,
   options: ReadOptions,
   combinedHold = false,
+  verifiedAccess?: Access,
 ) {
   const { env } = options;
   if (!liveCustomerAccess(env))
     throw new ApiError(503, "provider_access_disabled");
   const input = nativePrepareSchema.parse(value);
   const p = policy(env);
-  const access = await authenticate(request, env, Date.now());
-  await archiveRejectedCustomerGrant(env, access.capability_hash);
-  const existing = await env.STATE.withSession("first-primary")
-    .prepare("SELECT 1 FROM native_checkout_grants WHERE capability_hash=?")
-    .bind(access.capability_hash)
-    .first();
+  const access =
+    verifiedAccess ?? (await authenticate(request, env, Date.now()));
+  const existing = await archiveRejectedCustomerGrant(
+    env,
+    access.capability_hash,
+  );
   if (existing) return;
   const dates = [
     ...new Set(
@@ -78,7 +79,7 @@ export async function authorizeCustomerCheckout(
   )
     throw new ApiError(409, "native_selection_changed");
   const now = Date.now();
-  await authenticate(request, env, now);
+  if (!verifiedAccess) await authenticate(request, env, now);
   const expires = Math.min(now + 1200000, access.expires_ms);
   if (expires <= now + 180000) throw new ApiError(401, "access_expiring");
   const contract = nativeAccountContractSchema.parse({
@@ -129,12 +130,21 @@ export async function archiveRejectedCustomerGrant(
   // preflight rejection with no dispatch or effect; never renew uncertain writes.
   const rejected =
     "capability_hash=? AND ongoing=1 AND state='blocked' AND json_extract(result_json,'$.state') IN ('selection_unavailable','restart_required','checkout_not_started') AND EXISTS(SELECT 1 FROM attempts a WHERE a.id=native_checkout_grants.attempt_id AND a.state='prepared' AND a.association_json IS NULL) AND NOT EXISTS(SELECT 1 FROM dispatches d WHERE d.attempt_id=native_checkout_grants.attempt_id) AND NOT EXISTS(SELECT 1 FROM session_effects e WHERE e.attempt_id=native_checkout_grants.attempt_id)";
-  await env.STATE.batch([
-    env.STATE.prepare(
-      `INSERT INTO rejected_native_checkout_grants SELECT * FROM native_checkout_grants WHERE ${rejected}`,
-    ).bind(capabilityHash),
-    env.STATE.prepare(
-      `DELETE FROM native_checkout_grants WHERE ${rejected} AND EXISTS(SELECT 1 FROM rejected_native_checkout_grants h WHERE h.attempt_id=native_checkout_grants.attempt_id AND h.capability_hash=native_checkout_grants.capability_hash)`,
-    ).bind(capabilityHash),
+  const db = env.STATE.withSession("first-primary");
+  const results = await db.batch([
+    db
+      .prepare(
+        `INSERT INTO rejected_native_checkout_grants SELECT * FROM native_checkout_grants WHERE ${rejected}`,
+      )
+      .bind(capabilityHash),
+    db
+      .prepare(
+        `DELETE FROM native_checkout_grants WHERE ${rejected} AND EXISTS(SELECT 1 FROM rejected_native_checkout_grants h WHERE h.attempt_id=native_checkout_grants.attempt_id AND h.capability_hash=native_checkout_grants.capability_hash)`,
+      )
+      .bind(capabilityHash),
+    db
+      .prepare("SELECT 1 FROM native_checkout_grants WHERE capability_hash=?")
+      .bind(capabilityHash),
   ]);
+  return results[2].results.length > 0;
 }

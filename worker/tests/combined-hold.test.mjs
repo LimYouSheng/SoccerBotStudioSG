@@ -1705,7 +1705,7 @@ test("failed identity warming proves checkout never started and permits a fresh 
   const m = await createBookingMechanism({
     displayWarming: true,
     respond: async (call) =>
-      denied && call.url.endsWith("/admin/auth")
+      denied && call.body?.method === "getToken"
         ? new Response(null, { status: 403 })
         : undefined,
   });
@@ -1767,6 +1767,145 @@ test("failed identity warming proves checkout never started and permits a fresh 
       1,
     );
     await send(next);
+    assert.equal(m.calls.filter((c) => c.body?.method === "book").length, 1);
+    assert.equal(
+      m.calls.filter(
+        (c) => c.url.includes("hit-pay.com") && c.method === "POST",
+      ).length,
+      1,
+    );
+  } finally {
+    await m.close();
+  }
+});
+
+test("direct single checkout uses only public authentication and creation before HitPay with bounded D1 work", async () => {
+  for (const warm of [false, true]) {
+    const logs = [];
+    let before = 0;
+    const beforePayment = [];
+    const m = await createBookingMechanism({
+      onLog: (message) => logs.push(message),
+      respond: async (call) => {
+        if (call.url.includes("hit-pay.com") && call.method === "POST")
+          beforePayment.push(...m.calls.slice(before));
+        return undefined;
+      },
+    });
+    try {
+      if (warm) {
+        const response = await m.mf.dispatchFetch(m.origin + "/api/catalogue");
+        assert.equal(response.status, 200);
+        logs.length = 0;
+      }
+      before = m.calls.length;
+      const c = await customer(m);
+      const response = await m.mf.dispatchFetch(
+        m.origin + `/api/booking/checkout/${c.input.key}`,
+        {
+          method: "POST",
+          headers: c.headers,
+          body: JSON.stringify({ ...c.input, accepted: true }),
+        },
+      );
+      assert.equal(response.status, 200);
+      const result = await response.json();
+      assert.equal(result.paymentAvailable, true);
+      assert.equal(result.checkout.url, m.checkoutUrl);
+      const markers = await m.db
+        .prepare(
+          "SELECT step,outcome FROM session_effects WHERE attempt_id=? AND step IN ('finalize','native-comments-pending') ORDER BY step",
+        )
+        .bind(c.input.key)
+        .all();
+      assert.deepEqual(markers.results, [
+        { step: "finalize", outcome: "observed" },
+        { step: "native-comments-pending", outcome: "observed" },
+      ]);
+
+      assert.deepEqual(
+        beforePayment
+          .filter((c) => c.url.includes("simplybook.me"))
+          .map((c) => c.body?.method),
+        warm ? ["book"] : ["getToken", "book"],
+      );
+      const traces = logs.flatMap((message) => {
+        try {
+          return [JSON.parse(message)];
+        } catch {
+          return [];
+        }
+      });
+      const checkout = traces.find(
+        (entry) =>
+          entry.event === "foundation_trace" &&
+          entry.boundary === "coordinator",
+      );
+      assert.ok(checkout, "checkout diagnostics retained");
+      assert.ok(
+        checkout.spans.d1.count <= 27,
+        `D1 calls: ${checkout.spans.d1.count}`,
+      );
+      console.log(`single checkout D1 executions: ${checkout.spans.d1.count}`);
+      const payment = await m.db
+        .prepare(
+          "SELECT request_id,checkout_url FROM hitpay_payments WHERE attempt_id=?",
+        )
+        .bind(c.input.key)
+        .first();
+      assert.ok(payment.request_id);
+      assert.equal(payment.checkout_url, result.checkout.url);
+      await m.mf.dispatchFetch(
+        m.origin + `/api/booking/checkout/${c.input.key}`,
+        {
+          method: "POST",
+          headers: c.headers,
+          body: JSON.stringify({ ...c.input, accepted: true }),
+        },
+      );
+      assert.equal(m.calls.filter((c) => c.body?.method === "book").length, 1);
+      assert.equal(
+        m.calls.filter(
+          (c) => c.url.includes("hit-pay.com") && c.method === "POST",
+        ).length,
+        1,
+      );
+    } finally {
+      await m.close();
+    }
+  }
+});
+
+test("direct single completion retains payment but denies handoff after access revocation", async () => {
+  const m = await createBookingMechanism({
+    respond: async (call) => {
+      if (call.url.includes("hit-pay.com") && call.method === "POST")
+        await m.db
+          .prepare("UPDATE guest_access SET revoked_ms=?")
+          .bind(Date.now())
+          .run();
+      return undefined;
+    },
+  });
+  try {
+    const c = await customer(m);
+    const response = await m.mf.dispatchFetch(
+      m.origin + `/api/booking/checkout/${c.input.key}`,
+      {
+        method: "POST",
+        headers: c.headers,
+        body: JSON.stringify({ ...c.input, accepted: true }),
+      },
+    );
+    assert.equal(response.status, 401);
+    const payment = await m.db
+      .prepare(
+        "SELECT request_id,checkout_url FROM hitpay_payments WHERE attempt_id=?",
+      )
+      .bind(c.input.key)
+      .first();
+    assert.ok(payment.request_id);
+    assert.equal(payment.checkout_url, m.checkoutUrl);
     assert.equal(m.calls.filter((c) => c.body?.method === "book").length, 1);
     assert.equal(
       m.calls.filter(
