@@ -1,3 +1,4 @@
+import { checkoutD1 } from "./checkout-tracing";
 import { AsyncLocalStorage } from "node:async_hooks";
 type Span =
   | "storage"
@@ -42,7 +43,9 @@ export function traceStatus(status: number) {
 export function measure<T>(span: Span, operation: () => T): T {
   const trace = context.getStore(),
     start = performance.now();
+  const checkoutEnd = span === "d1" ? checkoutD1() : undefined;
   const end = (error: boolean) => {
+    checkoutEnd?.(error);
     if (!trace) return;
     const metric = trace.spans[span];
     metric.count++;

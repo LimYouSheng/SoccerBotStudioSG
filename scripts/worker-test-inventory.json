@@ -58,6 +58,8 @@
   "failed identity warming proves checkout never started and permits a fresh explicit attempt",
   "direct single checkout uses only public authentication and creation before HitPay with bounded D1 work",
   "direct single completion retains payment but denies handoff after access revocation",
+  "checkout failure timing survives token booking and payment failures without exposing request data",
+
   "direct batch checkout uses creation responses for two and four sessions with one payment and bounded D1 work",
   "direct batch rejection lost response and invalid invoice retain original effects without payment or replay",
   "foundation valid bindings emit correlated storage evidence without secret markers",
@@ -231,6 +233,7 @@
   "provider queue advances checkout ahead of waiting months without overlapping active work",
   "provider queue preserves FIFO and gives waiting calendars a bounded turn",
   "provider queue preserves unknown failures without replay and continues after sync or async errors",
+  "checkout timing isolates queued requests attributes D1 to dispatch phase and closes before background work",
   "provider operation rejects absent expired and disabled grants before dispatch",
   "provider identity counts every physical request and returns only sanitized evidence",
   "concurrent provider proof grants share authentication and upstream reads",
