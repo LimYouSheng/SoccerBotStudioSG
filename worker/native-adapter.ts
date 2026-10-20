@@ -1299,3 +1299,31 @@ export async function compensateNativeAttempt(options: {
     cancelled: candidates.length,
   };
 }
+
+// One request-local snapshot only; opaque recovery keys never enter responses or logs.
+export async function nativeSignaturesFromSnapshot(
+  rows: { step: string; reference_id: string }[],
+  association: unknown,
+  secret: string,
+) {
+  const refs = associationSchema.parse(association);
+  if (rows.length !== refs.bookingIds.length)
+    throw new ApiError(503, "native_signing_unavailable");
+  const signatures = new Map<string, string>();
+  for (const [index, id] of refs.bookingIds.entries()) {
+    const step =
+      refs.bookingIds.length === 1
+        ? "native-booking-key"
+        : `native-booking-key:${index}`;
+    const matches = rows.filter((row) => row.step === step);
+    if (matches.length !== 1)
+      throw new ApiError(503, "native_signing_unavailable");
+    const key = retainedNativeKeySchema.parse(
+      JSON.parse(matches[0].reference_id),
+    );
+    if (key.bookingId !== id || signatures.has(id))
+      throw new ApiError(503, "native_signing_unavailable");
+    signatures.set(id, await nativeBookingSignature(id, key.hash, secret));
+  }
+  return signatures;
+}

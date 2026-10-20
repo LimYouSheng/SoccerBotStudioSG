@@ -2650,7 +2650,7 @@ test("batch transport claims recheck revocation at each creation boundary withou
 });
 
 test("single and batch recovery retain verified evidence with bounded read overlap and measured D1 work", async () => {
-  for (const count of [1, 2, 4]) {
+  for (const count of [1, 2, 4, 8]) {
     const logs = [];
     let measuring = false,
       active = 0,
@@ -2712,6 +2712,7 @@ test("single and batch recovery retain verified evidence with bounded read overl
       assert.equal(trace.operations.booking_read.count, 2 * count);
       assert.equal(trace.operations.invoice_read.count, 2);
       assert.equal(trace.operations.accounting_write.count, 1);
+      assert.equal(trace.operations.d1.count, 5);
       console.log(
         `recovery ${count}: D1=${trace.operations.d1.count}; ms=${trace.durationMs}; maxReads=${maximum}`,
       );
@@ -2960,5 +2961,53 @@ test("five-call speculative preparation cannot change a colliding foreign attemp
     } finally {
       await m.close();
     }
+  }
+});
+
+test("recovery publication rolls back on storage failure and resumes without duplicate accounting", async () => {
+  const m = await createBookingMechanism();
+  try {
+    const c = await customer(m);
+    const response = await m.mf.dispatchFetch(
+      m.origin + `/api/booking/checkout/${c.input.key}`,
+      {
+        method: "POST",
+        headers: c.headers,
+        body: JSON.stringify({ ...c.input, accepted: true }),
+      },
+    );
+    assert.equal((await response.json()).paymentAvailable, true);
+    await m.completePayment();
+    await m.db.exec(
+      "CREATE TRIGGER reject_terminal BEFORE UPDATE OF state ON hitpay_payments WHEN NEW.state='complete' BEGIN SELECT RAISE(ABORT,'synthetic_publication_failure'); END",
+    );
+    await m.recover();
+    const read = () =>
+      m.db
+        .prepare(
+          "SELECT p.state,p.external_state,c.confirmation_json FROM hitpay_payments p JOIN checkout_progress c ON c.attempt_id=p.attempt_id WHERE p.attempt_id=?",
+        )
+        .bind(c.input.key)
+        .first();
+    const failed = await read();
+    assert.notEqual(failed.state, "complete");
+    assert.equal(failed.external_state, "unknown");
+    assert.equal(failed.confirmation_json, null);
+    await m.db.exec("DROP TRIGGER reject_terminal");
+    await m.db
+      .prepare("UPDATE hitpay_payments SET ready_ms=0 WHERE attempt_id=?")
+      .bind(c.input.key)
+      .run();
+    await m.recover();
+    const recovered = await read();
+    assert.equal(recovered.state, "complete");
+    assert.ok(recovered.confirmation_json);
+    assert.equal(
+      m.calls.filter((c) => c.url.endsWith("/accept-payment")).length,
+      1,
+    );
+    assert.deepEqual(m.unexpected, []);
+  } finally {
+    await m.close();
   }
 });

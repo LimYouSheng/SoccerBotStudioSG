@@ -2019,8 +2019,8 @@ test("HitPay validation diagnostics retain only allowlisted fields without repla
   assert.equal(creates, 1);
 });
 
-for (const boundary of ["payment", "booking"]) {
-  test(`HitPay recovery rejects a replaced claim after ${boundary} response without accounting or success`, async () => {
+for (const boundary of ["payment", "booking", "accounting", "paid-booking"]) {
+  test(`HitPay recovery rejects a replaced claim after ${boundary} response without further accounting or success`, async () => {
     await seedPayment();
     const provider = providerFixture();
     const respond = handler;
@@ -2033,7 +2033,11 @@ for (const boundary of ["payment", "booking"]) {
       const match =
         boundary === "payment"
           ? url.hostname === "api.sandbox.hit-pay.com"
-          : body?.method === "getBookingDetails";
+          : boundary === "booking"
+            ? body?.method === "getBookingDetails"
+            : boundary === "accounting"
+              ? url.pathname.endsWith("/accept-payment")
+              : body?.method === "getBookingDetails" && provider.writes() === 1;
       if (match && !replaced) {
         replaced = true;
         await db
@@ -2047,9 +2051,15 @@ for (const boundary of ["payment", "booking"]) {
     };
     await recover();
     assert.equal(replaced, true);
-    assert.equal(provider.writes(), 0);
+    assert.equal(
+      provider.writes(),
+      ["accounting", "paid-booking"].includes(boundary) ? 1 : 0,
+    );
     assert.equal((await row()).state, "claimed");
-    assert.equal((await row()).external_state, "none");
+    assert.equal(
+      (await row()).external_state,
+      ["accounting", "paid-booking"].includes(boundary) ? "unknown" : "none",
+    );
     assert.equal(
       (
         await db

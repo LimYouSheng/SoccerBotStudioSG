@@ -268,10 +268,10 @@ export async function storedHitpayCheckout(
     expiresAtMs: row.expires_ms,
   };
 }
-export async function claimHitpay(env: Env, id: string, now: number) {
+export function hitpayClaimStatements(env: Env, id: string, now: number) {
   // An interrupted final claim may retain an unseen authenticated receipt.
   // Exhaustion and its permitted wake-up must commit before selecting new work.
-  const results = await env.STATE.batch([
+  return [
     env.STATE.prepare(
       "UPDATE hitpay_payments SET state='manual_review',reason='recovery_exhausted' WHERE attempt_id=? AND state IN ('due','claimed') AND ready_ms<=? AND (tries>=retry_limit OR recovery_end_ms<=?)",
     ).bind(id, now, now),
@@ -279,7 +279,10 @@ export async function claimHitpay(env: Env, id: string, now: number) {
     env.STATE.prepare(
       "UPDATE hitpay_payments SET state='claimed',tries=tries+1,generation=generation+1,receipt_checkpoint=COALESCE((SELECT MAX(rowid) FROM hitpay_receipts WHERE attempt_id=hitpay_payments.attempt_id),0),ready_ms=? WHERE attempt_id=? AND state IN ('due','claimed') AND ready_ms<=? AND tries<retry_limit AND recovery_end_ms>? RETURNING *",
     ).bind(now + 120000, id, now, now),
-  ]);
+  ];
+}
+export async function claimHitpay(env: Env, id: string, now: number) {
+  const results = await env.STATE.batch(hitpayClaimStatements(env, id, now));
   return (results.at(-1)!.results[0] as HitpayRow | undefined) ?? null;
 }
 export async function findHitpayRequest(
