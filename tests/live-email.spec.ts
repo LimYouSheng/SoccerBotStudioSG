@@ -2323,8 +2323,14 @@ test("real API optimistic Review preserves the original attempt when booking rea
 test("real API unpaid return shows the pending confirmation layout without claiming payment or allowing downloads", async ({
   page,
 }) => {
+  let releaseContext!: () => void;
+  const contextGate = new Promise<void>((resolve) => {
+    releaseContext = resolve;
+  });
   const mechanism = await createBookingMechanism();
-  const transport = await mechanismTransport(page, mechanism);
+  const transport = await mechanismTransport(page, mechanism, async (path) => {
+    if (path.endsWith("/checkout")) await contextGate;
+  });
   try {
     const { headers, attemptId } = await prepareBrowserAttempt(page, mechanism);
     const held = await mechanism.mf.dispatchFetch(
@@ -2338,6 +2344,25 @@ test("real API unpaid return shows the pending confirmation layout without claim
         `/api/attempts/${attemptId}/checkout`,
     );
     await page.goto(`/confirmation/?attempt=${attemptId}`);
+    await page
+      .getByRole("dialog", { name: "Get the SoccerBot Player App" })
+      .getByRole("button", { name: "Not now", exact: true })
+      .click();
+    await expect(
+      page.getByRole("status", { name: "Checking your booking…", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.locator(
+        ".confirmation-shell .status-heading .booking-loading-inline",
+      ),
+    ).toBeVisible();
+    await expect(page.locator(".confirmation-card")).toContainText(
+      "Loading booking details…",
+    );
+    await expect(
+      page.locator(".page-loading, .booking-flow-overlay"),
+    ).toHaveCount(0);
+    releaseContext();
     const diagnosticHeaders = await (await contextRead).allHeaders();
     expect(diagnosticHeaders["x-recovery-trace"]).toMatch(/^[a-f0-9]{64}$/);
     expect(diagnosticHeaders["server-timing"]).toMatch(
@@ -2350,10 +2375,6 @@ test("real API unpaid return shows the pending confirmation layout without claim
       /confirmation_http;dur=[0-9.]+/,
     );
 
-    await page
-      .getByRole("dialog", { name: "Get the SoccerBot Player App" })
-      .getByRole("button", { name: "Not now", exact: true })
-      .click();
     await expect(page.getByLabel("Booking summary")).toBeVisible();
     await page.getByText("View full details", { exact: true }).click();
     await expect(
@@ -2404,6 +2425,7 @@ test("real API unpaid return shows the pending confirmation layout without claim
     ).toHaveLength(1);
     await assertNoPaymentOrConfirmation(page, mechanism);
   } finally {
+    releaseContext();
     await stopMechanism(page, mechanism, transport);
   }
 });

@@ -977,7 +977,7 @@
   },
   {
     "file": "src/features/booking/protected-confirmation.test.tsx",
-    "title": "pending checkout context retains preparation status and exposes no checkout or confirmation"
+    "title": "pending checkout context uses the compact confirmation shell without checkout or success"
   },
   {
     "file": "src/features/booking/direct-checkout.test.tsx",

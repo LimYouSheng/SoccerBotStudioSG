@@ -1,10 +1,9 @@
 "use client";
 import { isHitpayCheckoutUrl } from "@/domain/native-checkout";
 import { BookingLoading as BrandLoading } from "./booking-loading";
-import { BrandLoading as InlineLoading } from "@/components/brand-loading";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BookingConfirmation } from "./confirmation-step";
+import { BookingConfirmation, PendingConfirmation } from "./confirmation-step";
 import { downloadBooking, downloadCalendar } from "@/services/exports";
 type BookingReceipt = Awaited<ReturnType<typeof readBookingReceipt>>;
 import { sitePath } from "@/content/site-path";
@@ -297,7 +296,7 @@ export function ProtectedConfirmation({
       view === "confirmed"
         ? "Preparing your confirmation…"
         : checkoutMode && preparation === "loading"
-          ? "Preparing checkout…"
+          ? "Checking your booking…"
           : paymentReceived
             ? "Payment received—verifying booking…"
             : "Verifying your payment…";
@@ -314,18 +313,11 @@ export function ProtectedConfirmation({
       );
     }
     return (
-      <div className="status-shell">
-        <section className="surface confirmation-card" aria-busy="true">
-          <h1>Booking confirmation</h1>
-          <InlineLoading compact label={pendingLabel} />
-          <p className="text-sm text-muted">{pendingLabel}</p>
-          <p>
-            We’re checking the payment status for this booking. Your details are
-            saved.
-          </p>
-          {current && <ConfirmationSummary summary={current.summary} />}
-        </section>
-      </div>
+      <PendingConfirmation label={pendingLabel}>
+        {current ? (
+          <ConfirmationSummary summary={current.summary} />
+        ) : undefined}
+      </PendingConfirmation>
     );
   }
   return (

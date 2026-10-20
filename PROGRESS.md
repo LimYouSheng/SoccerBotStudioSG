@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## Unified pending confirmation presentation — 20 October 2026 SGT
+
+Branch fix/confirmation-pending-layout starts from merged PR72/main2c19288. Owner hometest05 shows protected context followed by pending payment-received status and verified confirmation; request success does not establish browser paint. Standardize the confirmation-route Suspense fallback and context-loading presentation with the existing compact loader/header and details card. Before authorized details arrive show a booking-details placeholder; status messages change without introducing a large upper loading card or page overlay. No authority, polling, provider, expiry, export or payment changes. Focused45 confirmation/checking/checkout component tests passed. Review both live-email and synthetic experiment pending-context assertions; gate the real Worker context read in browser CI to inspect initial and loaded layouts. Full code verification passed223 frontend tests, types/lint/build/export and tooling. Exact-head CI remains pending. No new-PR merge authorization.
+
 ## Confirmation tracing — 20 October 2026 SGT
 
 PR72 head767f760 passed frontend/backend but live-email run39415858902 passed77/78. Offline phone-WebKit trace shows slow cold fixture/browsing setup and preserved original-attempt recovery, then exhaustion of the unchanged30-second budget before reload. Focus the lost-response case on a saved editable Review draft with real guest authentication; retain the actual browser checkout, lost response, durable hold, reload and one booking/payment assertions. Full homepage/calendar/Details coverage remains in the native guest journey. No production change or timeout/retry relaxation. Affected source/policy/type/lint/format checks and45 component/service tests passed. Full final-head CI remains pending. Owner authorizes merging PR72 after all checks pass, then deployed confirmation diagnosis; no assistant provider experiment.
