@@ -2479,3 +2479,86 @@ test("protected confirmation traces correlate context status and denied receipt 
     await m.close();
   }
 });
+
+test("confirmation snapshots reduce reads and observe manual review after poll admission", async () => {
+  const logs = [];
+  const m = await createBookingMechanism({
+    onLog: (line) => {
+      try {
+        logs.push(JSON.parse(line));
+      } catch {}
+    },
+  });
+  try {
+    const c = await customer(m);
+    const id = c.input.key;
+    const headers = { ...c.headers, "X-Booking-Details": "1" };
+    const created = await m.mf.dispatchFetch(
+      m.origin + `/api/booking/checkout/${id}`,
+      {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ ...c.input, accepted: true }),
+      },
+    );
+    assert.equal(created.status, 200, await created.clone().text());
+    async function read(route, count) {
+      const response = await m.mf.dispatchFetch(
+        m.origin + `/api/attempts/${id}/${route}`,
+        { headers },
+      );
+      assert.equal(response.status, 200);
+      const trace = logs.find(
+        (entry) =>
+          entry.event === "confirmation_trace" &&
+          entry.correlationId === response.headers.get("x-request-id"),
+      );
+      assert.equal(trace.operations.d1.count, count);
+      return response.json();
+    }
+    const context = await read("checkout", 4);
+    assert.ok(context.details);
+    assert.equal(context.customerConfirmation, undefined);
+    assert.equal((await read("confirmation", 5)).status, "pending");
+    await m.completePayment();
+    await m.recover();
+    assert.ok((await read("checkout", 4)).confirmation);
+    await m.db
+      .prepare("UPDATE attempts SET confirmation_next_ms=0 WHERE id=?")
+      .bind(id)
+      .run();
+    assert.equal((await read("confirmation", 4)).status, "confirmed");
+    // Transition precisely at the write boundary, after the initial snapshot.
+    // A stale snapshot must never expose the preceding confirmed state.
+    await m.db.exec(
+      `CREATE TRIGGER review_during_poll AFTER UPDATE OF confirmation_checks ON attempts BEGIN UPDATE hitpay_payments SET state='manual_review',reason='recovery_exhausted' WHERE attempt_id=NEW.id; END;`,
+    );
+    await m.db
+      .prepare("UPDATE attempts SET confirmation_next_ms=0 WHERE id=?")
+      .bind(id)
+      .run();
+    const guarded = await read("confirmation", 5);
+    assert.equal(guarded.status, "unresolved");
+    assert.equal(guarded.reason, "payment_received_booking_pending");
+    assert.equal(guarded.customerConfirmation, undefined);
+    assert.equal(
+      m.calls.filter((call) => call.body?.method === "book").length,
+      1,
+    );
+    assert.equal(
+      m.calls.filter(
+        (call) => call.url.includes("hit-pay.com") && call.method === "POST",
+      ).length,
+      1,
+    );
+    assert.equal(
+      m.calls.filter((call) =>
+        call.url.endsWith("/admin/invoices/901/accept-payment"),
+      ).length,
+      1,
+    );
+    assert.deepEqual(m.unexpected, []);
+  } finally {
+    await m.close();
+  }
+});

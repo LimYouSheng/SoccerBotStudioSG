@@ -201,8 +201,10 @@ export async function recordedHitpayPayment(
   intentHash: string,
   associationJson: string | null,
   intentJson: string,
+  snapshot?: HitpayRow | null,
 ) {
-  const row = await paymentRow(env.STATE, id);
+  const row =
+    snapshot === undefined ? await paymentRow(env.STATE, id) : snapshot;
   if (
     !row ||
     row.state !== "complete" ||
@@ -224,13 +226,24 @@ export async function recordedHitpayPayment(
   return { status: "recorded" as const, paidAtMs: row.paid_ms };
 }
 
-export async function storedHitpayCheckout(env: Env, id: string, now: number) {
-  const route = await env.STATE.withSession("first-primary")
-    .prepare("SELECT route FROM checkout_payment_routes WHERE attempt_id=?")
-    .bind(id)
-    .first<{ route: string }>();
+export type PaymentReadSnapshot = {
+  route: string | null;
+  payment: HitpayRow | null;
+};
+export async function storedHitpayCheckout(
+  env: Env,
+  id: string,
+  now: number,
+  snapshot?: PaymentReadSnapshot,
+) {
+  const route =
+    snapshot ??
+    (await env.STATE.withSession("first-primary")
+      .prepare("SELECT route FROM checkout_payment_routes WHERE attempt_id=?")
+      .bind(id)
+      .first<{ route: string }>());
   if (route?.route !== "hitpay") return null;
-  const row = await paymentRow(env.STATE, id);
+  const row = snapshot ? snapshot.payment : await paymentRow(env.STATE, id);
   if (
     !row ||
     !row.request_id ||
@@ -313,19 +326,31 @@ export async function findHitpayRequest(
   return verified;
 }
 
-export async function hitpayConfirmationGuard(env: Env, id: string) {
-  const row = await env.STATE.withSession("first-primary")
-    .prepare(
-      "SELECT r.route,p.state,p.paid_ms,p.payment_id,p.external_state FROM checkout_payment_routes r LEFT JOIN hitpay_payments p ON p.attempt_id=r.attempt_id WHERE r.attempt_id=?",
-    )
-    .bind(id)
-    .first<{
-      route: string;
-      state: string | null;
-      paid_ms: number | null;
-      payment_id: string | null;
-      external_state: string | null;
-    }>();
+export async function hitpayConfirmationGuard(
+  env: Env,
+  id: string,
+  snapshot?: PaymentReadSnapshot,
+) {
+  const row = snapshot
+    ? {
+        route: snapshot.route,
+        state: snapshot.payment?.state ?? null,
+        paid_ms: snapshot.payment?.paid_ms ?? null,
+        payment_id: snapshot.payment?.payment_id ?? null,
+        external_state: snapshot.payment?.external_state ?? null,
+      }
+    : await env.STATE.withSession("first-primary")
+        .prepare(
+          "SELECT r.route,p.state,p.paid_ms,p.payment_id,p.external_state FROM checkout_payment_routes r LEFT JOIN hitpay_payments p ON p.attempt_id=r.attempt_id WHERE r.attempt_id=?",
+        )
+        .bind(id)
+        .first<{
+          route: string;
+          state: string | null;
+          paid_ms: number | null;
+          payment_id: string | null;
+          external_state: string | null;
+        }>();
   if (row?.route !== "hitpay") return null;
   if (
     row?.state === "complete" &&

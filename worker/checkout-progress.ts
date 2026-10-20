@@ -43,13 +43,20 @@ export async function retainCustomerConfirmation(
     .run();
 }
 
-export async function customerConfirmation(env: Env, id: string) {
-  const row = await env.STATE.withSession("first-primary")
-    .prepare(
-      "SELECT c.confirmation_json,p.scope_json FROM checkout_progress c JOIN hitpay_payments p ON p.attempt_id=c.attempt_id WHERE c.attempt_id=? AND c.confirmation_json IS NOT NULL AND p.paid_ms IS NOT NULL AND p.payment_id IS NOT NULL AND p.state!='manual_review' AND p.external_state='observed'",
-    )
-    .bind(id)
-    .first<{ confirmation_json: string; scope_json: string }>();
+export async function customerConfirmation(
+  env: Env,
+  id: string,
+  snapshot?: { confirmation_json: string; scope_json: string } | null,
+) {
+  const row =
+    snapshot === undefined
+      ? await env.STATE.withSession("first-primary")
+          .prepare(
+            "SELECT c.confirmation_json,p.scope_json FROM checkout_progress c JOIN hitpay_payments p ON p.attempt_id=c.attempt_id WHERE c.attempt_id=? AND c.confirmation_json IS NOT NULL AND p.paid_ms IS NOT NULL AND p.payment_id IS NOT NULL AND p.state!='manual_review' AND p.external_state='observed'",
+          )
+          .bind(id)
+          .first<{ confirmation_json: string; scope_json: string }>()
+      : snapshot;
   if (!row) return undefined;
   await assertPaymentScope(
     env,
