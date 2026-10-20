@@ -1,5 +1,5 @@
 import { BOOKING_LEAD_MINUTES } from "../src/domain/booking-policy";
-import { authenticate } from "./access";
+import { authenticate, type Access } from "./access";
 import { ApiError, liveCustomerAccess, policy } from "./policy";
 import { nativePrepareSchema } from "../src/domain/native-checkout";
 import { nativeAccountContractSchema } from "./prebooking";
@@ -17,13 +17,15 @@ export async function authorizeCustomerCheckout(
   value: unknown,
   options: ReadOptions,
   combinedHold = false,
+  verifiedAccess?: Access,
 ) {
   const { env } = options;
   if (!liveCustomerAccess(env))
     throw new ApiError(503, "provider_access_disabled");
   const input = nativePrepareSchema.parse(value);
   const p = policy(env);
-  const access = await authenticate(request, env, Date.now());
+  const access =
+    verifiedAccess ?? (await authenticate(request, env, Date.now()));
   await archiveRejectedCustomerGrant(env, access.capability_hash);
   const existing = await env.STATE.withSession("first-primary")
     .prepare("SELECT 1 FROM native_checkout_grants WHERE capability_hash=?")
@@ -78,7 +80,7 @@ export async function authorizeCustomerCheckout(
   )
     throw new ApiError(409, "native_selection_changed");
   const now = Date.now();
-  await authenticate(request, env, now);
+  if (!verifiedAccess) await authenticate(request, env, now);
   const expires = Math.min(now + 1200000, access.expires_ms);
   if (expires <= now + 180000) throw new ApiError(401, "access_expiring");
   const contract = nativeAccountContractSchema.parse({

@@ -56,6 +56,7 @@
   "interrupted read admissions recover after restart while unknown writes and live reads stay fenced",
   "expired identified write transports free capacity after reset without authorizing another effect",
   "failed identity warming proves checkout never started and permits a fresh explicit attempt",
+  "direct single checkout uses only public authentication and creation before HitPay with bounded D1 work",
   "foundation valid bindings emit correlated storage evidence without secret markers",
   "foundation missing and malformed configuration denies before protected reads",
   "foundation foreign database and coordinator namespace identities fail closed",

@@ -179,25 +179,12 @@ export async function bindAssociation(
   references: unknown,
 ) {
   const refs = associationSchema.parse(references);
-  const row = await db
-    .withSession("first-primary")
-    .prepare(
-      "SELECT intent_json FROM attempts WHERE id=? AND version=? AND state='dispatching'",
-    )
-    .bind(id, fence)
-    .first<{ intent_json: string }>();
-  if (
-    !row ||
-    intentSchema.parse(JSON.parse(row.intent_json)).sessions.length !==
-      refs.bookingIds.length
-  )
-    throw new ApiError(409, "association_conflict");
   const result = await db.batch([
     db
       .prepare(
-        "UPDATE attempts SET association_json=?,version=version+1 WHERE id=? AND version=? AND state='dispatching' AND association_json IS NULL",
+        "UPDATE attempts SET association_json=?,version=version+1 WHERE id=? AND version=? AND state='dispatching' AND association_json IS NULL AND json_array_length(intent_json,'$.sessions')=?",
       )
-      .bind(JSON.stringify(refs), id, fence),
+      .bind(JSON.stringify(refs), id, fence, refs.bookingIds.length),
     db
       .prepare(
         "UPDATE dispatches SET outcome='observed' WHERE attempt_id=? AND fence=? AND outcome='unknown' AND changes()=1",

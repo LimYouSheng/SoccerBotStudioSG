@@ -947,14 +947,28 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           ...this.env,
           STATE: instrumentStorage(this.env.STATE, "d1"),
         };
+        const creationOnly = !!scope.checkout && input.sessions.length === 1;
+        const access = await authenticate(request, env, Date.now());
         await authorizeCustomerCheckout(
           request,
           input,
           { ...this.calendarReadOptions(), env },
           true,
+          access,
         );
-        await prepareCustomerNative(request, env, input, attemptId, () =>
-          this.provider.identity(env, this.providerControl(false, true)),
+        await prepareCustomerNative(
+          request,
+          env,
+          input,
+          attemptId,
+          () =>
+            creationOnly
+              ? this.provider.checkoutToken(
+                  env,
+                  this.providerControl(false, true),
+                )
+              : this.provider.identity(env, this.providerControl(false, true)),
+          access,
         );
         this.invalidateDisplay();
         return executeNativeCheckout({
@@ -963,6 +977,8 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           attemptId,
           holding: true,
           combinedHold: true,
+          creationOnly,
+          access,
           onVerifiedHold: scope.checkout
             ? (proof) =>
                 payHitpayHold(

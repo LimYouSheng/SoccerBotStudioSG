@@ -1,6 +1,6 @@
 import { MAX_PLAYERS } from "../src/domain/booking-policy";
 import { z } from "zod";
-import { authenticate } from "./access";
+import { authenticate, type Access } from "./access";
 import { ApiError, digest } from "./policy";
 import {
   intentSchema,
@@ -75,21 +75,33 @@ export async function orchestrateBooking(
   env: Env,
   id: string,
   operations: BookingOperations,
+  verifiedAccess?: Access,
+  prepared?: {
+    intent_json: string;
+    intent_hash: string;
+    state: string;
+    version: number;
+    deadline_ms: number;
+    association_json: string | null;
+  },
 ) {
-  const access = await authenticate(request, env, Date.now());
-  const row = await env.STATE.withSession("first-primary")
-    .prepare(
-      "SELECT intent_json,intent_hash,state,version,deadline_ms,association_json FROM attempts WHERE id=? AND owner_id=?",
-    )
-    .bind(id, access.owner_id)
-    .first<{
-      intent_json: string;
-      intent_hash: string;
-      state: string;
-      version: number;
-      deadline_ms: number;
-      association_json: string | null;
-    }>();
+  const access =
+    verifiedAccess ?? (await authenticate(request, env, Date.now()));
+  const row =
+    prepared ??
+    (await env.STATE.withSession("first-primary")
+      .prepare(
+        "SELECT intent_json,intent_hash,state,version,deadline_ms,association_json FROM attempts WHERE id=? AND owner_id=?",
+      )
+      .bind(id, access.owner_id)
+      .first<{
+        intent_json: string;
+        intent_hash: string;
+        state: string;
+        version: number;
+        deadline_ms: number;
+        association_json: string | null;
+      }>());
   if (!row) throw new ApiError(404, "attempt_unavailable");
   if (!operations.supported)
     return { state: "contracts_unavailable", paymentAvailable: false };

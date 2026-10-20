@@ -2,6 +2,8 @@ import type { Miniflare } from "miniflare";
 export function createBookingMechanism(options?: {
   batch?: boolean;
   missingCreationDeadline?: boolean;
+  creationPriceDrift?: boolean;
+  onLog?: (message: string) => void;
   displayWarming?: boolean;
   respond?: (call: {
     url: string;

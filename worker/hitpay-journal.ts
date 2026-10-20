@@ -45,15 +45,18 @@ export async function selectPaymentRoute(env: Env, id: string) {
       ? "hitpay"
       : "native";
   if (selected === "hitpay") assertHitpayCreation(env);
-  await env.STATE.prepare(
-    "INSERT INTO checkout_payment_routes VALUES(?,?) ON CONFLICT(attempt_id) DO NOTHING",
-  )
-    .bind(id, selected)
-    .run();
-  const row = await env.STATE.withSession("first-primary")
-    .prepare("SELECT route FROM checkout_payment_routes WHERE attempt_id=?")
-    .bind(id)
-    .first<{ route: string }>();
+  const db = env.STATE.withSession("first-primary");
+  const results = await db.batch([
+    db
+      .prepare(
+        "INSERT INTO checkout_payment_routes VALUES(?,?) ON CONFLICT(attempt_id) DO NOTHING",
+      )
+      .bind(id, selected),
+    db
+      .prepare("SELECT route FROM checkout_payment_routes WHERE attempt_id=?")
+      .bind(id),
+  ]);
+  const row = results[1].results[0] as { route: string } | undefined;
   if (row?.route !== selected) throw new ApiError(409, "payment_route_changed");
   return selected;
 }
