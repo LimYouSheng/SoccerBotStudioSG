@@ -251,9 +251,11 @@ export async function createBookingMechanism(options = {}) {
             invoice.payment_received = true;
             invoice.payment_processor = "manual";
             invoice.status = "paid";
-            booking.invoice_payment_received = "1";
-            booking.invoice_payment_processor = "manual";
-            booking.invoice_status = "paid";
+            for (const item of bookingDetails) {
+              item.invoice_payment_received = "1";
+              item.invoice_payment_processor = "manual";
+              item.invoice_status = "paid";
+            }
             return Response.json(invoice);
           }
           if (url.pathname === "/admin/invoices/901")

@@ -243,7 +243,7 @@ export async function bindAssociation(
     statements.push(
       db
         .prepare(
-          "INSERT INTO session_effects(attempt_id,step,outcome,reference_id) SELECT id,'finalize','observed',? FROM attempts WHERE id=? AND version=? AND state='dispatching' AND changes()=1",
+          "INSERT INTO session_effects(attempt_id,step,outcome,reference_id) SELECT id,'finalize','observed',? FROM attempts WHERE id=? AND version=? AND state='dispatching' AND changes()=1 ON CONFLICT(attempt_id,step) DO UPDATE SET outcome='observed',reference_id=excluded.reference_id WHERE session_effects.outcome='unknown'",
         )
         .bind(refs.invoiceId, id, fence + 1),
       db

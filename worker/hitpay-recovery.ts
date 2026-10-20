@@ -1,8 +1,5 @@
 import { confirmationStage, confirmationResult } from "./confirmation-tracing";
-import {
-  retainCustomerConfirmation,
-  checkoutCheckingDeadline,
-} from "./checkout-progress";
+import { retainCustomerConfirmation } from "./checkout-progress";
 import { ApiError, digest, policy } from "./policy";
 import {
   hitpayRecoveryEnabled,
@@ -60,11 +57,7 @@ export async function recoverHitpay(
       return base.reserve(metadata);
     },
   };
-  const checkingDeadline = await checkoutCheckingDeadline(
-    env,
-    id,
-    row.expires_ms + 300000,
-  );
+  let checkingDeadline = row.expires_ms + 300000;
   let result = "due",
     reason = "verification_pending";
   try {
@@ -72,7 +65,7 @@ export async function recoverHitpay(
     await assertPaymentScope(env, scope);
     const attempt = await env.STATE.withSession("first-primary")
       .prepare(
-        "SELECT a.intent_json,a.intent_hash,a.association_json,a.version,h.expires_ms AS hold_expires_ms FROM attempts a LEFT JOIN hitpay_holds h ON h.attempt_id=a.id WHERE a.id=?",
+        "SELECT a.intent_json,a.intent_hash,a.association_json,a.version,h.expires_ms AS hold_expires_ms,c.booking_created_ms,c.payment_window_ms FROM attempts a LEFT JOIN hitpay_holds h ON h.attempt_id=a.id LEFT JOIN checkout_progress c ON c.attempt_id=a.id WHERE a.id=?",
       )
       .bind(id)
       .first<{
@@ -81,7 +74,12 @@ export async function recoverHitpay(
         association_json: string;
         version: number;
         hold_expires_ms: number | null;
+        booking_created_ms: number | null;
+        payment_window_ms: number | null;
       }>();
+    if (attempt?.booking_created_ms != null)
+      checkingDeadline =
+        attempt.booking_created_ms + attempt.payment_window_ms! + 300000;
     if (
       !attempt ||
       attempt.intent_hash !== scope.intentHash ||
@@ -131,7 +129,6 @@ export async function recoverHitpay(
     const secret = hitpaySetting(env, "SIMPLYBOOK_DEV_SIGNING_SECRET");
     if (!secret) throw new ApiError(503, "native_signing_unavailable");
     const read = async () => {
-      await assertClaim();
       const controller = new AbortController();
       const timer = setTimeout(
         () => controller.abort(),
@@ -141,6 +138,7 @@ export async function recoverHitpay(
         return (
           await readNativeAttempt({
             parallelSingle: true,
+            parallelBatch: true,
             paymentProcessor: scope.externalProcessor,
             scope: {
               attemptId: id,
@@ -153,7 +151,9 @@ export async function recoverHitpay(
               storedNativeSignature(env.STATE, id, bookingId, secret),
             signal: controller.signal,
             exchange: async (operation, signal) => {
-              await assertClaim();
+              // Identity refresh and nativeRead both dispatch through control.reserve,
+              // which checks the durable claim immediately before every physical call.
+              // Keep the separate claim guards at accounting/publication boundaries.
               await provider.identity(env, control);
               return provider.nativeRead(env, control, operation, signal);
             },
