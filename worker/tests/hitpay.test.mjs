@@ -1778,3 +1778,44 @@ test("HitPay upstream HTTP diagnostics retain only status and representation wit
   assert.equal(creates, 1);
   assert.deepEqual(await row(), saved);
 });
+
+test("HitPay validation diagnostics retain only allowlisted fields without replaying creation", async () => {
+  let creates = 0;
+  handler = async () => {
+    creates++;
+    return Response.json(
+      {
+        message: "private-token",
+        errors: {
+          expires_after: ["private-token"],
+          email: ["synthetic@example.test"],
+          "payment_methods.0": ["private-token"],
+          "private-token": ["private-token"],
+        },
+      },
+      { status: 422 },
+    );
+  };
+  await mf.dispatchFetch(origin + "/test/create");
+  const diagnostic = logs
+    .map((line) => {
+      try {
+        return JSON.parse(line);
+      } catch {
+        return null;
+      }
+    })
+    .find((line) => line?.event === "hitpay_transport_failure");
+  assert.deepEqual(diagnostic.validationFields, [
+    "payment_methods",
+    "expires_after",
+    "email",
+  ]);
+  assert.equal(diagnostic.status, 422);
+  assert.equal(JSON.stringify(logs).includes("private-token"), false);
+  assert.equal(JSON.stringify(logs).includes("synthetic@example.test"), false);
+  assert.equal((await row()).reason, "hitpay_http_422_json");
+  assert.equal((await row()).request_id, null);
+  await mf.dispatchFetch(origin + "/test/create");
+  assert.equal(creates, 1);
+});

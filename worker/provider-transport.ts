@@ -673,6 +673,55 @@ export async function providerRequest(
   });
 }
 
+// Retain only known validation field names, never upstream values or messages.
+async function hitpayValidationFields(response: Response): Promise<string[]> {
+  const reader = response.body?.getReader();
+  if (!reader) return [];
+  try {
+    const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
+    let text = "",
+      size = 0;
+    for (;;) {
+      const part = await reader.read();
+      if (part.done) break;
+      size += part.value.byteLength;
+      if (size > 16384) return [];
+      text += decoder.decode(part.value, { stream: true });
+    }
+    const value: unknown = JSON.parse(text + decoder.decode());
+    const parsed = z
+      .object({ errors: z.record(z.string(), z.unknown()) })
+      .safeParse(value);
+    if (!parsed.success) return [];
+    return [
+      "amount",
+      "currency",
+      "reference_number",
+      "allow_repeated_payments",
+      "send_email",
+      "send_sms",
+      "add_admin_fee",
+      "payment_methods",
+      "expires_after",
+      "expiry_date",
+      "redirect_url",
+      "name",
+      "email",
+      "purpose",
+    ].filter((field) =>
+      Object.keys(parsed.data.errors).some(
+        (key) =>
+          key === field ||
+          (field === "payment_methods" && /^payment_methods\.\d+$/.test(key)),
+      ),
+    );
+  } catch {
+    return [];
+  } finally {
+    await reader.cancel().catch(() => {});
+  }
+}
+
 // HitPay credentials are confined to one sandbox host; redirects never carry them.
 // The caller must durably reserve creation or a recovery claim before dispatch.
 export async function hitpayRequest(
@@ -729,8 +778,17 @@ export async function hitpayRequest(
           : type
             ? "other"
             : "missing";
-      traceHitpayFailure(operation.kind, response.status, representation);
-      await response.body?.cancel();
+      const validationFields =
+        response.status === 422 && representation === "json"
+          ? await hitpayValidationFields(response)
+          : [];
+      traceHitpayFailure(
+        operation.kind,
+        response.status,
+        representation,
+        validationFields,
+      );
+      if (!response.body?.locked) await response.body?.cancel();
       throw new ApiError(
         503,
         `hitpay_http_${response.status}_${representation}`,

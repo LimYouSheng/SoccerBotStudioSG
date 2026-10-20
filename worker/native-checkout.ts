@@ -593,7 +593,12 @@ export async function executeNativeCheckout(options: {
       const timing = {
         invoiceId: refs.invoiceId,
         dueDatetime,
-        supervisionDeadlineMs: grant.expires_ms,
+        // Dispatch authorization is checked independently by assertGranted.
+        // Its remaining lifetime must not become a new booking/payment TTL.
+        supervisionDeadlineMs:
+          ongoing && paymentRoute === "hitpay"
+            ? Date.now() + 900000
+            : grant.expires_ms,
         handoffAtMs: Date.now(),
       };
       const hold =

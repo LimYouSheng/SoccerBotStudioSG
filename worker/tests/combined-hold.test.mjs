@@ -51,6 +51,10 @@ test("combined hold performs one preflight and preserves immutable identity acro
   const m = await createBookingMechanism();
   try {
     const c = await customer(m);
+    await m.db
+      .prepare("UPDATE guest_access SET expires_ms=?")
+      .bind(Date.now() + 300000)
+      .run();
     c.input.contact.contactMethod = "sms";
     const responses = await Promise.all([c.send(), c.send()]);
     for (const response of responses)
@@ -1041,6 +1045,11 @@ test("combined batch checkout retains one payment effect and exact booking assoc
   const m = await createBookingMechanism({ batch: true });
   try {
     const c = await customer(m);
+    const accessDeadline = Date.now() + 300000;
+    await m.db
+      .prepare("UPDATE guest_access SET expires_ms=?")
+      .bind(accessDeadline)
+      .run();
     c.input.sessions.push({
       ...c.input.sessions[0],
       startMs: m.startMs + 3000000,
@@ -1082,6 +1091,23 @@ test("combined batch checkout retains one payment effect and exact booking assoc
       .first();
     assert.ok(
       timing.expires_ms <= timing.booking_created_ms + timing.hold_window_ms,
+    );
+    const payment = await m.db
+      .prepare(
+        "SELECT p.expires_ms,c.booking_created_ms FROM hitpay_payments p JOIN checkout_progress c ON c.attempt_id=p.attempt_id",
+      )
+      .first();
+    assert.equal(payment.expires_ms, payment.booking_created_ms + 480000);
+    assert.ok(payment.expires_ms > accessDeadline);
+    assert.equal(
+      (await m.db.prepare("SELECT expires_ms FROM guest_access").first())
+        .expires_ms,
+      accessDeadline,
+    );
+    assert.equal(
+      m.calls.find((c) => c.url.includes("hit-pay.com") && c.method === "POST")
+        .body.expires_after,
+      "7 mins",
     );
     await send();
     assert.equal(m.calls.filter((c) => c.body?.method === "book").length, 2);

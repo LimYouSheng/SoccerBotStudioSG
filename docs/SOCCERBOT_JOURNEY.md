@@ -1,5 +1,13 @@
 # SoccerBotStudio — Journey
 
+## Independent payment deadlines — 20 October 2026 SGT
+
+HAR09 records a29.1second four-session checkout ending in recovery_required. The saved batch-close evidence confirms four bookings and an unpaid invoice; correlated deployed c08aa04 telemetry proves HitPay creation returned422 JSON. No request ID or checkout URL was saved. Compared with the successful d0c0be8 batch, the HitPay payload builder is unchanged; persisted timing reconstructs expires_after as4mins versus7mins. The new grant inherited the older access-session expiry, which incorrectly capped the financial hold and payment deadline. This establishes the shortened deadline, not the particular field rejected by HitPay.
+
+Ongoing direct-HitPay hold timing no longer uses dispatch-grant expiry as a financial deadline. Authentication and grant checks still guard every write; the provider due time and immutable fifteen-minute hold/eight-minute payment windows anchored to this attempt's booking creation still bound payment. Existing attempts, access expiry, finite experiments and native checkout remain unchanged; no retry renews a payment deadline. The existing conservative whole-minute HitPay duration calculation remains bounded by that deadline, so preparation time and rounding still consume part of the eight-minute window.
+
+Regression coverage ages access to five minutes before single hold and batch checkout, verifies an eight-minute payment deadline, unchanged access expiry and one payment effect. HitPay422 diagnostics consume at most16KiB and retain only allowlisted validation field names; customer values, error messages and unknown keys are discarded. Lost/malformed creation outcomes still retain the original attempt without replay. Test-impact review covers native deadline tests, combined holds, HitPay failure tests, shared fixture payloads and the strict runtime inventory. Final-source local checks and CI remain pending; no new provider booking/payment or historical financial mutation was performed.
+
 ## Interrupted provider transport recovery — 20 October 2026 SGT
 
 Owner requires errors to be logged and isolated while unrelated customers continue. A06:07:38SGT Cloudflare storage reset during read-only warmDisplay left one unclassified admission unfinished; parallel reads then exhausted the remaining slot. Bounded telemetry matched the53ms interval between admission and reset. The exact historical read was released with retained admission_releases evidence; catalogue returned200. No booking/payment operation was executed.
