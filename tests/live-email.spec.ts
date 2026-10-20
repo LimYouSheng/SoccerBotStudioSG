@@ -1483,6 +1483,10 @@ async function uncertainHolding(
         { name: "simplybook-developer-account" },
       );
       await storage.exec("UPDATE refreshes SET expires_ms=0");
+      // Restart now preserves valid tokens; model expiry to exercise auth failure.
+      await storage.exec(
+        "UPDATE provider_token_cache SET expires_ms=0 WHERE family='public'",
+      );
       await mechanism.mf.unsafeEvictDurableObject(
         "booking-mechanism",
         "SoccerBotAccountCoordinator",
@@ -2540,6 +2544,10 @@ test("real API failed identity warming stays on Review without booking or paymen
       { name: "simplybook-developer-account" },
     );
     await storage.exec("UPDATE refreshes SET expires_ms=0");
+    // Restart now preserves valid tokens; model expiry to exercise auth failure.
+    await storage.exec(
+      "UPDATE provider_token_cache SET expires_ms=0 WHERE family='public'",
+    );
     await mechanism.mf.unsafeEvictDurableObject(
       "booking-mechanism",
       "SoccerBotAccountCoordinator",

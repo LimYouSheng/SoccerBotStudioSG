@@ -1,3 +1,9 @@
+import {
+  ProviderTokenCache,
+  tokenCacheEvent,
+  providerTokenLifetime,
+  type CachedProviderToken,
+} from "./provider-token-cache";
 import { confirmationCache } from "./confirmation-tracing";
 import { checkoutTokenCache } from "./checkout-tracing";
 import { parallelReads } from "./parallel-reads";
@@ -50,8 +56,54 @@ const locallyBlocked = (error: unknown) =>
   ["cooldown", "provider_refresh_busy", "concurrency", "rate"].includes(
     error.code,
   );
-// Instance-owned by the account DO. Tokens never cross RPC or enter SQL/logs.
+// Account-owned tokens never cross RPC or enter logs; durable copies are encrypted.
 export class ProviderSession {
+  private readonly durableTokens?: ProviderTokenCache;
+  private readonly restoredFamilies = new Set<ProviderFamily>();
+  private readonly restoration = new Map<ProviderFamily, Promise<void>>();
+  private readonly tokenEpoch = new Map<ProviderFamily, number>();
+  private boundCredentials: string | undefined;
+  constructor(sql?: SqlStorage) {
+    if (sql) this.durableTokens = new ProviderTokenCache(sql);
+  }
+  private invalidateToken(
+    family: ProviderFamily,
+    reason = "authentication_rejected",
+  ) {
+    this.tokenEpoch.set(family, (this.tokenEpoch.get(family) ?? 0) + 1);
+    this.tokens.delete(family);
+    this.durableTokens?.remove(family);
+    this.cachedIdentity = undefined;
+    tokenCacheEvent(family, reason);
+  }
+  private async restoreToken(env: Env, family: ProviderFamily) {
+    if (
+      this.tokens.has(family) ||
+      this.restoredFamilies.has(family) ||
+      !this.durableTokens
+    )
+      return;
+    const existing = this.restoration.get(family);
+    if (existing) return existing;
+    const epoch = this.tokenEpoch.get(family) ?? 0;
+    const restore = async () => {
+      const token = await this.durableTokens!.load(env, family);
+      this.restoredFamilies.add(family);
+      if (
+        token &&
+        token.until > Date.now() &&
+        epoch === (this.tokenEpoch.get(family) ?? 0)
+      )
+        this.tokens.set(family, token);
+    };
+    const pending = restore();
+    this.restoration.set(family, pending);
+    try {
+      await pending;
+    } finally {
+      this.restoration.delete(family);
+    }
+  }
   private catalogueReads = new CatalogueReads();
   private boundScope: string | undefined;
   invalidateCatalogue(env: Env) {
@@ -73,6 +125,20 @@ export class ProviderSession {
     if (this.boundScope !== undefined && key !== this.boundScope)
       throw new ApiError(503, "provider_scope_changed");
     this.boundScope = key;
+    const credentials = JSON.stringify([
+      secrets.login,
+      secrets.publicKey,
+      secrets.adminKey,
+    ]);
+    if (
+      this.boundCredentials !== undefined &&
+      this.boundCredentials !== credentials
+    ) {
+      this.invalidateToken("public", "credentials_changed");
+      this.invalidateToken("admin", "credentials_changed");
+      throw new ApiError(503, "provider_credentials_changed");
+    }
+    this.boundCredentials = credentials;
     return secrets;
   }
   async catalogue(
@@ -163,7 +229,7 @@ export class ProviderSession {
       persistenceVerified: false,
     };
   }
-  private tokens = new Map<ProviderFamily, { value: string; until: number }>();
+  private tokens = new Map<ProviderFamily, CachedProviderToken>();
   private authentication = new Map<ProviderFamily, Promise<string>>();
   private identityRead: Promise<Record<string, unknown>> | undefined;
   private comparisonRead: Promise<Record<string, unknown>> | undefined;
@@ -184,15 +250,31 @@ export class ProviderSession {
         throw new ApiError(503, "client_account_forbidden");
       const token = await this.token("admin", env, control);
       const identity = object(
-        await providerRequest("identity", secrets, token, control),
+        await providerRequest("identity", secrets, token, control).catch(
+          (error: unknown) => this.rejectAuthentication(error, "admin", token),
+        ),
       );
       if (identity.login !== secrets.company)
         throw new ApiError(503, "provider_identity_unverified");
       const booking = object(
-        await providerRequest("historical-booking", secrets, token, control),
+        await providerRequest(
+          "historical-booking",
+          secrets,
+          token,
+          control,
+        ).catch((error: unknown) =>
+          this.rejectAuthentication(error, "admin", token),
+        ),
       );
       const invoice = object(
-        await providerRequest("historical-invoice", secrets, token, control),
+        await providerRequest(
+          "historical-invoice",
+          secrets,
+          token,
+          control,
+        ).catch((error: unknown) =>
+          this.rejectAuthentication(error, "admin", token),
+        ),
       );
       if (String(booking.id) !== "23" || String(invoice.id) !== "23")
         throw new ApiError(503, "provider_reference_unverified");
@@ -204,7 +286,7 @@ export class ProviderSession {
       return await pending;
     } catch (error) {
       if (!locallyBlocked(error)) {
-        this.tokens.clear();
+        this.cachedIdentity = undefined;
         control.pause();
       }
       throw error;
@@ -268,7 +350,9 @@ export class ProviderSession {
       control,
       request,
       signal,
-    ).catch((error: unknown) => this.rejectAuthentication(error));
+    ).catch((error: unknown) =>
+      this.rejectAuthentication(error, family, token.value),
+    );
     return { body, receivedAtMs: Date.now() };
   }
 
@@ -285,6 +369,7 @@ export class ProviderSession {
       secrets.company.toLowerCase() === "soccerbotstudio"
     )
       throw new ApiError(503, "provider_access_disabled");
+    await this.restoreToken(env, "public");
     const finishToken = checkoutTokenCache(
       (this.tokens.get("public")?.until ?? 0) > Date.now(),
     );
@@ -385,14 +470,24 @@ export class ProviderSession {
           }
         : control,
       request,
-    ).catch((error: unknown) => this.rejectAuthentication(error));
+    ).catch((error: unknown) =>
+      this.rejectAuthentication(error, family, token.value),
+    );
     return { body, receivedAtMs: Date.now() };
   }
 
-  private rejectAuthentication(error: unknown): never {
+  private rejectAuthentication(
+    error: unknown,
+    family: ProviderFamily,
+    rejectedToken?: string,
+  ): never {
     if (error instanceof ApiError && error.code === "provider_auth_failed") {
-      this.tokens.clear();
-      this.cachedIdentity = undefined;
+      if (
+        rejectedToken !== undefined &&
+        this.tokens.get(family)?.value !== rejectedToken
+      ) {
+        tokenCacheEvent(family, "stale_rejection");
+      } else this.invalidateToken(family);
     }
     throw error;
   }
@@ -402,6 +497,7 @@ export class ProviderSession {
     env: Env,
     control: ProviderControl,
   ) {
+    await this.restoreToken(env, family);
     const current = this.tokens.get(family);
     if (current && current.until > Date.now()) {
       confirmationCache(family, "hit");
@@ -413,6 +509,8 @@ export class ProviderSession {
       return measure("coordinator_wait", () => shared);
     }
     confirmationCache(family, "miss");
+    if (current) tokenCacheEvent(family, "expired");
+    const epoch = this.tokenEpoch.get(family) ?? 0;
     const authenticate = async () => {
       const claim = control.claim(family);
       const result = await providerRequest(
@@ -420,7 +518,7 @@ export class ProviderSession {
         providerSecrets(env),
         undefined,
         control,
-      );
+      ).catch((error: unknown) => this.rejectAuthentication(error, family));
       if (family === "admin") {
         const challenge = object(result).require2fa;
         if (challenge !== undefined && challenge !== false)
@@ -439,10 +537,20 @@ export class ProviderSession {
       // Public tokens have a documented one-hour lifetime; retain for 50
       // minutes. Admin lifetime can be account-configured, so keep its
       // conservative minute until an explicit expiry contract is verified.
-      this.tokens.set(family, {
+      const issued = Date.now();
+      const token = {
         value,
-        until: Date.now() + (family === "public" ? 50 * 60000 : 60000),
-      });
+        issued,
+        until: issued + providerTokenLifetime(family),
+      };
+      if (epoch !== (this.tokenEpoch.get(family) ?? 0))
+        throw new ApiError(503, "provider_auth_stale");
+      await this.durableTokens?.save(env, family, token);
+      if (epoch !== (this.tokenEpoch.get(family) ?? 0)) {
+        this.durableTokens?.remove(family);
+        throw new ApiError(503, "provider_auth_stale");
+      }
+      this.tokens.set(family, token);
       return value;
     };
     const pending = authenticate();
@@ -490,14 +598,18 @@ export class ProviderSession {
       const admin = tokens[1];
       const authMs = performance.now() - start;
       const info = object(
-        await providerRequest("identity", secrets, admin, control),
+        await providerRequest("identity", secrets, admin, control).catch(
+          (error: unknown) => this.rejectAuthentication(error, "admin", admin),
+        ),
       );
       // Unrecognised fields are a blocked representation, never an account match.
       if (info.login !== secrets.company)
         throw new ApiError(503, "provider_identity_unverified");
       const identityMs = performance.now() - start - authMs;
       const tariff = object(
-        await providerRequest("tariff", secrets, admin, control),
+        await providerRequest("tariff", secrets, admin, control).catch(
+          (error: unknown) => this.rejectAuthentication(error, "admin", admin),
+        ),
       );
       const limits = Array.isArray(tariff.limits) ? tariff.limits : [];
       const allowance = limits
@@ -543,7 +655,7 @@ export class ProviderSession {
       return await pending;
     } catch (error) {
       if (!locallyBlocked(error)) {
-        this.tokens.clear();
+        this.cachedIdentity = undefined;
         control.pause();
       }
       throw error;

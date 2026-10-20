@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import ts from "typescript";
 const bundle = await build({
   stdin: {
-    contents: `export * from './worker/display-snapshots'; export * from './worker/parallel-reads'; export * from './worker/customer-catalogue'; export * from './worker/public-calendar'; export * from './worker/native-calendar'; export * from './worker/catalogue'; export * from './worker/prebooking'; export * from './worker/provider-session'; export * from './worker/provider-transport';`,
+    contents: `export * from './worker/provider-token-cache'; export * from './worker/display-snapshots'; export * from './worker/parallel-reads'; export * from './worker/customer-catalogue'; export * from './worker/public-calendar'; export * from './worker/native-calendar'; export * from './worker/catalogue'; export * from './worker/prebooking'; export * from './worker/provider-session'; export * from './worker/provider-transport';`,
     resolveDir: process.cwd(),
   },
   bundle: true,
@@ -15,6 +15,7 @@ const bundle = await build({
   format: "esm",
 });
 const {
+  ProviderTokenCache,
   DisplaySnapshots,
   parallelReads,
   customerCatalogue,
@@ -1956,4 +1957,142 @@ test("failed pre-dispatch evidence persistence releases the transport reservatio
     0,
     "write_transport_ended",
   ]);
+});
+
+test("durable provider tokens retain original expiry and reject changed credentials tampering and cross-account reuse", async (t) => {
+  let now = Date.now();
+  t.mock.method(Date, "now", () => now);
+  const db = new DatabaseSync(":memory:");
+  const sql = {
+    exec(query, ...args) {
+      const statement = db.prepare(query);
+      const rows = statement.all(...args);
+      return { toArray: () => rows };
+    },
+  };
+  const config = ts.parseConfigFileTextToJson(
+    "wrangler.jsonc",
+    readFileSync("wrangler.jsonc", "utf8"),
+  ).config;
+  const env = {
+    ...config.vars,
+    SIMPLYBOOK_DEV_COMPANY_LOGIN: "synthetic-company",
+    SIMPLYBOOK_DEV_ADMIN_LOGIN: "synthetic-admin",
+    SIMPLYBOOK_DEV_API_KEY: "synthetic-public-key",
+    SIMPLYBOOK_DEV_ADMIN_API_USER_KEY: "synthetic-admin-key",
+  };
+  const token = {
+    value: "synthetic-secret-token-value",
+    issued: now,
+    until: now + 50 * 60000,
+  };
+  try {
+    const first = new ProviderTokenCache(sql);
+    await first.save(env, "public", token);
+    const stored = db.prepare("SELECT * FROM provider_token_cache").all();
+    assert.doesNotMatch(
+      JSON.stringify(stored),
+      /synthetic-secret-token-value|synthetic-public-key/,
+    );
+    now += 6 * 60000;
+    const restored = new ProviderTokenCache(sql);
+    assert.deepEqual(await restored.load(env, "public"), token);
+    assert.deepEqual(
+      db.prepare("SELECT * FROM provider_token_cache").all(),
+      stored,
+      "hits do not slide expiry or rewrite storage",
+    );
+    for (const change of [
+      { SIMPLYBOOK_DEV_API_KEY: "rotated-public-key" },
+      { SIMPLYBOOK_DEV_COMPANY_LOGIN: "another-company" },
+      { DEPLOYMENT_ACCOUNT_ID: "another-account" },
+      { ENVIRONMENT: "another-environment" },
+    ]) {
+      await restored.save(env, "public", token);
+      assert.equal(
+        await restored.load({ ...env, ...change }, "public"),
+        undefined,
+      );
+    }
+    await restored.save(env, "public", token);
+    db.prepare("UPDATE provider_token_cache SET ciphertext='00'").run();
+    assert.equal(await restored.load(env, "public"), undefined);
+    await restored.save(env, "public", token);
+    now = token.until;
+    assert.equal(await restored.load(env, "public"), undefined);
+    const admin = {
+      value: "synthetic-secret-admin-token",
+      issued: now,
+      until: now + 60000,
+    };
+    await restored.save(env, "admin", admin);
+    now += 60000;
+    assert.equal(await restored.load(env, "admin"), undefined);
+  } finally {
+    db.close();
+  }
+});
+
+test("late authentication rejection cannot evict a newer token", async (t) => {
+  let now = Date.now(),
+    publicAuth = 0;
+  t.mock.method(Date, "now", () => now);
+  const config = ts.parseConfigFileTextToJson(
+    "wrangler.jsonc",
+    readFileSync("wrangler.jsonc", "utf8"),
+  ).config;
+  const env = {
+    ...config.vars,
+    PROVIDER_ACCESS: "trusted-reads",
+    CAMPAIGN_END_MS: String(now + 7200000),
+    SIMPLYBOOK_DEV_COMPANY_LOGIN: "synthetic-company",
+    SIMPLYBOOK_DEV_ADMIN_LOGIN: "synthetic-admin",
+    SIMPLYBOOK_DEV_API_KEY: "synthetic-public-key",
+    SIMPLYBOOK_DEV_ADMIN_API_USER_KEY: "synthetic-admin-key",
+  };
+  const entered = Promise.withResolvers(),
+    release = Promise.withResolvers();
+  const control = {
+    reserve: async () => "synthetic",
+    finish() {},
+    claim: () => ({ generation: 1, claim: "synthetic" }),
+    complete: () => true,
+    pause() {},
+  };
+  t.mock.method(globalThis, "fetch", async (url, options) => {
+    const path = new URL(url).pathname;
+    const body = options.body ? JSON.parse(options.body) : null;
+    if (path === "/login")
+      return Response.json({
+        id: body.id,
+        result: `synthetic-public-token-${++publicAuth}`,
+      });
+    if (path === "/admin/auth")
+      return Response.json({ token: "synthetic-admin-token" });
+    if (path === "/admin/company/info")
+      return Response.json({ login: "synthetic-company" });
+    if (path === "/admin/tariff/current") return Response.json({ limits: [] });
+    assert.equal(body.method, "getEventList");
+    entered.resolve();
+    await release.promise;
+    return new Response(null, { status: 401 });
+  });
+  const session = new ProviderSession();
+  await session.identity(env, control);
+  const oldRead = assert.rejects(
+    session.nativeRead(env, control, { kind: "catalogue-services" }),
+    /provider_auth_failed/,
+  );
+  await entered.promise;
+  now += 50 * 60000 + 1;
+  await session.identity(env, control);
+  assert.equal(publicAuth, 2);
+  release.resolve();
+  await oldRead;
+  await session.identity(env, control);
+  assert.equal(
+    publicAuth,
+    2,
+    "old rejection cannot clear the newly verified token",
+  );
 });

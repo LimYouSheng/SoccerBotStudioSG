@@ -1,11 +1,5 @@
 # SoccerBotStudio — Rules & Architecture
 
-## Reconciliation optimization candidate — not deployed
-
-The isolated experiment batches immutable evidence and guarded publication, while preserving current booking/invoice verification and one accounting effect. Read-only calls may share the existing bounded claim lease; stale generations cannot authorize accounting or success. Unknown-write recovery and failure paths must not be constrained to the successful five-round-trip budget. See Service Contracts for the candidate boundaries and PROGRESS for validation status. Existing deployment rules remain in force until integration and exact-head CI.
-
-Five-round-trip single-checkout integration is a not-yet-deployed candidate described in [Service Contracts](SERVICE_CONTRACTS.md#five-call-single-checkout-integration-candidate--not-deployed). Fresh requests combine durable transactions; restored and failed attempts retain additional recovery work. No provider effect may precede its durable claim, and no redirect may precede the saved checkout URL.
-
 ## Current implementation rules — 20 October 2026
 
 This section is the authoritative current design. Service Contracts owns operation semantics; Journey owns dated evidence. Historical entries below describe their original revisions and do not override this section.
@@ -17,7 +11,8 @@ This section is the authoritative current design. Service Contracts owns operati
 - Payment evidence alone does not confirm a booking. Show payment-received feedback, then publish definitive confirmation only after current confirmed-booking and paid-invoice readback is recorded. Preserve the first valid confirmation timestamp on revisits; downloads require fresh authorization. Legacy early-payment snapshots cannot bypass this gate.
 - Original booking creation anchors the eight-minute payment window and fifteen-minute hold. Recovery grace remains five minutes. Expired/deleted HitPay requests do not establish impossibility of late settlement; dispatched uncertain payments stay protected. No fresh payment window for an old attempt.
 - The coordinator remains serialized. Cached display reads can bypass the queue; uncached work uses bounded admission and recovery priority as specified in Service Contracts. Increasing concurrency is separate work.
-- The successful fresh-evidence direct single checkout targets ten foreground D1 executions, including the outer binding read. Conditional transactions preserve durable reservations before provider writes and raw/reference evidence before strict validation; stale-evidence, failure, retry and batch paths retain their required checks and may exceed that budget.
+- Fresh single checkout and successful reconciliation each use five D1 round trips after merged PR76/77. The current batch candidate uses2×sessions+7 total checkout trips. Conditional transactions preserve individual durable reservations before provider writes and raw/reference evidence before strict validation. Failure, restored and unknown-write recovery paths retain additional required work. Counts are separate from provider calls and coordinator SQLite operations.
+- The token-cache candidate preserves encrypted account/credential-scoped tokens across coordinator restarts without extending public50minute/admin60second retention. Authentication rejection invalidates its own family; valid unrelated tokens survive read errors. Identity proof and all booking/payment permissions remain independently verified. Service Contracts owns exact storage and rejection semantics; candidate CI/live verification remains required.
 - Confirmation/recovery diagnostics are observational: preserve polling quotas, token lifetimes, payment ordering and proof gates. Correlate sanitized background stages with protected-response timing; never treat diagnostic timestamps as booking/payment authority.
 - Source tests, exact-commit CI, deployment and physical provider acceptance are distinct. Owner/CI operate browsers; no assistant bookings, payments, cancellations or notification sends.
 

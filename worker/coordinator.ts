@@ -67,7 +67,7 @@ import { ProviderSession, type ProviderControl } from "./provider-session";
 // One instance per actual provider account. No booking or customer data here.
 export class SoccerBotAccountCoordinator extends DurableObject<Env> {
   private readonly instanceId = crypto.randomUUID();
-  private provider = new ProviderSession();
+  private provider: ProviderSession;
   private calendarReads = new NativeCalendarReads();
   private providerQueue = new ProviderQueue();
   private admissionTurn: Promise<void> = Promise.resolve();
@@ -89,6 +89,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
   }
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
+    this.provider = new ProviderSession(this.sql);
     ctx.storage.sql.exec(
       "CREATE TABLE IF NOT EXISTS budget (campaign TEXT PRIMARY KEY, used INTEGER NOT NULL, cooldown_ms INTEGER NOT NULL DEFAULT 0)",
     );

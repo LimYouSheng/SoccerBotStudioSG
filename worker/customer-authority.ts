@@ -139,12 +139,7 @@ export async function authorizeCustomerCheckout(
     JSON.stringify(dates),
     JSON.stringify(available),
   );
-  if (
-    deferFresh &&
-    retainGrant &&
-    verifiedAccess?.fresh_checkout === 1 &&
-    input.sessions.length === 1
-  ) {
+  if (deferFresh && retainGrant && verifiedAccess?.fresh_checkout === 1) {
     return {
       capability_hash: access.capability_hash,
       attempt_id: null,

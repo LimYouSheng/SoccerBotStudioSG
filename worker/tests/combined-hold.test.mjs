@@ -2051,12 +2051,14 @@ test("checkout failure timing survives token booking and payment failures withou
   }
 });
 
-test("direct batch checkout uses creation responses for two and four sessions with one payment and bounded D1 work", async () => {
+test("direct batch checkout uses creation responses for two four and eight sessions with one payment and minimal D1 work", async () => {
   for (const [count, warm] of [
     [2, false],
     [2, true],
     [4, false],
     [4, true],
+    [8, false],
+    [8, true],
   ]) {
     const logs = [];
     let before = 0;
@@ -2076,6 +2078,11 @@ test("direct batch checkout uses creation responses for two and four sessions wi
         assert.equal(
           (await m.mf.dispatchFetch(m.origin + "/api/catalogue")).status,
           200,
+        );
+        await m.mf.unsafeEvictDurableObject(
+          "booking-mechanism",
+          "SoccerBotAccountCoordinator",
+          { name: "simplybook-developer-account" },
         );
         logs.length = 0;
       }
@@ -2137,7 +2144,7 @@ test("direct batch checkout uses creation responses for two and four sessions wi
         `batch ${count}: D1=${trace.spans.d1.count}; provider=${trace.spans.provider?.count}`,
       );
       assert.ok(
-        trace.spans.d1.count === 16 + (count - 2) * 3,
+        trace.spans.d1.count === 10 + (count - 2) * 2,
         `D1: ${trace.spans.d1.count}`,
       );
       const methods = creationCalls
@@ -2741,55 +2748,63 @@ test("single and batch recovery retain verified evidence with bounded read overl
   }
 });
 
-test("five-call single checkout rejects failed foundation and conditional preparation without provider writes", async () => {
-  for (const fault of ["foundation", "grant", "binding", "effect"]) {
-    const m = await createBookingMechanism();
-    try {
-      const c = await customer(m);
-      if (fault === "foundation")
-        await m.db.exec(
-          "DROP TRIGGER immutable_foundation_identity_update; UPDATE foundation_identity SET account_id='wrong-account'",
+test("deferred single and batch checkout reject failed foundation and conditional preparation without provider writes", async () => {
+  for (const count of [1, 2])
+    for (const fault of ["foundation", "grant", "binding", "effect"]) {
+      const m = await createBookingMechanism({
+        batch: count > 1,
+        batchSize: count,
+      });
+      try {
+        const c = await customer(m);
+        c.input.sessions = Array.from({ length: count }, (_, i) => ({
+          ...c.input.sessions[0],
+          startMs: m.startMs + i * 3000000,
+        }));
+        if (fault === "foundation")
+          await m.db.exec(
+            "DROP TRIGGER immutable_foundation_identity_update; UPDATE foundation_identity SET account_id='wrong-account'",
+          );
+        if (fault === "grant")
+          await m.db.exec(
+            "CREATE TRIGGER ignore_grant BEFORE INSERT ON native_checkout_grants BEGIN SELECT RAISE(IGNORE); END",
+          );
+        if (fault === "binding")
+          await m.db.exec(
+            "CREATE TRIGGER ignore_binding BEFORE UPDATE OF attempt_id ON native_checkout_grants BEGIN SELECT RAISE(IGNORE); END",
+          );
+        if (fault === "effect")
+          await m.db.exec(
+            "CREATE TRIGGER ignore_effect BEFORE INSERT ON session_effects WHEN NEW.step='session:0' BEGIN SELECT RAISE(IGNORE); END",
+          );
+        const response = await m.mf.dispatchFetch(
+          m.origin + `/api/booking/checkout/${c.input.key}`,
+          {
+            method: "POST",
+            headers: c.headers,
+            body: JSON.stringify({ ...c.input, accepted: true }),
+          },
         );
-      if (fault === "grant")
-        await m.db.exec(
-          "CREATE TRIGGER ignore_grant BEFORE INSERT ON native_checkout_grants BEGIN SELECT RAISE(IGNORE); END",
+        const result = await response.json();
+        assert.notEqual(result.paymentAvailable, true, fault);
+        assert.equal(result.checkout, undefined, fault);
+        assert.equal(
+          m.calls.filter((c) => c.body?.method === "book").length,
+          0,
+          fault,
         );
-      if (fault === "binding")
-        await m.db.exec(
-          "CREATE TRIGGER ignore_binding BEFORE UPDATE OF attempt_id ON native_checkout_grants BEGIN SELECT RAISE(IGNORE); END",
+        assert.equal(
+          m.calls.filter(
+            (c) => c.url.includes("hit-pay.com") && c.method === "POST",
+          ).length,
+          0,
+          fault,
         );
-      if (fault === "effect")
-        await m.db.exec(
-          "CREATE TRIGGER ignore_effect BEFORE INSERT ON session_effects WHEN NEW.step='session:0' BEGIN SELECT RAISE(IGNORE); END",
-        );
-      const response = await m.mf.dispatchFetch(
-        m.origin + `/api/booking/checkout/${c.input.key}`,
-        {
-          method: "POST",
-          headers: c.headers,
-          body: JSON.stringify({ ...c.input, accepted: true }),
-        },
-      );
-      const result = await response.json();
-      assert.notEqual(result.paymentAvailable, true, fault);
-      assert.equal(result.checkout, undefined, fault);
-      assert.equal(
-        m.calls.filter((c) => c.body?.method === "book").length,
-        0,
-        fault,
-      );
-      assert.equal(
-        m.calls.filter(
-          (c) => c.url.includes("hit-pay.com") && c.method === "POST",
-        ).length,
-        0,
-        fault,
-      );
-      if (fault === "foundation") assert.equal(m.calls.length, 0);
-    } finally {
-      await m.close();
+        if (fault === "foundation") assert.equal(m.calls.length, 0);
+      } finally {
+        await m.close();
+      }
     }
-  }
 });
 
 test("five-call single checkout retains malformed response evidence and blocks payment after failed reservation predicates", async () => {

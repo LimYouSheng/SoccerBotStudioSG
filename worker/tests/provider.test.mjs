@@ -429,7 +429,8 @@ test("catalogue retries during provider cooldown preserve its original deadline 
       true,
       JSON.stringify(recovered.body),
     );
-    assert.equal(f.calls.length, 6);
+    assert.equal(f.calls.length, 5);
+    assert.equal(f.calls.filter((c) => c.url.endsWith("/login")).length, 1);
   } finally {
     await f.mf.dispose();
   }
@@ -4307,5 +4308,75 @@ test("held checkout crosses authenticated HTTP routes and durable coordination w
     assert.deepEqual(f.unexpected, []);
   } finally {
     await f.close();
+  }
+});
+
+test("provider tokens survive coordinator eviction and admin rejection preserves the public family", async () => {
+  let rejectAdmin = false;
+  const f = await fixture({
+    respond: (request) =>
+      rejectAdmin && request.url.endsWith("/admin/company/info")
+        ? new Response(null, { status: 401 })
+        : undefined,
+  });
+  const evict = () =>
+    f.mf.unsafeEvictDurableObject(
+      "provider-test",
+      "SoccerBotAccountCoordinator",
+      { name: "simplybook-developer-account" },
+    );
+  const advanceAdmission = () =>
+    f.sql("UPDATE admissions SET started_ms=started_ms-60000");
+  try {
+    assert.equal((await f.call(await f.grant())).body.result.verified, true);
+    const before = await f.sql(
+      "SELECT * FROM provider_token_cache ORDER BY family",
+    );
+    assert.equal(before.length, 2);
+    assert.doesNotMatch(
+      JSON.stringify(before),
+      /synthetic-public-token|synthetic-admin-token|synthetic-public-secret|synthetic-admin-secret/,
+    );
+    await advanceAdmission();
+    await evict();
+    assert.equal((await f.call(await f.grant())).body.result.verified, true);
+    assert.equal(f.calls.filter((c) => c.url.endsWith("/login")).length, 1);
+    assert.equal(
+      f.calls.filter((c) => c.url.endsWith("/admin/auth")).length,
+      1,
+    );
+    assert.deepEqual(
+      await f.sql("SELECT * FROM provider_token_cache ORDER BY family"),
+      before,
+    );
+    await advanceAdmission();
+    await evict();
+    rejectAdmin = true;
+    assert.equal(
+      (await f.call(await f.grant())).body.result.reason,
+      "provider_auth_failed",
+    );
+    assert.deepEqual(
+      (await f.sql("SELECT family FROM provider_token_cache")).map(
+        (r) => r.family,
+      ),
+      ["public"],
+    );
+    rejectAdmin = false;
+    await f.sql("UPDATE budget SET cooldown_ms=0");
+    await advanceAdmission();
+    await evict();
+    assert.equal((await f.call(await f.grant())).body.result.verified, true);
+    assert.equal(f.calls.filter((c) => c.url.endsWith("/login")).length, 1);
+    assert.equal(
+      f.calls.filter((c) => c.url.endsWith("/admin/auth")).length,
+      2,
+    );
+    assert.doesNotMatch(
+      f.logs.join("\n"),
+      /synthetic-public-token|synthetic-admin-token|synthetic-public-secret|synthetic-admin-secret/,
+    );
+  } finally {
+    await f.mf.dispose();
   }
 });
