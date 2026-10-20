@@ -570,6 +570,14 @@ export function BookingProvider({
             return true;
           }
         }
+        if (
+          error instanceof BookingServiceError &&
+          error.code === "checkout_not_started"
+        ) {
+          commit({ ...latest.current, attempt: null });
+          setAction({ status: "failure", operation, error: error.message });
+          return false;
+        }
         if (holdDispatched && latest.current.attempt) {
           commit({
             ...latest.current,

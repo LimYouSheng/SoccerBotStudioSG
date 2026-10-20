@@ -1020,6 +1020,10 @@
     "title": "poll-confirmed payment retains its displayed proof while the final receipt is delayed"
   },
   {
+    "file": "src/features/booking/protected-confirmation.test.tsx",
+    "title": "retains verified customer confirmation across pending responses that omit proof"
+  },
+  {
     "file": "src/features/booking/booking-parity.test.tsx",
     "title": "Details opens local Review without waiting for unavailable providers"
   },
@@ -1052,6 +1056,10 @@
     "title": "real API expired unpaid Review retains its hold through the grace window without recreating or losing contact"
   },
   {
+    "file": "tests/live-email.spec.ts",
+    "title": "real API failed identity warming stays on Review without booking or payment effects"
+  },
+  {
     "file": "src/services/customer-catalogue.test.ts",
     "title": "scheduled display catalogue retains original expiry and rejects renewed or overdue snapshots"
   },
@@ -1070,5 +1078,9 @@
   {
     "file": "src/features/booking/direct-checkout.test.tsx",
     "title": "live checkout validates direct handoff scope expiry and destination without persisting the URL"
+  },
+  {
+    "file": "src/features/booking/direct-checkout.test.tsx",
+    "title": "proven unstarted checkout stays editable without entering payment recovery"
   }
 ]

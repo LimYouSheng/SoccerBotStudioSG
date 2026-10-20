@@ -92,8 +92,8 @@ export function BookingConfirmation({
             <InlineLoading compact label={pendingLabel} />
             <p className="text-sm text-muted">{pendingLabel}</p>
             <p className="text-sm text-muted">
-              We’re checking your previous payment before another checkout can
-              start. Your details are saved.
+              We’re checking the payment status for this booking. Your details
+              are saved.
             </p>
             <p className="text-sm text-muted">{loadingMessage}</p>
           </>
@@ -207,110 +207,112 @@ export function BookingConfirmation({
         </div>
         <details className="confirmation-full-details">
           <summary>View full details</summary>
-          {booking.providerReferences && (
-            <div className="reference">
-              <p>
-                SimplyBook booking ID
-                {booking.providerReferences.bookingIds.length > 1
-                  ? "s"
-                  : ""}:{" "}
+          <div className="confirmation-details-grid">
+            <section
+              className="confirmation-section"
+              aria-labelledby="confirmation-client"
+            >
+              <h2 className="section-title" id="confirmation-client">
+                Client Details
+              </h2>
+              <ClientDetails contact={booking.draft.contact} />
+            </section>
+            <section
+              className="confirmation-section"
+              aria-labelledby="confirmation-sessions"
+            >
+              <h2 className="section-title" id="confirmation-sessions">
+                Session Details
+              </h2>
+              <p className="confirmation-service">
                 <strong>
-                  {booking.providerReferences.bookingIds.join(", ")}
+                  {booking.slots[0]?.native?.serviceName ?? SERVICE_NAME}
                 </strong>
+                <br />
+                {booking.draft.players}{" "}
+                {booking.draft.players === 1 ? "player" : "players"} per session
+                · 40 minutes · Singapore time
               </p>
+              <SessionList slots={booking.slots} showRotation={false} />
+            </section>
+            <section
+              className="confirmation-section"
+              aria-labelledby="confirmation-location"
+            >
+              <h2 className="section-title" id="confirmation-location">
+                Location
+              </h2>
               <p>
-                SimplyBook invoice ID:{" "}
-                <strong>{booking.providerReferences.invoiceId}</strong>
+                <strong>
+                  {[...new Set(booking.slots.map((slot) => slot.studio))].join(
+                    ", ",
+                  )}
+                </strong>
+                <br />
+                {ADDRESS}
               </p>
-            </div>
-          )}
-          <section
-            className="confirmation-section"
-            aria-labelledby="confirmation-client"
-          >
-            <h2 className="section-title" id="confirmation-client">
-              Client Details
-            </h2>
-            <ClientDetails contact={booking.draft.contact} />
-          </section>
-          <section
-            className="confirmation-section"
-            aria-labelledby="confirmation-sessions"
-          >
-            <h2 className="section-title" id="confirmation-sessions">
-              Session Details
-            </h2>
-            <p className="confirmation-service">
-              <strong>
-                {booking.slots[0]?.native?.serviceName ?? SERVICE_NAME}
-              </strong>
-              <br />
-              {booking.draft.players}{" "}
-              {booking.draft.players === 1 ? "player" : "players"} per session ·
-              40 minutes · Singapore time
-            </p>
-            <SessionList slots={booking.slots} showRotation={false} />
-          </section>
-          <section
-            className="confirmation-section"
-            aria-labelledby="confirmation-location"
-          >
-            <h2 className="section-title" id="confirmation-location">
-              Location
-            </h2>
-            <p>
-              <strong>
-                {[...new Set(booking.slots.map((slot) => slot.studio))].join(
-                  ", ",
-                )}
-              </strong>
-              <br />
-              {ADDRESS}
-            </p>
-          </section>
-          <section
-            className="confirmation-section"
-            aria-labelledby="confirmation-amount"
-          >
-            <h2 className="section-title" id="confirmation-amount">
-              Amount
-            </h2>
-            <p className="hint">
-              {preview
-                ? `${booking.slots.length} session${booking.slots.length === 1 ? "" : "s"} · SGD · Inclusive of GST`
-                : `SGD · Tax ${money(taxMinor)}`}
-            </p>
-          </section>
-          <section
-            className="confirmation-section"
-            aria-labelledby="confirmation-disclaimers"
-          >
-            <h2 className="section-title" id="confirmation-disclaimers">
-              Disclaimers
-            </h2>
-            {booking.slots
-              .filter((slot) => slot.rotationAt)
-              .map((slot) => (
-                <p
-                  className="rotation-notice"
-                  key={`${slot.date}|${slot.start}`}
-                >
-                  {dateLabel(slot.date)}, {slot.start}–{endTime(slot.start)}:
-                  Crosses the {slot.rotationAt} instructor rotation. Your
-                  assigned instructor stays for the full session.
+            </section>
+            <section
+              className="confirmation-section"
+              aria-labelledby="confirmation-amount"
+            >
+              <h2 className="section-title" id="confirmation-amount">
+                Amount
+              </h2>
+              <p className="hint">
+                {preview
+                  ? `${booking.slots.length} session${booking.slots.length === 1 ? "" : "s"} · SGD · Inclusive of GST`
+                  : `SGD · Tax ${money(taxMinor)}`}
+              </p>
+            </section>
+            <section
+              className="confirmation-section"
+              aria-labelledby="confirmation-disclaimers"
+            >
+              <h2 className="section-title" id="confirmation-disclaimers">
+                Disclaimers
+              </h2>
+              {booking.slots
+                .filter((slot) => slot.rotationAt)
+                .map((slot) => (
+                  <p
+                    className="rotation-notice"
+                    key={`${slot.date}|${slot.start}`}
+                  >
+                    {dateLabel(slot.date)}, {slot.start}–{endTime(slot.start)}:
+                    Crosses the {slot.rotationAt} instructor rotation. Your
+                    assigned instructor stays for the full session.
+                  </p>
+                ))}
+              <Arrival />
+              <p className="hint">
+                Follow your instructor’s safety guidance. Contact the studio for
+                changes, cancellations or refund enquiries.
+              </p>
+              {preview && (
+                <p className="payment-foot">
+                  Payment preview · No money was charged.
                 </p>
-              ))}
-            <Arrival />
-            <p className="hint">
-              Follow your instructor’s safety guidance. Contact the studio for
-              changes, cancellations or refund enquiries.
-            </p>
-            {preview && (
-              <p className="payment-foot">
-                Payment preview · No money was charged.
-              </p>
+              )}
+            </section>
+            {booking.providerReferences && (
+              <div className="reference confirmation-provider-references">
+                <p>
+                  SimplyBook booking ID
+                  {booking.providerReferences.bookingIds.length > 1
+                    ? "s"
+                    : ""}:{" "}
+                  <strong>
+                    {booking.providerReferences.bookingIds.join(", ")}
+                  </strong>
+                </p>
+                <p>
+                  SimplyBook invoice ID:{" "}
+                  <strong>{booking.providerReferences.invoiceId}</strong>
+                </p>
+              </div>
             )}
-          </section>
+          </div>
         </details>
       </section>
 

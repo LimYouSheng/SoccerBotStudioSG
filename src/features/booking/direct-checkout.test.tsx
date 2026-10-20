@@ -831,3 +831,33 @@ it("live checkout validates direct handoff scope expiry and destination without 
     expect(ready).toHaveBeenCalledTimes(1);
   }
 });
+
+it("proven unstarted checkout stays editable without entering payment recovery", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-15T00:00:00Z"));
+  const fetch = vi.fn(async () =>
+    Response.json({ error: "checkout_not_started" }, { status: 503 }),
+  );
+  vi.stubGlobal("fetch", fetch);
+  render(
+    <BookingProvider
+      bookingService={{
+        ...liveBookingService,
+        restore: undefined,
+        calendar: undefined,
+        publicCalendar: undefined,
+      }}
+      identityService={demoCustomerIdentity}
+    >
+      <Seed />
+      <ReviewStep />
+    </BookingProvider>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Seed" }));
+  fireEvent.click(screen.getByRole("button", { name: "Repeat checkout" }));
+  await screen.findByText(/No booking or payment was started/);
+  expect(screen.getByTestId("retained")).toBeEmptyDOMElement();
+  expect(screen.getByTestId("action")).toHaveTextContent("failure");
+  expect(navigation.push).not.toHaveBeenCalled();
+  expect(fetch).toHaveBeenCalledTimes(1);
+});

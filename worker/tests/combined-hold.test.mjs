@@ -1699,3 +1699,82 @@ test("expired identified write transports free capacity after reset without auth
     await m.close();
   }
 });
+
+test("failed identity warming proves checkout never started and permits a fresh explicit attempt", async () => {
+  let denied = true;
+  const m = await createBookingMechanism({
+    displayWarming: true,
+    respond: async (call) =>
+      denied && call.url.endsWith("/admin/auth")
+        ? new Response(null, { status: 403 })
+        : undefined,
+  });
+  try {
+    const c = await customer(m);
+    const send = (key) =>
+      m.mf.dispatchFetch(m.origin + `/api/booking/checkout/${key}`, {
+        method: "POST",
+        headers: c.headers,
+        body: JSON.stringify({ ...c.input, key, accepted: true }),
+      });
+    const failed = await send(c.input.key);
+    assert.equal(failed.status, 503);
+    assert.equal((await failed.json()).error, "checkout_not_started");
+    for (const table of [
+      "dispatches",
+      "session_effects",
+      "hitpay_payments",
+      "hitpay_holds",
+    ])
+      assert.equal(
+        (await m.db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).first()).n,
+        0,
+        table,
+      );
+    assert.equal(
+      (
+        await (
+          await m.mf.dispatchFetch(m.origin + "/api/booking/current", {
+            headers: c.headers,
+          })
+        ).json()
+      ).state,
+      "empty",
+    );
+    assert.equal(m.calls.filter((c) => c.body?.method === "book").length, 0);
+    // Simulate the existing cooldown/refresh lease elapsing, not a retry bypass.
+    const storage = await m.mf.unsafeGetDurableObjectStorage(
+      "booking-mechanism",
+      "SoccerBotAccountCoordinator",
+      { name: "simplybook-developer-account" },
+    );
+    await storage.exec("UPDATE budget SET cooldown_ms=0");
+    await storage.exec("UPDATE refreshes SET expires_ms=0");
+    denied = false;
+    const next = crypto.randomUUID();
+    const response = await send(next);
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).paymentAvailable, true);
+    assert.equal(
+      (
+        await m.db
+          .prepare(
+            "SELECT COUNT(*) AS n FROM rejected_native_checkout_grants WHERE attempt_id=?",
+          )
+          .bind(c.input.key)
+          .first()
+      ).n,
+      1,
+    );
+    await send(next);
+    assert.equal(m.calls.filter((c) => c.body?.method === "book").length, 1);
+    assert.equal(
+      m.calls.filter(
+        (c) => c.url.includes("hit-pay.com") && c.method === "POST",
+      ).length,
+      1,
+    );
+  } finally {
+    await m.close();
+  }
+});

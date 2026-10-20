@@ -327,8 +327,8 @@ export function ProtectedConfirmation({
           />
           <p className="text-sm text-muted">{pendingLabel}</p>
           <p>
-            We’re checking your previous payment before another checkout can
-            start. Your details are saved.
+            We’re checking the payment status for this booking. Your details are
+            saved.
           </p>
           {current && <ConfirmationSummary summary={current.summary} />}
         </section>

@@ -363,6 +363,20 @@ async function nativeRequest(
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   if (!response.ok) {
+    if (
+      response.status === 503 &&
+      /^\/api\/booking\/(checkout|hold)\//.test(path)
+    ) {
+      const error = await response
+        .clone()
+        .json()
+        .catch(() => null);
+      if (error?.error === "checkout_not_started")
+        throw new BookingServiceError(
+          "checkout_not_started",
+          "We couldn’t connect to the booking service. No booking or payment was started. Your details are saved; please try again shortly.",
+        );
+    }
     if (path.startsWith("/api/booking/hitpay/")) {
       const body = await response.json().catch(() => null);
       if (response.status === 409 && body?.error === "hitpay_hold_expired")

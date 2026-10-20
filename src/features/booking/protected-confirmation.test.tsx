@@ -928,3 +928,38 @@ it("poll-confirmed payment retains its displayed proof while the final receipt i
   );
   expect(screen.getByText(/Saved confirmation/).textContent).toBe(verified);
 });
+
+it("retains verified customer confirmation across pending responses that omit proof", async () => {
+  vi.useFakeTimers();
+  const proof = receiptFixture();
+  let reads = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json(
+        ++reads === 1
+          ? {
+              status: "pending",
+              reason: "payment_received_booking_pending",
+              customerConfirmation: proof,
+            }
+          : { status: "pending", reason: "payment_received_booking_pending" },
+      ),
+    ),
+  );
+  render(<ProtectedConfirmation attemptId={first} />);
+  await act(async () => {});
+  expect(
+    screen.getByRole("heading", { name: "Booking confirmed" }),
+  ).toBeVisible();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(15000);
+  });
+  expect(reads).toBeGreaterThan(1);
+  expect(
+    screen.getByRole("heading", { name: "Booking confirmed" }),
+  ).toBeVisible();
+  expect(
+    screen.queryByRole("status", { name: "Verifying your payment…" }),
+  ).toBeNull();
+});
