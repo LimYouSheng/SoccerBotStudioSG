@@ -1842,6 +1842,48 @@ test("direct single checkout uses only public authentication and creation before
           entry.boundary === "coordinator",
       );
       assert.ok(checkout, "checkout diagnostics retained");
+      const phaseTrace = traces.find(
+        (entry) =>
+          entry.event === "checkout_trace" &&
+          entry.correlationId === response.headers.get("x-request-id"),
+      );
+      assert.ok(phaseTrace, "correlated checkout phase trace retained");
+      assert.equal(phaseTrace.tokenCached, warm);
+      assert.equal(phaseTrace.phases.simplybook.calls, 1);
+      assert.equal(phaseTrace.phases.hitpay.calls, 1);
+      assert.equal(phaseTrace.phases.verification.calls, 0);
+      assert.equal(
+        Object.values(phaseTrace.phases).reduce(
+          (sum, phase) => sum + phase.d1Count,
+          0,
+        ),
+        checkout.spans.d1.count,
+      );
+      const timing = response.headers.get("server-timing");
+      assert.match(timing, /simplybook;dur=[0-9.]+;desc="1 calls"/);
+      assert.match(timing, /hitpay;dur=[0-9.]+;desc="1 calls"/);
+      assert.match(timing, /checkout_http;dur=[0-9.]+/);
+      assert.match(
+        timing,
+        new RegExp(
+          `sb_token;dur=[0-9.]+;desc="${warm ? "cached" : "cache_miss"}"`,
+        ),
+      );
+      for (const phase of Object.values(phaseTrace.phases)) {
+        assert.deepEqual(Object.keys(phase).sort(), [
+          "calls",
+          "d1Count",
+          "d1DurationMs",
+          "d1Errors",
+          "durationMs",
+        ]);
+        for (const value of Object.values(phase))
+          assert.ok(Number.isFinite(value) && value >= 0);
+      }
+      assert.equal(result.serverTiming, undefined);
+      assert.ok(!timing.includes(c.input.key));
+      assert.ok(!JSON.stringify(phaseTrace).includes(m.checkoutUrl));
+
       assert.ok(
         checkout.spans.d1.count <= 27,
         `D1 calls: ${checkout.spans.d1.count}`,
@@ -1915,5 +1957,63 @@ test("direct single completion retains payment but denies handoff after access r
     );
   } finally {
     await m.close();
+  }
+});
+
+test("checkout failure timing survives token booking and payment failures without exposing request data", async () => {
+  for (const fault of ["token", "booking", "payment"]) {
+    const logs = [];
+    const m = await createBookingMechanism({
+      onLog: (message) => logs.push(message),
+      respond: async (call) => {
+        if (
+          (fault === "token" && call.body?.method === "getToken") ||
+          (fault === "booking" && call.body?.method === "book") ||
+          (fault === "payment" &&
+            call.url.includes("hit-pay.com") &&
+            call.method === "POST")
+        )
+          return new Response(null, { status: 503 });
+        return undefined;
+      },
+    });
+    try {
+      const c = await customer(m);
+      const response = await m.mf.dispatchFetch(
+        m.origin + `/api/booking/checkout/${c.input.key}`,
+        {
+          method: "POST",
+          headers: c.headers,
+          body: JSON.stringify({ ...c.input, accepted: true }),
+        },
+      );
+      assert.equal(response.status, fault === "token" ? 503 : 200);
+      const result = await response.json();
+      assert.notEqual(result.paymentAvailable, true);
+      const timing = response.headers.get("server-timing");
+      assert.match(timing, /checkout;dur=[0-9.]+/);
+      assert.ok(!timing.includes(c.input.key));
+      const traces = logs.flatMap((message) => {
+        try {
+          return [JSON.parse(message)];
+        } catch {
+          return [];
+        }
+      });
+      const trace = traces.find(
+        (entry) =>
+          entry.event === "checkout_trace" &&
+          entry.correlationId === response.headers.get("x-request-id"),
+      );
+      assert.ok(trace);
+      assert.equal(trace.phases.simplybook.calls, fault === "token" ? 0 : 1);
+      assert.equal(trace.phases.hitpay.calls, fault === "payment" ? 1 : 0);
+      assert.equal(trace.tokenCached, false);
+      assert.ok(!JSON.stringify(trace).includes(c.input.key));
+      assert.ok(!JSON.stringify(trace).includes(m.checkoutUrl));
+      assert.equal(result.serverTiming, undefined);
+    } finally {
+      await m.close();
+    }
   }
 });
