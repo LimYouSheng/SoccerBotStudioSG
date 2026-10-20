@@ -11,6 +11,7 @@ This section is the authoritative current design. Service Contracts owns operati
 - Original booking creation anchors the eight-minute payment window and fifteen-minute hold. Recovery grace remains five minutes. Expired/deleted HitPay requests do not establish impossibility of late settlement; dispatched uncertain payments stay protected. No fresh payment window for an old attempt.
 - The coordinator remains serialized. Cached display reads can bypass the queue; uncached work uses bounded admission and recovery priority as specified in Service Contracts. Increasing concurrency is separate work.
 - The successful fresh-evidence direct single checkout targets ten foreground D1 executions, including the outer binding read. Conditional transactions preserve durable reservations before provider writes and raw/reference evidence before strict validation; stale-evidence, failure, retry and batch paths retain their required checks and may exceed that budget.
+- Confirmation/recovery diagnostics are observational: preserve polling quotas, token lifetimes, payment ordering and proof gates. Correlate sanitized background stages with protected-response timing; never treat diagnostic timestamps as booking/payment authority.
 - Source tests, exact-commit CI, deployment and physical provider acceptance are distinct. Owner/CI operate browsers; no assistant bookings, payments, cancellations or notification sends.
 
 ## Historical design record

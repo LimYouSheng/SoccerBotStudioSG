@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## Confirmation tracing — 20 October 2026 SGT
+
+PR72 head767f760 passed frontend/backend but live-email run39415858902 passed77/78. Offline phone-WebKit trace shows slow cold fixture/browsing setup and preserved original-attempt recovery, then exhaustion of the unchanged30-second budget before reload. Focus the lost-response case on a saved editable Review draft with real guest authentication; retain the actual browser checkout, lost response, durable hold, reload and one booking/payment assertions. Full homepage/calendar/Details coverage remains in the native guest journey. No production change or timeout/retry relaxation. Affected source/policy/type/lint/format checks and45 component/service tests passed. Full final-head CI remains pending. Owner authorizes merging PR72 after all checks pass, then deployed confirmation diagnosis; no assistant provider experiment.
+
 ## Ten-call checkout implementation — 20 October 2026 SGT
 
 PR70 passed final-head CI and was merged with owner authorization as18ccde0. Active branch perf/checkout-ten-d1 integrates guarded D1 consolidation into the actual single checkout. Cold/warm targeted Worker cases measure nine coordinator executions plus one HTTP binding read. Full local code gate passed223 frontend unit tests/build/export; full Worker gate passed407/407 with zero skips and no real provider requests. Nine fault scenarios passed across coordinator restart, using a fixture-only annotation drain before eviction. Publish a separate PR and require all final-head PR CI gates. Owner authorized implementation and PR CI, not merging this new optimization. Preserve batch/legacy behavior and all unknown-write, authorization and original-expiry protections.
