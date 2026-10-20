@@ -1,8 +1,8 @@
 # SoccerBotStudio — Service Contracts
 
-## Experimental five-call single checkout — not deployed
+## Five-call single checkout integration candidate — not deployed
 
-Fresh single-checkout candidate combines foundation/authentication, new grant/attempt/dispatch, raw evidence/key retention, validated hold/payment reservation, and final URL save/response authorization into five D1 round trips. An internal speculative snapshot never authorizes a provider effect: the conditional dispatch transaction must claim it first. Failed predicates cannot mutate a colliding foreign attempt or trigger its recovery bookkeeping. Existing/restored grants, failed token preparation, malformed responses and stale-proof readback keep additional recovery work. Raw evidence and booking keys precede normalized association/payment admission; original deadlines and final-save-before-redirect remain mandatory. This is experiment scope, not a replacement for deployed contracts until final-source validation and integration.
+Fresh single-checkout candidate combines foundation/authentication, new grant/attempt/dispatch, raw evidence/key retention, validated hold/payment reservation, and final URL save/response authorization into five D1 round trips. An internal speculative snapshot never authorizes a provider effect: the conditional dispatch transaction must claim it first. Failed predicates cannot mutate a colliding foreign attempt or trigger its recovery bookkeeping. Existing/restored grants, failed token preparation, malformed responses and stale-proof readback keep additional recovery work. Raw evidence and booking keys precede normalized association/payment admission; original deadlines and final-save-before-redirect remain mandatory. Owner authorized integration and CI on21October. Local full Worker validation passed418/418; exact-source PR CI and live acceptance remain required before deployment claims.
 
 ## Batch consolidation and recovery read contract
 
