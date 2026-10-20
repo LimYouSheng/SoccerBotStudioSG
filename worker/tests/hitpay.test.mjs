@@ -2018,3 +2018,48 @@ test("HitPay validation diagnostics retain only allowlisted fields without repla
   await mf.dispatchFetch(origin + "/test/create");
   assert.equal(creates, 1);
 });
+
+for (const boundary of ["payment", "booking"]) {
+  test(`HitPay recovery rejects a replaced claim after ${boundary} response without accounting or success`, async () => {
+    await seedPayment();
+    const provider = providerFixture();
+    const respond = handler;
+    let replaced = false;
+    handler = async (request) => {
+      const url = new URL(request.url);
+      const body =
+        request.method === "POST" ? await request.clone().json() : null;
+      const response = await respond(request);
+      const match =
+        boundary === "payment"
+          ? url.hostname === "api.sandbox.hit-pay.com"
+          : body?.method === "getBookingDetails";
+      if (match && !replaced) {
+        replaced = true;
+        await db
+          .prepare(
+            "UPDATE hitpay_payments SET generation=generation+1 WHERE attempt_id=? AND state='claimed'",
+          )
+          .bind(attemptId)
+          .run();
+      }
+      return response;
+    };
+    await recover();
+    assert.equal(replaced, true);
+    assert.equal(provider.writes(), 0);
+    assert.equal((await row()).state, "claimed");
+    assert.equal((await row()).external_state, "none");
+    assert.equal(
+      (
+        await db
+          .prepare(
+            "SELECT confirmation_json FROM checkout_progress WHERE attempt_id=?",
+          )
+          .bind(attemptId)
+          .first()
+      )?.confirmation_json ?? null,
+      null,
+    );
+  });
+}

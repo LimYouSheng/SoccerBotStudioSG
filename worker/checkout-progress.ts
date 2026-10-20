@@ -14,7 +14,7 @@ export async function retainCustomerConfirmation(
 ) {
   const row = await env.STATE.withSession("first-primary")
     .prepare(
-      "SELECT a.id,a.created_ms,a.intent_json,a.association_json,a.intent_hash,h.expires_ms FROM attempts a JOIN hitpay_holds h ON h.attempt_id=a.id JOIN checkout_progress c ON c.attempt_id=a.id WHERE a.id=? AND a.state='observed' AND a.intent_hash=h.intent_hash AND a.association_json=h.association_json",
+      "SELECT a.id,a.created_ms,a.intent_json,a.association_json,a.intent_hash,h.expires_ms,(SELECT availability_json FROM native_checkout_grants WHERE attempt_id=a.id UNION ALL SELECT availability_json FROM completed_native_checkout_grants WHERE attempt_id=a.id UNION ALL SELECT availability_json FROM expired_native_checkout_grants WHERE attempt_id=a.id) AS availability_json FROM attempts a JOIN hitpay_holds h ON h.attempt_id=a.id JOIN checkout_progress c ON c.attempt_id=a.id WHERE a.id=? AND a.state='observed' AND a.intent_hash=h.intent_hash AND a.association_json=h.association_json",
     )
     .bind(payment.attempt_id)
     .first<{
@@ -24,6 +24,7 @@ export async function retainCustomerConfirmation(
       association_json: string;
       intent_hash: string;
       expires_ms: number;
+      availability_json: string | null;
     }>();
   if (!row) return;
   const scope = paymentScopeSchema.parse(JSON.parse(payment.scope_json));

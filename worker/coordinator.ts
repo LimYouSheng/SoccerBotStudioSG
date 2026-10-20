@@ -970,7 +970,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
             { ...this.calendarReadOptions(), env },
             true,
             access,
-            !!scope.checkout && input.sessions.length === 1,
+            !!scope.checkout,
           );
           const preparation = await prepareCustomerNative(
             request,

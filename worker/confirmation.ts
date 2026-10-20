@@ -53,11 +53,11 @@ export async function confirmation(
     };
   }
   const quota = await env.STATE.prepare(
-    "UPDATE attempts SET confirmation_next_ms=? + CASE WHEN confirmation_checks<5 THEN ? ELSE ? END,confirmation_checks=confirmation_checks+1 WHERE id=? AND owner_id=? AND confirmation_next_ms<=? AND confirmation_checks<120 RETURNING confirmation_next_ms,confirmation_checks",
+    "UPDATE attempts SET confirmation_next_ms=? + CASE WHEN confirmation_checks<20 THEN ? ELSE ? END,confirmation_checks=confirmation_checks+1 WHERE id=? AND owner_id=? AND confirmation_next_ms<=? AND confirmation_checks<120 RETURNING confirmation_next_ms,confirmation_checks",
   )
     .bind(
       now,
-      liveCustomerAccess(env) ? 1000 : p.POLL_INTERVAL_MS,
+      liveCustomerAccess(env) ? 2000 : p.POLL_INTERVAL_MS,
       liveCustomerAccess(env)
         ? Math.max(p.POLL_INTERVAL_MS, 10000)
         : p.POLL_INTERVAL_MS,

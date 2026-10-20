@@ -1,3 +1,4 @@
+import { parallelReads } from "./parallel-reads";
 import {
   SESSION_MINUTES,
   START_INTERVAL_MINUTES,
@@ -71,6 +72,7 @@ export function nativeBookingOperations(options: {
   deferComments?: boolean;
   localFinalization?: boolean;
   retainCurrentFence?: boolean;
+  transportClaims?: boolean;
   clientSignature?: (clientId: string, hash: string) => Promise<string>;
   batchSignature?: (batchId: string, hash: string) => Promise<string>;
   onCreationEvidence?: (evidence: {
@@ -146,7 +148,7 @@ export function nativeBookingOperations(options: {
       retained.get(step)?.id === id && retained.get(step)?.fence === fence,
     localFinalization:
       options.localFinalization === true &&
-      intent.sessions.length === 1 &&
+      (intent.sessions.length === 1 || options.transportClaims === true) &&
       options.deferComments === true,
     hasRecoveryCapacity: options.hasRecoveryCapacity,
     async revalidate(value, context) {
@@ -167,13 +169,15 @@ export function nativeBookingOperations(options: {
         throw new ApiError(409, "native_write_not_replayable");
       dispatched.add(context.sessionIndex);
       if (intent.sessions.length > 1 && context.sessionIndex === 0) {
-        const reserved = await options.db
-          .prepare(
-            "INSERT INTO session_effects(attempt_id,step,outcome) SELECT id,'native-batch','unknown' FROM attempts WHERE id=? AND state='dispatching' AND association_json IS NULL AND deadline_ms>?",
-          )
-          .bind(options.scope.attemptId, Date.now())
-          .run();
-        if (reserved.meta.changes !== 1)
+        const reserved = options.transportClaims
+          ? undefined
+          : await options.db
+              .prepare(
+                "INSERT INTO session_effects(attempt_id,step,outcome) SELECT id,'native-batch','unknown' FROM attempts WHERE id=? AND state='dispatching' AND association_json IS NULL AND deadline_ms>?",
+              )
+              .bind(options.scope.attemptId, Date.now())
+              .run();
+        if (reserved && reserved.meta.changes !== 1)
           throw new ApiError(409, "native_batch_not_claimed");
         await context.assertCurrent();
         const batch = await options.exchange({ kind: "batch-create" });
@@ -388,7 +392,7 @@ export function nativeBookingOperations(options: {
         throw new ApiError(409, "native_association_missing");
       if (
         options.localFinalization &&
-        intent.sessions.length === 1 &&
+        (intent.sessions.length === 1 || options.transportClaims) &&
         options.deferComments
       ) {
         // The association transaction records finalization and pending comments.
@@ -460,6 +464,7 @@ export function nativeBookingOperations(options: {
 export async function readNativeAttempt(options: {
   scope: NativeScope;
   parallelSingle?: boolean;
+  parallelBatch?: boolean;
   paymentProcessor?: string;
   association: unknown;
   exchange: NativeExchange;
@@ -491,7 +496,19 @@ export async function readNativeAttempt(options: {
   const bookings: unknown[] = [];
   let observedAtMs = Number.MAX_SAFE_INTEGER;
   let invoice: Awaited<ReturnType<typeof readInvoice>>;
-  if (options.parallelSingle && refs.bookingIds.length === 1) {
+  if (options.parallelBatch && refs.bookingIds.length > 1) {
+    // Bounded read-only overlap. Each exchange retains its existing claim,
+    // authentication and provider admission checks. Drain started siblings.
+    const results = await parallelReads([
+      readInvoice,
+      ...refs.bookingIds.map((id) => () => readBooking(id)),
+    ]);
+    invoice = results[0];
+    for (const booking of results.slice(1)) {
+      bookings.push(booking.body);
+      observedAtMs = Math.min(observedAtMs, booking.receivedAtMs);
+    }
+  } else if (options.parallelSingle && refs.bookingIds.length === 1) {
     // Both independent reads must settle. No provider write is parallelized,
     // retried or authorized by either response on its own.
     const [booking, bill] = await Promise.allSettled([

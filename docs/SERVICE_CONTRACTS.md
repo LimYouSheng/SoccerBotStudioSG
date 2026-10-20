@@ -1,5 +1,13 @@
 # SoccerBotStudio — Service Contracts
 
+## Batch consolidation and recovery read contract
+
+Direct batch checkout retains the prepared owner/grant snapshot and claims the first provider effect atomically with dispatch. Each later book and close reserves its own unknown effect while checking current capability, grant, intent, source revision, deadline and dispatch fence. Raw response evidence and every booking key survive validation or finalization failure. The final association/hold/observation transaction and payment handoff reuse the single-checkout boundary. Expected successful coordinator D1 budget is16+3×(sessions−2) for batch, plus the unchanged outer binding read; single remains9+1. Failure/recovery paths are not capped by that budget.
+
+Recovery keeps a durable claim check in transport admission before every physical provider call, and separate guards for accounting/publication. Independent batch booking/invoice reads use at most2 lanes, stop scheduling on failure and drain started siblings. No provider write is parallelized. Claim exhaustion, receipt wake-up and new claim execute in one transaction; progress deadline and attempt scope share one read; receipt publication reads its display snapshot together with the current associated attempt. Definite confirmation still requires current confirmed bookings and paid invoice evidence.
+
+Ongoing confirmation polling admits at most one check per2seconds for the first20 checks, then at least10seconds. Total allowance remains120, with immutable checking deadline and authoritative next-check headers. This replaces the five1second checks followed by10seconds; finite/synthetic policy retains its configured interval.
+
 ## Confirmation read snapshot contract
 
 Protected context consolidates attempt, route, payment, progress and stored availability into one owner-scoped primary snapshot per request. Status reads retain independent authentication and atomic poll quota; successful admission is followed by a new primary snapshot before deciding confirmation. No snapshot survives an HTTP request or write boundary. Scope validation, current booking evidence, stale-proof recovery, immutable verification timestamps and fresh export authorization remain required. Normal observed counts, excluding outer binding lookup: context4, pending status5, confirmed status4, receipt5. These are round trips, not a limit on recovery or failure work.

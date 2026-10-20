@@ -1,5 +1,13 @@
 # SoccerBotStudio — Journey
 
+## Hometest06 and optimization experiments — 20 October 2026 SGT
+
+Owner two-session HAR: checkout HTTP11.444seconds, redirect starts11.454seconds after checkout request. Preparation15 D1/2007ms; booking work27 D1/3580ms; payment save2 D1/264ms. SimplyBook4calls3319ms (createBatch/book/book/closeBatch); HitPay1call1011ms; public token miss908ms; queue0. D1 phase total44calls5851ms excludes the outer binding read.
+
+Correlated recovery trace completes successfully in12.010seconds, from21:24:54.243 to21:25:06.253SGT. Return document started21:24:49.814; confirmed response ends21:25:09.775. Recovery40D1/5469ms; booking-before3488ms, accounting2459ms, booking-after3509ms, publication952ms. Identity cache hits7, no public/admin auth, no operation errors or workflow queue wait in that run. D1/admission/provider operation durations overlap stage totals. Tracing does not establish the cause of the4.429seconds between return and recovery start. The10second polling tier adds approximately3.5seconds after recovery completion.
+
+Like-for-like local recovery fixtures inject400ms per booking/invoice read: baseline single34D1/3210ms, two40/4529ms, four52/6763ms; candidate single25/3201ms, two29/4107ms, four37/5926ms. Single already overlaps reads; batch changes from max1 to max2. Local timing is not live D1 latency or a launch guarantee. A batch fixture defect updated only its first booking after accounting; corrected it to update every invoice-linked booking, preserving production validation. The initial batch candidate failed missing-deadline fallback; fixed separating effect reservation from readback authority checks. Failed association transactions now roll back as a unit, with immutable booking keys asserted for recovery. No assistant provider effects; all experiments use simulated providers.
+
 ## Confirmation read experiment — 20 October 2026 SGT
 
 The first consolidation candidate failed a deterministic manual-review-during-admission race: it returned confirmed from its old snapshot. It was rejected. Re-reading after admission preserves unresolved/no-proof behavior; baseline and revised candidate both pass that race. Revised candidate passed119 Worker tests and simulated five concurrent polls admitted one/throttled four with one booking, payment creation and accounting write. Local timings do not establish live speedup. Hometest05 per-trip costs suggest approximately1.4seconds less context D1 waiting and0.5seconds per pending response, but recovery overlaps and live measurement remains required. Integrated permanent regression retains counts and race; source changes do not establish deployment or browser acceptance.

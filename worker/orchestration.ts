@@ -53,8 +53,8 @@ const finalizedInvoice = z.strictObject({
 // admission. It does not establish provider acceptance or production readiness.
 export type BookingOperations = {
   validationMode?: "per-session";
-  // The single native transport owns the atomic claim at its write boundary.
-  stagedSingleClaim?: {
+  // The native transport owns the atomic claim at its write boundary.
+  stagedDispatchClaim?: {
     stage: (version: number) => number;
     assertCurrent: () => Promise<void>;
   };
@@ -172,8 +172,8 @@ export async function orchestrateBooking(
   // Single atomic winner. A second click or resumed process cannot replay writes.
   let fence: number;
   try {
-    fence = operations.stagedSingleClaim
-      ? operations.stagedSingleClaim.stage(row.version)
+    fence = operations.stagedDispatchClaim
+      ? operations.stagedDispatchClaim.stage(row.version)
       : (await claimDispatch(env.STATE, id, row.version, Date.now())).fence;
   } catch (error) {
     if (error instanceof ApiError && error.code === "dispatch_not_claimed")
@@ -181,7 +181,7 @@ export async function orchestrateBooking(
     throw error;
   }
   const assertCurrent =
-    operations.stagedSingleClaim?.assertCurrent ??
+    operations.stagedDispatchClaim?.assertCurrent ??
     (async () => {
       const now = Date.now();
       const current = await env.STATE.withSession("first-primary")
@@ -258,7 +258,7 @@ export async function orchestrateBooking(
       )
         throw new ApiError(409, "approved_intent_changed");
       const step = `session:${sessionIndex}`;
-      if (!operations.stagedSingleClaim) await reserve(step);
+      if (!operations.stagedDispatchClaim) await reserve(step);
       const raw = await operations.createSession(session, intent, {
         ...context,
         assertCurrent,

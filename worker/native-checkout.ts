@@ -1,4 +1,4 @@
-import { claimSingleDispatch } from "./native-dispatch";
+import { claimNativeDispatch, claimNativeEffect } from "./native-dispatch";
 import type { Grant } from "./customer-authority";
 import { retainHoldEvidence } from "./native-hold-evidence";
 import { hitpayHoldStatement, type VerifiedHold } from "./hitpay-hold";
@@ -198,10 +198,7 @@ export async function executeNativeCheckout(options: {
   const secret: unknown = Reflect.get(env, "SIMPLYBOOK_DEV_SIGNING_SECRET");
   if (typeof secret !== "string" || !secret || secret.includes("["))
     throw new ApiError(503, "native_signing_unavailable");
-  const consolidated =
-    !!options.prepared &&
-    options.creationOnly === true &&
-    intent.sessions.length === 1;
+  const consolidated = !!options.prepared && options.creationOnly === true;
   if (consolidated) assertHitpayCreation(env);
   const paymentRoute = consolidated
     ? "hitpay"
@@ -218,7 +215,8 @@ export async function executeNativeCheckout(options: {
   if (claimed && claimed.meta.changes !== 1)
     return nativeCheckoutStatus(request, env, attemptId);
   let stagedVersion: number | undefined;
-  let claimedSingle = false;
+  let claimedDispatch = false;
+  let claimedBookings = 0;
   let selectionSnapshot = "{}";
   let cleanupMode = false;
   let cleanupSignal: AbortSignal | undefined;
@@ -234,20 +232,41 @@ export async function executeNativeCheckout(options: {
     )
       throw new ApiError(503, "native_write_window_closed");
   };
-  const assertGranted = async () => {
+  const assertGranted = async (claimEffect = false) => {
     assertWindow();
-    if (consolidated && !claimedSingle && !cleanupMode) {
+    if (consolidated && claimEffect && !cleanupMode) {
       if (stagedVersion === undefined)
         throw new ApiError(409, "dispatch_not_claimed");
-      await claimSingleDispatch(
-        env.STATE,
-        attemptId,
-        stagedVersion,
-        access,
-        grant,
-        selectionSnapshot,
-      );
-      claimedSingle = true;
+      const step =
+        lastOperation === "batch-create"
+          ? "native-batch"
+          : lastOperation === "batch-close"
+            ? "finalize"
+            : lastOperation === "book"
+              ? `session:${claimedBookings}`
+              : undefined;
+      if (!step) throw new ApiError(409, "effect_not_claimed");
+      if (claimedDispatch) {
+        await claimNativeEffect(
+          env.STATE,
+          attemptId,
+          stagedVersion + 1,
+          access,
+          grant,
+          step,
+        );
+      } else
+        await claimNativeDispatch(
+          env.STATE,
+          attemptId,
+          stagedVersion,
+          access,
+          grant,
+          selectionSnapshot,
+          step,
+        );
+      claimedDispatch = true;
+      if (lastOperation === "book") claimedBookings++;
       return;
     }
     const current = Date.now();
@@ -405,7 +424,7 @@ export async function executeNativeCheckout(options: {
         {
           beforeIdentity: async () =>
             cleanupMode ? assertGranted() : assertWindow(),
-          beforeWrite: assertGranted,
+          beforeWrite: () => assertGranted(true),
         },
         undefined,
         !!options.creationOnly && !cleanupMode,
@@ -471,6 +490,7 @@ export async function executeNativeCheckout(options: {
     const operations = nativeBookingOperations({
       localFinalization: options.creationOnly,
       retainCurrentFence: consolidated,
+      transportClaims: consolidated,
       deferComments:
         ongoing && paymentRoute === "hitpay" && !!options.onVerifiedHold,
       onCreationEvidence: (value) => {
@@ -608,7 +628,7 @@ export async function executeNativeCheckout(options: {
     if (ongoing && options.combinedHold)
       operations.validationMode = "per-session";
     if (consolidated)
-      operations.stagedSingleClaim = {
+      operations.stagedDispatchClaim = {
         stage: (version) => {
           stagedVersion = version;
           return version + 1;

@@ -568,7 +568,7 @@ test("single hold exposes creation progress while independent readbacks are pend
   }
 });
 
-test("ongoing confirmation grants five fast stored-status checks while retaining the shared cap and deadline", async () => {
+test("ongoing confirmation grants twenty bounded two-second status checks while retaining the shared cap and deadline", async () => {
   const m = await createBookingMechanism();
   try {
     const c = await customer(m);
@@ -578,7 +578,7 @@ test("ongoing confirmation grants five fast stored-status checks while retaining
       .bind(c.input.key)
       .first();
     const calls = m.calls.length;
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 21; i++) {
       await m.db
         .prepare("UPDATE attempts SET confirmation_next_ms=0 WHERE id=?")
         .bind(c.input.key)
@@ -590,7 +590,7 @@ test("ongoing confirmation grants five fast stored-status checks while retaining
       );
       assert.equal(response.status, 200);
       const next = Number(response.headers.get("X-Next-Check"));
-      const delay = i < 5 ? 1000 : 10000;
+      const delay = i < 20 ? 2000 : 10000;
       assert.ok(next >= start + delay && next <= Date.now() + delay);
       const repeated = await m.mf.dispatchFetch(
         m.origin + `/api/attempts/${c.input.key}/confirmation`,
@@ -617,7 +617,7 @@ test("ongoing confirmation grants five fast stored-status checks while retaining
           .bind(c.input.key)
           .first()
       ).n,
-      6,
+      21,
     );
     await m.db
       .prepare(
@@ -1169,7 +1169,34 @@ test("batch closure fallback and failed hold persistence preserve one original a
           .prepare("SELECT id,association_json,observation_json FROM attempts")
           .first();
         assert.equal(retained.id, c.input.key);
-        assert.ok(retained.association_json);
+        assert.equal(
+          retained.association_json,
+          null,
+          "association and hold roll back together",
+        );
+        const keys = await m.db
+          .prepare(
+            "SELECT step,outcome,reference_id FROM session_effects WHERE step LIKE 'native-booking-key:%' ORDER BY step",
+          )
+          .all();
+        assert.equal(keys.results.length, 2);
+        assert.ok(
+          keys.results.every(
+            (key) =>
+              key.outcome === "observed" &&
+              JSON.parse(key.reference_id).bookingId,
+          ),
+        );
+        assert.equal(
+          (
+            await m.db
+              .prepare(
+                "SELECT outcome FROM session_effects WHERE step='finalize'",
+              )
+              .first()
+          ).outcome,
+          "unknown",
+        );
         assert.equal(retained.observation_json, null);
         assert.equal(
           await m.db.prepare("SELECT * FROM hitpay_holds").first(),
@@ -2110,7 +2137,7 @@ test("direct batch checkout uses creation responses for two and four sessions wi
         `batch ${count}: D1=${trace.spans.d1.count}; provider=${trace.spans.provider?.count}`,
       );
       assert.ok(
-        trace.spans.d1.count <= 44 + (count - 2) * 6,
+        trace.spans.d1.count === 16 + (count - 2) * 3,
         `D1: ${trace.spans.d1.count}`,
       );
       const methods = creationCalls
@@ -2560,5 +2587,155 @@ test("confirmation snapshots reduce reads and observe manual review after poll a
     assert.deepEqual(m.unexpected, []);
   } finally {
     await m.close();
+  }
+});
+
+test("batch transport claims recheck revocation at each creation boundary without replay", async () => {
+  for (const boundary of ["createBatch", "book", "closeBatch"]) {
+    let revoked = false;
+    const m = await createBookingMechanism({
+      batch: true,
+      respond: async (call) => {
+        if (call.body?.method === boundary && !revoked) {
+          revoked = true;
+          await m.db
+            .prepare("UPDATE guest_access SET revoked_ms=?")
+            .bind(Date.now())
+            .run();
+        }
+      },
+    });
+    try {
+      const c = await customer(m);
+      c.input.sessions.push({
+        ...c.input.sessions[0],
+        startMs: m.startMs + 3000000,
+      });
+      const send = () =>
+        m.mf.dispatchFetch(m.origin + `/api/booking/checkout/${c.input.key}`, {
+          method: "POST",
+          headers: c.headers,
+          body: JSON.stringify({ ...c.input, accepted: true }),
+        });
+      const first = await send();
+      const result = await first.json();
+      assert.notEqual(result.paymentAvailable, true);
+      assert.equal(result.checkout, undefined);
+      const count =
+        boundary === "createBatch" ? 0 : boundary === "book" ? 1 : 2;
+      assert.equal(
+        m.calls.filter((c) => c.body?.method === "book").length,
+        count,
+      );
+      assert.equal(
+        m.calls.filter(
+          (c) => c.url.includes("hit-pay.com") && c.method === "POST",
+        ).length,
+        0,
+      );
+      assert.equal((await send()).status, 401);
+      assert.equal(
+        m.calls.filter((c) => c.body?.method === "book").length,
+        count,
+      );
+      assert.equal(
+        (await m.db.prepare("SELECT count(*) AS n FROM attempts").first()).n,
+        1,
+      );
+      assert.deepEqual(m.unexpected, []);
+    } finally {
+      await m.close();
+    }
+  }
+});
+
+test("single and batch recovery retain verified evidence with bounded read overlap and measured D1 work", async () => {
+  for (const count of [1, 2, 4]) {
+    const logs = [];
+    let measuring = false,
+      active = 0,
+      maximum = 0;
+    const m = await createBookingMechanism({
+      batch: count > 1,
+      batchSize: count,
+      onLog: (line) => {
+        try {
+          logs.push(JSON.parse(line));
+        } catch {}
+      },
+      respond: async (call) => {
+        if (
+          measuring &&
+          (call.body?.method === "getBookingDetails" ||
+            (call.url.endsWith("/admin/invoices/901") && call.method === "GET"))
+        ) {
+          active++;
+          maximum = Math.max(maximum, active);
+          try {
+            await new Promise((resolve) => setTimeout(resolve, 400));
+          } finally {
+            active--;
+          }
+        }
+      },
+    });
+    try {
+      const c = await customer(m);
+      c.input.sessions = Array.from({ length: count }, (_, i) => ({
+        ...c.input.sessions[0],
+        startMs: m.startMs + i * 3000000,
+      }));
+      const response = await m.mf.dispatchFetch(
+        m.origin + `/api/booking/checkout/${c.input.key}`,
+        {
+          method: "POST",
+          headers: c.headers,
+          body: JSON.stringify({ ...c.input, accepted: true }),
+        },
+      );
+      assert.equal((await response.json()).paymentAvailable, true);
+      await m.completePayment();
+      measuring = true;
+      await m.recover();
+      assert.equal(active, 0);
+      assert.equal(maximum, 2);
+      const trace = logs.find(
+        (e) =>
+          e.event === "confirmation_trace" &&
+          e.boundary === "recovery" &&
+          e.result === "complete",
+      );
+      assert.ok(
+        trace,
+        JSON.stringify(logs.filter((e) => e.event === "confirmation_trace")),
+      );
+      assert.equal(trace.operations.booking_read.count, 2 * count);
+      assert.equal(trace.operations.invoice_read.count, 2);
+      assert.equal(trace.operations.accounting_write.count, 1);
+      console.log(
+        `recovery ${count}: D1=${trace.operations.d1.count}; ms=${trace.durationMs}; maxReads=${maximum}`,
+      );
+      const stored = await m.db
+        .prepare(
+          "SELECT a.observation_json,c.confirmation_json FROM attempts a JOIN checkout_progress c ON c.attempt_id=a.id WHERE a.id=?",
+        )
+        .bind(c.input.key)
+        .first();
+      assert.equal(JSON.parse(stored.observation_json).bookings.length, count);
+      assert.equal(JSON.parse(stored.confirmation_json).sessions.length, count);
+      assert.equal(
+        m.calls.filter((c) => c.body?.method === "book").length,
+        count,
+      );
+      assert.equal(
+        m.calls.filter(
+          (c) => c.url.includes("hit-pay.com") && c.method === "POST",
+        ).length,
+        1,
+      );
+      assert.deepEqual(m.unexpected, []);
+    } finally {
+      await m.close();
+    }
   }
 });

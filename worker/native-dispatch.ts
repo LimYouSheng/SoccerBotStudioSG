@@ -2,15 +2,16 @@ import type { Access } from "./access";
 import type { Grant } from "./customer-authority";
 import { ApiError } from "./policy";
 
-// One transaction claims the first single-booking write. Result gates also
+// One transaction claims the first provider write. Result gates also
 // appear in SQL: a failed predicate cannot authorize a later statement.
-export async function claimSingleDispatch(
+export async function claimNativeDispatch(
   db: D1Database,
   id: string,
   version: number,
   access: Access,
   grant: Grant,
   availability: string,
+  firstStep = "session:0",
 ) {
   const now = Date.now();
   const results = await db.batch([
@@ -54,9 +55,9 @@ export async function claimSingleDispatch(
       .bind(crypto.randomUUID(), now, id),
     db
       .prepare(
-        "INSERT INTO session_effects(attempt_id,step,outcome) SELECT id,'session:0','unknown' FROM attempts WHERE id=? AND version=? AND state='dispatching' AND changes()=1",
+        "INSERT INTO session_effects(attempt_id,step,outcome) SELECT id,?,'unknown' FROM attempts WHERE id=? AND version=? AND state='dispatching' AND changes()=1",
       )
-      .bind(id, version + 1),
+      .bind(firstStep, id, version + 1),
   ]);
   if (
     (results[1].results[0] as { route?: string } | undefined)?.route !==
@@ -70,4 +71,37 @@ export async function claimSingleDispatch(
   )
     throw new ApiError(409, "dispatch_not_claimed");
   return version + 1;
+}
+
+// Every later batch effect combines fresh authority and one durable reservation.
+// Unknown effects cannot be inserted twice, including after process loss.
+export async function claimNativeEffect(
+  db: D1Database,
+  id: string,
+  version: number,
+  access: Access,
+  grant: Grant,
+  step: string,
+) {
+  const now = Date.now();
+  const result = await db
+    .prepare(
+      "INSERT INTO session_effects(attempt_id,step,outcome) SELECT a.id,?,'unknown' FROM attempts a JOIN native_checkout_grants g ON g.attempt_id=a.id JOIN guest_access c ON c.capability_hash=g.capability_hash WHERE a.id=? AND a.version=? AND a.state='dispatching' AND a.association_json IS NULL AND a.deadline_ms>? AND g.state='running' AND g.source_revision=? AND g.intent_hash=a.intent_hash AND g.intent_hash=? AND g.contract_json=? AND g.expires_ms>? AND c.capability_hash=? AND c.owner_id=a.owner_id AND c.owner_id=? AND c.revoked_ms IS NULL AND c.issued_ms<=? AND c.expires_ms>?",
+    )
+    .bind(
+      step,
+      id,
+      version,
+      now + 15000,
+      grant.source_revision,
+      grant.intent_hash,
+      grant.contract_json,
+      now + 15000,
+      access.capability_hash,
+      access.owner_id,
+      now,
+      now,
+    )
+    .run();
+  if (result.meta.changes !== 1) throw new ApiError(409, "effect_not_claimed");
 }
