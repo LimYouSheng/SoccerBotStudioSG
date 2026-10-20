@@ -858,6 +858,48 @@ test("HitPay protected confirmation queues stale booking proof without resetting
     .prepare("SELECT observation_json FROM attempts WHERE id=?")
     .bind(attemptId)
     .first();
+  // The request began before reconciliation committed its evidence. Actual
+  // decision time must follow the storage read, for polling, return and export.
+  for (const route of ["confirmation", "checkout", "receipt"]) {
+    const response = await mf.dispatchFetch(
+      origin + "/test/request-start/" + route,
+      { headers },
+    );
+    assert.equal(response.status, 200, await response.clone().text());
+    const result = await response.json();
+    if (route === "confirmation") assert.equal(result.status, "confirmed");
+    else if (route === "checkout")
+      assert.equal(result.confirmation.attemptId, attemptId);
+    else assert.equal(result.attemptId, attemptId);
+  }
+  await db
+    .prepare("UPDATE attempts SET confirmation_next_ms=0 WHERE id=?")
+    .bind(attemptId)
+    .run();
+  const future = JSON.parse(original.observation_json);
+  for (const proof of [...future.bookings, future.invoice])
+    proof.observedAtMs = Date.now() + 60000;
+  await db
+    .prepare("UPDATE attempts SET observation_json=? WHERE id=?")
+    .bind(JSON.stringify(future), attemptId)
+    .run();
+  const rejected = await mf.dispatchFetch(
+    origin + "/test/request-start/confirmation",
+    { headers },
+  );
+  assert.equal((await rejected.json()).reason, "observation_time_invalid");
+  assert.equal(
+    (
+      await mf.dispatchFetch(origin + "/test/request-start/receipt", {
+        headers,
+      })
+    ).status,
+    409,
+  );
+  await db
+    .prepare("UPDATE attempts SET confirmation_next_ms=0 WHERE id=?")
+    .bind(attemptId)
+    .run();
   const observation = JSON.parse(original.observation_json);
   for (const proof of [...observation.bookings, observation.invoice])
     proof.observedAtMs = Date.now() - 30000;

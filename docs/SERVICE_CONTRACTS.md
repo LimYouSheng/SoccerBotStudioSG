@@ -1,5 +1,11 @@
 # SoccerBotStudio — Service Contracts
 
+## Confirmation read timestamp race — 20 October 2026 SGT
+
+PR64 passed all PR gates and owner merged it as c7ee697. Main run39355419233 passed frontend/backend and74/75 live-email cases; tablet WebKit payment recovery timed out and Cloudflare deployment was skipped. Offline trace shows verified customer confirmation followed by observation_time_invalid: reconciliation committed fresh evidence after the HTTP request-start timestamp used for validation. This is a production read race, not a reason to increase the browser timeout or weaken its response assertion.
+
+Confirmation polling, saved checkout confirmation and protected receipt decisions now use the current clock after asynchronous storage reads. They never advance time to the evidence timestamp. Original saved verification time, authentication, freshness, payment guards and future-observation rejection remain intact. The real Worker regression fails against pre-fix source and passes with the repair; it exercises polling/context/export with an earlier request-start timestamp, plus rejects genuinely future evidence. Test-impact review covers all decideStoredConfirmation callers, shared domain time checks and the unchanged browser recovery/dismissal waits. Final-source Worker and CI verification remain required. No browser or provider booking/payment operation performed by the assistant.
+
 ## Independent payment deadlines — 20 October 2026 SGT
 
 HAR09 records a29.1second four-session checkout ending in recovery_required. The saved batch-close evidence confirms four bookings and an unpaid invoice; correlated deployed c08aa04 telemetry proves HitPay creation returned422 JSON. No request ID or checkout URL was saved. Compared with the successful d0c0be8 batch, the HitPay payload builder is unchanged; persisted timing reconstructs expires_after as4mins versus7mins. The new grant inherited the older access-session expiry, which incorrectly capped the financial hold and payment deadline. This establishes the shortened deadline, not the particular field rejected by HitPay.
