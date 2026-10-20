@@ -2,7 +2,7 @@
 import { loadingMessage } from "./booking-loading";
 import { BrandLoading as InlineLoading } from "@/components/brand-loading";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/icon";
 import { ADDRESS, CONTACT } from "@/domain/catalog";
@@ -13,6 +13,44 @@ import type { Booking } from "@/domain/booking";
 import { useBooking } from "./provider";
 import { SessionList } from "./summary";
 import { Arrival, ClientDetails } from "./review-step";
+function PendingConfirmationHeading({ label }: { label: string }) {
+  return (
+    <>
+      <InlineLoading compact label={label} />
+      <p className="text-sm text-muted">{label}</p>
+      <p className="text-sm text-muted">
+        We’re checking the payment status for this booking. Your details are
+        saved.
+      </p>
+      <p className="text-sm text-muted">{loadingMessage}</p>
+    </>
+  );
+}
+
+export function PendingConfirmation({
+  label = "Checking your booking…",
+  children,
+}: {
+  label?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="status-shell confirmation-shell">
+      <div className="status-heading">
+        <PendingConfirmationHeading label={label} />
+      </div>
+      <section className="surface confirmation-card" aria-busy="true">
+        {children ?? (
+          <div className="confirmation-summary" aria-label="Booking summary">
+            <strong>Your booking</strong>
+            <p>Loading booking details…</p>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
+
 export function ConfirmationStep() {
   const { attempt, reset } = useBooking(),
     router = useRouter(),
@@ -88,15 +126,7 @@ export function BookingConfirmation({
     <div className="status-shell confirmation-shell">
       <div className="status-heading">
         {pending ? (
-          <>
-            <InlineLoading compact label={pendingLabel} />
-            <p className="text-sm text-muted">{pendingLabel}</p>
-            <p className="text-sm text-muted">
-              We’re checking the payment status for this booking. Your details
-              are saved.
-            </p>
-            <p className="text-sm text-muted">{loadingMessage}</p>
-          </>
+          <PendingConfirmationHeading label={pendingLabel} />
         ) : (
           <>
             <span className="status-icon">

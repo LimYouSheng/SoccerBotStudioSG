@@ -14,6 +14,10 @@ SimplyBook settings enforce the shared studio across instructors and entry chann
 
 Direct single-checkout D1 budget: one binding read plus nine coordinator executions on the fresh successful path, for cold and warm public tokens. Grant and attempt transactions return their saved snapshots; booking dispatch atomically checks authority and reserves one effect. Raw provider evidence and opaque references remain durable before strict normalization. Validated association, original creation time, hold and unpaid observation commit together with conditional writes. Payment reservation rechecks durable access, association, route and anchored expiry at dispatch; payment URL persistence and checkout completion share a final transaction with response authorization. A failed predicate must not authorize subsequent statements. Batch, stale-evidence fallback and recovery retain separate handling; ten is not a cap on failure/recovery work.
 
+### Pending confirmation presentation
+
+Confirmation-route suspension, protected context loading and pending verification share the compact spinning SoccerBot header above the confirmation card. Initial context loading says Checking your booking; a placeholder occupies the card until protected details are available. Subsequent verification/preparation changes the status message within the same visual layout. This presentation never supplies booking/payment evidence, invents details or exposes confirmed actions before authoritative confirmation. Error/recovery controls retain their existing behavior.
+
 ### Confirmation diagnostics
 
 Protected checkout context, confirmation status and receipt responses add fixed-label Server-Timing for their operation and D1 work, plus confirmation_http from Worker entry. Operation D1 counts exclude the earlier binding read; foundation_trace includes it. X-Recovery-Trace is SHA-256 of a domain-separated attempt UUID and joins authorized HAR requests to confirmation_trace logs; request IDs retain per-request correlation. Error responses retain partial timings without adding diagnostics to JSON bodies.

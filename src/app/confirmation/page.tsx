@@ -1,5 +1,5 @@
 "use client";
-import { BookingLoading } from "@/features/booking/booking-loading";
+import { PendingConfirmation } from "@/features/booking/confirmation-step";
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useBooking } from "@/features/booking/provider";
@@ -26,7 +26,7 @@ function ConfirmationRoute() {
 }
 export default function ConfirmationPage() {
   return (
-    <Suspense fallback={<BookingLoading label="Verifying your payment…" />}>
+    <Suspense fallback={<PendingConfirmation />}>
       <ConfirmationRoute />
     </Suspense>
   );

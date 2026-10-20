@@ -533,7 +533,7 @@ it("reopening an expired paid booking shows the saved full confirmation without 
   expect(fetch.mock.calls.at(-1)?.[0]).toBe(`/api/attempts/${first}/dismiss`);
 });
 
-it("pending checkout context retains preparation status and exposes no checkout or confirmation", async () => {
+it("pending checkout context uses the compact confirmation shell without checkout or success", async () => {
   let finish!: (response: Response) => void;
   const context = new Promise<Response>((resolve) => {
     finish = resolve;
@@ -548,8 +548,21 @@ it("pending checkout context retains preparation status and exposes no checkout 
   vi.stubGlobal("fetch", fetch);
   render(<ProtectedConfirmation attemptId={first} checkoutMode="live" />);
   expect(
-    screen.getByRole("status", { name: "Preparing checkout…" }),
+    screen.getByRole("status", { name: "Checking your booking…" }),
   ).toBeVisible();
+  const shell = document.querySelector(".confirmation-shell");
+  expect(
+    shell?.querySelector(".status-heading .booking-loading-inline"),
+  ).not.toBeNull();
+  expect(
+    shell?.querySelector(".confirmation-card .booking-loading-inline"),
+  ).toBeNull();
+  expect(screen.getByLabelText("Booking summary")).toHaveTextContent(
+    "Loading booking details…",
+  );
+  expect(
+    document.querySelector(".page-loading, .booking-flow-overlay"),
+  ).toBeNull();
   expect(
     screen.queryByRole("link", { name: /Open checkout/ }),
   ).not.toBeInTheDocument();
@@ -578,6 +591,10 @@ it("pending checkout context retains preparation status and exposes no checkout 
   expect(
     await screen.findByRole("region", { name: "Current booking summary" }),
   ).toBeVisible();
+  expect(document.querySelector(".confirmation-shell")).toBe(shell);
+  expect(
+    shell?.querySelector(".status-heading .booking-loading-inline"),
+  ).not.toBeNull();
   expect(
     screen.queryByRole("link", { name: /Open checkout/ }),
   ).not.toBeInTheDocument();
