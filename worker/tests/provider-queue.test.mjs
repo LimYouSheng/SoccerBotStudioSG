@@ -186,3 +186,88 @@ test("provider queue prioritizes recovery while bounding starvation under mixed 
     assert.ok(order.indexOf("display") <= 12);
   }
 });
+
+const tracingBundle = await build({
+  entryPoints: ["worker/checkout-tracing.ts"],
+  bundle: true,
+  write: false,
+  platform: "node",
+  format: "esm",
+});
+const tracing = await import(
+  `data:text/javascript;base64,${Buffer.from(tracingBundle.outputFiles[0].text).toString("base64")}`
+);
+
+test("checkout timing isolates queued requests attributes D1 to dispatch phase and closes before background work", async (t) => {
+  const logs = [];
+  t.mock.method(console, "log", (message) => logs.push(JSON.parse(message)));
+  const queue = new ProviderQueue();
+  const gate = Promise.withResolvers();
+  const started = Promise.withResolvers();
+  const firstTrace = tracing.createCheckoutTrace(crypto.randomUUID());
+  const secondTrace = tracing.createCheckoutTrace(crypto.randomUUID());
+  let lateD1;
+  const first = queue.run("foreground", () =>
+    tracing.runCheckoutTrace(firstTrace, async () => {
+      tracing.checkoutTokenCache(false)?.();
+      const d1 = tracing.checkoutD1();
+      const provider = tracing.checkoutProvider("simplybook");
+      started.resolve();
+      await gate.promise;
+      d1(false);
+      provider();
+      lateD1 = tracing.checkoutD1();
+    }),
+  );
+  await started.promise;
+  let secondStarted = false;
+  const second = queue.run("foreground", () =>
+    tracing.runCheckoutTrace(secondTrace, async () => {
+      secondStarted = true;
+      tracing.checkoutTokenCache(true)?.();
+      const readA = tracing.checkoutProvider("verification");
+      const readB = tracing.checkoutProvider("verification");
+      readA();
+      assert.equal(secondTrace.phase, "verification");
+      readB();
+      const payment = tracing.checkoutProvider("hitpay");
+      payment();
+      tracing.checkoutD1()(true);
+    }),
+  );
+  assert.equal(secondStarted, false);
+  gate.resolve();
+  await first;
+  const firstHeader = tracing.finishCheckoutTrace(firstTrace);
+  await second;
+  const secondHeader = tracing.finishCheckoutTrace(secondTrace);
+  lateD1(false);
+  assert.equal(tracing.finishCheckoutTrace(firstTrace), undefined);
+  const traces = logs.filter((log) => log.event === "checkout_trace");
+  assert.equal(traces.length, 2);
+  assert.equal(logs.filter((log) => log.event === "provider_queue").length, 2);
+  const a = logs.find((log) => log.correlationId === firstTrace.correlationId);
+  const b = logs.find((log) => log.correlationId === secondTrace.correlationId);
+  assert.equal(a.phases.prepare.d1Count, 1);
+  assert.equal(a.phases.booking_work.d1Count, 0);
+  assert.equal(a.phases.simplybook.calls, 1);
+  assert.equal(a.phases.hitpay.calls, 0);
+  assert.equal(b.phases.prepare.d1Count, 0);
+  assert.equal(b.phases.verification.calls, 2);
+  assert.equal(b.phases.payment_save.d1Errors, 1);
+  assert.equal(b.phases.hitpay.calls, 1);
+  assert.match(firstHeader, /sb_token;dur=[0-9.]+;desc="cache_miss"/);
+  assert.match(secondHeader, /sb_token;dur=[0-9.]+;desc="cached"/);
+  for (const log of traces) {
+    const phaseTotal = Object.values(log.phases).reduce(
+      (sum, phase) => sum + phase.durationMs,
+      0,
+    );
+    assert.ok(phaseTotal <= log.durationMs + 0.001);
+    assert.ok(
+      Math.abs(log.durationMs - phaseTotal) < 0.001,
+      "phase wall times partition checkout duration",
+    );
+    assert.ok(log.phases.queue.durationMs >= 0);
+  }
+});

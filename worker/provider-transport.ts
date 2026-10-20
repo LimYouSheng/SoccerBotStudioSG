@@ -1,3 +1,4 @@
+import { checkoutProvider } from "./checkout-tracing";
 import {
   webhookEvent,
   webhookPath,
@@ -523,6 +524,7 @@ export async function providerRequest(
   let httpStatus: number | undefined;
   let cooldown = 0;
   return await measure("provider", async () => {
+    let finishCheckoutProvider: (() => void) | undefined;
     try {
       if (
         native?.kind === "booking-cancel" &&
@@ -533,6 +535,13 @@ export async function providerRequest(
         complete = true;
         throw new ApiError(503, "native_cleanup_evidence_expired");
       }
+      if (
+        native &&
+        ["book", "batch-create", "batch-close"].includes(native.kind)
+      )
+        finishCheckoutProvider = checkoutProvider("simplybook");
+      else if (native && ["booking-read", "invoice-read"].includes(native.kind))
+        finishCheckoutProvider = checkoutProvider("verification");
       const response = await fetch(url, {
         method,
         headers,
@@ -661,6 +670,7 @@ export async function providerRequest(
           : "provider_transport_uncertain",
       );
     } finally {
+      finishCheckoutProvider?.();
       clearTimeout(timer);
       signal?.removeEventListener("abort", abort);
       dispatch.finish(
@@ -751,6 +761,8 @@ export async function hitpayRequest(
   await reserve();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 20000);
+  const finishCheckoutProvider =
+    operation.kind === "create" ? checkoutProvider("hitpay") : undefined;
   try {
     const response = await fetch(url, {
       method: operation.kind === "create" ? "POST" : "GET",
@@ -816,6 +828,7 @@ export async function hitpayRequest(
       void reader.cancel().catch(() => {});
     }
   } finally {
+    finishCheckoutProvider?.();
     clearTimeout(timer);
     controller.abort();
   }

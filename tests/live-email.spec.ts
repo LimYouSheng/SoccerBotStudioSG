@@ -681,7 +681,17 @@ test("native guest journey preserves players contact and one checkout across ref
     await page
       .getByRole("button", { name: "Continue to payment", exact: true })
       .click();
-    expect((await holdResponse).status()).toBe(200);
+    const checkoutResponse = await holdResponse;
+    expect(checkoutResponse.status()).toBe(200);
+    expect(checkoutResponse.headers()["server-timing"]).toMatch(
+      /simplybook;dur=[0-9.]+;desc="1 calls"/,
+    );
+    expect(checkoutResponse.headers()["server-timing"]).toMatch(
+      /hitpay;dur=[0-9.]+;desc="1 calls"/,
+    );
+    expect(checkoutResponse.headers()["x-request-id"]).toMatch(
+      /^[a-f0-9-]{36}$/,
+    );
     await expect(page).toHaveURL(checkoutUrl);
     expect(
       calls.filter(

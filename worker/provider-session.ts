@@ -1,3 +1,4 @@
+import { checkoutTokenCache } from "./checkout-tracing";
 import { parallelReads } from "./parallel-reads";
 import { hitpayRecoveryEnabled } from "./hitpay-contract";
 import { discoveryFields } from "./field-discovery";
@@ -283,7 +284,14 @@ export class ProviderSession {
       secrets.company.toLowerCase() === "soccerbotstudio"
     )
       throw new ApiError(503, "provider_access_disabled");
-    await this.token("public", env, control);
+    const finishToken = checkoutTokenCache(
+      (this.tokens.get("public")?.until ?? 0) > Date.now(),
+    );
+    try {
+      await this.token("public", env, control);
+    } finally {
+      finishToken?.();
+    }
   }
 
   async nativeWrite(

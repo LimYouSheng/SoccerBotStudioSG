@@ -96,6 +96,7 @@ export default {
     }
   },
   async fetch(request: Request, env: Env): Promise<Response> {
+    const requestStarted = performance.now();
     const correlationId = crypto.randomUUID(),
       url = new URL(request.url),
       now = Date.now();
@@ -191,19 +192,22 @@ export default {
           if (request.method !== "POST")
             throw new ApiError(405, "operation_unavailable");
           await verifyBindings(env);
-          return json(
-            unwrapRpcOutcome(
-              await env.COORDINATOR.getByName(coordinatorName).holdCustomer(
-                {
-                  attemptId: holdMatch[2],
-                  checkout: holdMatch[1] === "checkout",
-                  cookie: request.headers.get("cookie") || "",
-                  value: await inputBody(request),
-                },
-                correlationId,
-              ),
-            ),
+          const outcome = await env.COORDINATOR.getByName(
+            coordinatorName,
+          ).holdCustomer(
+            {
+              attemptId: holdMatch[2],
+              checkout: holdMatch[1] === "checkout",
+              cookie: request.headers.get("cookie") || "",
+              value: await inputBody(request),
+            },
+            correlationId,
           );
+          if (outcome.serverTiming)
+            checkingHeaders["Server-Timing"] =
+              outcome.serverTiming +
+              `, checkout_http;dur=${Math.max(0, performance.now() - requestStarted).toFixed(2)}`;
+          return json(unwrapRpcOutcome(outcome));
         }
         if (url.pathname === "/api/booking/prepare") {
           if (request.method !== "POST")

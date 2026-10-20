@@ -1,3 +1,8 @@
+import {
+  createCheckoutTrace,
+  runCheckoutTrace,
+  finishCheckoutTrace,
+} from "./checkout-tracing";
 import { annotatePendingBooking } from "./native-comments";
 import { DisplaySnapshots } from "./display-snapshots";
 import { expireCheckout } from "./checkout-progress";
@@ -930,84 +935,96 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     correlationId: string,
   ) {
     const attemptId = z.string().uuid().parse(scope.attemptId);
+    const checkoutTrace = scope.checkout
+      ? createCheckoutTrace(correlationId)
+      : undefined;
     const pending = this.providerQueue.run("foreground", () =>
-      traced(correlationId, "coordinator", async () => {
-        const request = new Request(this.env.APP_ORIGIN, {
-          headers: { cookie: scope.cookie },
-        });
-        const input = nativePrepareSchema.parse(scope.value);
-        if (
-          !liveCustomerAccess(this.env) ||
-          !input.holding ||
-          input.key !== attemptId ||
-          (scope.checkout && !input.accepted)
-        )
-          throw new ApiError(400, "combined_hold_unavailable");
-        const env = {
-          ...this.env,
-          STATE: instrumentStorage(this.env.STATE, "d1"),
-        };
-        const creationOnly = !!scope.checkout;
-        const access = await authenticate(request, env, Date.now());
-        await authorizeCustomerCheckout(
-          request,
-          input,
-          { ...this.calendarReadOptions(), env },
-          true,
-          access,
-        );
-        await prepareCustomerNative(
-          request,
-          env,
-          input,
-          attemptId,
-          () =>
-            creationOnly
-              ? this.provider.checkoutToken(
-                  env,
-                  this.providerControl(false, true),
-                )
-              : this.provider.identity(env, this.providerControl(false, true)),
-          access,
-        );
-        this.invalidateDisplay();
-        return executeNativeCheckout({
-          request,
-          env,
-          attemptId,
-          holding: true,
-          combinedHold: true,
-          creationOnly,
-          access,
-          onVerifiedHold: scope.checkout
-            ? (proof) =>
-                payHitpayHold(
-                  request,
-                  env,
-                  attemptId,
-                  this.provider,
-                  this.providerControl(false, true),
-                  proof,
-                )
-            : undefined,
-          provider: this.provider,
-          control: this.providerControl(false, true),
-          recoveryControl: this.providerControl(true, true),
-          accounting: () => this.providerAccounting(),
-        }).finally(() => {
-          if (scope.checkout)
-            this.ctx.waitUntil(
-              this.bookingComments(attemptId).catch(() => {
-                console.error(
-                  JSON.stringify({ event: "booking_comments_deferred" }),
-                );
-              }),
-            );
-          this.refreshDisplayAfterWrite();
-        });
-      }),
+      runCheckoutTrace(checkoutTrace, () =>
+        traced(correlationId, "coordinator", async () => {
+          const request = new Request(this.env.APP_ORIGIN, {
+            headers: { cookie: scope.cookie },
+          });
+          const input = nativePrepareSchema.parse(scope.value);
+          if (
+            !liveCustomerAccess(this.env) ||
+            !input.holding ||
+            input.key !== attemptId ||
+            (scope.checkout && !input.accepted)
+          )
+            throw new ApiError(400, "combined_hold_unavailable");
+          const env = {
+            ...this.env,
+            STATE: instrumentStorage(this.env.STATE, "d1"),
+          };
+          const creationOnly = !!scope.checkout;
+          const access = await authenticate(request, env, Date.now());
+          await authorizeCustomerCheckout(
+            request,
+            input,
+            { ...this.calendarReadOptions(), env },
+            true,
+            access,
+          );
+          await prepareCustomerNative(
+            request,
+            env,
+            input,
+            attemptId,
+            () =>
+              creationOnly
+                ? this.provider.checkoutToken(
+                    env,
+                    this.providerControl(false, true),
+                  )
+                : this.provider.identity(
+                    env,
+                    this.providerControl(false, true),
+                  ),
+            access,
+          );
+          this.invalidateDisplay();
+          return executeNativeCheckout({
+            request,
+            env,
+            attemptId,
+            holding: true,
+            combinedHold: true,
+            creationOnly,
+            access,
+            onVerifiedHold: scope.checkout
+              ? (proof) =>
+                  payHitpayHold(
+                    request,
+                    env,
+                    attemptId,
+                    this.provider,
+                    this.providerControl(false, true),
+                    proof,
+                  )
+              : undefined,
+            provider: this.provider,
+            control: this.providerControl(false, true),
+            recoveryControl: this.providerControl(true, true),
+            accounting: () => this.providerAccounting(),
+          }).finally(() => {
+            if (scope.checkout)
+              this.ctx.waitUntil(
+                this.bookingComments(attemptId).catch(() => {
+                  console.error(
+                    JSON.stringify({ event: "booking_comments_deferred" }),
+                  );
+                }),
+              );
+            this.refreshDisplayAfterWrite();
+          });
+        }),
+      ),
     );
-    return rpcOutcome(() => pending);
+    let serverTiming: string | undefined;
+    const outcome = await rpcOutcome(() => pending).finally(() => {
+      serverTiming = finishCheckoutTrace(checkoutTrace);
+    });
+    return { ...outcome, serverTiming };
   }
   async bookingComments(attemptId?: string) {
     return this.providerQueue.run("display", () =>
