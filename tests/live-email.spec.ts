@@ -810,10 +810,9 @@ test("native guest journey preserves players contact and one checkout across ref
   }
 });
 
-async function prepareBrowserAttempt(
+async function authenticateBrowserGuest(
   page: Page,
   mechanism: Awaited<ReturnType<typeof createBookingMechanism>>,
-  mode: "prepare" | "checkout" = "prepare",
 ) {
   // Setup uses the same public routes, auth and coordinator as the browser.
   const access = await mechanism.mf.dispatchFetch(
@@ -832,11 +831,19 @@ async function prepareBrowserAttempt(
       secure: false,
     },
   ]);
-  const headers = {
+  return {
     origin: mechanism.origin,
     cookie,
     "content-type": "application/json",
   };
+}
+
+async function prepareBrowserAttempt(
+  page: Page,
+  mechanism: Awaited<ReturnType<typeof createBookingMechanism>>,
+  mode: "prepare" | "checkout" = "prepare",
+) {
+  const headers = await authenticateBrowserGuest(page, mechanism);
   const key = crypto.randomUUID();
   const prepared = await mechanism.mf.dispatchFetch(
     mechanism.origin +
@@ -1636,8 +1643,54 @@ test("real API lost successful hold response restores the existing reservation w
     },
   );
   try {
-    await guestDetails(page, mechanism);
-    await reviewResponse(page);
+    // Start from an editable saved draft, not another cold browsing journey.
+    // The native guest journey covers homepage/calendar/Details; this case
+    // retains real authentication, browser checkout and response-loss recovery.
+    await authenticateBrowserGuest(page, mechanism);
+    await page.addInitScript((date) => {
+      if (sessionStorage.getItem("soccerbot-live-draft")) return;
+      sessionStorage.setItem(
+        "soccerbot-live-draft",
+        JSON.stringify({
+          mode: "guest",
+          accountEmail: "",
+          nativeServiceId: "2",
+          players: 1,
+          accepted: false,
+          contact: {
+            name: "Synthetic Guest",
+            email: "synthetic@example.test",
+            phone: "+6591234567",
+            contactMethod: "email",
+            academy: "Synthetic School",
+          },
+          slots: [
+            {
+              date,
+              start: "12:10",
+              instructor: "14",
+              native: {
+                serviceId: "2",
+                serviceName: "Native Session",
+                instructorName: "Native Trainer",
+                priceMinor: 8800,
+                currency: "SGD",
+              },
+            },
+          ],
+        }),
+      );
+    }, mechanism.date);
+    await page.goto("/book/review/");
+    await page
+      .getByRole("dialog", { name: "Get the SoccerBot Player App" })
+      .getByRole("button", { name: "Not now", exact: true })
+      .click();
+    await expect(
+      page.getByRole("heading", { name: "Review booking", exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole("checkbox")).not.toBeChecked();
+    expect(mechanism.calls).toHaveLength(0);
     // Recovery cannot navigate until the successful Worker response is lost.
     // Register before clicking so even an immediate abort is observed.
     const lost = page.waitForEvent(

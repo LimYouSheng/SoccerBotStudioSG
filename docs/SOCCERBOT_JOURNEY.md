@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## PR72 lost-response test setup — 20 October 2026 SGT
+
+Run39415858902 on767f760 passed frontend/backend and77/78 live-email cases, including all three new timing-header assertions. Offline phone-WebKit trace shows roughly8.5seconds of fixture setup and10seconds of initial calendar loading. The successful checkout response was lost as intended; authenticated current-attempt recovery returned the original checking attempt. The test exhausted its unchanged30-second budget before its reload assertion. Start this focused case from an editable saved Review draft and real server-issued guest access. No attempt or payment authority is injected. Preserve browser consent/checkout, deliberate response loss, durable hold lookup, reload restoration, no premature confirmation and exactly one booking/payment effect. The native guest journey retains the complete homepage/calendar/Details path. Shared prepared-attempt setup reuses the same extracted guest-auth helper without changing its routes or cookie mapping. No production change, retries, skipped assertions or increased timeout. Final-head CI remains required; owner authorizes merge after passing.
+
 ## Confirmation tracing — 20 October 2026 SGT
 
 PR71 merged as78098bf after all three gates passed; main CI/deployment run39410852918 succeeded. Owner hometest04 records single checkout5.30seconds, nine coordinator D1 calls/1.303seconds, public token cache miss957ms, and return-to-confirmed20.407seconds/receipt21.209seconds. Polls reported payment_received_booking_pending; after the sixth response a9.574second gap preceded the next request. HAR alone cannot identify admin-authentication duration, the dominant reconciliation subrequest or when readiness changed between polls.

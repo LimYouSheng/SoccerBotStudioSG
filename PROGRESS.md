@@ -2,7 +2,7 @@
 
 ## Confirmation tracing — 20 October 2026 SGT
 
-Active branch perf/confirmation-tracing is based on merged PR71/main78098bf. Add observational recovery stage/provider/authentication/admission/D1 timings and correlated protected-read headers after owner HAR showed20.4second confirmation. Targeted recovery/privacy/error/header and cold/warm ten-call checkout checks pass. Test-impact review completed. Full local code gate passed223 frontend tests/build/export; full Worker gate passed409/409 with zero skips. Publish a new PR and require final-head frontend/backend/live-email CI. Preserve all polling, cache lifetime, financial and proof behavior. No new-PR merge or provider test authorization.
+PR72 head767f760 passed frontend/backend but live-email run39415858902 passed77/78. Offline phone-WebKit trace shows slow cold fixture/browsing setup and preserved original-attempt recovery, then exhaustion of the unchanged30-second budget before reload. Focus the lost-response case on a saved editable Review draft with real guest authentication; retain the actual browser checkout, lost response, durable hold, reload and one booking/payment assertions. Full homepage/calendar/Details coverage remains in the native guest journey. No production change or timeout/retry relaxation. Affected source/policy/type/lint/format checks and45 component/service tests passed. Full final-head CI remains pending. Owner authorizes merging PR72 after all checks pass, then deployed confirmation diagnosis; no assistant provider experiment.
 
 ## Ten-call checkout implementation — 20 October 2026 SGT
 
