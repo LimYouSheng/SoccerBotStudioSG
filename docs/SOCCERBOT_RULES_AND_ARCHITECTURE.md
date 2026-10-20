@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Reconciliation optimization candidate — not deployed
+
+The isolated experiment batches immutable evidence and guarded publication, while preserving current booking/invoice verification and one accounting effect. Read-only calls may share the existing bounded claim lease; stale generations cannot authorize accounting or success. Unknown-write recovery and failure paths must not be constrained to the successful five-round-trip budget. See Service Contracts for the candidate boundaries and PROGRESS for validation status. Existing deployment rules remain in force until integration and exact-head CI.
+
 Five-round-trip single-checkout integration is a not-yet-deployed candidate described in [Service Contracts](SERVICE_CONTRACTS.md#five-call-single-checkout-integration-candidate--not-deployed). Fresh requests combine durable transactions; restored and failed attempts retain additional recovery work. No provider effect may precede its durable claim, and no redirect may precede the saved checkout URL.
 
 ## Current implementation rules — 20 October 2026

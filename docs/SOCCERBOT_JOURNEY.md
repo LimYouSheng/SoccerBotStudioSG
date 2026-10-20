@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## Five-round-trip recovery experiment — 21 October 2026 SGT
+
+Simulated providers measured5 D1 executions for1/2/4/8 sessions; the predecessor measured25/29/37 for1/2/4. With150ms injected D1 latency and400ms booking/invoice reads, matched single-run baseline→candidate times were5561→3232ms,6679→4146ms and8716→5951ms. These are local comparative measurements, not live promises. Claim replacement after payment, booking, accounting and paid-booking reads cannot publish success or repeat accounting. Forced final-transaction failure rolls back confirmation, and subsequent recovery completes with one accounting effect. Attempting to corrupt a retained observed key was rejected by the existing immutable-evidence trigger; a separate helper experiment rejected missing, duplicate, mismatched and surplus key snapshots. Full local Worker validation passed421/421 with zero skips; source/policy/types/lint/format passed. Integration and exact-head CI remain pending; no provider experiment was performed.
+
 ## Five-call experiment accepted for integration — 21 October 2026 SGT
 
 Owner requested integration and CI after the fresh single-checkout prototype reached five total D1 round trips including HTTP foundation/authentication. Matched simulations with150ms per D1 execution,900ms token,1200ms booking and800ms HitPay gave cold4344→3744ms and warm3576→2824ms means across two fixtures each. These are simulated wall times, not live guarantees. Failed-warmup evidence and speculative foreign-ID recovery mutations were caught and repaired; final local Worker gate418/418 passed with zero skips. Preserve the original417-test inventory failure and corrected ordered inventory. Integration remains stacked on open PR75; no merge or deployment is inferred.
