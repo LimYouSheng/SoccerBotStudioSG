@@ -2017,3 +2017,241 @@ test("checkout failure timing survives token booking and payment failures withou
     }
   }
 });
+
+test("direct batch checkout uses creation responses for two and four sessions with one payment and bounded D1 work", async () => {
+  for (const [count, warm] of [
+    [2, false],
+    [2, true],
+    [4, false],
+    [4, true],
+  ]) {
+    const logs = [];
+    let before = 0;
+    let creationCalls = [];
+    const m = await createBookingMechanism({
+      batch: true,
+      batchSize: count,
+      onLog: (message) => logs.push(message),
+      respond: async (call) => {
+        if (call.url.includes("hit-pay.com") && call.method === "POST")
+          creationCalls = m.calls.slice(before);
+        return undefined;
+      },
+    });
+    try {
+      if (warm) {
+        assert.equal(
+          (await m.mf.dispatchFetch(m.origin + "/api/catalogue")).status,
+          200,
+        );
+        logs.length = 0;
+      }
+      before = m.calls.length;
+      const c = await customer(m);
+      c.input.sessions = Array.from({ length: count }, (_, index) => ({
+        ...c.input.sessions[0],
+        startMs: m.startMs + index * 3000000,
+      }));
+      const send = () =>
+        m.mf.dispatchFetch(m.origin + `/api/booking/checkout/${c.input.key}`, {
+          method: "POST",
+          headers: c.headers,
+          body: JSON.stringify({ ...c.input, accepted: true }),
+        });
+      const response = await send();
+      assert.equal(response.status, 200);
+      const result = await response.json();
+      assert.equal(result.paymentAvailable, true);
+      assert.equal(result.checkout.url, m.checkoutUrl);
+      const traces = logs.flatMap((message) => {
+        try {
+          return [JSON.parse(message)];
+        } catch {
+          return [];
+        }
+      });
+      const trace = traces.find(
+        (entry) =>
+          entry.event === "foundation_trace" &&
+          entry.boundary === "coordinator",
+      );
+      assert.ok(trace);
+      const phaseTrace = traces.find(
+        (entry) =>
+          entry.event === "checkout_trace" &&
+          entry.correlationId === response.headers.get("x-request-id"),
+      );
+      assert.ok(phaseTrace);
+      assert.equal(phaseTrace.tokenCached, warm);
+      assert.equal(phaseTrace.phases.simplybook.calls, count + 2);
+      assert.equal(phaseTrace.phases.hitpay.calls, 1);
+      assert.equal(phaseTrace.phases.verification.calls, 0);
+      assert.equal(
+        Object.values(phaseTrace.phases).reduce(
+          (sum, phase) => sum + phase.d1Count,
+          0,
+        ),
+        trace.spans.d1.count,
+      );
+      assert.match(
+        response.headers.get("server-timing"),
+        new RegExp(`simplybook;dur=[0-9.]+;desc="${count + 2} calls"`),
+      );
+      assert.equal(result.serverTiming, undefined);
+      assert.ok(!JSON.stringify(phaseTrace).includes(m.checkoutUrl));
+
+      console.log(
+        `batch ${count}: D1=${trace.spans.d1.count}; provider=${trace.spans.provider?.count}`,
+      );
+      assert.ok(
+        trace.spans.d1.count <= 44 + (count - 2) * 6,
+        `D1: ${trace.spans.d1.count}`,
+      );
+      const methods = creationCalls
+        .filter((call) => call.url.includes("simplybook.me"))
+        .map((call) => call.body?.method)
+        .filter(Boolean);
+      console.log(`batch ${count}: methods=${methods.join(",")}`);
+      assert.deepEqual(methods, [
+        ...(warm ? [] : ["getToken"]),
+        "createBatch",
+        ...Array(count).fill("book"),
+        "closeBatch",
+      ]);
+      assert.equal(
+        creationCalls.filter((call) => call.url.includes("simplybook.me"))
+          .length,
+        methods.length,
+        "no admin/provider preflight calls",
+      );
+      const association = await m.db
+        .prepare("SELECT association_json FROM attempts WHERE id=?")
+        .bind(c.input.key)
+        .first();
+      assert.equal(
+        JSON.parse(association.association_json).bookingIds.length,
+        count,
+      );
+      await send();
+      assert.equal(
+        m.calls.filter((call) => call.body?.method === "book").length,
+        count,
+      );
+      assert.equal(
+        m.calls.filter((call) => call.body?.method === "createBatch").length,
+        1,
+      );
+      assert.equal(
+        m.calls.filter((call) => call.body?.method === "closeBatch").length,
+        1,
+      );
+      assert.equal(
+        m.calls.filter(
+          (call) => call.url.includes("hit-pay.com") && call.method === "POST",
+        ).length,
+        1,
+      );
+      assert.deepEqual(m.unexpected, []);
+    } finally {
+      await m.close();
+    }
+  }
+});
+
+test("direct batch rejection lost response and invalid invoice retain original effects without payment or replay", async () => {
+  for (const count of [2, 4])
+    for (const fault of ["rejected", "lost", "invoice", "close-lost"]) {
+      let dispatched = 0;
+      const m = await createBookingMechanism({
+        batch: true,
+        batchSize: count,
+        creationPriceDrift: fault === "invoice",
+        respond: async (call) => {
+          if (call.body?.method === "book" && ++dispatched === count) {
+            if (fault === "lost") return new Response(null, { status: 503 });
+            if (fault === "rejected")
+              return Response.json({
+                jsonrpc: "2.0",
+                id: call.body.id,
+                error: {
+                  code: -32000,
+                  message: "Synthetic creation rejection",
+                },
+              });
+          }
+          if (fault === "close-lost" && call.body?.method === "closeBatch")
+            return new Response(null, { status: 503 });
+          return undefined;
+        },
+      });
+      try {
+        const c = await customer(m);
+        c.input.sessions = Array.from({ length: count }, (_, index) => ({
+          ...c.input.sessions[0],
+          startMs: m.startMs + index * 3000000,
+        }));
+        const send = () =>
+          m.mf.dispatchFetch(
+            m.origin + `/api/booking/checkout/${c.input.key}`,
+            {
+              method: "POST",
+              headers: c.headers,
+              body: JSON.stringify({ ...c.input, accepted: true }),
+            },
+          );
+        const response = await send();
+        assert.equal(response.status, 200);
+        const result = await response.json();
+        assert.equal(result.paymentAvailable, false);
+        assert.equal(result.state, "recovery_required");
+        const effects = await m.db
+          .prepare(
+            "SELECT step,outcome,reference_id FROM session_effects WHERE attempt_id=? AND step LIKE 'session:%' ORDER BY step",
+          )
+          .bind(c.input.key)
+          .all();
+        assert.deepEqual(
+          effects.results,
+          Array.from({ length: count }, (_, index) => ({
+            step: `session:${index}`,
+            outcome:
+              index === count - 1 && ["rejected", "lost"].includes(fault)
+                ? "unknown"
+                : "observed",
+            reference_id:
+              index === count - 1 && ["rejected", "lost"].includes(fault)
+                ? null
+                : String(701 + index),
+          })),
+        );
+        assert.equal(
+          m.calls.filter((call) => call.body?.method === "closeBatch").length,
+          ["invoice", "close-lost"].includes(fault) ? 1 : 0,
+        );
+        const restored = await m.mf.dispatchFetch(
+          m.origin + "/api/booking/current",
+          { headers: c.headers },
+        );
+        assert.equal((await restored.json()).attemptId, c.input.key);
+        await send();
+        assert.equal(dispatched, count);
+        assert.equal(
+          m.calls.filter(
+            (call) =>
+              call.url.includes("hit-pay.com") && call.method === "POST",
+          ).length,
+          0,
+        );
+        assert.equal(
+          (
+            await m.db
+              .prepare("SELECT COUNT(*) AS n FROM hitpay_payments")
+              .first()
+          ).n,
+          0,
+        );
+      } finally {
+        await m.close();
+      }
+    }
+});

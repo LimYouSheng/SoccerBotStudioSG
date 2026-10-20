@@ -941,11 +941,11 @@
   },
   {
     "file": "tests/live-email.spec.ts",
-    "title": "real API batch checkout checks each session once and restores one complete unpaid reservation"
+    "title": "real API batch checkout uses creation evidence and restores one complete unpaid reservation"
   },
   {
     "file": "tests/live-email.spec.ts",
-    "title": "real API later batch conflict retains the first booking without checkout or recreation"
+    "title": "real API rejected second batch creation retains the first booking without checkout or recreation"
   },
   {
     "file": "tests/live-email.spec.ts",

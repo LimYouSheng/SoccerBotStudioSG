@@ -956,7 +956,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
             ...this.env,
             STATE: instrumentStorage(this.env.STATE, "d1"),
           };
-          const creationOnly = !!scope.checkout && input.sessions.length === 1;
+          const creationOnly = !!scope.checkout;
           const access = await authenticate(request, env, Date.now());
           await authorizeCustomerCheckout(
             request,
