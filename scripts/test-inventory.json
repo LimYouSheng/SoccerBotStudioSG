@@ -1082,5 +1082,17 @@
   {
     "file": "src/features/booking/direct-checkout.test.tsx",
     "title": "proven unstarted checkout stays editable without entering payment recovery"
+  },
+  {
+    "file": "src/features/booking/protected-confirmation.test.tsx",
+    "title": "shows payment received feedback with details while current booking evidence is pending"
+  },
+  {
+    "file": "src/services/async-booking.test.ts",
+    "title": "queue busy returns clear retained-attempt feedback without an automatic retry"
+  },
+  {
+    "file": "src/features/booking/direct-checkout.test.tsx",
+    "title": "queue rejection keeps the original attempt on Review for an explicit retry"
   }
 ]

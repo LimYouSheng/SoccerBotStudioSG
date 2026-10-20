@@ -1,5 +1,9 @@
 # North Star: dependable customer booking and quick rebooking
 
+## Current authority — 20 October 2026
+
+Start with [current implementation rules](docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md#current-implementation-rules--20-october-2026) and [current runtime contracts](docs/SERVICE_CONTRACTS.md#current-checkout-and-queue-contracts--20-october-2026). Journey retains evidence; PROGRESS tracks the active checkpoint. The dated entries below are historical orientation, not current checkout instructions. They do not reinstate superseded Details-time creation, direct-checkout availability preflight or early payment-only confirmation. General engineering, test and delivery safeguards remain in force.
+
 ## Unblock holding HTTP request — 15 October 2026
 
 Repair the global query guard that rejects the implemented hold=1 request before provider dispatch. Finish Worker-entry regression and exact-source CI before another owner trial. The completed frontend repair remains deployed; provider payment and physical acceptance remain pending.

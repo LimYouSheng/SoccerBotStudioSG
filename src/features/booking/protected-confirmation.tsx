@@ -298,7 +298,9 @@ export function ProtectedConfirmation({
         ? "Preparing your confirmation…"
         : checkoutMode && preparation === "loading"
           ? "Preparing checkout…"
-          : "Verifying your payment…";
+          : paymentReceived
+            ? "Payment received—verifying booking…"
+            : "Verifying your payment…";
     if (current?.details) {
       const details = bookingFromReceipt(current.details);
       return (
@@ -315,16 +317,7 @@ export function ProtectedConfirmation({
       <div className="status-shell">
         <section className="surface confirmation-card" aria-busy="true">
           <h1>Booking confirmation</h1>
-          <InlineLoading
-            compact
-            label={
-              view === "confirmed"
-                ? "Preparing your confirmation…"
-                : checkoutMode && preparation === "loading"
-                  ? "Preparing checkout…"
-                  : "Verifying your payment…"
-            }
-          />
+          <InlineLoading compact label={pendingLabel} />
           <p className="text-sm text-muted">{pendingLabel}</p>
           <p>
             We’re checking the payment status for this booking. Your details are

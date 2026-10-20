@@ -813,7 +813,7 @@ test("native guest journey preserves players contact and one checkout across ref
 async function prepareBrowserAttempt(
   page: Page,
   mechanism: Awaited<ReturnType<typeof createBookingMechanism>>,
-  combinedHold = false,
+  mode: "prepare" | "checkout" = "prepare",
 ) {
   // Setup uses the same public routes, auth and coordinator as the browser.
   const access = await mechanism.mf.dispatchFetch(
@@ -840,14 +840,16 @@ async function prepareBrowserAttempt(
   const key = crypto.randomUUID();
   const prepared = await mechanism.mf.dispatchFetch(
     mechanism.origin +
-      (combinedHold ? `/api/booking/hold/${key}` : "/api/booking/prepare"),
+      (mode === "prepare"
+        ? "/api/booking/prepare"
+        : `/api/booking/${mode}/${key}`),
     {
       method: "POST",
       headers,
       body: JSON.stringify({
         key,
         holding: true,
-        accepted: false,
+        accepted: mode === "checkout",
         contact: {
           name: "Synthetic Guest",
           email: "synthetic@example.test",
@@ -867,10 +869,12 @@ async function prepareBrowserAttempt(
       }),
     },
   );
-  expect(prepared.status).toBe(combinedHold ? 200 : 201);
+  expect(prepared.status).toBe(mode === "prepare" ? 201 : 200);
   const result = await prepared.json();
-  if (combinedHold)
+  if (mode !== "prepare")
     expect(result).toMatchObject({ attemptId: key, state: "associated" });
+  if (mode === "checkout")
+    expect(result).toMatchObject({ paymentAvailable: true });
   const { attemptId } = result as { attemptId: string };
   return { headers, attemptId };
 }
@@ -900,7 +904,7 @@ test("real payment recovery confirms the browser return from verified provider s
     releaseDismiss = resolve;
   });
   let releaseReceipt!: () => void;
-  const receiptGate = new Promise<void>((resolve) => {
+  let receiptGate = new Promise<void>((resolve) => {
     releaseReceipt = resolve;
   });
   let receiptStarted!: () => void;
@@ -956,18 +960,65 @@ test("real payment recovery confirms the browser return from verified provider s
       .getByRole("dialog", { name: "Get the SoccerBot Player App" })
       .getByRole("button", { name: "Not now", exact: true })
       .click();
+    await accounting;
+    await expect(
+      page.getByRole("status", {
+        name: "Payment received—verifying booking…",
+        exact: true,
+      }),
+    ).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Booking confirmed", exact: true }),
-    ).toBeVisible();
-    await accounting;
+    ).toHaveCount(0);
+    await expect(page.locator(".confirmation-actions")).toHaveCount(0);
+    const pendingContext = await mechanism.mf.dispatchFetch(
+      mechanism.origin + `/api/attempts/${attemptId}/checkout`,
+      { headers },
+    );
+    expect(pendingContext.status).toBe(200);
+    const pending = await pendingContext.json();
+    expect(pending).not.toHaveProperty("customerConfirmation");
+    expect(pending).not.toHaveProperty("confirmation");
     expect(
       await mechanism.db
         .prepare(
-          "SELECT state,external_state FROM hitpay_payments WHERE attempt_id=?",
+          "SELECT state,external_state,paid_ms,payment_id FROM hitpay_payments WHERE attempt_id=?",
         )
         .bind(attemptId)
         .first(),
-    ).toMatchObject({ state: "claimed", external_state: "unknown" });
+    ).toMatchObject({
+      state: "claimed",
+      external_state: "unknown",
+      paid_ms: expect.any(Number),
+      payment_id: expect.any(String),
+    });
+    releaseAccounting();
+    const verifiedResponse = await (await savedConfirmation).json();
+    expect(
+      verifiedResponse.confirmation?.attemptId === attemptId ||
+        verifiedResponse.status === "confirmed",
+    ).toBe(true);
+    await receiptRead;
+    await expect(
+      page.getByRole("status", {
+        name: "Preparing your confirmation…",
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Booking confirmed", exact: true }),
+    ).toHaveCount(0);
+    releaseReceipt();
+    await expect(
+      page.getByRole("heading", { name: "Booking confirmed", exact: true }),
+    ).toBeVisible();
+    // A download is a new protected read, independent of initial presentation.
+    const receiptReadsBeforeDownload = transport.calls.filter((call) =>
+      call.path.endsWith("/receipt"),
+    ).length;
+    receiptGate = new Promise<void>((resolve) => {
+      releaseReceipt = resolve;
+    });
     const download = page.waitForEvent("download");
     await page
       .getByRole("button", { name: "Download booking details", exact: true })
@@ -979,11 +1030,6 @@ test("real payment recovery confirms the browser return from verified provider s
     await expect(
       page.getByRole("heading", { name: "Booking confirmed", exact: true }),
     ).toBeVisible();
-    releaseAccounting();
-    await receiptRead;
-    await expect(
-      page.getByRole("heading", { name: "Booking confirmed", exact: true }),
-    ).toBeVisible();
     await expect(
       page.getByRole("status", {
         name: "Preparing your confirmation…",
@@ -992,11 +1038,9 @@ test("real payment recovery confirms the browser return from verified provider s
     ).toHaveCount(0);
     releaseReceipt();
     await download;
-    const verifiedResponse = await (await savedConfirmation).json();
     expect(
-      verifiedResponse.confirmation?.attemptId === attemptId ||
-        verifiedResponse.status === "confirmed",
-    ).toBe(true);
+      transport.calls.filter((call) => call.path.endsWith("/receipt")),
+    ).toHaveLength(receiptReadsBeforeDownload + 1);
     await expect(
       page.getByRole("heading", { name: "Booking confirmed", exact: true }),
     ).toBeVisible();
@@ -1711,12 +1755,12 @@ test("real API failed completed dismissal opens the first step and explicit retr
     },
   );
   try {
-    // Exercise the current single-preflight hold route. The legacy split
-    // prepare/native setup repeats preflight before this dismissal journey.
-    const { headers, attemptId } = await prepareBrowserAttempt(
+    // Create the receipt through the current customer checkout route.
+    // Legacy hold preflight is covered separately; dismissal needs no preflight.
+    const { attemptId } = await prepareBrowserAttempt(
       page,
       mechanism,
-      true,
+      "checkout",
     );
     for (const method of [
       "getAdditionalFields",
@@ -1725,12 +1769,7 @@ test("real API failed completed dismissal opens the first step and explicit retr
     ])
       expect(
         mechanism.calls.filter((call) => call.body?.method === method),
-      ).toHaveLength(1);
-    const payment = await mechanism.mf.dispatchFetch(
-      mechanism.origin + `/api/booking/hitpay/${attemptId}`,
-      { method: "POST", headers, body: JSON.stringify({ accepted: true }) },
-    );
-    expect(await payment.json()).toMatchObject({ paymentAvailable: true });
+      ).toHaveLength(0);
     expect((await mechanism.completePayment()).status).toBe(202);
     const savedConfirmation = page.waitForResponse(async (response) => {
       const path = new URL(response.url()).pathname;
@@ -1806,6 +1845,12 @@ test("real API failed completed dismissal opens the first step and explicit retr
     expect(
       transport.calls.filter((call) => call.path.endsWith("/dismiss")),
     ).toHaveLength(2);
+    expect(
+      mechanism.calls.filter(
+        (call) => call.url.includes("hit-pay.com") && call.method === "POST",
+      ),
+    ).toHaveLength(1);
+    expect(mechanism.unexpected).toEqual([]);
   } finally {
     await stopMechanism(page, mechanism, transport);
   }

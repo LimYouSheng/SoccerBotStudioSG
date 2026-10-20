@@ -963,3 +963,51 @@ it("retains verified customer confirmation across pending responses that omit pr
     screen.queryByRole("status", { name: "Verifying your payment…" }),
   ).toBeNull();
 });
+
+it("shows payment received feedback with details while current booking evidence is pending", async () => {
+  const proof = receiptFixture();
+  const details = Object.fromEntries(
+    Object.entries(proof).filter(([key]) => key !== "verifiedAtMs"),
+  );
+  const fetch = vi.fn(async (url: string) => {
+    if (url.endsWith("/checkout"))
+      return Response.json({
+        attemptId: first,
+        mode: "live",
+        checkout: { state: "unavailable" },
+        payment: { status: "recorded", paidAtMs: Date.now() },
+        details,
+        summary: {
+          players: 2,
+          totalMinor: 8800,
+          currency: "SGD",
+          sessions: [{ startMs: proof.sessions[0].startMs, players: 2 }],
+        },
+        checking: {
+          deadlineMs: Date.now() + 600000,
+          nextCheckMs: 0,
+          pollAfterMs: 5000,
+        },
+      });
+    if (url.endsWith("/confirmation"))
+      return Response.json({
+        status: "pending",
+        reason: "payment_received_booking_pending",
+      });
+    throw new Error("No receipt or other request before booking verification");
+  });
+  vi.stubGlobal("fetch", fetch);
+  render(<ProtectedConfirmation attemptId={first} checkoutMode="live" />);
+  expect(
+    await screen.findByRole("status", {
+      name: "Payment received—verifying booking…",
+    }),
+  ).toBeVisible();
+  expect(
+    screen.queryByRole("heading", { name: "Booking confirmed" }),
+  ).toBeNull();
+  expect(screen.queryByRole("button", { name: /download|home/i })).toBeNull();
+  expect(fetch.mock.calls.some(([url]) => url.endsWith("/receipt"))).toBe(
+    false,
+  );
+});

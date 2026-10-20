@@ -5,8 +5,8 @@ import { assertPaymentScope, paymentScopeSchema } from "./hitpay-contract";
 import { receiptData } from "./receipt-data";
 import type { HitpayRow } from "./hitpay-journal";
 
-// A verified live hold plus a matching, verified payment completes the customer
-// journey. Accounting/readback continues under the original financial claim.
+// Customer success requires current booking and paid invoice readback.
+// Historical snapshots from the early-payment design are not sufficient.
 export async function retainCustomerConfirmation(
   env: Env,
   payment: HitpayRow,
@@ -25,12 +25,7 @@ export async function retainCustomerConfirmation(
       intent_hash: string;
       expires_ms: number;
     }>();
-  if (
-    !row ||
-    now >= Math.min(row.expires_ms, payment.expires_ms) ||
-    Date.now() >= row.expires_ms
-  )
-    return;
+  if (!row) return;
   const scope = paymentScopeSchema.parse(JSON.parse(payment.scope_json));
   await assertPaymentScope(env, scope);
   if (
@@ -42,7 +37,7 @@ export async function retainCustomerConfirmation(
   const receipt = await receiptData(env, row, now);
   if (receipt.sessions.some((s) => s.startMs <= Date.now())) return;
   await env.STATE.prepare(
-    "UPDATE checkout_progress SET confirmation_json=? WHERE attempt_id=? AND confirmation_json IS NULL AND EXISTS(SELECT 1 FROM hitpay_payments p WHERE p.attempt_id=checkout_progress.attempt_id AND p.state='claimed' AND p.generation=? AND p.paid_ms IS NOT NULL AND p.payment_id IS NOT NULL)",
+    "UPDATE checkout_progress SET confirmation_json=? WHERE attempt_id=? AND confirmation_json IS NULL AND EXISTS(SELECT 1 FROM hitpay_payments p WHERE p.attempt_id=checkout_progress.attempt_id AND p.state='claimed' AND p.generation=? AND p.paid_ms IS NOT NULL AND p.payment_id IS NOT NULL AND p.external_state='observed')",
   )
     .bind(JSON.stringify(receipt), row.id, payment.generation)
     .run();
@@ -51,7 +46,7 @@ export async function retainCustomerConfirmation(
 export async function customerConfirmation(env: Env, id: string) {
   const row = await env.STATE.withSession("first-primary")
     .prepare(
-      "SELECT c.confirmation_json,p.scope_json FROM checkout_progress c JOIN hitpay_payments p ON p.attempt_id=c.attempt_id WHERE c.attempt_id=? AND c.confirmation_json IS NOT NULL AND p.paid_ms IS NOT NULL AND p.payment_id IS NOT NULL AND p.state!='manual_review'",
+      "SELECT c.confirmation_json,p.scope_json FROM checkout_progress c JOIN hitpay_payments p ON p.attempt_id=c.attempt_id WHERE c.attempt_id=? AND c.confirmation_json IS NOT NULL AND p.paid_ms IS NOT NULL AND p.payment_id IS NOT NULL AND p.state!='manual_review' AND p.external_state='observed'",
     )
     .bind(id)
     .first<{ confirmation_json: string; scope_json: string }>();

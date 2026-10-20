@@ -363,6 +363,17 @@ async function nativeRequest(
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
   if (!response.ok) {
+    if (response.status === 503) {
+      const error = await response
+        .clone()
+        .json()
+        .catch(() => null);
+      if (error?.error === "provider_queue_busy")
+        throw new BookingServiceError(
+          "queue_busy",
+          "The booking service is busy. Your details and existing attempt are saved. Please wait a moment before trying again.",
+        );
+    }
     if (
       response.status === 503 &&
       /^\/api\/booking\/(checkout|hold)\//.test(path)

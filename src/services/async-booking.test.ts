@@ -498,3 +498,23 @@ test("holding progress only accepts the matching server milestone and stops with
     fetch.mock.calls.filter(([, init]) => init?.method === "POST"),
   ).toHaveLength(1);
 });
+
+test("queue busy returns clear retained-attempt feedback without an automatic retry", async () => {
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValue(
+      Response.json({ error: "provider_queue_busy" }, { status: 503 }),
+    );
+  await expect(
+    liveBookingService.availability({
+      date: "2026-10-15",
+      players: 1,
+      serviceId: "2",
+    }),
+  ).rejects.toMatchObject({
+    code: "queue_busy",
+    message:
+      "The booking service is busy. Your details and existing attempt are saved. Please wait a moment before trying again.",
+  });
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
