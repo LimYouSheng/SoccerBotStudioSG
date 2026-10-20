@@ -69,6 +69,7 @@ export function nativeBookingOperations(options: {
   hasRecoveryCapacity: BookingOperations["hasRecoveryCapacity"];
   db: D1Database;
   deferComments?: boolean;
+  localFinalization?: boolean;
   clientSignature?: (clientId: string, hash: string) => Promise<string>;
   batchSignature?: (batchId: string, hash: string) => Promise<string>;
   onCreationEvidence?: (evidence: {
@@ -139,6 +140,10 @@ export function nativeBookingOperations(options: {
   return {
     supported: true,
     retainsSessionReferences: true,
+    localFinalization:
+      options.localFinalization === true &&
+      intent.sessions.length === 1 &&
+      options.deferComments === true,
     hasRecoveryCapacity: options.hasRecoveryCapacity,
     async revalidate(value, context) {
       await matches(value, context.attemptId);
@@ -371,7 +376,13 @@ export function nativeBookingOperations(options: {
         JSON.stringify(ids) !== JSON.stringify(created.association.bookingIds)
       )
         throw new ApiError(409, "native_association_missing");
-      if (options.deferComments) {
+      if (
+        options.localFinalization &&
+        intent.sessions.length === 1 &&
+        options.deferComments
+      ) {
+        // The association transaction records finalization and pending comments.
+      } else if (options.deferComments) {
         await assertCurrent();
         const queued = await options.db
           .prepare(

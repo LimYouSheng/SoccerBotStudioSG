@@ -452,6 +452,7 @@ export async function executeNativeCheckout(options: {
         >[0]
       | undefined;
     const operations = nativeBookingOperations({
+      localFinalization: options.creationOnly,
       deferComments:
         ongoing && paymentRoute === "hitpay" && !!options.onVerifiedHold,
       onCreationEvidence: (value) => {
@@ -587,6 +588,11 @@ export async function executeNativeCheckout(options: {
       };
     operations.onFailure = (error, index) =>
       retainFailure(error, "execution", index);
+    let committedAssociation:
+      { association_json: string; version: number } | undefined;
+    operations.onAssociated = (association) => {
+      committedAssociation = association;
+    };
     result = await orchestrateBooking(
       request,
       env,
@@ -596,12 +602,14 @@ export async function executeNativeCheckout(options: {
       row,
     );
     if (result.state === "associated") {
-      const associated = await env.STATE.withSession("first-primary")
-        .prepare(
-          "SELECT association_json,version FROM attempts WHERE id=? AND owner_id=? AND state='dispatching'",
-        )
-        .bind(attemptId, access.owner_id)
-        .first<{ association_json: string; version: number }>();
+      const associated =
+        committedAssociation ??
+        (await env.STATE.withSession("first-primary")
+          .prepare(
+            "SELECT association_json,version FROM attempts WHERE id=? AND owner_id=? AND state='dispatching'",
+          )
+          .bind(attemptId, access.owner_id)
+          .first<{ association_json: string; version: number }>());
       if (!associated) throw new ApiError(409, "native_association_missing");
       dispatchFence = associated.version;
       const refs = associationSchema.parse(
@@ -747,21 +755,19 @@ export async function executeNativeCheckout(options: {
       controller.abort();
     }
   }
-  await env.STATE.prepare(
+  const completion = env.STATE.prepare(
     "UPDATE native_checkout_grants SET state=?,result_json=json_patch(COALESCE(result_json,'{}'),?) WHERE attempt_id=? AND state='running'",
-  )
-    .bind(
-      result.state === "associated" ? "complete" : "blocked",
-      JSON.stringify({
-        ...result,
-        checkout: undefined,
-        ...(diagnostic ? { diagnostic } : {}),
-        ...(cleanupDiagnostic ? { cleanupDiagnostic } : {}),
-      }),
-      attemptId,
-    )
-    .run();
-  await authenticate(request, env, Date.now());
+  ).bind(
+    result.state === "associated" ? "complete" : "blocked",
+    JSON.stringify({
+      ...result,
+      checkout: undefined,
+      ...(diagnostic ? { diagnostic } : {}),
+      ...(cleanupDiagnostic ? { cleanupDiagnostic } : {}),
+    }),
+    attemptId,
+  );
+  await authenticate(request, env, Date.now(), [completion]);
   return { attemptId, ...result };
 }
 
