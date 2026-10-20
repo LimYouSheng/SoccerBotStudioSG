@@ -22,6 +22,7 @@ export function traceHitpayFailure(
   operation: "create" | "read" | "search",
   status: number,
   representation: "json" | "html" | "other" | "missing",
+  validationFields: string[] = [],
 ) {
   console.log(
     JSON.stringify({
@@ -30,6 +31,7 @@ export function traceHitpayFailure(
       operation,
       status,
       representation,
+      ...(validationFields.length ? { validationFields } : {}),
     }),
   );
 }

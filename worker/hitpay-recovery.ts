@@ -52,9 +52,9 @@ export async function recoverHitpay(
   };
   const control: ProviderControl = {
     ...base,
-    reserve: async () => {
+    reserve: async (metadata) => {
       await reserve();
-      return base.reserve();
+      return base.reserve(metadata);
     },
   };
   const checkingDeadline = await checkoutCheckingDeadline(

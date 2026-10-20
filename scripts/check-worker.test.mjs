@@ -86,7 +86,7 @@ test("rejects provider redirects alternate hosts and unreserved dispatch", () =>
       'https://user-api-v2.simplybook.me/admin/bookings/"',
       'https://other.invalid/bookings/"',
     ],
-    ["await dispatch.reserve()", 'Promise.resolve("unreserved")'],
+    ["await dispatch.reserve({", "await Promise.resolve({"],
   ])
     assert.ok(
       fixture((root) => {

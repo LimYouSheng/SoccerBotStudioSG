@@ -51,6 +51,10 @@ test("combined hold performs one preflight and preserves immutable identity acro
   const m = await createBookingMechanism();
   try {
     const c = await customer(m);
+    await m.db
+      .prepare("UPDATE guest_access SET expires_ms=?")
+      .bind(Date.now() + 300000)
+      .run();
     c.input.contact.contactMethod = "sms";
     const responses = await Promise.all([c.send(), c.send()]);
     for (const response of responses)
@@ -1041,6 +1045,11 @@ test("combined batch checkout retains one payment effect and exact booking assoc
   const m = await createBookingMechanism({ batch: true });
   try {
     const c = await customer(m);
+    const accessDeadline = Date.now() + 300000;
+    await m.db
+      .prepare("UPDATE guest_access SET expires_ms=?")
+      .bind(accessDeadline)
+      .run();
     c.input.sessions.push({
       ...c.input.sessions[0],
       startMs: m.startMs + 3000000,
@@ -1082,6 +1091,23 @@ test("combined batch checkout retains one payment effect and exact booking assoc
       .first();
     assert.ok(
       timing.expires_ms <= timing.booking_created_ms + timing.hold_window_ms,
+    );
+    const payment = await m.db
+      .prepare(
+        "SELECT p.expires_ms,c.booking_created_ms FROM hitpay_payments p JOIN checkout_progress c ON c.attempt_id=p.attempt_id",
+      )
+      .first();
+    assert.equal(payment.expires_ms, payment.booking_created_ms + 480000);
+    assert.ok(payment.expires_ms > accessDeadline);
+    assert.equal(
+      (await m.db.prepare("SELECT expires_ms FROM guest_access").first())
+        .expires_ms,
+      accessDeadline,
+    );
+    assert.equal(
+      m.calls.find((c) => c.url.includes("hit-pay.com") && c.method === "POST")
+        .body.expires_after,
+      "7 mins",
     );
     await send();
     assert.equal(m.calls.filter((c) => c.body?.method === "book").length, 2);
@@ -1440,6 +1466,234 @@ test("checkout never exposes a HitPay URL when its durable save loses the creati
         (c) => c.url.includes("hit-pay.com") && c.method === "POST",
       ).length,
       1,
+    );
+  } finally {
+    await m.close();
+  }
+});
+
+test("public display reads use one free provider slot without releasing retained unknown admissions", async () => {
+  const m = await createBookingMechanism({ displayWarming: true });
+  try {
+    const url = m.origin + "/api/catalogue";
+    assert.equal((await m.mf.dispatchFetch(url)).status, 200);
+    const storage = await m.mf.unsafeGetDurableObjectStorage(
+      "booking-mechanism",
+      "SoccerBotAccountCoordinator",
+      { name: "simplybook-developer-account" },
+    );
+    await storage.exec("DELETE FROM display_snapshots");
+    await storage.exec(
+      "INSERT INTO admissions(id,campaign,started_ms) VALUES('retained-unknown','developer-20261008',0)",
+    );
+    await m.mf.unsafeEvictDurableObject(
+      "booking-mechanism",
+      "SoccerBotAccountCoordinator",
+      { name: "simplybook-developer-account" },
+    );
+    const before = m.calls.length;
+    const catalogue = await m.mf.dispatchFetch(url);
+    assert.equal(catalogue.status, 200, await catalogue.text());
+    const fresh = m.calls.slice(before);
+    assert.equal(
+      fresh.filter((call) => call.body?.method === "getEventList").length,
+      1,
+    );
+    assert.equal(
+      fresh.filter((call) => call.body?.method === "getUnitList").length,
+      1,
+    );
+    const current = await m.mf.unsafeGetDurableObjectStorage(
+      "booking-mechanism",
+      "SoccerBotAccountCoordinator",
+      { name: "simplybook-developer-account" },
+    );
+    assert.deepEqual(
+      await current.exec("SELECT id FROM admissions WHERE finished=0"),
+      [{ id: "retained-unknown" }],
+    );
+    await current.exec(
+      "INSERT INTO admissions(id,campaign,started_ms) VALUES('second-unknown','developer-20261008',0)",
+    );
+    const cachedCount = m.calls.length;
+    assert.equal((await m.mf.dispatchFetch(url)).status, 200);
+    assert.equal(
+      m.calls.length,
+      cachedCount,
+      "valid display snapshot bypasses occupied provider slots",
+    );
+    for (const customers of [1, 3, 5, 10]) {
+      const responses = await Promise.all(
+        Array.from({ length: customers }, () => m.mf.dispatchFetch(url)),
+      );
+      assert.ok(responses.every((response) => response.status === 200));
+      assert.equal(
+        m.calls.length,
+        cachedCount,
+        "concurrent cached browsing never consumes provider slots",
+      );
+    }
+    await current.exec("DELETE FROM display_snapshots");
+    await m.mf.unsafeEvictDurableObject(
+      "booking-mechanism",
+      "SoccerBotAccountCoordinator",
+      { name: "simplybook-developer-account" },
+    );
+    assert.equal((await m.mf.dispatchFetch(url)).status, 503);
+    assert.equal(
+      m.calls.length,
+      cachedCount,
+      "two unknown reservations still block new dispatch",
+    );
+    assert.deepEqual(m.unexpected, []);
+  } finally {
+    await m.close();
+  }
+});
+
+test("interrupted read admissions recover after restart while unknown writes and live reads stay fenced", async () => {
+  const m = await createBookingMechanism({ displayWarming: true });
+  try {
+    const url = m.origin + "/api/catalogue";
+    assert.equal((await m.mf.dispatchFetch(url)).status, 200);
+    const storage = await m.mf.unsafeGetDurableObjectStorage(
+      "booking-mechanism",
+      "SoccerBotAccountCoordinator",
+      { name: "simplybook-developer-account" },
+    );
+    const reads = await storage.exec(
+      "SELECT operation,instance_id FROM provider_request_admissions",
+    );
+    assert.ok(reads.some((r) => r.operation === "public-auth"));
+    assert.ok(reads.some((r) => r.operation === "catalogue-services"));
+    const instance = reads[0].instance_id;
+    await storage.exec(
+      "INSERT INTO admissions(id,campaign,started_ms) VALUES('interrupted-read','developer-20261008',0),('unknown-write','developer-20261008',0)",
+    );
+    await storage.exec(
+      "INSERT INTO provider_request_admissions(id,operation,read_only,instance_id,expires_ms) VALUES('interrupted-read','catalogue-services',1,?,0)",
+      instance,
+    );
+    const before = m.calls.length;
+    // A current-instance operation is never reclaimed just because its lease
+    // elapsed. An uncached calendar forces admission without replacing the DO.
+    const month = m.date.slice(0, 7);
+    assert.equal(
+      (await m.mf.dispatchFetch(m.origin + "/api/calendar/" + month)).status,
+      503,
+    );
+    assert.equal(m.calls.length, before);
+    await storage.exec("DELETE FROM display_snapshots");
+    await m.mf.unsafeEvictDurableObject(
+      "booking-mechanism",
+      "SoccerBotAccountCoordinator",
+      { name: "simplybook-developer-account" },
+    );
+    assert.equal((await m.mf.dispatchFetch(url)).status, 200);
+    const restarted = await m.mf.unsafeGetDurableObjectStorage(
+      "booking-mechanism",
+      "SoccerBotAccountCoordinator",
+      { name: "simplybook-developer-account" },
+    );
+    assert.deepEqual(
+      await restarted.exec("SELECT id FROM admissions WHERE finished=0"),
+      [{ id: "unknown-write" }],
+    );
+    assert.deepEqual(
+      await restarted.exec(
+        "SELECT reason,evidence FROM admission_releases WHERE id='interrupted-read'",
+      ),
+      [{ reason: "read_transport_ended", evidence: "catalogue-services" }],
+    );
+    const used = await restarted.exec("SELECT used FROM budget");
+    assert.ok(
+      used[0].used >= m.calls.length,
+      "recovery never refunds request budget",
+    );
+    await restarted.exec(
+      "INSERT INTO admissions(id,campaign,started_ms) VALUES('recent-read','developer-20261008',0)",
+    );
+    await restarted.exec(
+      "INSERT INTO provider_request_admissions(id,operation,read_only,instance_id,expires_ms) VALUES('recent-read','catalogue-services',1,?,?)",
+      instance,
+      Date.now() + 60000,
+    );
+    await restarted.exec("DELETE FROM display_snapshots");
+    await m.mf.unsafeEvictDurableObject(
+      "booking-mechanism",
+      "SoccerBotAccountCoordinator",
+      { name: "simplybook-developer-account" },
+    );
+    const count = m.calls.length;
+    assert.equal((await m.mf.dispatchFetch(url)).status, 503);
+    assert.equal(
+      m.calls.length,
+      count,
+      "unexpired read plus unknown write still occupy both slots",
+    );
+  } finally {
+    await m.close();
+  }
+});
+
+test("expired identified write transports free capacity after reset without authorizing another effect", async () => {
+  const m = await createBookingMechanism({ displayWarming: true });
+  try {
+    const url = m.origin + "/api/catalogue";
+    assert.equal((await m.mf.dispatchFetch(url)).status, 200);
+    const storage = await m.mf.unsafeGetDurableObjectStorage(
+      "booking-mechanism",
+      "SoccerBotAccountCoordinator",
+      { name: "simplybook-developer-account" },
+    );
+    await storage.exec(
+      "INSERT INTO admissions(id,campaign,started_ms) VALUES('ended-book','developer-20261008',0),('ended-payment','developer-20261008',0)",
+    );
+    await storage.exec(
+      "INSERT INTO provider_request_admissions(id,operation,read_only,instance_id,expires_ms) VALUES('ended-book','book',0,'ended-instance',0),('ended-payment','invoice-external-payment',0,'ended-instance',0)",
+    );
+    await storage.exec("DELETE FROM display_snapshots");
+    const before = m.calls.length;
+    await m.mf.unsafeEvictDurableObject(
+      "booking-mechanism",
+      "SoccerBotAccountCoordinator",
+      { name: "simplybook-developer-account" },
+    );
+    assert.equal((await m.mf.dispatchFetch(url)).status, 200);
+    const current = await m.mf.unsafeGetDurableObjectStorage(
+      "booking-mechanism",
+      "SoccerBotAccountCoordinator",
+      { name: "simplybook-developer-account" },
+    );
+    assert.deepEqual(
+      await current.exec(
+        "SELECT operation,read_only,reason FROM provider_transport_releases ORDER BY operation",
+      ),
+      [
+        { operation: "book", read_only: 0, reason: "instance_ended" },
+        {
+          operation: "invoice-external-payment",
+          read_only: 0,
+          reason: "instance_ended",
+        },
+      ],
+    );
+    assert.deepEqual(
+      await current.exec("SELECT id FROM admissions WHERE finished=0"),
+      [],
+    );
+    assert.equal(
+      m.calls
+        .slice(before)
+        .filter((c) => c.body?.method === "book" || c.url.includes("payment"))
+        .length,
+      0,
+      "capacity recovery cannot replay writes",
+    );
+    assert.deepEqual(
+      await m.db.prepare("SELECT COUNT(*) AS n FROM attempts").first(),
+      { n: 0 },
+      "capacity recovery never invents or confirms an attempt",
     );
   } finally {
     await m.close();

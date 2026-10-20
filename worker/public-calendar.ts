@@ -103,9 +103,9 @@ export function calendarWindow(options: ReadOptions) {
   };
   assertOpen();
   let lastCall = 0;
-  const control = {
+  const control: ProviderControl = {
     ...options.control,
-    reserve: async () => {
+    reserve: async (metadata) => {
       const delay = Math.max(
         0,
         Math.max(lastCall, options.lastDispatchMs?.() ?? 0) + 300 - Date.now(),
@@ -115,7 +115,7 @@ export function calendarWindow(options: ReadOptions) {
       if (options.accounting().used >= window.maximumUsed)
         throw new ApiError(503, "public_calendar_budget_exhausted");
       lastCall = Date.now();
-      return options.control.reserve();
+      return options.control.reserve(metadata);
     },
   };
   const binding = {

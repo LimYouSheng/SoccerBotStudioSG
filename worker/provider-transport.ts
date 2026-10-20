@@ -226,11 +226,14 @@ export async function providerRequest(
   secrets: ProviderSecrets,
   token: string | undefined,
   dispatch: {
-    reserve: () => Promise<string>;
+    reserve: (metadata?: {
+      operation: string;
+      readOnly: boolean;
+    }) => Promise<string>;
     finish: (
       id: string,
       cooldown: number,
-      reason?: "read_transport_ended",
+      reason?: "read_transport_ended" | "write_transport_ended",
     ) => void;
   },
   native?: NativeRequest,
@@ -500,8 +503,12 @@ export async function providerRequest(
     headers["X-Token"] = token;
   }
   signal?.throwIfAborted();
-  const id = await dispatch.reserve();
-  // Reservation precedes dispatch; uncertain writes keep their slot held.
+  const id = await dispatch.reserve({
+    operation: native?.kind ?? operation,
+    readOnly,
+  });
+  // Reservation precedes dispatch. Durable effect journals retain uncertain
+  // writes independently of the physical transport slot.
   const controller = new AbortController();
   const abort = () => controller.abort();
   signal?.addEventListener("abort", abort, { once: true });
@@ -653,14 +660,66 @@ export async function providerRequest(
     } finally {
       clearTimeout(timer);
       signal?.removeEventListener("abort", abort);
-      if (complete || readOnly)
-        dispatch.finish(
-          id,
-          cooldown,
-          complete ? undefined : "read_transport_ended",
-        );
+      dispatch.finish(
+        id,
+        cooldown,
+        complete
+          ? undefined
+          : readOnly
+            ? "read_transport_ended"
+            : "write_transport_ended",
+      );
     }
   });
+}
+
+// Retain only known validation field names, never upstream values or messages.
+async function hitpayValidationFields(response: Response): Promise<string[]> {
+  const reader = response.body?.getReader();
+  if (!reader) return [];
+  try {
+    const decoder = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false });
+    let text = "",
+      size = 0;
+    for (;;) {
+      const part = await reader.read();
+      if (part.done) break;
+      size += part.value.byteLength;
+      if (size > 16384) return [];
+      text += decoder.decode(part.value, { stream: true });
+    }
+    const value: unknown = JSON.parse(text + decoder.decode());
+    const parsed = z
+      .object({ errors: z.record(z.string(), z.unknown()) })
+      .safeParse(value);
+    if (!parsed.success) return [];
+    return [
+      "amount",
+      "currency",
+      "reference_number",
+      "allow_repeated_payments",
+      "send_email",
+      "send_sms",
+      "add_admin_fee",
+      "payment_methods",
+      "expires_after",
+      "expiry_date",
+      "redirect_url",
+      "name",
+      "email",
+      "purpose",
+    ].filter((field) =>
+      Object.keys(parsed.data.errors).some(
+        (key) =>
+          key === field ||
+          (field === "payment_methods" && /^payment_methods\.\d+$/.test(key)),
+      ),
+    );
+  } catch {
+    return [];
+  } finally {
+    await reader.cancel().catch(() => {});
+  }
 }
 
 // HitPay credentials are confined to one sandbox host; redirects never carry them.
@@ -719,8 +778,17 @@ export async function hitpayRequest(
           : type
             ? "other"
             : "missing";
-      traceHitpayFailure(operation.kind, response.status, representation);
-      await response.body?.cancel();
+      const validationFields =
+        response.status === 422 && representation === "json"
+          ? await hitpayValidationFields(response)
+          : [];
+      traceHitpayFailure(
+        operation.kind,
+        response.status,
+        representation,
+        validationFields,
+      );
+      if (!response.body?.locked) await response.body?.cancel();
       throw new ApiError(
         503,
         `hitpay_http_${response.status}_${representation}`,

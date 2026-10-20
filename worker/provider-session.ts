@@ -15,13 +15,17 @@ import {
 
 export type ProviderControl = {
   liveCustomer?: boolean;
+  parallelReads?: boolean;
   financialRecovery?: boolean;
   reconciled?: (id: string, attemptId: string) => void;
-  reserve: () => Promise<string>;
+  reserve: (metadata?: {
+    operation: string;
+    readOnly: boolean;
+  }) => Promise<string>;
   finish: (
     id: string,
     cooldown: number,
-    reason?: "read_transport_ended",
+    reason?: "read_transport_ended" | "write_transport_ended",
   ) => void;
   claim: (family: ProviderFamily) => { generation: number; claim: string };
   complete: (
@@ -95,7 +99,9 @@ export class ProviderSession {
         return this.nativeRead(env, control, request, signal);
       },
       fresh,
-      !!control.liveCustomer && liveCustomerAccess(env),
+      !!control.liveCustomer &&
+        liveCustomerAccess(env) &&
+        control.parallelReads !== false,
       cacheOnly,
     );
   }
@@ -125,7 +131,9 @@ export class ProviderSession {
         return response;
       },
       contract,
-      !!control.liveCustomer && liveCustomerAccess(env),
+      !!control.liveCustomer &&
+        liveCustomerAccess(env) &&
+        control.parallelReads !== false,
       (operation, body) => observe?.(operation, body),
     );
   }
@@ -335,10 +343,16 @@ export class ProviderSession {
       onReserved
         ? {
             ...control,
-            reserve: async () => {
-              const id = await control.reserve();
-              await onReserved(id);
-              return id;
+            reserve: async (metadata) => {
+              const id = await control.reserve(metadata);
+              try {
+                await onReserved(id);
+                return id;
+              } catch (error) {
+                // The durable owner refused dispatch: no provider request began.
+                control.finish(id, 0, "write_transport_ended");
+                throw error;
+              }
             },
           }
         : control,
@@ -420,7 +434,10 @@ export class ProviderSession {
       if (secrets.company.toLowerCase() === "soccerbotstudio")
         throw new ApiError(503, "client_account_forbidden");
       const start = performance.now();
-      const concurrent = !!control.liveCustomer && liveCustomerAccess(env);
+      const concurrent =
+        !!control.liveCustomer &&
+        liveCustomerAccess(env) &&
+        control.parallelReads !== false;
       const tokens = concurrent
         ? await parallelReads([
             () => this.token("public", env, control),

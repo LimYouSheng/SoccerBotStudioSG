@@ -21,7 +21,7 @@ export function checkWorker(root) {
       if (
         (text.match(/\bfetch\(/g) || []).length !== 3 ||
         (text.match(/redirect: "manual"/g) || []).length !== 3 ||
-        !text.includes("await dispatch.reserve()") ||
+        !text.includes("await dispatch.reserve({") ||
         !text.includes("await reserve();") ||
         !text.includes("signal: controller.signal")
       )
