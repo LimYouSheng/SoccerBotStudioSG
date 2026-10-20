@@ -70,6 +70,7 @@ export function nativeBookingOperations(options: {
   db: D1Database;
   deferComments?: boolean;
   localFinalization?: boolean;
+  retainCurrentFence?: boolean;
   clientSignature?: (clientId: string, hash: string) => Promise<string>;
   batchSignature?: (batchId: string, hash: string) => Promise<string>;
   onCreationEvidence?: (evidence: {
@@ -85,6 +86,7 @@ export function nativeBookingOperations(options: {
   const { name, email, phone } = intent.contact;
   const fields = nativeBookFields({ name, email, phone }, options.additional);
   let created: ReturnType<typeof normalizeNativeCreation> | undefined;
+  const retained = new Map<string, { id: string; fence: number }>();
   const dispatched = new Set<number>();
   const bookingIds: string[] = [];
   const bookingKeys: ReturnType<typeof normalizeNativeSession>[] = [];
@@ -140,6 +142,8 @@ export function nativeBookingOperations(options: {
   return {
     supported: true,
     retainsSessionReferences: true,
+    retainedReference: (step, id, fence) =>
+      retained.get(step)?.id === id && retained.get(step)?.fence === fence,
     localFinalization:
       options.localFinalization === true &&
       intent.sessions.length === 1 &&
@@ -255,7 +259,7 @@ export function nativeBookingOperations(options: {
       } catch {
         /* Missing client evidence is not invented. */
       }
-      await retainNativeBookingKey(
+      const currentReference = await retainNativeBookingKey(
         options.db,
         options.scope.attemptId,
         providerId(receipt.id, "creation.booking.id"),
@@ -263,7 +267,13 @@ export function nativeBookingOperations(options: {
         context.sessionIndex,
         intent.sessions.length,
         receiptCustomerId,
+        options.retainCurrentFence ? context.fence : undefined,
       );
+      if (currentReference)
+        retained.set(`session:${context.sessionIndex}`, {
+          id: providerId(receipt.id, "creation.booking.id"),
+          fence: context.fence,
+        });
       const key = normalizeNativeSession(
         { ...envelope, bookings: [receipt] },
         { ...options.scope, nativeCustomerId },
@@ -712,6 +722,7 @@ async function retainNativeBookingKey(
   sessionIndex: number,
   sessionCount: number,
   nativeCustomerId?: string,
+  fence?: number,
 ) {
   const statements = [
     db
@@ -738,9 +749,25 @@ async function retainNativeBookingKey(
           attemptId,
         ),
     );
-  const result = await db.batch(statements);
-  if (result.some((statement) => statement.meta.changes !== 1))
+  const result = await db.batch([
+    ...statements,
+    ...(fence === undefined
+      ? []
+      : [
+          db
+            .prepare(
+              "SELECT 1 FROM session_effects e JOIN attempts a ON a.id=e.attempt_id WHERE e.attempt_id=? AND e.step=? AND e.outcome='observed' AND e.reference_id=? AND a.version=? AND a.state='dispatching'",
+            )
+            .bind(attemptId, `session:${sessionIndex}`, bookingId, fence),
+        ]),
+  ]);
+  if (
+    result
+      .slice(0, statements.length)
+      .some((statement) => statement.meta.changes !== 1)
+  )
     throw new ApiError(409, "native_key_not_retained");
+  return fence !== undefined && result.at(-1)!.results.length === 1;
 }
 export async function storedNativeSignature(
   db: D1Database,

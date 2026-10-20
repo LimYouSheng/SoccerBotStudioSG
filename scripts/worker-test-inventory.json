@@ -59,9 +59,9 @@
   "direct single checkout uses only public authentication and creation before HitPay with bounded D1 work",
   "direct single completion retains payment but denies handoff after access revocation",
   "checkout failure timing survives token booking and payment failures without exposing request data",
-
   "direct batch checkout uses creation responses for two and four sessions with one payment and bounded D1 work",
   "direct batch rejection lost response and invalid invoice retain original effects without payment or replay",
+  "consolidated single checkout guards failed transactions and retained references across restart",
   "foundation valid bindings emit correlated storage evidence without secret markers",
   "foundation missing and malformed configuration denies before protected reads",
   "foundation foreign database and coordinator namespace identities fail closed",

@@ -1884,10 +1884,16 @@ test("direct single checkout uses only public authentication and creation before
       assert.ok(!timing.includes(c.input.key));
       assert.ok(!JSON.stringify(phaseTrace).includes(m.checkoutUrl));
 
-      assert.ok(
-        checkout.spans.d1.count <= 27,
-        `D1 calls: ${checkout.spans.d1.count}`,
+      const http = traces.find(
+        (entry) =>
+          entry.event === "foundation_trace" &&
+          entry.boundary === "http" &&
+          entry.correlationId === response.headers.get("x-request-id"),
       );
+      assert.ok(http, "outer binding read is measured");
+      assert.equal(http.spans.d1.count, 1);
+      assert.equal(checkout.spans.d1.count, 9);
+      assert.equal(checkout.spans.d1.count + http.spans.d1.count, 10);
       console.log(`single checkout D1 executions: ${checkout.spans.d1.count}`);
       const payment = await m.db
         .prepare(
@@ -2254,4 +2260,137 @@ test("direct batch rejection lost response and invalid invoice retain original e
         await m.close();
       }
     }
+});
+
+test("consolidated single checkout guards failed transactions and retained references across restart", async () => {
+  for (const fault of [
+    "revoked-token",
+    "revoked-book",
+    "conflicting-reference",
+    "lost-fence",
+    "hold-commit",
+    "payment-reserve",
+    "payment-save",
+    "lost-book",
+    "invalid-invoice",
+  ]) {
+    const m = await createBookingMechanism({
+      creationPriceDrift: fault === "invalid-invoice",
+      respond: async (call) => {
+        if (
+          (fault === "revoked-token" && call.body?.method === "getToken") ||
+          (fault === "revoked-book" && call.body?.method === "book")
+        )
+          await m.db
+            .prepare("UPDATE guest_access SET revoked_ms=?")
+            .bind(Date.now())
+            .run();
+        if (call.body?.method === "book") {
+          if (fault === "conflicting-reference")
+            await m.db
+              .prepare(
+                "UPDATE session_effects SET outcome='observed',reference_id='conflicting-reference' WHERE step='session:0'",
+              )
+              .run();
+          if (fault === "lost-fence")
+            await m.db.prepare("UPDATE attempts SET version=version+1").run();
+          if (fault === "lost-book") return new Response(null, { status: 503 });
+        }
+        return undefined;
+      },
+    });
+    try {
+      if (fault === "hold-commit")
+        await m.db.exec(
+          "CREATE TRIGGER reject_hold BEFORE INSERT ON hitpay_holds BEGIN SELECT RAISE(ABORT,'synthetic_hold_failure'); END",
+        );
+      if (fault === "payment-reserve")
+        await m.db.exec(
+          "CREATE TRIGGER reject_payment BEFORE INSERT ON hitpay_payments BEGIN SELECT RAISE(ABORT,'synthetic_payment_failure'); END",
+        );
+      if (fault === "payment-save")
+        await m.db.exec(
+          "CREATE TRIGGER reject_payment_save BEFORE UPDATE OF request_id ON hitpay_payments BEGIN SELECT RAISE(ABORT,'synthetic_save_failure'); END",
+        );
+      const c = await customer(m);
+      const send = () =>
+        m.mf.dispatchFetch(m.origin + `/api/booking/checkout/${c.input.key}`, {
+          method: "POST",
+          headers: c.headers,
+          body: JSON.stringify({ ...c.input, accepted: true }),
+        });
+      const response = await send();
+      const body = await response.json();
+      assert.equal(body.checkout, undefined, fault);
+      assert.notEqual(body.paymentAvailable, true, fault);
+      assert.equal(
+        m.calls.filter((call) => call.body?.method === "book").length,
+        fault === "revoked-token" ? 0 : 1,
+        fault,
+      );
+      const payments = m.calls.filter(
+        (call) => call.url.includes("hit-pay.com") && call.method === "POST",
+      ).length;
+      assert.equal(payments, fault === "payment-save" ? 1 : 0, fault);
+      const attempt = await m.db
+        .prepare("SELECT association_json FROM attempts WHERE id=?")
+        .bind(c.input.key)
+        .first();
+      if (!["payment-reserve", "payment-save"].includes(fault))
+        assert.equal(attempt.association_json, null, fault);
+      const payment = await m.db
+        .prepare(
+          "SELECT request_id,checkout_url FROM hitpay_payments WHERE attempt_id=?",
+        )
+        .bind(c.input.key)
+        .first();
+      assert.deepEqual(
+        payment,
+        fault === "payment-save"
+          ? { request_id: null, checkout_url: null }
+          : null,
+        fault,
+      );
+      if (!["revoked-token", "lost-book"].includes(fault)) {
+        const evidence = await m.db
+          .prepare(
+            "SELECT result_json FROM native_checkout_grants WHERE attempt_id=?",
+          )
+          .bind(c.input.key)
+          .first();
+        assert.ok(JSON.parse(evidence.result_json).holdEvidence?.length, fault);
+      }
+      // Drain the queued annotation before terminating this fixture instance.
+      // Eviction is a restart boundary, not cancellation of an active RPC.
+      const drained = await m.mf.dispatchFetch(
+        m.origin + `/__fixture/drain-annotations?attempt=${c.input.key}`,
+      );
+      assert.equal(drained.status, 204, fault);
+      await m.mf.unsafeEvictDurableObject(
+        "booking-mechanism",
+        "SoccerBotAccountCoordinator",
+        { name: "simplybook-developer-account" },
+      );
+      await send().catch((error) => {
+        throw new Error(`restart ${fault}: ${String(error.cause ?? error)}`, {
+          cause: error,
+        });
+      });
+      assert.equal(
+        m.calls.filter((call) => call.body?.method === "book").length,
+        fault === "revoked-token" ? 0 : 1,
+        fault,
+      );
+      assert.equal(
+        m.calls.filter(
+          (call) => call.url.includes("hit-pay.com") && call.method === "POST",
+        ).length,
+        payments,
+        fault,
+      );
+      assert.deepEqual(m.unexpected, []);
+    } finally {
+      await m.close();
+    }
+  }
 });

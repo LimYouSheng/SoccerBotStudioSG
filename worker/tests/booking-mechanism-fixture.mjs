@@ -93,7 +93,21 @@ export async function createBookingMechanism(options = {}) {
     reference;
   const script = (
     await (compiledWorker ??= build({
-      entryPoints: ["worker/index.ts"],
+      stdin: {
+        contents: `import worker from "./worker/index.ts";
+          export * from "./worker/index.ts";
+          export default { ...worker, async fetch(request, env, ctx) {
+            const url = new URL(request.url);
+            if (url.pathname === "/__fixture/drain-annotations") {
+              const coordinator = env.COORDINATOR.get(env.COORDINATOR.idFromName("simplybook-developer-account"));
+              await coordinator.bookingComments(url.searchParams.get("attempt"));
+              return new Response(null, { status: 204 });
+            }
+            return worker.fetch(request, env, ctx);
+          }};`,
+        resolveDir: process.cwd(),
+        loader: "ts",
+      },
       bundle: true,
       write: false,
       format: "esm",

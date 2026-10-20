@@ -191,7 +191,10 @@ export default {
         if (holdMatch) {
           if (request.method !== "POST")
             throw new ApiError(405, "operation_unavailable");
-          await verifyBindings(env);
+          await verifyBindings({
+            ...env,
+            STATE: instrumentStorage(env.STATE, "d1"),
+          });
           const outcome = await env.COORDINATOR.getByName(
             coordinatorName,
           ).holdCustomer(

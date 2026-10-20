@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## Ten-call checkout implementation — 20 October 2026 SGT
+
+PR70 passed final-head CI and was merged with owner authorization as18ccde0. Active branch perf/checkout-ten-d1 integrates guarded D1 consolidation into the actual single checkout. Cold/warm targeted Worker cases measure nine coordinator executions plus one HTTP binding read. Full local code gate passed223 frontend unit tests/build/export; full Worker gate passed407/407 with zero skips and no real provider requests. Nine fault scenarios passed across coordinator restart, using a fixture-only annotation drain before eviction. Publish a separate PR and require all final-head PR CI gates. Owner authorized implementation and PR CI, not merging this new optimization. Preserve batch/legacy behavior and all unknown-write, authorization and original-expiry protections.
+
 ## PR70 initial receipt versus download gate — 20 October 2026 SGT
 
 Run39394733331 on a51594a passed frontend/backend and74/78 live-email cases. Downloaded logs confirm the same recovery case failed at the blocked initial receipt on all three devices. Source inspection establishes a second obsolete early-proof assumption: the test blocks the first receipt, then waits for confirmed presentation before releasing it. The existing component test explicitly requires Preparing your confirmation until that receipt arrives when no earlier proof exists. Separate initial presentation and later protected-download gates. Assert initial preparation/no confirmed heading, release the initial receipt, then block a fresh export read while the confirmed page remains visible. Require one additional protected receipt request for download and preserve payment identity/effect, reload and dismissal assertions. No production change or timeout/retry relaxation; final-head browser CI remains required.
@@ -44,11 +48,9 @@ Request-scoped authenticated access and intent flow through internal owners inst
 
 Test impact: orchestration/journal ownership and revocation, payment routes/holds, native token selection, partial/malformed/rejected creation, restored attempts, browser price-drift/outage cases, standalone fixture declarations and inventories. Preserve legacy preflight coverage; direct browser tests now assert authoritative creation-response failures retain evidence and cannot pay/replay, and public-token failures stay editable. No timeouts/retries/skips relaxed. Local verification: full code gate passed220 unit tests/build/export; full Worker suite passed396/396. Subsequent expiry-boundary preservation, warm-token/no-replay coverage and browser call assertions passed focused Worker checks plus types/lint/source/format. Warm and cold direct-single tests both measured34 D1 executions; warm path called only book. Final-head CI remains required. No assistant browser or physical booking/payment execution.
 
-
 ## PR66 CI cookie-adapter correction — 20 October 2026 SGT
 
 Run39365196455 on77f06d3 passed frontend/backend and75/78 live-email cases. Only the new identity-warming test failed on all three devices, after its UI/no-effect assertions passed: its direct current-status fetch copied the preview cookie name instead of using the existing adapter that maps it to the real Worker cookie. Route this read through browser fetch and the shared transport, assert HTTP200 before the unchanged empty-state assertion. No production authentication change, invented capability, timeout increase, retry or skipped coverage. Test-impact search reviewed direct dispatch/cookie setup paths; existing prepared-attempt helpers already use the actual server cookie. Local types/lint/source/policy/format checks and final-head CI remain required; no assistant browser execution.
-
 
 ## Authentication rejection diagnostic follow-up — 20 October 2026 SGT
 
@@ -62,13 +64,11 @@ The second attempt remained prepared with a granted checkout, zero session effec
 
 Test impact covers server preparation/current/archival, native service error mapping, provider state transitions, confirmation proof retention and terminal overrides, details styles, standalone fixture setup and both test inventories. New real Worker and component regressions pass; actual Worker/API browser coverage for authentication failure is added to all CI devices without changing timeouts or assertions. Local source/policy/tooling/installer/format/lint/types, all220 unit tests and static build/export pass; the full Worker suite and final-head CI remain required. The historical HAR10 attempt remains retained; no live record was rewritten or cancelled. Existing minimum-HitPay-duration guard follow-up and in-flight-expiry experiments remain outstanding; no checkout reordering or recovery-buffer reduction in this repair.
 
-
 ## Confirmation read timestamp race — 20 October 2026 SGT
 
 PR64 passed all PR gates and owner merged it as c7ee697. Main run39355419233 passed frontend/backend and74/75 live-email cases; tablet WebKit payment recovery timed out and Cloudflare deployment was skipped. Offline trace shows verified customer confirmation followed by observation_time_invalid: reconciliation committed fresh evidence after the HTTP request-start timestamp used for validation. This is a production read race, not a reason to increase the browser timeout or weaken its response assertion.
 
 Confirmation polling, saved checkout confirmation and protected receipt decisions now use the current clock after asynchronous storage reads. They never advance time to the evidence timestamp. Original saved verification time, authentication, freshness, payment guards and future-observation rejection remain intact. The real Worker regression fails against pre-fix source and passes with the repair; it exercises polling/context/export with an earlier request-start timestamp, plus rejects genuinely future evidence. Test-impact review covers all decideStoredConfirmation callers, shared domain time checks and the unchanged browser recovery/dismissal waits. Final-source Worker and CI verification remain required. No browser or provider booking/payment operation performed by the assistant.
-
 
 ## Independent payment deadlines — 20 October 2026 SGT
 
@@ -77,7 +77,6 @@ HAR09 records a29.1second four-session checkout ending in recovery_required. The
 Ongoing direct-HitPay hold timing no longer uses dispatch-grant expiry as a financial deadline. Authentication and grant checks still guard every write; the provider due time and immutable fifteen-minute hold/eight-minute payment windows anchored to this attempt's booking creation still bound payment. Existing attempts, access expiry, finite experiments and native checkout remain unchanged; no retry renews a payment deadline. The existing conservative whole-minute HitPay duration calculation remains bounded by that deadline, so preparation time and rounding still consume part of the eight-minute window.
 
 Regression coverage ages access to five minutes before single hold and batch checkout, verifies an eight-minute payment deadline, unchanged access expiry and one payment effect. HitPay422 diagnostics consume at most16KiB and retain only allowlisted validation field names; customer values, error messages and unknown keys are discarded. Lost/malformed creation outcomes still retain the original attempt without replay. Test-impact review covers native deadline tests, combined holds, HitPay failure tests, shared fixture payloads and the strict runtime inventory. Final-source local checks and CI remain pending; no new provider booking/payment or historical financial mutation was performed.
-
 
 ## Interrupted provider transport recovery — 20 October 2026 SGT
 

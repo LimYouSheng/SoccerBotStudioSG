@@ -13,7 +13,10 @@ import {
 type Intent = z.infer<typeof intentSchema>;
 type Session = Intent["sessions"][number];
 type Context = { attemptId: string; sessionIndex: number };
-type EffectContext = Context & { assertCurrent: () => Promise<void> };
+type EffectContext = Context & {
+  assertCurrent: () => Promise<void>;
+  fence: number;
+};
 const reference = z.string().min(1).max(128);
 const acceptedSession = z.strictObject({
   bookingId: reference,
@@ -50,11 +53,22 @@ const finalizedInvoice = z.strictObject({
 // admission. It does not establish provider acceptance or production readiness.
 export type BookingOperations = {
   validationMode?: "per-session";
+  // The single native transport owns the atomic claim at its write boundary.
+  stagedSingleClaim?: {
+    stage: (version: number) => number;
+    assertCurrent: () => Promise<void>;
+  };
   // Single native creation already returned the invoice; finalization has no external write.
   localFinalization?: boolean;
   // Native creation retains the raw receipt before normalization can fail.
   retainsSessionReferences?: boolean;
+  retainedReference?: (step: string, id: string, fence: number) => boolean;
   onCreated?: (receivedAtMs: number) => Promise<void>;
+  commitAssociation?: (
+    fence: number,
+    association: z.infer<typeof associationSchema>,
+    access: Access,
+  ) => Promise<number>;
   onAssociated?: (association: {
     association_json: string;
     version: number;
@@ -158,22 +172,26 @@ export async function orchestrateBooking(
   // Single atomic winner. A second click or resumed process cannot replay writes.
   let fence: number;
   try {
-    fence = (await claimDispatch(env.STATE, id, row.version, Date.now())).fence;
+    fence = operations.stagedSingleClaim
+      ? operations.stagedSingleClaim.stage(row.version)
+      : (await claimDispatch(env.STATE, id, row.version, Date.now())).fence;
   } catch (error) {
     if (error instanceof ApiError && error.code === "dispatch_not_claimed")
       return { state: "recovery_required", paymentAvailable: false };
     throw error;
   }
-  const assertCurrent = async () => {
-    const now = Date.now();
-    const current = await env.STATE.withSession("first-primary")
-      .prepare(
-        "SELECT 1 FROM attempts WHERE id=? AND version=? AND state='dispatching' AND deadline_ms>? AND EXISTS (SELECT 1 FROM guest_access WHERE capability_hash=? AND owner_id=? AND revoked_ms IS NULL AND issued_ms<=? AND expires_ms>?)",
-      )
-      .bind(id, fence, now, access.capability_hash, access.owner_id, now, now)
-      .first();
-    if (!current) throw new ApiError(409, "effect_fence_lost");
-  };
+  const assertCurrent =
+    operations.stagedSingleClaim?.assertCurrent ??
+    (async () => {
+      const now = Date.now();
+      const current = await env.STATE.withSession("first-primary")
+        .prepare(
+          "SELECT 1 FROM attempts WHERE id=? AND version=? AND state='dispatching' AND deadline_ms>? AND EXISTS (SELECT 1 FROM guest_access WHERE capability_hash=? AND owner_id=? AND revoked_ms IS NULL AND issued_ms<=? AND expires_ms>?)",
+        )
+        .bind(id, fence, now, access.capability_hash, access.owner_id, now, now)
+        .first();
+      if (!current) throw new ApiError(409, "effect_fence_lost");
+    });
   const reserve = async (step: string) => {
     const now = Date.now();
     const result = await env.STATE.prepare(
@@ -207,6 +225,7 @@ export async function orchestrateBooking(
     // under the current fence, without rewriting or replacing that receipt.
     const retained =
       result?.meta.changes === 1 ||
+      operations.retainedReference?.(step, referenceId, fence) ||
       (await env.STATE.withSession("first-primary")
         .prepare(
           "SELECT 1 FROM session_effects e JOIN attempts a ON a.id=e.attempt_id WHERE e.attempt_id=? AND e.step=? AND e.outcome='observed' AND e.reference_id=? AND a.version=? AND a.state='dispatching'",
@@ -239,10 +258,11 @@ export async function orchestrateBooking(
       )
         throw new ApiError(409, "approved_intent_changed");
       const step = `session:${sessionIndex}`;
-      await reserve(step);
+      if (!operations.stagedSingleClaim) await reserve(step);
       const raw = await operations.createSession(session, intent, {
         ...context,
         assertCurrent,
+        fence,
       });
       const receivedAtMs = Date.now();
       // Preserve an observed reference even if its association is invalid.
@@ -306,13 +326,15 @@ export async function orchestrateBooking(
       bookingIds: ids,
       ...(nativeCustomerId ? { nativeCustomerId } : {}),
     };
-    const version = await bindAssociation(
-      env.STATE,
-      id,
-      fence,
-      association,
-      operations.localFinalization ? access : undefined,
-    );
+    const version = operations.commitAssociation
+      ? await operations.commitAssociation(fence, association, access)
+      : await bindAssociation(
+          env.STATE,
+          id,
+          fence,
+          association,
+          operations.localFinalization ? access : undefined,
+        );
     operations.onAssociated?.({
       association_json: JSON.stringify(associationSchema.parse(association)),
       version,

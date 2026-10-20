@@ -70,6 +70,10 @@ export async function prepareAttempt(
   now: number,
   deadlineMs: number,
   requestedId?: string,
+  completion?: {
+    statements: (id: string, hash: string) => D1PreparedStatement[];
+    inspect: (results: D1Result[]) => void;
+  },
 ) {
   if (!/^[A-Za-z0-9_-]{16,128}$/.test(key))
     throw new ApiError(400, "invalid_idempotency_key");
@@ -94,6 +98,7 @@ export async function prepareAttempt(
         "SELECT id,intent_hash,version,state FROM attempts WHERE owner_id=? AND idempotency_key=?",
       )
       .bind(owner, key),
+    ...(completion?.statements(id, hash) ?? []),
   ]);
   const row = results[1].results[0] as
     | {
@@ -105,6 +110,7 @@ export async function prepareAttempt(
     | undefined;
   if (!row || row.intent_hash !== hash)
     throw new ApiError(409, "idempotency_conflict");
+  completion?.inspect(results.slice(2));
   return row;
 }
 export async function claimDispatch(
@@ -179,17 +185,30 @@ export async function bindAssociation(
   fence: number,
   references: unknown,
   localFinalization?: Access,
+  completion?: {
+    createdAtMs: number;
+    grant: {
+      source_revision: string;
+      intent_hash: string | null;
+      contract_json: string;
+    };
+    after: (version: number) => D1PreparedStatement[];
+  },
 ) {
   const refs = associationSchema.parse(references);
   const now = Date.now();
   const authority = localFinalization
     ? " AND deadline_ms>? AND EXISTS(SELECT 1 FROM guest_access WHERE capability_hash=? AND owner_id=? AND revoked_ms IS NULL AND issued_ms<=? AND expires_ms>?)"
     : "";
+  const grantGuard = completion
+    ? " AND EXISTS(SELECT 1 FROM native_checkout_grants g WHERE g.attempt_id=attempts.id AND g.state='running' AND g.source_revision=? AND g.intent_hash=attempts.intent_hash AND g.intent_hash=? AND g.contract_json=? AND g.expires_ms>?)"
+    : "";
   const statements = [
     db
       .prepare(
         "UPDATE attempts SET association_json=?,version=version+1 WHERE id=? AND version=? AND state='dispatching' AND association_json IS NULL AND json_array_length(intent_json,'$.sessions')=?" +
-          authority,
+          authority +
+          grantGuard,
       )
       .bind(
         JSON.stringify(refs),
@@ -203,6 +222,14 @@ export async function bindAssociation(
               localFinalization.owner_id,
               now,
               now,
+            ]
+          : []),
+        ...(completion
+          ? [
+              completion.grant.source_revision,
+              completion.grant.intent_hash,
+              completion.grant.contract_json,
+              now + 15000,
             ]
           : []),
       ),
@@ -226,7 +253,21 @@ export async function bindAssociation(
         .bind(JSON.stringify(refs.bookingIds), id, fence + 1),
     );
   }
-  const result = await db.batch(statements);
+  const prefix = completion
+    ? [
+        db
+          .prepare(
+            "INSERT INTO checkout_progress(attempt_id,booking_created_ms,payment_window_ms,hold_window_ms) SELECT id,?,480000,900000 FROM attempts WHERE id=? AND version=? AND state='dispatching' ON CONFLICT(attempt_id) DO NOTHING",
+          )
+          .bind(completion.createdAtMs, id, fence),
+      ]
+    : [];
+  const results = await db.batch([
+    ...prefix,
+    ...statements,
+    ...(completion?.after(fence + 1) ?? []),
+  ]);
+  const result = results.slice(prefix.length);
   if (
     result[0].meta.changes !== 1 ||
     (localFinalization && result.some((entry) => entry.meta.changes !== 1))
