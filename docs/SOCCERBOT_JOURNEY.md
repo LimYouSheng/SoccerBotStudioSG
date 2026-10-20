@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## Confirmation tracing — 20 October 2026 SGT
+
+PR71 merged as78098bf after all three gates passed; main CI/deployment run39410852918 succeeded. Owner hometest04 records single checkout5.30seconds, nine coordinator D1 calls/1.303seconds, public token cache miss957ms, and return-to-confirmed20.407seconds/receipt21.209seconds. Polls reported payment_received_booking_pending; after the sixth response a9.574second gap preceded the next request. HAR alone cannot identify admin-authentication duration, the dominant reconciliation subrequest or when readiness changed between polls.
+
+Owner requests granular confirmation tracing. Branch perf/confirmation-tracing starts from merged78098bf. Recovery stage/transport/admission/D1/cache timing and protected response Server-Timing share a hashed attempt trace key without additional storage/provider calls. Tests cover real recovery call counts, auth/identity separation, cross-request isolation, original failures, late background closure, correlated protected responses and denied receipt diagnostics. Existing ten-call checkout budget still passes cold/warm. Browser pending-return coverage now asserts diagnostic headers while retaining all UI/payment assertions. Full local code gate passed223 frontend tests/build/export; full Worker gate passed409/409 with zero skips. Final-head PR CI remains pending; no merge, deployment or physical provider test is authorized by this source task.
+
 ## Ten-call single checkout integration — 20 October 2026 SGT
 
 Owner authorized merging PR70 after all three CI gates passed on5b350aa (run39401212504). PR70 merged as18ccde0; the D1 integration branch starts there. The isolated transaction experiment established feasibility but was not application acceptance. Actual Worker integration now measures nine coordinator D1 executions plus the previously uncounted HTTP binding read, ten total for cold/warm single checkout. Existing creation normalization, raw/opaque-reference retention, immutable expiry, duplicate guards and current-booking confirmation remain. The outer binding read is now instrumented. Source changes consolidate existing owners; a native dispatch helper owns the atomic one-session reservation. No live provider booking/payment or assistant browser execution.

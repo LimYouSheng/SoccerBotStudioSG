@@ -650,6 +650,68 @@ test("HitPay recovery independently verifies payment and bookings before one ext
   assert.equal(saved.state, "complete", saved.reason);
   assert.equal(saved.reason, "verified");
   assert.equal(saved.external_state, "observed");
+  const trace = logs
+    .map((message) => {
+      try {
+        return JSON.parse(message);
+      } catch {
+        return null;
+      }
+    })
+    .find(
+      (entry) =>
+        entry?.event === "confirmation_trace" &&
+        entry.boundary === "recovery" &&
+        entry.result === "complete",
+    );
+  assert.ok(trace, "real coordinator recovery emits a completed trace");
+  assert.equal(
+    trace.recoveryKey,
+    createHash("sha256")
+      .update("confirmation:" + attemptId)
+      .digest("hex"),
+  );
+  assert.equal(trace.operations.admin_auth.count, 1);
+  assert.equal(trace.operations.public_auth.count, 1);
+  assert.equal(trace.operations.identity.count, 1);
+  assert.equal(trace.operations.tariff.count, 1);
+  assert.equal(trace.operations.hitpay_read.count, 1);
+  assert.equal(trace.operations.accounting_write.count, 1);
+  assert.equal(trace.operations.booking_read.count, 2);
+  assert.equal(trace.operations.invoice_read.count, 2);
+  assert.equal(trace.caches.admin_miss, 1);
+  assert.equal(trace.caches.public_miss, 1);
+  assert.ok(trace.operations.d1.count > 0);
+  assert.equal(
+    trace.operations.d1.count,
+    Object.values(trace.stages).reduce((n, stage) => n + stage.d1.count, 0),
+  );
+  const foundation = logs
+    .map((message) => {
+      try {
+        return JSON.parse(message);
+      } catch {
+        return null;
+      }
+    })
+    .find(
+      (entry) =>
+        entry?.event === "foundation_trace" &&
+        entry.correlationId === trace.correlationId,
+    );
+  assert.equal(
+    trace.operations.d1.count,
+    foundation.spans.d1.count,
+    "DO SQLite work must not count as D1",
+  );
+  for (const secret of [
+    attemptId,
+    requestId,
+    paymentId,
+    intent.contact.email,
+    "synthetic-admin-token",
+  ])
+    assert.ok(!JSON.stringify(trace).includes(secret));
   assert.equal(provider.writes(), 1);
   assert.equal(provider.reads(), 1);
   await recover();

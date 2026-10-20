@@ -2394,3 +2394,88 @@ test("consolidated single checkout guards failed transactions and retained refer
     }
   }
 });
+
+test("protected confirmation traces correlate context status and denied receipt without leaking payment data", async () => {
+  const logs = [];
+  const m = await createBookingMechanism({
+    onLog: (message) => {
+      try {
+        logs.push(JSON.parse(message));
+      } catch {
+        /* structured traces only */
+      }
+    },
+  });
+  try {
+    const c = await customer(m);
+    const checkout = await m.mf.dispatchFetch(
+      m.origin + `/api/booking/checkout/${c.input.key}`,
+      {
+        method: "POST",
+        headers: c.headers,
+        body: JSON.stringify({ ...c.input, accepted: true }),
+      },
+    );
+    assert.equal(checkout.status, 200);
+    let key;
+    for (const [route, boundary, status] of [
+      ["checkout", "context", 200],
+      ["confirmation", "status", 200],
+      ["receipt", "receipt", 409],
+    ]) {
+      const response = await m.mf.dispatchFetch(
+        m.origin + `/api/attempts/${c.input.key}/${route}`,
+        { headers: c.headers },
+      );
+      assert.equal(response.status, status);
+      const currentKey = response.headers.get("x-recovery-trace");
+      assert.match(currentKey, /^[a-f0-9]{64}$/);
+      key ??= currentKey;
+      assert.equal(currentKey, key);
+      const timing = response.headers.get("server-timing");
+      assert.match(timing, new RegExp(`confirmation_${boundary};dur=[0-9.]+`));
+      assert.match(
+        timing,
+        /confirmation_d1;dur=[0-9.]+;desc="[1-9][0-9]* calls"/,
+      );
+      assert.match(timing, /confirmation_http;dur=[0-9.]+/);
+      const trace = logs.find(
+        (entry) =>
+          entry.event === "confirmation_trace" &&
+          entry.correlationId === response.headers.get("x-request-id"),
+      );
+      assert.ok(trace);
+      assert.equal(trace.boundary, boundary);
+      assert.equal(trace.recoveryKey, key);
+      assert.equal(trace.outcome, status === 200 ? "ok" : "error");
+      const foundation = logs.find(
+        (entry) =>
+          entry.event === "foundation_trace" &&
+          entry.correlationId === trace.correlationId,
+      );
+      assert.equal(
+        trace.operations.d1.count + 1,
+        foundation.spans.d1.count,
+        "outer binding read is outside protected operation timing",
+      );
+      for (const secret of [c.input.key, c.input.contact.email, m.checkoutUrl])
+        assert.ok(!JSON.stringify(trace).includes(secret));
+      const body = await response.json();
+      assert.equal(body.recoveryKey, undefined);
+      assert.equal(body.serverTiming, undefined);
+    }
+    assert.equal(
+      m.calls.filter((call) => call.body?.method === "book").length,
+      1,
+    );
+    assert.equal(
+      m.calls.filter(
+        (call) => call.url.includes("hit-pay.com") && call.method === "POST",
+      ).length,
+      1,
+    );
+    assert.deepEqual(m.unexpected, []);
+  } finally {
+    await m.close();
+  }
+});

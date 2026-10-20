@@ -1,5 +1,9 @@
 # SoccerBotStudioSG current progress
 
+## Confirmation tracing — 20 October 2026 SGT
+
+Active branch perf/confirmation-tracing is based on merged PR71/main78098bf. Add observational recovery stage/provider/authentication/admission/D1 timings and correlated protected-read headers after owner HAR showed20.4second confirmation. Targeted recovery/privacy/error/header and cold/warm ten-call checkout checks pass. Test-impact review completed. Full local code gate passed223 frontend tests/build/export; full Worker gate passed409/409 with zero skips. Publish a new PR and require final-head frontend/backend/live-email CI. Preserve all polling, cache lifetime, financial and proof behavior. No new-PR merge or provider test authorization.
+
 ## Ten-call checkout implementation — 20 October 2026 SGT
 
 PR70 passed final-head CI and was merged with owner authorization as18ccde0. Active branch perf/checkout-ten-d1 integrates guarded D1 consolidation into the actual single checkout. Cold/warm targeted Worker cases measure nine coordinator executions plus one HTTP binding read. Full local code gate passed223 frontend unit tests/build/export; full Worker gate passed407/407 with zero skips and no real provider requests. Nine fault scenarios passed across coordinator restart, using a fixture-only annotation drain before eviction. Publish a separate PR and require all final-head PR CI gates. Owner authorized implementation and PR CI, not merging this new optimization. Preserve batch/legacy behavior and all unknown-write, authorization and original-expiry protections.

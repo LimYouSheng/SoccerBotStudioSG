@@ -2279,7 +2279,24 @@ test("real API unpaid return shows the pending confirmation layout without claim
       { method: "POST", headers },
     );
     expect(await held.json()).toMatchObject({ state: "associated" });
+    const contextRead = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname ===
+        `/api/attempts/${attemptId}/checkout`,
+    );
     await page.goto(`/confirmation/?attempt=${attemptId}`);
+    const diagnosticHeaders = await (await contextRead).allHeaders();
+    expect(diagnosticHeaders["x-recovery-trace"]).toMatch(/^[a-f0-9]{64}$/);
+    expect(diagnosticHeaders["server-timing"]).toMatch(
+      /confirmation_context;dur=[0-9.]+/,
+    );
+    expect(diagnosticHeaders["server-timing"]).toMatch(
+      /confirmation_d1;dur=[0-9.]+;desc="[1-9][0-9]* calls"/,
+    );
+    expect(diagnosticHeaders["server-timing"]).toMatch(
+      /confirmation_http;dur=[0-9.]+/,
+    );
+
     await page
       .getByRole("dialog", { name: "Get the SoccerBot Player App" })
       .getByRole("button", { name: "Not now", exact: true })

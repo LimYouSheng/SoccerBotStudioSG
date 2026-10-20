@@ -1,4 +1,10 @@
 import {
+  createConfirmationTrace,
+  confirmationTraceKey,
+  runConfirmationTrace,
+  finishConfirmationTrace,
+} from "./confirmation-tracing";
+import {
   createCheckoutTrace,
   runCheckoutTrace,
   finishCheckoutTrace,
@@ -1118,17 +1124,28 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       await this.ctx.storage.setAlarm(Date.now());
   }
   async hitpayRecovery(attemptId: string, correlationId: string) {
-    const run = this.providerQueue.run("recovery", () =>
-      traced(correlationId, "coordinator", () =>
-        recoverHitpay(
-          { ...this.env, STATE: instrumentStorage(this.env.STATE, "d1") },
-          attemptId,
-          this.provider,
-          this.providerControl(true, false, true),
+    const key = await confirmationTraceKey(attemptId);
+    const trace = createConfirmationTrace(correlationId);
+    let failed = false;
+    try {
+      return await this.providerQueue.run("recovery", () =>
+        runConfirmationTrace(trace, "claim", () =>
+          traced(correlationId, "coordinator", () =>
+            recoverHitpay(
+              { ...this.env, STATE: instrumentStorage(this.env.STATE, "d1") },
+              attemptId,
+              this.provider,
+              this.providerControl(true, false, true),
+            ),
+          ),
         ),
-      ),
-    );
-    return run;
+      );
+    } catch (error) {
+      failed = true;
+      throw error;
+    } finally {
+      finishConfirmationTrace(trace, key, "recovery", failed);
+    }
   }
   async ongoingRecovery(attemptId: string, correlationId: string) {
     const run = this.providerQueue.run("recovery", async () => {

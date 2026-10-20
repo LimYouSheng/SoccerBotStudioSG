@@ -271,3 +271,103 @@ test("checkout timing isolates queued requests attributes D1 to dispatch phase a
     assert.ok(log.phases.queue.durationMs >= 0);
   }
 });
+
+const confirmationBundle = await build({
+  stdin: {
+    contents:
+      'export * from "./worker/confirmation-tracing.ts"; export { measure } from "./worker/diagnostics.ts";',
+    resolveDir: process.cwd(),
+  },
+  bundle: true,
+  write: false,
+  platform: "node",
+  format: "esm",
+});
+const confirmationTracing = await import(
+  `data:text/javascript;base64,${Buffer.from(confirmationBundle.outputFiles[0].text).toString("base64")}`
+);
+
+test("confirmation timing isolates concurrent traces preserves failures and excludes late background metrics", async (t) => {
+  const logs = [];
+  t.mock.method(console, "log", (message) => logs.push(JSON.parse(message)));
+  const a = confirmationTracing.createConfirmationTrace(crypto.randomUUID());
+  const b = confirmationTracing.createConfirmationTrace(crypto.randomUUID());
+  const key = await confirmationTracing.confirmationTraceKey(
+    "synthetic-attempt-private",
+  );
+  assert.match(key, /^[a-f0-9]{64}$/);
+  const gate = Promise.withResolvers();
+  const entered = Promise.withResolvers();
+  let late;
+  const first = confirmationTracing.runConfirmationTrace(
+    a,
+    "booking_before",
+    async () => {
+      confirmationTracing.confirmationCache("admin", "miss");
+      const original = gate.promise;
+      assert.equal(
+        confirmationTracing.measure("d1", () => original),
+        original,
+      );
+      confirmationTracing.confirmationStage("accounting");
+      const auth = confirmationTracing.confirmationTransport("admin-auth");
+      entered.resolve();
+      await gate.promise;
+      auth();
+      late = confirmationTracing.confirmationMetric("d1");
+    },
+  );
+  await entered.promise;
+  await confirmationTracing.runConfirmationTrace(b, "status", async () => {
+    confirmationTracing.confirmationCache("public", "hit");
+    assert.equal(
+      confirmationTracing.confirmationTransport("https://secret.invalid/token"),
+      undefined,
+    );
+    const failure = new Error("private-provider-message");
+    await assert.rejects(
+      confirmationTracing.measure("d1", () => Promise.reject(failure)),
+      (e) => e === failure,
+    );
+    confirmationTracing.confirmationTransport("invoice-read")(true);
+  });
+  gate.resolve();
+  await first;
+  const header = confirmationTracing.finishConfirmationTrace(
+    a,
+    key,
+    "recovery",
+    false,
+  );
+  confirmationTracing.finishConfirmationTrace(b, key, "status", true);
+  late(true);
+  assert.equal(
+    confirmationTracing.finishConfirmationTrace(a, key, "recovery", false),
+    "",
+  );
+  assert.equal(logs.length, 2);
+  assert.equal(logs[0].stages.booking_before.d1.count, 1);
+  assert.equal(logs[0].stages.accounting.d1.count, 0);
+  assert.equal(logs[0].operations.admin_auth.count, 1);
+  assert.equal(logs[0].operations.d1.errors, 0);
+  assert.deepEqual(logs[0].caches, { admin_miss: 1 });
+  assert.equal(logs[1].operations.d1.errors, 1);
+  assert.equal(logs[1].operations.invoice_read.errors, 1);
+  assert.deepEqual(logs[1].caches, { public_hit: 1 });
+  assert.equal(logs[1].outcome, "error");
+  assert.match(header, /confirmation_d1;dur=[0-9.]+;desc="1 calls"/);
+  for (const trace of logs) {
+    const total = Object.values(trace.stages).reduce(
+      (sum, s) => sum + s.durationMs,
+      0,
+    );
+    assert.ok(Math.abs(total - trace.durationMs) < 0.001);
+    assert.ok(trace.completedAtMs >= trace.startedAtMs);
+  }
+  for (const secret of [
+    "synthetic-attempt-private",
+    "private-provider-message",
+    "secret.invalid",
+  ])
+    assert.ok(!JSON.stringify(logs).includes(secret));
+});

@@ -1,3 +1,4 @@
+import { confirmationStage, confirmationResult } from "./confirmation-tracing";
 import {
   retainCustomerConfirmation,
   checkoutCheckingDeadline,
@@ -31,8 +32,10 @@ export async function recoverHitpay(
     policy(env).PROVIDER_ACCESS !== "trusted-reads"
   )
     return;
+  confirmationStage("claim");
   const row = await claimHitpay(env, id, Date.now());
   if (!row) return;
+  confirmationResult("pending");
   const end = Date.now() + 90000;
   let calls = 0;
   const assertClaim = async () => {
@@ -95,7 +98,9 @@ export async function recoverHitpay(
       refs.invoiceId !== scope.invoiceId
     )
       throw new ApiError(409, "hitpay_scope_mismatch");
+    confirmationStage("hitpay");
     const verified = await findHitpayRequest(env, row, reserve);
+    confirmationStage("payment_evidence");
     await assertClaim();
     await env.STATE.prepare(
       "UPDATE hitpay_payments SET request_id=COALESCE(request_id,?),checkout_url=COALESCE(checkout_url,?) WHERE attempt_id=? AND state='claimed' AND generation=?",
@@ -159,6 +164,7 @@ export async function recoverHitpay(
         controller.abort();
       }
     };
+    confirmationStage("booking_before");
     let observation = await read();
     if (
       observation.bookings.some((b) => b.status !== "confirmed") ||
@@ -177,6 +183,7 @@ export async function recoverHitpay(
         throw new ApiError(409, "hitpay_late_payment_review");
     };
     if (observation.invoice.status !== "paid") {
+      confirmationStage("accounting");
       assertLiveHold();
       if (row.external_state !== "none") {
         reason = "external_write_unknown";
@@ -218,6 +225,7 @@ export async function recoverHitpay(
           if (!stored) throw new ApiError(409, "external_payment_reserved");
         },
       );
+      confirmationStage("booking_after");
       observation = await read();
     }
     if (
@@ -227,6 +235,7 @@ export async function recoverHitpay(
       reason = "payment_received_booking_pending";
       return;
     }
+    confirmationStage("publish");
     await assertClaim();
     await recordObservation(
       env.STATE,
@@ -260,6 +269,7 @@ export async function recoverHitpay(
     )
       result = "manual_review";
   } finally {
+    confirmationStage("commit");
     if (
       result === "due" &&
       (row.tries >= row.retry_limit || Date.now() >= row.recovery_end_ms)
@@ -284,5 +294,12 @@ export async function recoverHitpay(
       ),
       reopenHitpayReview(env.STATE, id, Date.now()),
     ]);
+    confirmationResult(
+      result === "complete"
+        ? "complete"
+        : result === "manual_review"
+          ? "manual_review"
+          : "pending",
+    );
   }
 }

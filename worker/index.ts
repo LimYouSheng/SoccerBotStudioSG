@@ -1,3 +1,9 @@
+import {
+  createConfirmationTrace,
+  confirmationTraceKey,
+  runConfirmationTrace,
+  finishConfirmationTrace,
+} from "./confirmation-tracing";
 import { z } from "zod";
 import { receiveHitpayWebhook } from "./hitpay-webhook";
 import { bookingReceipt } from "./receipt";
@@ -101,6 +107,27 @@ export default {
       url = new URL(request.url),
       now = Date.now();
     const checkingHeaders: Record<string, string> = {};
+    const confirmationRead = async <T>(
+      id: string,
+      boundary: "status" | "context" | "receipt",
+      operation: () => Promise<T>,
+    ): Promise<T> => {
+      const key = await confirmationTraceKey(id);
+      const trace = createConfirmationTrace(correlationId);
+      let failed = false;
+      try {
+        return await runConfirmationTrace(trace, boundary, operation);
+      } catch (error) {
+        failed = true;
+        throw error;
+      } finally {
+        checkingHeaders["X-Recovery-Trace"] = key;
+        checkingHeaders["Server-Timing"] =
+          finishConfirmationTrace(trace, key, boundary, failed) +
+          `, confirmation_http;dur=${Math.max(0, performance.now() - requestStarted).toFixed(2)}`;
+      }
+    };
+
     const json = (
       body: unknown,
       status = 200,
@@ -278,7 +305,16 @@ export default {
 
         env = {
           ...env,
-          STATE: env.STATE ? instrumentStorage(env.STATE) : env.STATE,
+          STATE: env.STATE
+            ? instrumentStorage(
+                env.STATE,
+                /^\/api\/attempts\/[a-f0-9-]{36}\/(confirmation|checkout|receipt)$/.test(
+                  url.pathname,
+                )
+                  ? "d1"
+                  : "storage",
+              )
+            : env.STATE,
         };
         await verifyBindings(env);
         const expire = /^\/api\/attempts\/([a-f0-9-]{36})\/expire$/.exec(
@@ -545,24 +581,36 @@ export default {
         );
         if (match && request.method === "GET")
           return json(
-            await confirmation(request, env, match[1], now, (window) => {
-              checkingHeaders["X-Checking-Deadline"] = String(
-                window.deadlineMs,
-              );
-              checkingHeaders["X-Next-Check"] = String(window.nextCheckMs);
-              checkingHeaders["X-Checks-Remaining"] = String(window.remaining);
-            }),
+            await confirmationRead(match[1], "status", () =>
+              confirmation(request, env, match[1], now, (window) => {
+                checkingHeaders["X-Checking-Deadline"] = String(
+                  window.deadlineMs,
+                );
+                checkingHeaders["X-Next-Check"] = String(window.nextCheckMs);
+                checkingHeaders["X-Checks-Remaining"] = String(
+                  window.remaining,
+                );
+              }),
+            ),
           );
         const receipt = /^\/api\/attempts\/([a-f0-9-]{36})\/receipt$/.exec(
           url.pathname,
         );
         if (receipt && request.method === "GET")
-          return json(await bookingReceipt(request, env, receipt[1], now));
+          return json(
+            await confirmationRead(receipt[1], "receipt", () =>
+              bookingReceipt(request, env, receipt[1], now),
+            ),
+          );
         const checkout = /^\/api\/attempts\/([a-f0-9-]{36})\/checkout$/.exec(
           url.pathname,
         );
         if (checkout && request.method === "GET")
-          return json(await checkoutContext(request, env, checkout[1], now));
+          return json(
+            await confirmationRead(checkout[1], "context", () =>
+              checkoutContext(request, env, checkout[1], now),
+            ),
+          );
         if (url.pathname === "/api/attempts" && request.method === "POST") {
           await authenticate(request, env, now);
           throw new ApiError(503, "booking_prerequisites_blocked");

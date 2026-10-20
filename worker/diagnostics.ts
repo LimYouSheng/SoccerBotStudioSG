@@ -1,3 +1,4 @@
+import { confirmationMetric } from "./confirmation-tracing";
 import { checkoutD1 } from "./checkout-tracing";
 import { AsyncLocalStorage } from "node:async_hooks";
 type Span =
@@ -44,8 +45,10 @@ export function measure<T>(span: Span, operation: () => T): T {
   const trace = context.getStore(),
     start = performance.now();
   const checkoutEnd = span === "d1" ? checkoutD1() : undefined;
+  const confirmationEnd = span === "d1" ? confirmationMetric("d1") : undefined;
   const end = (error: boolean) => {
     checkoutEnd?.(error);
+    confirmationEnd?.(error);
     if (!trace) return;
     const metric = trace.spans[span];
     metric.count++;

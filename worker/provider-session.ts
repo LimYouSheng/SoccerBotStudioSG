@@ -1,3 +1,4 @@
+import { confirmationCache } from "./confirmation-tracing";
 import { checkoutTokenCache } from "./checkout-tracing";
 import { parallelReads } from "./parallel-reads";
 import { hitpayRecoveryEnabled } from "./hitpay-contract";
@@ -402,9 +403,16 @@ export class ProviderSession {
     control: ProviderControl,
   ) {
     const current = this.tokens.get(family);
-    if (current && current.until > Date.now()) return current.value;
+    if (current && current.until > Date.now()) {
+      confirmationCache(family, "hit");
+      return current.value;
+    }
     const shared = this.authentication.get(family);
-    if (shared) return measure("coordinator_wait", () => shared);
+    if (shared) {
+      confirmationCache(family, "shared");
+      return measure("coordinator_wait", () => shared);
+    }
+    confirmationCache(family, "miss");
     const authenticate = async () => {
       const claim = control.claim(family);
       const result = await providerRequest(
@@ -451,11 +459,16 @@ export class ProviderSession {
     control: ProviderControl,
   ): Promise<Record<string, unknown>> {
     this.bindScope(env);
-    if (this.cachedIdentity && this.cachedIdentity.until > Date.now())
+    if (this.cachedIdentity && this.cachedIdentity.until > Date.now()) {
+      confirmationCache("identity", "hit");
       return this.cachedIdentity.value;
+    }
     const sharedIdentity = this.identityRead;
-    if (sharedIdentity)
+    if (sharedIdentity) {
+      confirmationCache("identity", "shared");
       return measure("coordinator_wait", () => sharedIdentity);
+    }
+    confirmationCache("identity", "miss");
     const run = async () => {
       const secrets = this.bindScope(env);
       if (secrets.company.toLowerCase() === "soccerbotstudio")

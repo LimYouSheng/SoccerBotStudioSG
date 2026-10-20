@@ -1,3 +1,7 @@
+import {
+  confirmationMetric,
+  confirmationTransport,
+} from "./confirmation-tracing";
 import { checkoutProvider } from "./checkout-tracing";
 import {
   webhookEvent,
@@ -504,10 +508,18 @@ export async function providerRequest(
     headers["X-Token"] = token;
   }
   signal?.throwIfAborted();
-  const id = await dispatch.reserve({
-    operation: native?.kind ?? operation,
-    readOnly,
-  });
+  const admissionEnd = confirmationMetric("admission");
+  let id: string;
+  try {
+    id = await dispatch.reserve({
+      operation: native?.kind ?? operation,
+      readOnly,
+    });
+    admissionEnd?.();
+  } catch (error) {
+    admissionEnd?.(true);
+    throw error;
+  }
   // Reservation precedes dispatch. Durable effect journals retain uncertain
   // writes independently of the physical transport slot.
   const controller = new AbortController();
@@ -525,6 +537,8 @@ export async function providerRequest(
   let cooldown = 0;
   return await measure("provider", async () => {
     let finishCheckoutProvider: (() => void) | undefined;
+    let finishConfirmationProvider: ReturnType<typeof confirmationTransport>;
+    let confirmationFailed = false;
     try {
       if (
         native?.kind === "booking-cancel" &&
@@ -542,6 +556,9 @@ export async function providerRequest(
         finishCheckoutProvider = checkoutProvider("simplybook");
       else if (native && ["booking-read", "invoice-read"].includes(native.kind))
         finishCheckoutProvider = checkoutProvider("verification");
+      finishConfirmationProvider = confirmationTransport(
+        native?.kind ?? operation,
+      );
       const response = await fetch(url, {
         method,
         headers,
@@ -642,6 +659,7 @@ export async function providerRequest(
       }
       return value;
     } catch (error) {
+      confirmationFailed = true;
       cooldown = 60000;
       console.log(
         JSON.stringify({
@@ -670,6 +688,7 @@ export async function providerRequest(
           : "provider_transport_uncertain",
       );
     } finally {
+      finishConfirmationProvider?.(confirmationFailed);
       finishCheckoutProvider?.();
       clearTimeout(timer);
       signal?.removeEventListener("abort", abort);
@@ -763,6 +782,10 @@ export async function hitpayRequest(
   const timer = setTimeout(() => controller.abort(), 20000);
   const finishCheckoutProvider =
     operation.kind === "create" ? checkoutProvider("hitpay") : undefined;
+  const finishConfirmationProvider = confirmationTransport(
+    `hitpay-${operation.kind}`,
+  );
+  let confirmationFailed = false;
   try {
     const response = await fetch(url, {
       method: operation.kind === "create" ? "POST" : "GET",
@@ -827,7 +850,11 @@ export async function hitpayRequest(
     } finally {
       void reader.cancel().catch(() => {});
     }
+  } catch (error) {
+    confirmationFailed = true;
+    throw error;
   } finally {
+    finishConfirmationProvider?.(confirmationFailed);
     finishCheckoutProvider?.();
     clearTimeout(timer);
     controller.abort();
