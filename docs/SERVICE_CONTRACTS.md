@@ -12,6 +12,8 @@
 
 SimplyBook settings enforce the shared studio across instructors and entry channels. The owner explicitly removed a separate studio-capacity acceptance gate from this task on20October2026. Do not add per-checkout capacity preflight or block this repair on a separate conflict experiment. This is a configuration ownership decision, not a claim that the assistant ran physical capacity tests. Creation-response validation, per-item durable records, partial-batch protection and unknown-write recovery remain mandatory.
 
+Direct single-checkout D1 budget: one binding read plus nine coordinator executions on the fresh successful path, for cold and warm public tokens. Grant and attempt transactions return their saved snapshots; booking dispatch atomically checks authority and reserves one effect. Raw provider evidence and opaque references remain durable before strict normalization. Validated association, original creation time, hold and unpaid observation commit together with conditional writes. Payment reservation rechecks durable access, association, route and anchored expiry at dispatch; payment URL persistence and checkout completion share a final transaction with response authorization. A failed predicate must not authorize subsequent statements. Batch, stale-evidence fallback and recovery retain separate handling; ten is not a cap on failure/recovery work.
+
 ## Historical contracts and evidence
 
 Entries below retain their dated context. Where checkout rules conflict, the current contracts above and current Rules section take precedence. Earlier provider-only/native-only, preflight and optimistic-success designs are superseded for the current direct checkout. Legacy routes retain their explicit guards.

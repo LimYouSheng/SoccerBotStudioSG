@@ -12,6 +12,7 @@ export async function authenticate(
   now: number,
   // Only already-authorized bookkeeping may precede this final response check.
   preceding: D1PreparedStatement[] = [],
+  inspect?: (results: D1Result[]) => void,
 ): Promise<Access> {
   const cookies = (request.headers.get("cookie") || "")
     .split(";")
@@ -27,9 +28,12 @@ export async function authenticate(
       "SELECT owner_id, capability_hash, issued_ms, expires_ms FROM guest_access WHERE capability_hash = ? AND revoked_ms IS NULL AND issued_ms <= ? AND expires_ms > ?",
     )
     .bind(hash, now, now);
-  const row = preceding.length
-    ? ((await db.batch([...preceding, statement])).at(-1)!.results[0] as
-        Access | undefined)
+  const results = preceding.length
+    ? await db.batch([...preceding, statement])
+    : undefined;
+  if (results) inspect?.(results);
+  const row = results
+    ? (results.at(-1)!.results[0] as Access | undefined)
     : await statement.first<Access>();
   if (!row) throw new ApiError(401, "access_denied");
   return row;

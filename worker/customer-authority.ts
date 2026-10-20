@@ -10,6 +10,25 @@ import {
 } from "./public-calendar";
 import { providerSecrets } from "./provider-transport";
 
+export type Grant = {
+  capability_hash: string;
+  attempt_id: string | null;
+  intent_hash: string | null;
+  source_revision: string;
+  contract_json: string;
+  not_before_ms: number;
+  expires_ms: number;
+  starting_used: number;
+  maximum_used: number;
+  cleanup_allowed: number;
+  state: string;
+  result_json: string | null;
+  available_dates_json: string;
+  availability_json: string | null;
+  read_state: string;
+  ongoing: number;
+};
+
 // Ordinary customer consent creates one short-lived, immutable checkout grant.
 // The site stays open; a grant is never renewed or replayed after dispatch.
 export async function authorizeCustomerCheckout(
@@ -18,6 +37,7 @@ export async function authorizeCustomerCheckout(
   options: ReadOptions,
   combinedHold = false,
   verifiedAccess?: Access,
+  retainGrant = false,
 ) {
   const { env } = options;
   if (!liveCustomerAccess(env))
@@ -26,10 +46,9 @@ export async function authorizeCustomerCheckout(
   const p = policy(env);
   const access =
     verifiedAccess ?? (await authenticate(request, env, Date.now()));
-  const existing = await archiveRejectedCustomerGrant(
-    env,
-    access.capability_hash,
-  );
+  const existing =
+    !retainGrant &&
+    (await archiveRejectedCustomerGrant(env, access.capability_hash));
   if (existing) return;
   const dates = [
     ...new Set(
@@ -105,33 +124,41 @@ export async function authorizeCustomerCheckout(
   const maximum = used + 64 + input.sessions.length * 32;
   if (!Number.isSafeInteger(maximum))
     throw new ApiError(503, "provider_budget_invalid");
-  await env.STATE.prepare(
+  const insert = env.STATE.prepare(
     "INSERT INTO native_checkout_grants(capability_hash,source_revision,contract_json,not_before_ms,expires_ms,starting_used,maximum_used,cleanup_allowed,state,available_dates_json,availability_json,read_state,ongoing) VALUES(?,?,?,?,?,?,?,0,'granted',?,?,'available',1) ON CONFLICT(capability_hash) DO NOTHING",
-  )
-    .bind(
-      access.capability_hash,
-      p.SOURCE_REVISION,
-      JSON.stringify(contract),
-      now,
-      expires,
-      used,
-      maximum,
-      JSON.stringify(dates),
-      JSON.stringify(available),
-    )
-    .run();
+  ).bind(
+    access.capability_hash,
+    p.SOURCE_REVISION,
+    JSON.stringify(contract),
+    now,
+    expires,
+    used,
+    maximum,
+    JSON.stringify(dates),
+    JSON.stringify(available),
+  );
+  if (!retainGrant) {
+    await insert.run();
+    return;
+  }
+  const db = env.STATE.withSession("first-primary");
+  const results = await db.batch([
+    ...rejectedGrantStatements(env, access.capability_hash),
+    insert,
+    db
+      .prepare("SELECT * FROM native_checkout_grants WHERE capability_hash=?")
+      .bind(access.capability_hash),
+  ]);
+  return results.at(-1)!.results[0] as Grant | undefined;
 }
 
-export async function archiveRejectedCustomerGrant(
-  env: Env,
-  capabilityHash: string,
-) {
+function rejectedGrantStatements(env: Env, capabilityHash: string) {
   // The account coordinator serializes this rollover. Archive only a proven
   // preflight rejection with no dispatch or effect; never renew uncertain writes.
   const rejected =
     "capability_hash=? AND ongoing=1 AND state='blocked' AND json_extract(result_json,'$.state') IN ('selection_unavailable','restart_required','checkout_not_started') AND EXISTS(SELECT 1 FROM attempts a WHERE a.id=native_checkout_grants.attempt_id AND a.state='prepared' AND a.association_json IS NULL) AND NOT EXISTS(SELECT 1 FROM dispatches d WHERE d.attempt_id=native_checkout_grants.attempt_id) AND NOT EXISTS(SELECT 1 FROM session_effects e WHERE e.attempt_id=native_checkout_grants.attempt_id)";
   const db = env.STATE.withSession("first-primary");
-  const results = await db.batch([
+  return [
     db
       .prepare(
         `INSERT INTO rejected_native_checkout_grants SELECT * FROM native_checkout_grants WHERE ${rejected}`,
@@ -142,9 +169,18 @@ export async function archiveRejectedCustomerGrant(
         `DELETE FROM native_checkout_grants WHERE ${rejected} AND EXISTS(SELECT 1 FROM rejected_native_checkout_grants h WHERE h.attempt_id=native_checkout_grants.attempt_id AND h.capability_hash=native_checkout_grants.capability_hash)`,
       )
       .bind(capabilityHash),
+  ];
+}
+export async function archiveRejectedCustomerGrant(
+  env: Env,
+  capabilityHash: string,
+) {
+  const db = env.STATE.withSession("first-primary");
+  const results = await db.batch([
+    ...rejectedGrantStatements(env, capabilityHash),
     db
       .prepare("SELECT 1 FROM native_checkout_grants WHERE capability_hash=?")
       .bind(capabilityHash),
   ]);
-  return results[2].results.length > 0;
+  return results.at(-1)!.results.length > 0;
 }

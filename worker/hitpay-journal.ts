@@ -1,3 +1,4 @@
+import type { Access } from "./access";
 import { z } from "zod";
 import { ApiError, digest } from "./policy";
 import {
@@ -67,6 +68,10 @@ export async function prepareHitpay(
   intentHash: string,
   expires: number,
   assertGranted: () => Promise<void>,
+  consolidated?: {
+    access: Access;
+    finish?: (save: D1PreparedStatement) => Promise<void>;
+  },
 ) {
   assertHitpayCreation(env);
   const config = hitpayConfiguration(env),
@@ -89,23 +94,44 @@ export async function prepareHitpay(
   });
   await assertPaymentScope(env, paymentScope);
   await assertGranted();
-  const now = Date.now(),
-    reference = `soccerbot-dev-${scope.attemptId}`;
-  const intent = await env.STATE.prepare(
-    "INSERT INTO hitpay_payments(attempt_id,scope_json,reference,expires_ms,created_ms,recovery_end_ms,state,reason,ready_ms) VALUES(?,?,?,?,?,?,'due','creation_unknown',?) ON CONFLICT(attempt_id) DO NOTHING",
-  )
-    .bind(
-      scope.attemptId,
-      JSON.stringify(paymentScope),
-      reference,
-      expires,
-      now,
-      now + 86400000,
-      now + 90000,
+  const reference = `soccerbot-dev-${scope.attemptId}`;
+  const reserveCreation = async () => {
+    const now = Date.now();
+    const intent = await env.STATE.prepare(
+      "INSERT INTO hitpay_payments(attempt_id,scope_json,reference,expires_ms,created_ms,recovery_end_ms,state,reason,ready_ms) " +
+        (consolidated
+          ? "SELECT ?,?,?,?,?,?,'due','creation_unknown',? WHERE EXISTS(SELECT 1 FROM guest_access c JOIN attempts a ON a.owner_id=c.owner_id JOIN hitpay_holds h ON h.attempt_id=a.id JOIN checkout_progress p ON p.attempt_id=a.id JOIN checkout_payment_routes r ON r.attempt_id=a.id WHERE c.capability_hash=? AND c.owner_id=? AND c.revoked_ms IS NULL AND c.issued_ms<=? AND c.expires_ms>? AND a.id=? AND a.state='observed' AND a.association_json=? AND a.intent_hash=? AND h.association_json=a.association_json AND h.intent_hash=a.intent_hash AND r.route='hitpay' AND MIN(h.expires_ms,p.booking_created_ms+p.payment_window_ms)>=? AND ?>?)"
+          : "VALUES(?,?,?,?,?,?,'due','creation_unknown',?)") +
+        " ON CONFLICT(attempt_id) DO NOTHING",
     )
-    .run();
-  if (intent.meta.changes !== 1)
-    throw new ApiError(409, "hitpay_creation_already_reserved");
+      .bind(
+        scope.attemptId,
+        JSON.stringify(paymentScope),
+        reference,
+        expires,
+        now,
+        now + 86400000,
+        now + 90000,
+        ...(consolidated
+          ? [
+              consolidated.access.capability_hash,
+              consolidated.access.owner_id,
+              now,
+              now,
+              scope.attemptId,
+              associationJson,
+              intentHash,
+              expires,
+              expires,
+              now + 80000,
+            ]
+          : []),
+      )
+      .run();
+    if (intent.meta.changes !== 1)
+      throw new ApiError(409, "hitpay_creation_already_reserved");
+  };
+  if (!consolidated) await reserveCreation();
   let verified: ReturnType<typeof verifyHitpayRequest>;
   try {
     const raw = await hitpayRequest(
@@ -136,6 +162,7 @@ export async function prepareHitpay(
       async () => {
         assertHitpayCreation(env);
         await assertGranted();
+        if (consolidated) await reserveCreation();
         if (Date.now() + 80000 >= expires)
           throw new ApiError(409, "hitpay_checkout_expired");
       },
@@ -156,12 +183,13 @@ export async function prepareHitpay(
     verified.expiresAtMs <= Date.now() + 60000
   )
     throw new ApiError(409, "hitpay_creation_state_unverified");
-  const saved = await env.STATE.prepare(
+  const save = env.STATE.prepare(
     "UPDATE hitpay_payments SET request_id=?,checkout_url=?,reason='payment_pending',ready_ms=? WHERE attempt_id=? AND request_id IS NULL AND generation=0",
-  )
-    .bind(verified.id, verified.url, Date.now() + 90000, scope.attemptId)
-    .run();
-  if (saved.meta.changes !== 1)
+  ).bind(verified.id, verified.url, Date.now() + 90000, scope.attemptId);
+  const saved = consolidated?.finish
+    ? (await consolidated.finish(save), undefined)
+    : await save.run();
+  if (saved && saved.meta.changes !== 1)
     throw new ApiError(409, "hitpay_creation_fence_lost");
   return { url: verified.url, expiresAtMs: verified.expiresAtMs };
 }

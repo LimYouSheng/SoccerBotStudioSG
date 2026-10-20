@@ -10,6 +10,7 @@ This section is the authoritative current design. Service Contracts owns operati
 - Payment evidence alone does not confirm a booking. Show payment-received feedback, then publish definitive confirmation only after current confirmed-booking and paid-invoice readback is recorded. Preserve the first valid confirmation timestamp on revisits; downloads require fresh authorization. Legacy early-payment snapshots cannot bypass this gate.
 - Original booking creation anchors the eight-minute payment window and fifteen-minute hold. Recovery grace remains five minutes. Expired/deleted HitPay requests do not establish impossibility of late settlement; dispatched uncertain payments stay protected. No fresh payment window for an old attempt.
 - The coordinator remains serialized. Cached display reads can bypass the queue; uncached work uses bounded admission and recovery priority as specified in Service Contracts. Increasing concurrency is separate work.
+- The successful fresh-evidence direct single checkout targets ten foreground D1 executions, including the outer binding read. Conditional transactions preserve durable reservations before provider writes and raw/reference evidence before strict validation; stale-evidence, failure, retry and batch paths retain their required checks and may exceed that budget.
 - Source tests, exact-commit CI, deployment and physical provider acceptance are distinct. Owner/CI operate browsers; no assistant bookings, payments, cancellations or notification sends.
 
 ## Historical design record

@@ -1,6 +1,8 @@
+import { claimSingleDispatch } from "./native-dispatch";
+import type { Grant } from "./customer-authority";
 import { retainHoldEvidence } from "./native-hold-evidence";
-import { hitpayHoldStatement } from "./hitpay-hold";
-import { hitpaySetting } from "./hitpay-contract";
+import { hitpayHoldStatement, type VerifiedHold } from "./hitpay-hold";
+import { assertHitpayCreation, hitpaySetting } from "./hitpay-contract";
 import { selectPaymentRoute } from "./hitpay-journal";
 import { NativeCalendarReads, calendarDates } from "./native-calendar";
 import { nativeValidationReason } from "./provider-normalization";
@@ -12,6 +14,7 @@ import {
   intentSchema,
   associationSchema,
   prepareAttempt,
+  bindAssociation,
   recordObservation,
   requireRecovery,
 } from "./journal";
@@ -45,24 +48,7 @@ import { providerSecrets, type NativeExchange } from "./provider-transport";
 
 // Both operator experiments and ongoing customer checkout use one-use grants.
 // Customer grants are issued after authenticated consent and fresh slot reads.
-type Grant = {
-  capability_hash: string;
-  attempt_id: string | null;
-  intent_hash: string | null;
-  source_revision: string;
-  contract_json: string;
-  not_before_ms: number;
-  expires_ms: number;
-  starting_used: number;
-  maximum_used: number;
-  cleanup_allowed: number;
-  state: string;
-  result_json: string | null;
-  available_dates_json: string;
-  availability_json: string | null;
-  read_state: string;
-  ongoing: number;
-};
+
 export async function nativeCheckoutStatus(
   request: Request,
   env: Env,
@@ -99,6 +85,15 @@ export async function nativeCheckoutStatus(
     paymentAvailable: false,
   };
 }
+type AttemptSnapshot = {
+  intent_json: string;
+  intent_hash: string;
+  state: string;
+  version: number;
+  deadline_ms: number;
+  association_json: string | null;
+};
+type PreparedCheckout = { grant: Grant; row: AttemptSnapshot };
 export async function executeNativeCheckout(options: {
   request: Request;
   env: Env;
@@ -110,14 +105,9 @@ export async function executeNativeCheckout(options: {
   holding?: boolean;
   combinedHold?: boolean;
   creationOnly?: boolean;
+  prepared?: PreparedCheckout;
   access?: Access;
-  onVerifiedHold?: (proof: {
-    attemptId: string;
-    intentHash: string;
-    associationJson: string;
-    verifiedAtMs: number;
-    access?: Access;
-  }) => Promise<{
+  onVerifiedHold?: (proof: VerifiedHold) => Promise<{
     state: string;
     paymentAvailable: boolean;
     checkout?: z.infer<typeof hitpayHandoffSchema>;
@@ -134,35 +124,31 @@ export async function executeNativeCheckout(options: {
     throw new ApiError(503, "provider_access_disabled");
   const access = options.access ?? (await authenticate(request, env, now));
   const db = env.STATE.withSession("first-primary");
-  const snapshots = await db.batch([
-    db
-      .prepare(
-        "SELECT * FROM native_checkout_grants WHERE attempt_id=? AND capability_hash=?",
-      )
-      .bind(attemptId, access.capability_hash),
-    db
-      .prepare(
-        "SELECT intent_json,intent_hash,state,version,deadline_ms,association_json FROM attempts WHERE id=? AND owner_id=?",
-      )
-      .bind(attemptId, access.owner_id),
-  ]);
-  const grant = snapshots[0].results[0] as Grant | undefined;
+  const snapshots = options.prepared
+    ? undefined
+    : await db.batch([
+        db
+          .prepare(
+            "SELECT * FROM native_checkout_grants WHERE attempt_id=? AND capability_hash=?",
+          )
+          .bind(attemptId, access.capability_hash),
+        db
+          .prepare(
+            "SELECT intent_json,intent_hash,state,version,deadline_ms,association_json FROM attempts WHERE id=? AND owner_id=?",
+          )
+          .bind(attemptId, access.owner_id),
+      ]);
+  const grant =
+    options.prepared?.grant ?? (snapshots![0].results[0] as Grant | undefined);
   if (!grant) throw new ApiError(503, "native_write_grant_unavailable");
   const ongoing = grant.ongoing === 1 && liveCustomerAccess(env);
   if (grant.ongoing === 1 && !ongoing)
     throw new ApiError(503, "provider_access_disabled");
   if (grant.state !== "granted")
     return nativeCheckoutStatus(request, env, attemptId);
-  const row = snapshots[1].results[0] as
-    | {
-        intent_json: string;
-        intent_hash: string;
-        state: string;
-        version: number;
-        deadline_ms: number;
-        association_json: string | null;
-      }
-    | undefined;
+  const row =
+    options.prepared?.row ??
+    (snapshots![1].results[0] as AttemptSnapshot | undefined);
   if (!row || row.state !== "prepared")
     throw new ApiError(409, "native_attempt_unavailable");
   const intent = intentSchema.parse(JSON.parse(row.intent_json));
@@ -212,16 +198,28 @@ export async function executeNativeCheckout(options: {
   const secret: unknown = Reflect.get(env, "SIMPLYBOOK_DEV_SIGNING_SECRET");
   if (typeof secret !== "string" || !secret || secret.includes("["))
     throw new ApiError(503, "native_signing_unavailable");
-  const paymentRoute = await selectPaymentRoute(env, attemptId);
+  const consolidated =
+    !!options.prepared &&
+    options.creationOnly === true &&
+    intent.sessions.length === 1;
+  if (consolidated) assertHitpayCreation(env);
+  const paymentRoute = consolidated
+    ? "hitpay"
+    : await selectPaymentRoute(env, attemptId);
   if ((paymentRoute === "hitpay") !== (options.holding === true))
     throw new ApiError(409, "booking_hold_required");
-  const claimed = await env.STATE.prepare(
-    "UPDATE native_checkout_grants SET state='running' WHERE attempt_id=? AND capability_hash=? AND state='granted' AND expires_ms>?",
-  )
-    .bind(attemptId, access.capability_hash, Date.now() + 180000)
-    .run();
-  if (claimed.meta.changes !== 1)
+  const claimed = consolidated
+    ? undefined
+    : await env.STATE.prepare(
+        "UPDATE native_checkout_grants SET state='running' WHERE attempt_id=? AND capability_hash=? AND state='granted' AND expires_ms>?",
+      )
+        .bind(attemptId, access.capability_hash, Date.now() + 180000)
+        .run();
+  if (claimed && claimed.meta.changes !== 1)
     return nativeCheckoutStatus(request, env, attemptId);
+  let stagedVersion: number | undefined;
+  let claimedSingle = false;
+  let selectionSnapshot = "{}";
   let cleanupMode = false;
   let cleanupSignal: AbortSignal | undefined;
   // Entry authentication establishes this operation's access. Reads retain
@@ -238,6 +236,20 @@ export async function executeNativeCheckout(options: {
   };
   const assertGranted = async () => {
     assertWindow();
+    if (consolidated && !claimedSingle && !cleanupMode) {
+      if (stagedVersion === undefined)
+        throw new ApiError(409, "dispatch_not_claimed");
+      await claimSingleDispatch(
+        env.STATE,
+        attemptId,
+        stagedVersion,
+        access,
+        grant,
+        selectionSnapshot,
+      );
+      claimedSingle = true;
+      return;
+    }
     const current = Date.now();
     const valid = await env.STATE.withSession("first-primary")
       .prepare(
@@ -433,6 +445,7 @@ export async function executeNativeCheckout(options: {
     paymentAvailable: false,
   };
   let dispatchFence: number | undefined;
+  let paymentFinished = false;
   try {
     const prebooking = provider.prebooking(
       env,
@@ -444,6 +457,10 @@ export async function executeNativeCheckout(options: {
       string,
       z.infer<typeof nativeAvailabilitySchema>
     > = {};
+    let createdAtMs: number | undefined;
+    let integratedHold:
+      | { expiresMs: number; verifiedAtMs: number; createdAtMs: number }
+      | undefined;
     let creationEvidence:
       | Parameters<
           NonNullable<
@@ -453,6 +470,7 @@ export async function executeNativeCheckout(options: {
       | undefined;
     const operations = nativeBookingOperations({
       localFinalization: options.creationOnly,
+      retainCurrentFence: consolidated,
       deferComments:
         ongoing && paymentRoute === "hitpay" && !!options.onVerifiedHold,
       onCreationEvidence: (value) => {
@@ -522,7 +540,9 @@ export async function executeNativeCheckout(options: {
                   currency: value.currency,
                 });
               }
-              if (first)
+              if (first && consolidated)
+                selectionSnapshot = JSON.stringify(validatedDates);
+              else if (first)
                 await env.STATE.prepare(
                   "UPDATE native_checkout_grants SET availability_json=? WHERE attempt_id=? AND state='running'",
                 )
@@ -587,13 +607,106 @@ export async function executeNativeCheckout(options: {
     });
     if (ongoing && options.combinedHold)
       operations.validationMode = "per-session";
+    if (consolidated)
+      operations.stagedSingleClaim = {
+        stage: (version) => {
+          stagedVersion = version;
+          return version + 1;
+        },
+        assertCurrent: async () => {
+          assertWindow();
+        },
+      };
     if (paymentRoute === "hitpay")
-      operations.onCreated = async (createdAtMs) => {
+      operations.onCreated = async (receivedAtMs) => {
+        createdAtMs = creationEvidence?.receivedAtMs ?? receivedAtMs;
+        if (consolidated) return;
         await env.STATE.prepare(
           "INSERT INTO checkout_progress(attempt_id,booking_created_ms,payment_window_ms,hold_window_ms) VALUES(?,?,480000,900000) ON CONFLICT(attempt_id) DO NOTHING",
         )
-          .bind(attemptId, creationEvidence?.receivedAtMs ?? createdAtMs)
+          .bind(attemptId, createdAtMs)
           .run();
+      };
+    if (consolidated)
+      operations.commitAssociation = async (fence, refs, currentAccess) => {
+        const evidence = creationEvidence;
+        const fresh =
+          evidence &&
+          createdAtMs !== undefined &&
+          evidence.receivedAtMs <= Date.now() &&
+          Date.now() - evidence.receivedAtMs < 5000 &&
+          evidence.association.invoiceId === refs.invoiceId &&
+          evidence.association.nativeCustomerId === refs.nativeCustomerId &&
+          JSON.stringify(evidence.association.bookingIds) ===
+            JSON.stringify(refs.bookingIds) &&
+          typeof evidence.dueDatetime === "string";
+        if (!fresh || !evidence || createdAtMs === undefined) {
+          if (createdAtMs !== undefined)
+            await env.STATE.prepare(
+              "INSERT INTO checkout_progress(attempt_id,booking_created_ms,payment_window_ms,hold_window_ms) VALUES(?,?,480000,900000) ON CONFLICT(attempt_id) DO NOTHING",
+            )
+              .bind(attemptId, createdAtMs)
+              .run();
+          return bindAssociation(
+            env.STATE,
+            attemptId,
+            fence,
+            refs,
+            currentAccess,
+          );
+        }
+        if (
+          evidence.observation.invoice.status !== "unpaid" ||
+          evidence.observation.bookings.some((b) => b.status !== "confirmed")
+        )
+          throw new ApiError(409, "native_checkout_state_changed");
+        const verifiedAtMs = Date.now();
+        const expiresMs = Math.min(
+          createdAtMs + 900000,
+          nativeCheckoutDeadline(
+            {
+              invoiceId: refs.invoiceId,
+              dueDatetime: evidence.dueDatetime,
+              supervisionDeadlineMs: Date.now() + 900000,
+              handoffAtMs: Date.now(),
+            },
+            Date.now(),
+            900000,
+          ),
+        );
+        const associationJson = JSON.stringify(associationSchema.parse(refs));
+        const version = await bindAssociation(
+          env.STATE,
+          attemptId,
+          fence,
+          refs,
+          currentAccess,
+          {
+            createdAtMs,
+            grant,
+            after: (version) => [
+              hitpayHoldStatement(
+                env,
+                scope,
+                associationJson,
+                row.intent_hash,
+                expiresMs,
+                version,
+              ),
+              env.STATE.prepare(
+                "UPDATE attempts SET observation_json=?,observation_ms=?,version=version+1,state='observed' WHERE id=? AND version=? AND association_json=? AND state='dispatching' AND changes()=1",
+              ).bind(
+                JSON.stringify(evidence.observation),
+                verifiedAtMs,
+                attemptId,
+                version,
+                associationJson,
+              ),
+            ],
+          },
+        );
+        integratedHold = { expiresMs, verifiedAtMs, createdAtMs };
+        return version;
       };
     operations.onFailure = (error, index) =>
       retainFailure(error, "execution", index);
@@ -624,92 +737,97 @@ export async function executeNativeCheckout(options: {
       const refs = associationSchema.parse(
         JSON.parse(associated.association_json),
       );
-      if (!options.creationOnly) await provider.identity(env, control);
-      let dueDatetime: unknown;
-      let observation: Awaited<
-        ReturnType<typeof readNativeAttempt>
-      >["observation"];
-      const controller = new AbortController();
-      const timer = setTimeout(() => controller.abort(), 15000);
-      try {
-        const reusable =
-          paymentRoute === "hitpay" &&
-          options.onVerifiedHold &&
-          creationEvidence &&
-          creationEvidence.association.invoiceId === refs.invoiceId &&
-          creationEvidence.association.nativeCustomerId ===
-            refs.nativeCustomerId &&
-          JSON.stringify(creationEvidence.association.bookingIds) ===
-            JSON.stringify(refs.bookingIds) &&
-          typeof creationEvidence.dueDatetime === "string" &&
-          creationEvidence.receivedAtMs <= Date.now() &&
-          Date.now() - creationEvidence.receivedAtMs < 5000;
-        if (reusable && creationEvidence) {
-          // The strict creation normalizer already proves confirmation, exact
-          // session occupancy, invoice association, amount and unpaid state.
-          dueDatetime = creationEvidence.dueDatetime;
-          observation = creationEvidence.observation;
-        } else {
-          const observed = await readNativeAttempt({
-            parallelSingle: true,
-            scope,
-            association: refs,
-            signal: controller.signal,
-            signature: (id) =>
-              storedNativeSignature(env.STATE, attemptId, id, secret),
-            exchange: async (operation, signal) => {
-              const response = await exchange(operation, signal);
-              if (operation.kind === "invoice-read")
-                dueDatetime = z
-                  .object({ due_datetime: z.string() })
-                  .parse(response.body).due_datetime;
-              return response;
-            },
-          });
-          observation = observed.observation;
-        }
-        if (
-          observation.invoice.status !== "unpaid" ||
-          observation.bookings.some((booking) => booking.status !== "confirmed")
-        )
-          throw new ApiError(409, "native_checkout_state_changed");
-      } finally {
-        clearTimeout(timer);
-        controller.abort();
-      }
-      const verifiedAtMs = Date.now();
-      await assertGranted();
-      const timing = {
-        invoiceId: refs.invoiceId,
-        dueDatetime,
-        // Dispatch authorization is checked independently by assertGranted.
-        // Its remaining lifetime must not become a new booking/payment TTL.
-        supervisionDeadlineMs:
-          ongoing && paymentRoute === "hitpay"
-            ? Date.now() + 900000
-            : grant.expires_ms,
-        handoffAtMs: Date.now(),
-      };
-      const hold =
-        paymentRoute === "hitpay"
-          ? hitpayHoldStatement(
-              env,
+      let verifiedAtMs = integratedHold?.verifiedAtMs ?? Date.now();
+      if (!integratedHold) {
+        if (!options.creationOnly) await provider.identity(env, control);
+        let dueDatetime: unknown;
+        let observation: Awaited<
+          ReturnType<typeof readNativeAttempt>
+        >["observation"];
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 15000);
+        try {
+          const reusable =
+            paymentRoute === "hitpay" &&
+            options.onVerifiedHold &&
+            creationEvidence &&
+            creationEvidence.association.invoiceId === refs.invoiceId &&
+            creationEvidence.association.nativeCustomerId ===
+              refs.nativeCustomerId &&
+            JSON.stringify(creationEvidence.association.bookingIds) ===
+              JSON.stringify(refs.bookingIds) &&
+            typeof creationEvidence.dueDatetime === "string" &&
+            creationEvidence.receivedAtMs <= Date.now() &&
+            Date.now() - creationEvidence.receivedAtMs < 5000;
+          if (reusable && creationEvidence) {
+            // The strict creation normalizer already proves confirmation, exact
+            // session occupancy, invoice association, amount and unpaid state.
+            dueDatetime = creationEvidence.dueDatetime;
+            observation = creationEvidence.observation;
+          } else {
+            const observed = await readNativeAttempt({
+              parallelSingle: true,
               scope,
-              associated.association_json,
-              row.intent_hash,
-              nativeCheckoutDeadline(timing, Date.now(), 900000),
+              association: refs,
+              signal: controller.signal,
+              signature: (id) =>
+                storedNativeSignature(env.STATE, attemptId, id, secret),
+              exchange: async (operation, signal) => {
+                const response = await exchange(operation, signal);
+                if (operation.kind === "invoice-read")
+                  dueDatetime = z
+                    .object({ due_datetime: z.string() })
+                    .parse(response.body).due_datetime;
+                return response;
+              },
+            });
+            observation = observed.observation;
+          }
+          if (
+            observation.invoice.status !== "unpaid" ||
+            observation.bookings.some(
+              (booking) => booking.status !== "confirmed",
             )
-          : undefined;
-      if (!hold)
-        await prepareNativeLink(env.STATE, scope, exchange, true, timing);
-      await recordObservation(
-        env.STATE,
-        attemptId,
-        associated.version,
-        observation!,
-        Date.now(),
-        hold ? [hold] : [],
-      );
+          )
+            throw new ApiError(409, "native_checkout_state_changed");
+        } finally {
+          clearTimeout(timer);
+          controller.abort();
+        }
+        verifiedAtMs = Date.now();
+        await assertGranted();
+        const timing = {
+          invoiceId: refs.invoiceId,
+          dueDatetime,
+          // Dispatch authorization is checked independently by assertGranted.
+          // Its remaining lifetime must not become a new booking/payment TTL.
+          supervisionDeadlineMs:
+            ongoing && paymentRoute === "hitpay"
+              ? Date.now() + 900000
+              : grant.expires_ms,
+          handoffAtMs: Date.now(),
+        };
+        const hold =
+          paymentRoute === "hitpay"
+            ? hitpayHoldStatement(
+                env,
+                scope,
+                associated.association_json,
+                row.intent_hash,
+                nativeCheckoutDeadline(timing, Date.now(), 900000),
+              )
+            : undefined;
+        if (!hold)
+          await prepareNativeLink(env.STATE, scope, exchange, true, timing);
+        await recordObservation(
+          env.STATE,
+          attemptId,
+          associated.version,
+          observation!,
+          Date.now(),
+          hold ? [hold] : [],
+        );
+      }
       result =
         paymentRoute === "hitpay" && options.onVerifiedHold
           ? await options.onVerifiedHold({
@@ -718,6 +836,53 @@ export async function executeNativeCheckout(options: {
               associationJson: associated.association_json,
               verifiedAtMs,
               access: options.creationOnly ? access : undefined,
+              ...(integratedHold
+                ? {
+                    finishPayment: async (save) => {
+                      const complete = env.STATE.prepare(
+                        "UPDATE native_checkout_grants SET state='complete',result_json=json_patch(COALESCE(result_json,'{}'),?) WHERE attempt_id=? AND state='running' AND changes()=1",
+                      ).bind(
+                        JSON.stringify({
+                          attemptId,
+                          state: "associated",
+                          paymentAvailable: true,
+                        }),
+                        attemptId,
+                      );
+                      await authenticate(
+                        request,
+                        env,
+                        Date.now(),
+                        [save, complete],
+                        (results) => {
+                          if (
+                            results[0].meta.changes !== 1 ||
+                            results[1].meta.changes !== 1
+                          )
+                            throw new ApiError(
+                              409,
+                              "hitpay_creation_fence_lost",
+                            );
+                        },
+                      );
+                      paymentFinished = true;
+                    },
+                    hold: {
+                      scope_json: JSON.stringify({
+                        attemptId,
+                        companyLogin: company,
+                        timezone: "Asia/Singapore",
+                      }),
+                      association_json: associated.association_json,
+                      intent_hash: row.intent_hash,
+                      expires_ms: integratedHold.expiresMs,
+                      intent_json: row.intent_json,
+                      booking_created_ms: integratedHold.createdAtMs,
+                      payment_window_ms: 480000,
+                      has_payment: 0,
+                    },
+                  }
+                : {}),
             })
           : {
               state: "associated",
@@ -776,7 +941,8 @@ export async function executeNativeCheckout(options: {
     }),
     attemptId,
   );
-  await authenticate(request, env, Date.now(), [completion]);
+  if (!paymentFinished)
+    await authenticate(request, env, Date.now(), [completion]);
   return { attemptId, ...result };
 }
 
@@ -785,14 +951,17 @@ async function customerNativeWindow(
   env: Env,
   attemptId?: string,
   verifiedAccess?: Access,
+  retainedGrant?: Grant,
 ) {
   const p = policy(env),
     now = Date.now();
   const access = verifiedAccess ?? (await authenticate(request, env, now));
-  const grant = await env.STATE.withSession("first-primary")
-    .prepare("SELECT * FROM native_checkout_grants WHERE capability_hash=?")
-    .bind(access.capability_hash)
-    .first<Grant>();
+  const grant =
+    retainedGrant ??
+    (await env.STATE.withSession("first-primary")
+      .prepare("SELECT * FROM native_checkout_grants WHERE capability_hash=?")
+      .bind(access.capability_hash)
+      .first<Grant>());
   if (!grant) throw new ApiError(503, "native_customer_window_unavailable");
   const ongoing = grant.ongoing === 1 && liveCustomerAccess(env);
   const failedChecks = Object.entries({
@@ -864,9 +1033,16 @@ export async function prepareCustomerNative(
   attemptId?: string,
   prepareProvider?: () => Promise<unknown>,
   verifiedAccess?: Access,
+  retainedGrant?: Grant,
 ) {
   const { p, access, grant, contract, dates, binding } =
-    await customerNativeWindow(request, env, attemptId, verifiedAccess);
+    await customerNativeWindow(
+      request,
+      env,
+      attemptId,
+      verifiedAccess,
+      retainedGrant,
+    );
   const input = nativePrepareSchema.parse(value);
   if (
     input.holding &&
@@ -955,6 +1131,23 @@ export async function prepareCustomerNative(
   // Persist the immutable attempt while warming provider identity; both must
   // settle before execution inspects active admissions or creates a booking.
   const persist = async () => {
+    let snapshot: PreparedCheckout | undefined;
+    const bindingStatement = (id: string, intentHash: string) =>
+      env.STATE.prepare(
+        "UPDATE native_checkout_grants SET attempt_id=?,intent_hash=? WHERE capability_hash=? AND state='granted' AND source_revision=? AND expires_ms>? AND ((attempt_id IS NULL AND intent_hash IS NULL) OR (attempt_id=? AND intent_hash=?)) AND EXISTS(SELECT 1 FROM attempts WHERE id=? AND owner_id=? AND idempotency_key=? AND intent_hash=?)",
+      ).bind(
+        id,
+        intentHash,
+        access.capability_hash,
+        p.SOURCE_REVISION,
+        Date.now() + 180000,
+        id,
+        intentHash,
+        id,
+        access.owner_id,
+        input.key,
+        intentHash,
+      );
     const attempt = await prepareAttempt(
       env.STATE,
       access.owner_id,
@@ -963,24 +1156,41 @@ export async function prepareCustomerNative(
       now,
       grant.expires_ms - now,
       attemptId,
+      retainedGrant
+        ? {
+            statements: (id, intentHash) => [
+              bindingStatement(id, intentHash),
+              env.STATE.prepare(
+                "SELECT * FROM native_checkout_grants WHERE capability_hash=?",
+              ).bind(access.capability_hash),
+              env.STATE.prepare(
+                "SELECT intent_json,intent_hash,state,version,deadline_ms,association_json FROM attempts WHERE id=? AND owner_id=?",
+              ).bind(id, access.owner_id),
+            ],
+            inspect: (results) => {
+              if (results[0].meta.changes !== 1)
+                throw new ApiError(409, "native_attempt_already_bound");
+              const storedGrant = results[1].results[0] as Grant | undefined;
+              const storedAttempt = results[2].results[0] as
+                AttemptSnapshot | undefined;
+              if (!storedGrant || !storedAttempt)
+                throw new ApiError(409, "native_attempt_unavailable");
+              snapshot = { grant: storedGrant, row: storedAttempt };
+            },
+          }
+        : undefined,
     );
-    const bound = await env.STATE.prepare(
-      "UPDATE native_checkout_grants SET attempt_id=?,intent_hash=? WHERE capability_hash=? AND state='granted' AND source_revision=? AND expires_ms>? AND ((attempt_id IS NULL AND intent_hash IS NULL) OR (attempt_id=? AND intent_hash=?))",
-    )
-      .bind(
-        attempt.id,
-        hash,
-        access.capability_hash,
-        p.SOURCE_REVISION,
-        Date.now() + 180000,
-        attempt.id,
-        hash,
-      )
-      .run();
-    if (bound.meta.changes !== 1)
-      throw new ApiError(409, "native_attempt_already_bound");
+    if (!retainedGrant) {
+      const bound = await bindingStatement(attempt.id, hash).run();
+      if (bound.meta.changes !== 1)
+        throw new ApiError(409, "native_attempt_already_bound");
+    }
     if (!verifiedAccess) await authenticate(request, env, Date.now());
-    return { attemptId: attempt.id, state: "prepared" as const };
+    return {
+      attemptId: attempt.id,
+      state: "prepared" as const,
+      ...(snapshot ? { snapshot } : {}),
+    };
   };
   if (!prepareProvider) return persist();
   const results = await Promise.allSettled([
