@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Rejected checkout presentation — 21 October 2026 SGT
+
+An explicit preparation-window rejection is not payment verification. Keep it on Review; never invent a checkout handoff or retry a booking write. Classify slot unavailability only from fresh provider availability after checking original-attempt/owned-booking evidence. A claimed grant alone is not proof of provider creation. Preserve unknown effects and use generic retry-later messaging for inconclusive reads. This is M4.6/M5 hardening, not milestone closure.
+
 ## Unresolved return-page refresh — 21 October 2026 SGT
 
 Use the persisted server hold expiry for the one-time post-checking status refresh and coalesce foreground/focus refreshes. Preserve attempt identity, original financial/checking deadlines and bounded polling allowance. A browser timer is a refresh trigger, never cancellation or expiry authority. Confirmed and denied outcomes remain terminal. This M4.6/M5 repair requires owner acceptance after deployment.

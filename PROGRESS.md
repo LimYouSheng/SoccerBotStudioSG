@@ -2,11 +2,10 @@
 
 ## Current checkpoint — 21 October 2026 SGT
 
-- Deployed baseline: PR79 merge3e74b10a8e96f81051c6c257d6c93a5c277f3f11; main run39530449830 passed all three gates and both deployment jobs. Refreshed health matches Worker versiond92b2c50-c092-476f-a627-e73cf4b65af8. PR80 backend telemetry preparation passed all three gates in39542179705 and was subsequently merged ascae29e68023bdfa3654978babdda5bb7c47a1d16; export remains disabled and unattached; owner will configure Grafana later.
-- Current branch fix/confirmation-details includes current main with merged PR80. Remove duplicate expanded session/amount sections; show all sessions and total once above, client/location below and short full-width disclaimer. Full local verify:code passed226 frontend tests plus source/policy/tooling/installer/format/lint/types/build/export. Adds unresolved focus and original hold-expiry checks without renewing deadlines or polling. Combined frontend verification passed; Worker verification, exact-commit CI and owner acceptance remain pending.
-- HAR15 captures only recovery after reopening: same attempt and provider references, unchanged payment deadline and seven pending confirmation reads, all HTTP200. Initial checkout capture is missing, so original duplicate effects are not established. HAR16 and owner dashboard show unpaid timeout and home recovery, but the open page stayed unresolved. Focus/hold-expiry refresh awaits deployed retest; backend timing and initial effects remain unproven.
-- Owner reports an hours-later confirmed page reverting to payment-received/confirmation-pending. Tab was closed; capture is deferred to a later successful-payment ride-along. No diagnosis or repair is claimed.
-- Preserve dependency symlinks and failed evidence. Performance/cache-restoration testing remains postponed; no assistant browser or provider actions.
+- Last verified deployed revision: PR80 merge cae29e68023bdfa3654978babdda5bb7c47a1d16; main run39544649935 succeeded and read-only health matched. Grafana export remains disabled; hookup deferred.
+- PR81 remains unmerged. Head7a6ffb4 passed local226 frontend/431 Worker tests and all three CI gates in39550062232. It includes confirmation detail cleanup and focus/original-hold-expiry refresh. Current follow-up adds rejected-checkout readback and corrects the rejected-tab presentation. Final combined verify:code passed228 frontend tests plus source/policy/tooling/installer/format/lint/types/build/export. Worker runtime verification and final-commit CI remain pending.
+- Owner waived stale unresolved-page retesting; retain as excluded, not proven fixed. Abandon/dismiss/return-to-selection was owner-reported successful. HAR17/18 plus owner dashboard show one booking from competing tabs, but the rejected tab incorrectly showed payment verification. Readback/customer messaging repair is the next acceptance gate.
+- The separate hours-later confirmed-to-pending report remains undiagnosed without a retained capture. Performance/token-restoration testing is postponed. Preserve dependency symlinks, original HARs and failed test evidence.
 
 ## Implemented baseline and evidence limits
 

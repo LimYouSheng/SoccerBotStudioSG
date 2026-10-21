@@ -3025,3 +3025,173 @@ test("recovery publication rolls back on storage failure and resumes without dup
     await m.close();
   }
 });
+
+test("rejected concurrent checkout reads the owned active attempt without repeating provider effects", async () => {
+  const m = await createBookingMechanism();
+  try {
+    const c = await customer(m);
+    assert.equal((await c.send()).status, 200);
+    const before = m.calls.length;
+    const key = crypto.randomUUID();
+    const result = await m.mf.dispatchFetch(
+      m.origin + `/api/booking/checkout/${key}`,
+      {
+        method: "POST",
+        headers: c.headers,
+        body: JSON.stringify({
+          ...c.input,
+          key,
+          accepted: true,
+          sessions: c.input.sessions.map((session) => ({
+            ...session,
+            startMs: session.startMs + 3000000,
+          })),
+        }),
+      },
+    );
+    assert.equal(result.status, 503);
+    assert.deepEqual(await result.json(), { error: "checkout_already_active" });
+    assert.equal(m.calls.length, before);
+    assert.equal(
+      (await m.db.prepare("SELECT COUNT(*) AS n FROM attempts").first()).n,
+      1,
+    );
+    assert.equal(
+      (await m.db.prepare("SELECT COUNT(*) AS n FROM hitpay_payments").first())
+        .n,
+      0,
+    );
+    assert.equal(
+      m.calls.filter((call) => call.body?.method === "book").length,
+      1,
+    );
+    const same = await m.mf.dispatchFetch(
+      m.origin + `/api/booking/checkout/${key}`,
+      {
+        method: "POST",
+        headers: c.headers,
+        body: JSON.stringify({ ...c.input, key, accepted: true }),
+      },
+    );
+    assert.deepEqual(await same.json(), {
+      error: "checkout_selection_unavailable",
+    });
+    assert.equal(
+      m.calls
+        .slice(before)
+        .filter((call) => call.body?.method === "getStartTimeMatrix").length,
+      1,
+    );
+    assert.equal(
+      m.calls.filter((call) => call.body?.method === "book").length,
+      1,
+    );
+  } finally {
+    await m.close();
+  }
+});
+
+test("rejected unbound window checks fresh availability and preserves failed or available readback as unresolved", async () => {
+  for (const outcome of ["occupied", "available", "failed"]) {
+    let inspect = false;
+    const m = await createBookingMechanism({
+      respond: async (call) => {
+        if (!inspect || call.body?.method !== "getStartTimeMatrix") return;
+        if (outcome === "failed") return new Response(null, { status: 503 });
+        return Response.json({
+          jsonrpc: "2.0",
+          id: call.body.id,
+          result: {
+            [call.body.params[0]]: outcome === "occupied" ? [] : ["12:10:00"],
+          },
+        });
+      },
+    });
+    try {
+      const a = await customer(m);
+      assert.equal((await a.send()).status, 200);
+      const grant = await m.db
+        .prepare("SELECT * FROM native_checkout_grants")
+        .first();
+      const b = await customer(m);
+      const token = b.headers.cookie.split("=")[1];
+      const hash = Array.from(
+        new Uint8Array(
+          await crypto.subtle.digest(
+            "SHA-256",
+            new TextEncoder().encode(token),
+          ),
+        ),
+        (x) => x.toString(16).padStart(2, "0"),
+      ).join("");
+      const retained = {
+        ...grant,
+        capability_hash: hash,
+        attempt_id: null,
+        intent_hash: null,
+        state: "granted",
+        result_json: null,
+        source_revision: "b".repeat(40),
+      };
+      const columns = Object.keys(retained);
+      await m.db
+        .prepare(
+          `INSERT INTO native_checkout_grants(${columns.join(",")}) VALUES(${columns.map(() => "?").join(",")})`,
+        )
+        .bind(...Object.values(retained))
+        .run();
+      inspect = true;
+      const before = m.calls.length;
+      const result = await m.mf.dispatchFetch(
+        m.origin + `/api/booking/checkout/${b.input.key}`,
+        {
+          method: "POST",
+          headers: b.headers,
+          body: JSON.stringify({ ...b.input, accepted: true }),
+        },
+      );
+      assert.equal(result.status, 503);
+      assert.deepEqual(await result.json(), {
+        error:
+          outcome === "occupied"
+            ? "checkout_selection_unavailable"
+            : "checkout_window_unresolved",
+      });
+      assert.equal(
+        m.calls
+          .slice(before)
+          .filter((call) => call.body?.method === "getStartTimeMatrix").length,
+        1,
+      );
+      assert.equal(
+        m.calls.filter((call) => call.body?.method === "book").length,
+        1,
+      );
+      assert.equal(
+        (await m.db.prepare("SELECT COUNT(*) AS n FROM attempts").first()).n,
+        1,
+      );
+      assert.equal(
+        (
+          await m.db
+            .prepare("SELECT COUNT(*) AS n FROM hitpay_payments")
+            .first()
+        ).n,
+        0,
+      );
+      assert.equal(
+        (
+          await m.db
+            .prepare(
+              "SELECT source_revision FROM native_checkout_grants WHERE capability_hash=?",
+            )
+            .bind(hash)
+            .first()
+        ).source_revision,
+        retained.source_revision,
+      );
+    } finally {
+      await m.close();
+    }
+  }
+});

@@ -1106,5 +1106,13 @@
   {
     "file": "src/features/booking/direct-checkout.test.tsx",
     "title": "queue rejection keeps the original attempt on Review for an explicit retry"
+  },
+  {
+    "file": "src/features/booking/direct-checkout.test.tsx",
+    "title": "rejected checkout window retains its attempt and displays the readback without payment confirmation polling"
+  },
+  {
+    "file": "src/features/booking/direct-checkout.test.tsx",
+    "title": "checkout readback uses slot-specific messaging only for verified unavailability"
   }
 ]

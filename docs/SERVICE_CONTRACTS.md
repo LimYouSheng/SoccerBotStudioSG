@@ -1,5 +1,13 @@
 # SoccerBotStudio — Service Contracts
 
+## Rejected checkout readback — 21 October 2026 SGT
+
+When combined hold/checkout preparation rejects native_customer_window_unavailable, the account coordinator performs bounded readback under current authentication. Read the original attempt and current owned grant first. An existing original attempt or unobserved/other-session active attempt remains blocked. For a different owned attempt with retained association matching the selection, or when no attempt exists, use fresh provider availability for the selected dates (at most12, deduplicated). Missing/failed reads remain unresolved. Availability is evidence of current unavailability, not proof of a particular customer’s booking. No creation/payment retry, grant renewal, cleanup or deadline change follows.
+
+Customer messaging: verified selection unavailable uses “This time slot is no longer available. Please choose another.” Other window failures use “We couldn’t start checkout. Please try again later.” Explicit rejected preparation stays on Review without entering payment verification; preserve the original local attempt for generic failures. Genuine lost-write responses retain the existing recovery handling. Successful-path trips are unchanged; extra reads occur only on this rejection.
+
+Owner acceptance: HAR17 checkout succeeded; HAR18 overlapping attempt received the window rejection. Owner saw only one SimplyBook booking. Later screenshot status requests were outside the saved HAR18. Duplicate creation was not observed; rejected-tab presentation failed. This repair requires final CI and deployed acceptance.
+
 ## Unresolved confirmation refresh — 21 October 2026 SGT
 
 Protected checkout context exposes the persisted hold expiry as optional checking.holdExpiresAtMs. After bounded checking ends, an unresolved page reads status on foreground/focus (coalesced across events/tabs with a30-second minimum interval) and once at the original hold expiry. Hidden pages catch up when visible. These reads preserve the original deadline, final-read marker and normal polling allowance; they do not restart polling or provider work. Confirmed/denied pages do not recheck. Only an authenticated server expired result permits the existing expiry transition; elapsed browser time alone never clears an unknown payment. Existing8-minute payment,13-minute checking and15-minute hold policies remain unchanged.
