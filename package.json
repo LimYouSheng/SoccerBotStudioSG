@@ -22,7 +22,10 @@
     "verify:code": "node scripts/verify.mjs code",
     "verify:browser": "node scripts/verify.mjs browser",
     "format:check": "prettier --check src scripts/*.mjs tests *.ts *.mjs package.json package-lock.json tsconfig.json README.md AGENTS.md docs/*.md .github/workflows/*.yml worker wrangler.jsonc wrangler.telemetry.jsonc observability/*.json",
-    "verify:worker": "node scripts/verify-worker.mjs"
+    "verify:worker": "node scripts/verify-worker.mjs",
+    "plan:load": "node scripts/run-load.mjs --plan",
+    "test:load:smoke": "node scripts/run-load.mjs --smoke",
+    "test:load": "node scripts/run-load.mjs --campaign"
   },
   "dependencies": {
     "jspdf": "4.2.1",

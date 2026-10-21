@@ -82,6 +82,17 @@ test("live CI cannot omit gates change the sitekey or gain deployment permission
   assert.deepEqual(checkPagesPolicy(original), []);
   for (const change of [
     (d) => delete d.jobs["live-email"],
+    (d) => {
+      for (const name of ["backend", "live-email"])
+        d.jobs[name].steps = d.jobs[name].steps.filter(
+          (step) => step.run !== "npm run test:load:smoke",
+        );
+    },
+    (d) => {
+      d.jobs.backend.steps.find(
+        (step) => step.run === "npm run test:load:smoke",
+      )["continue-on-error"] = true;
+    },
     (d) => d.jobs["live-email"].steps.splice(3, 1),
     (d) =>
       (d.jobs["live-email"].env.NEXT_PUBLIC_TURNSTILE_SITE_KEY = "foreign"),

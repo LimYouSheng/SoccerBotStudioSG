@@ -55,6 +55,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run verify:worker
+      - run: npm run test:load:smoke
       - run: npx playwright install --with-deps chromium webkit
       - run: npm run verify:browser
       - name: Package and check the exact closed developer release
@@ -91,6 +92,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run verify:worker
+      - run: npm run test:load:smoke
       - run: npx playwright install --with-deps chromium webkit
       - run: npm run verify:browser
       - name: Package and check the exact closed developer release

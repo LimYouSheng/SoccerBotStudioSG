@@ -4,7 +4,7 @@
 
 Finish the customer website through client acceptance and handover. Current engineering work is M4.4–M4.6 booking/recovery and M5 payment/confirmation hardening, with some M6 implementation already present. This does not close earlier acceptance gaps or establish client/production readiness. The [canonical milestone status](docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md#milestone-status--21-october-2026) owns the mapping; the original 44 subiteration IDs and commercial schedule remain unchanged.
 
-Current task: finish draft PR82 preparation409 handling and its final-commit CI, keeping the acceptance record compact and current. Next planned engineering campaign combines load, rate limiting and webhook resilience. Grafana activation remains planned separately; no stack exists and export stays disabled.
+Current task: investigate the measured overload boundary before sustained-load testing. The isolated burst campaign passed baseline/fault profiles at 1/3/5 customers; at 10, eight checkouts succeeded and two exhausted the existing 15-second queue wait. The campaign stopped; 10-customer recovery and fault-profile acceptance remain open. Preparation branch test/resilience-load-preparation is based on unmerged PR82; it does not activate a live test. PR82’s browser alert locator repair has separate pending CI. Grafana activation remains planned separately; no stack exists and export stays disabled.
 
 Performance and actual persistent-token restoration testing are postponed. Before resuming, verify main CI and the deployed revision, then distinguish warm-memory hits from encrypted SQLite restoration after restart/eviction. Simulated timings and round trips are not live acceptance.
 
