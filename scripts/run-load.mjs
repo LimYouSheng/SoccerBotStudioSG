@@ -1,18 +1,21 @@
 import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { campaign, runCohort } from "./load-runner.mjs";
+import { campaign, overloadCampaign, runCohort } from "./load-runner.mjs";
 const mode = process.argv.slice(2);
 if (
   mode.length !== 1 ||
-  !["--plan", "--smoke", "--campaign"].includes(mode[0])
+  !["--plan", "--smoke", "--campaign", "--overload"].includes(mode[0])
 ) {
   console.error(
-    "Usage: node scripts/run-load.mjs --plan|--smoke|--campaign (isolated runtime only)",
+    "Usage: node scripts/run-load.mjs --plan|--smoke|--campaign|--overload (isolated runtime only)",
   );
   process.exit(2);
 }
-const config = campaign(mode[0] === "--smoke");
+const config =
+  mode[0] === "--overload"
+    ? overloadCampaign()
+    : campaign(mode[0] === "--smoke");
 if (mode[0] === "--plan") {
   console.log(
     JSON.stringify(
