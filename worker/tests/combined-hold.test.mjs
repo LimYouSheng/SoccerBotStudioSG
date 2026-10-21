@@ -3195,3 +3195,80 @@ test("rejected unbound window checks fresh availability and preserves failed or 
     }
   }
 });
+
+test("409 preparation readback distinguishes unavailable selection from unresolved without effects", async () => {
+  for (const occupied of [false, true]) {
+    const m = await createBookingMechanism({
+      respond: async (call) => {
+        if (call.body?.method !== "getStartTimeMatrix") return;
+        return Response.json({
+          jsonrpc: "2.0",
+          id: call.body.id,
+          result: { [call.body.params[0]]: occupied ? [] : ["12:10:00"] },
+        });
+      },
+    });
+    try {
+      const c = await customer(m);
+      c.input.sessions[0].totalMinor = 8700;
+      const response = await c.send();
+      assert.equal(response.status, 409);
+      assert.deepEqual(await response.json(), {
+        error: occupied
+          ? "checkout_selection_unavailable"
+          : "checkout_window_unresolved",
+      });
+      for (const table of [
+        "attempts",
+        "dispatches",
+        "session_effects",
+        "hitpay_payments",
+      ])
+        assert.equal(
+          (await m.db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).first()).n,
+          0,
+        );
+      assert.equal(
+        m.calls.filter((call) => call.body?.method === "book").length,
+        0,
+      );
+      assert.deepEqual(m.unexpected, []);
+    } finally {
+      await m.close();
+    }
+  }
+});
+
+test("409 preparation preserves an existing original booking for recovery", async () => {
+  const m = await createBookingMechanism();
+  try {
+    const c = await customer(m);
+    assert.equal((await c.send()).status, 200);
+    const before = await m.db
+      .prepare("SELECT * FROM attempts WHERE id=?")
+      .bind(c.input.key)
+      .first();
+    const calls = m.calls.length;
+    c.input.sessions[0].totalMinor = 8700;
+    const response = await c.send();
+    assert.equal(response.status, 409);
+    assert.deepEqual(await response.json(), {
+      error: "checkout_recovery_required",
+    });
+    assert.deepEqual(
+      await m.db
+        .prepare("SELECT * FROM attempts WHERE id=?")
+        .bind(c.input.key)
+        .first(),
+      before,
+    );
+    assert.equal(m.calls.length, calls);
+    assert.equal(
+      (await m.db.prepare("SELECT COUNT(*) AS n FROM hitpay_payments").first())
+        .n,
+      0,
+    );
+  } finally {
+    await m.close();
+  }
+});

@@ -2627,3 +2627,51 @@ test("real API failed identity warming stays on Review without booking or paymen
     await stopMechanism(page, mechanism, transport);
   }
 });
+
+test("real API 409 preparation rejection stays on Review without payment verification", async ({
+  page,
+}) => {
+  const mechanism = await createBookingMechanism({ displayWarming: true });
+  const transport = await mechanismTransport(page, mechanism);
+  try {
+    await guestDetails(page, mechanism);
+    await reviewResponse(page);
+    const prepared = await prepareBrowserAttempt(page, mechanism);
+    const before = await mechanism.db
+      .prepare("SELECT * FROM attempts WHERE id=?")
+      .bind(prepared.attemptId)
+      .first();
+    const response = await checkoutHoldResponse(page, undefined, true);
+    expect(response.status()).toBe(409);
+    expect(transport.json(response).error).toBe("checkout_already_active");
+    await expect(
+      page.getByRole("heading", { name: "Review booking", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("We couldn’t start checkout. Please try again later.", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Verifying your payment...", { exact: true }),
+    ).toHaveCount(0);
+    await assertNoPaymentOrConfirmation(page, mechanism);
+    expect(
+      mechanism.calls.filter((call) => call.body?.method === "book"),
+    ).toHaveLength(0);
+    expect(
+      await mechanism.db
+        .prepare("SELECT * FROM attempts WHERE id=?")
+        .bind(prepared.attemptId)
+        .first(),
+    ).toEqual(before);
+    for (const table of ["dispatches", "session_effects", "hitpay_payments"])
+      expect(
+        (await mechanism.db
+          .prepare(`SELECT COUNT(*) AS n FROM ${table}`)
+          .first<{ n: number }>())!.n,
+      ).toBe(0);
+  } finally {
+    await stopMechanism(page, mechanism, transport);
+  }
+});

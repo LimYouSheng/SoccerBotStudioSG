@@ -971,43 +971,52 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
           const access =
             scope.checkoutAccess ??
             (await authenticate(request, env, Date.now()));
-          const retainedGrant = await authorizeCustomerCheckout(
-            request,
-            input,
-            { ...this.calendarReadOptions(), env },
-            true,
-            access,
-            !!scope.checkout,
-            !!scope.checkout && access.fresh_checkout === 1,
-          );
-          const preparation = await prepareCustomerNative(
-            request,
-            env,
-            input,
-            attemptId,
-            () =>
-              creationOnly
-                ? this.provider.checkoutToken(
-                    env,
-                    this.providerControl(false, true),
-                  )
-                : this.provider.identity(
-                    env,
-                    this.providerControl(false, true),
-                  ),
-            access,
-            retainedGrant,
-          ).catch(async (error: unknown) => {
+          const preparation = await (async () => {
+            const retainedGrant = await authorizeCustomerCheckout(
+              request,
+              input,
+              { ...this.calendarReadOptions(), env },
+              true,
+              access,
+              !!scope.checkout,
+              !!scope.checkout && access.fresh_checkout === 1,
+            );
+            return prepareCustomerNative(
+              request,
+              env,
+              input,
+              attemptId,
+              () =>
+                creationOnly
+                  ? this.provider.checkoutToken(
+                      env,
+                      this.providerControl(false, true),
+                    )
+                  : this.provider.identity(
+                      env,
+                      this.providerControl(false, true),
+                    ),
+              access,
+              retainedGrant,
+            );
+          })().catch(async (error: unknown) => {
             if (
               !(error instanceof ApiError) ||
-              error.code !== "native_customer_window_unavailable"
+              !(
+                error.code === "native_customer_window_unavailable" ||
+                error.status === 409
+              )
             )
               throw error;
             const code = await rejectedCheckoutReadback(request, input, {
               ...this.calendarReadOptions(),
               env,
-            }).catch(() => "checkout_window_unresolved");
-            throw new ApiError(503, code);
+            }).catch(() =>
+              error.status === 409
+                ? "checkout_recovery_required"
+                : "checkout_window_unresolved",
+            );
+            throw new ApiError(error.status, code);
           });
           this.invalidateDisplay();
           return executeNativeCheckout({

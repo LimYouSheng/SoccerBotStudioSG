@@ -375,13 +375,18 @@ async function nativeRequest(
         );
     }
     if (
-      response.status === 503 &&
+      (response.status === 503 || response.status === 409) &&
       /^\/api\/booking\/(checkout|hold)\//.test(path)
     ) {
       const error = await response
         .clone()
         .json()
         .catch(() => null);
+      if (error?.error === "checkout_recovery_required")
+        throw new BookingServiceError(
+          "temporarily_unavailable",
+          "Your original booking is still being checked. Do not start another booking or payment.",
+        );
       if (error?.error === "checkout_selection_unavailable")
         throw new BookingServiceError(
           "selection_unavailable",

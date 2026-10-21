@@ -2,8 +2,9 @@
 
 ## Current checkpoint — 21 October 2026 SGT
 
-- Last verified deployed revision: PR80 merge cae29e68023bdfa3654978babdda5bb7c47a1d16; main run39544649935 succeeded and read-only health matched. Grafana export remains disabled; hookup deferred.
-- PR81 remains unmerged. Head7a6ffb4 passed local226 frontend/431 Worker tests and all three CI gates in39550062232. It includes confirmation detail cleanup and focus/original-hold-expiry refresh. Current follow-up adds rejected-checkout readback and corrects the rejected-tab presentation. Final combined verify:code passed228 frontend tests plus source/policy/tooling/installer/format/lint/types/build/export. Worker verification passed433/433. Current frontend follow-up standardizes available-day selection after refresh; final verify:code passed229 frontend tests plus all static/build/export checks; final-commit CI remains pending. Prior head8cf84a3 passed all three CI gates in39553927949.
+- PR81 merged asab478e0e926ac8b74a1f4157e99ca892691e942e. Main CI39559855205 passed; read-only health matched that revision and Worker1e01a671-3190-4513-9a6d-469fbd7028c3. Grafana export remains disabled.
+- Current branch fix/checkout-409-rejection extends preparation readback to409 while retaining recovery for an existing original write. Focused actual-Worker regressions passed2/2; full verify:code passed229 frontend tests plus static/tooling/types/lint/build/export checks. Full Worker verification and final-commit CI pending. Baseline PR81 had433 Worker tests.
+- Owner accepts batch atomicity by risk decision after HAR19/20 and dashboard inspection showed no partial batch leftovers. Rejection before the first item remains possible; later-item rollback and failed/lost closure are not proven. Click-and-close-before-HitPay retained the reference/recovery view; owner confirms exactly one SimplyBook session. No duplicate observed; eventual unpaid timeout/release not yet established.
 - Owner waived stale unresolved-page retesting; retain as excluded, not proven fixed. Abandon/dismiss/return-to-selection was owner-reported successful. HAR17/18 plus owner dashboard show one booking from competing tabs, but the rejected tab incorrectly showed payment verification. Readback/customer messaging repair is the next acceptance gate.
 - The separate hours-later confirmed-to-pending report remains undiagnosed without a retained capture. Performance/token-restoration testing is postponed. Preserve dependency symlinks, original HARs and failed test evidence.
 
@@ -19,14 +20,14 @@ Four-hour cutoff rechecked: BOOKING_LEAD_MINUTES=240 in the deployed baseline; c
 
 ## Outstanding acceptance
 
-| Work                                                                                                           | Gate / milestone                                                                                           |
-| -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Actual single/batch checkout and token restoration after restart/eviction                                      | Later M4.6/M5 performance acceptance; verify deployment first                                              |
-| Later-item rejection, failed/lost batch closure, partial effects and recovery; no payment for incomplete batch | M4.4–M4.6; studio-capacity settings do not prove atomicity                                                 |
-| In-flight payment settling after expiry                                                                        | M5.4; retain5-minute buffer,8-minute payment and15-minute hold                                             |
-| Abandonment, lost replies, delayed/duplicate/out-of-order webhooks, reopen/tabs and failed dismissal           | M4.6/M5.3–M5.5; owner/CI evidence distinct from provider evidence                                          |
-| Mixed browsing/checkout/recovery at1/3/5/10 simulated customers                                                | Deferred concurrency measurement; queue/rate/recovery/duplicate effects; separate lanes remain future work |
-| Client mappings, schedules, notifications, payments and legacy continuity                                      | M6.3/M6.6 before M7 UAT                                                                                    |
+| Work                                                                                                 | Gate / milestone                                                                                           |
+| ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Actual single/batch checkout and token restoration after restart/eviction                            | Later M4.6/M5 performance acceptance; verify deployment first                                              |
+| Batch atomicity owner-risk acceptance; later-item/closure evidence remains incomplete                | M4.4–M4.6; no further atomicity experiment required now; preserve recovery protections                     |
+| In-flight payment settling after expiry                                                              | M5.4; retain5-minute buffer,8-minute payment and15-minute hold                                             |
+| Abandonment, lost replies, delayed/duplicate/out-of-order webhooks, reopen/tabs and failed dismissal | M4.6/M5.3–M5.5; owner/CI evidence distinct from provider evidence                                          |
+| Mixed browsing/checkout/recovery at1/3/5/10 simulated customers                                      | Deferred concurrency measurement; queue/rate/recovery/duplicate effects; separate lanes remain future work |
+| Client mappings, schedules, notifications, payments and legacy continuity                            | M6.3/M6.6 before M7 UAT                                                                                    |
 
 See [milestone status](docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md#milestone-status--21-october-2026) and [test audit](docs/SERVICE_CONTRACTS.md#test-suite-audit--21-october-2026). No M4/M5 closure or production acceptance is claimed.
 

@@ -75,6 +75,8 @@
   "recovery publication rolls back on storage failure and resumes without duplicate accounting",
   "rejected concurrent checkout reads the owned active attempt without repeating provider effects",
   "rejected unbound window checks fresh availability and preserves failed or available readback as unresolved",
+  "409 preparation readback distinguishes unavailable selection from unresolved without effects",
+  "409 preparation preserves an existing original booking for recovery",
   "foundation valid bindings emit correlated storage evidence without secret markers",
   "foundation missing and malformed configuration denies before protected reads",
   "foundation foreign database and coordinator namespace identities fail closed",
