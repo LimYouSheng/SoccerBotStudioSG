@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## 21 October 2026 — PR82 browser alert locator correction
+
+Final documentation head ae5694c run39567290859 passed frontend/backend, including435 Worker cases. Live-email passed78/81: the new409 case failed on all three devices at its exact-text locator. The Review alert contains the expected error plus a Review selections link, so matching its entire text to the message is incorrect. Target the semantic alert and assert that same message; retain409/error-code, Review destination, no verification/payment, unchanged original attempt and zero-effect checks. No production behavior, retries, timeouts or inventory change. Source/policy/format checks cover this test-only repair; final-commit browser CI remains required.
+
 ## 21 October 2026 — acceptance consolidated and next campaign planned in PR82
 
 Owner confirms payment attempted after expiry previously failed and completed dismissal permits another booking. These join earlier accepted normal payment, unpaid timeout/rebooking and close/reopen checks; do not repeat normal paths. Today's immediate click-and-close retained the original reference/recovery view and exactly one SimplyBook session. The owner accepts batch atomicity risk without proof of later-item rejection/rollback; stale unresolved-page retesting remains waived. In-flight late settlement is a deferred evidence gap, and the separate hours-later confirmed-to-pending report remains undiagnosed.
