@@ -70,6 +70,7 @@ const contextSchema = z.strictObject({
   }),
   checking: z.strictObject({
     deadlineMs: instant,
+    holdExpiresAtMs: instant.optional(),
     nextCheckMs: instant,
     pollAfterMs: z.number().int().min(1000).max(30000),
   }),

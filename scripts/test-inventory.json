@@ -1044,6 +1044,18 @@
     "title": "a return at minute seven keeps six minutes of checking and makes one final read without renewing on reload"
   },
   {
+    "file": "src/features/booking/confirmation-checking.test.tsx",
+    "title": "rechecks unresolved status on focus without renewing the window and coalesces duplicate events"
+  },
+  {
+    "file": "src/features/booking/confirmation-checking.test.tsx",
+    "title": "checks once at the original hold expiry after polling ends and preserves that check across reload"
+  },
+  {
+    "file": "src/features/booking/confirmation-checking.test.tsx",
+    "title": "catches up a hidden hold expiry on focus and stops after authorization denial"
+  },
+  {
     "file": "src/features/booking/direct-checkout.test.tsx",
     "title": "Review performs no provider reads and checkout verifies one booking before HitPay"
   },

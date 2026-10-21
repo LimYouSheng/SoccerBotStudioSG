@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Unresolved return-page refresh — 21 October 2026 SGT
+
+Use the persisted server hold expiry for the one-time post-checking status refresh and coalesce foreground/focus refreshes. Preserve attempt identity, original financial/checking deadlines and bounded polling allowance. A browser timer is a refresh trigger, never cancellation or expiry authority. Confirmed and denied outcomes remain terminal. This M4.6/M5 repair requires owner acceptance after deployment.
+
 ## Confirmation details presentation — 21 October 2026
 
 Sessions and total appear once in the top confirmation summary, including every batch session and instructor. Expanded details contain Client Details and Location side by side when space permits, followed by a concise full-width disclaimer and existing provider references. Remove redundant session/amount sections; a zero-tax line must not be mistaken for a zero booking total. Pending/confirmed authority, payment/receipt values and exports are unchanged.

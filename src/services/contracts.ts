@@ -147,7 +147,12 @@ export type CheckoutContext = {
     currency: "SGD";
     sessions: { startMs: number; players: number }[];
   };
-  checking: { deadlineMs: number; nextCheckMs: number; pollAfterMs: number };
+  checking: {
+    deadlineMs: number;
+    nextCheckMs: number;
+    pollAfterMs: number;
+    holdExpiresAtMs?: number;
+  };
 };
 export interface ProtectedCheckoutService {
   context(input: {

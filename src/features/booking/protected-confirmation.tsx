@@ -63,6 +63,7 @@ export function ProtectedConfirmation({
     sessionRevision,
     (!checkoutMode || contextSettled) && !saved,
     contextMatches ? context.value.checking.deadlineMs : undefined,
+    contextMatches ? context.value.checking.holdExpiresAtMs : undefined,
   );
   const [receipt, setReceipt] = useState<{
     value: BookingReceipt;

@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## 21 October 2026 — unresolved focus and hold-expiry refresh
+
+Owner requested combining confirmation detail cleanup with foreground/focus and original15-minute hold-expiry checks in PR81. Test1 mostly demonstrated retained unpaid recovery and provider timeout, but the existing page remained unresolved; home later permitted a new booking. HAR16 continued reporting unresolved after the nominal deadline, so refresh alone does not prove timely backend reconciliation. No HitPay transaction/link or unpaid confirmation email was reported in the owner’s dashboard checks. The initial HAR was not saved. The separate hours-later confirmed-page regression remains uninvestigated pending another capture.
+
+Implementation adds the persisted hold expiry to the existing snapshot query (no extra D1 round trip), bounded status refreshes without renewing polling allowance, and explicit denial handling after the checking deadline. Three deterministic hook regressions cover coalescing, original expiry/reload and hidden catch-up/denial; the actual Worker hold/context regression asserts the persisted timestamp. UI/source/browser/fixture/inventory owners were reviewed; browser execution remains with CI/owner. PR80 was subsequently merged ascae29e68023bdfa3654978babdda5bb7c47a1d16 and incorporated into PR81; Grafana export remains disabled. Full verify:code passed226 frontend cases and source/policy/tooling/installer/format/lint/types/build/export. Worker verification and final-commit CI remain pending; deployed acceptance remains pending.
+
 ## 21 October 2026 — acceptance resumed and confirmation details simplified
 
 PR80 headb4d452c2ad10d18ed16e4044dd39ca05a4e361d6 passed frontend/backend/live-email in39542179705. Owner deferred Grafana hookup and resumed acceptance; no merge/deployment of PR80 occurred. Live PR79 main CI/deployment and health were refreshed successfully. HAR15 lacked the original checkout capture but showed retained same-attempt pending recovery; expiry outcome remains open. Owner reported a confirmed page reverting to pending after many hours, then closed it; evidence capture is postponed to a later successful-payment ride-along.

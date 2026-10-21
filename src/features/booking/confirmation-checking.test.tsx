@@ -276,3 +276,104 @@ it("a return at minute seven keeps six minutes of checking and makes one final r
     JSON.parse(localStorage.getItem(`soccerbot-checking:${id}`)!).deadline,
   ).toBe(deadline);
 });
+
+it("rechecks unresolved status on focus without renewing the window and coalesces duplicate events", async () => {
+  vi.useFakeTimers();
+  const deadline = Date.now() - 1;
+  localStorage.setItem(
+    `soccerbot-checking:${id}`,
+    JSON.stringify({ deadline, next: 0, count: 120, final: true }),
+  );
+  const fetch = vi.fn(async () =>
+    Response.json({
+      status: "unresolved",
+      reason: "payment_verification_pending",
+      expired: true,
+    }),
+  );
+  vi.stubGlobal("fetch", fetch);
+  const hook = renderHook(() => useConfirmationChecking(id, 0, true, deadline));
+  renderHook(() => useConfirmationChecking(id, 0, true, deadline));
+  await act(async () => {});
+  expect(fetch).not.toHaveBeenCalled();
+  await act(async () => {
+    window.dispatchEvent(new Event("focus"));
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(hook.result.current.expired).toBe(true);
+  expect(
+    JSON.parse(localStorage.getItem(`soccerbot-checking:${id}`)!),
+  ).toMatchObject({ deadline, count: 120, final: true });
+  await act(async () => {
+    window.dispatchEvent(new Event("focus"));
+    await vi.advanceTimersByTimeAsync(60000);
+  });
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+it("checks once at the original hold expiry after polling ends and preserves that check across reload", async () => {
+  vi.useFakeTimers();
+  const deadline = Date.now();
+  const hold = deadline + 120000;
+  const fetch = vi.fn(async () => pending());
+  vi.stubGlobal("fetch", fetch);
+  const hook = renderHook(() =>
+    useConfirmationChecking(id, 0, true, deadline, hold),
+  );
+  await act(async () => {});
+  expect(hook.result.current.view).toBe("unresolved");
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(119999);
+  });
+  expect(fetch).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1);
+  });
+  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(hook.result.current.expired).toBe(false);
+  hook.unmount();
+  renderHook(() => useConfirmationChecking(id, 0, true, deadline, hold));
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(60000);
+  });
+  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(
+    JSON.parse(localStorage.getItem(`soccerbot-checking:${id}`)!),
+  ).toMatchObject({ deadline, count: 1, final: true, holdChecked: hold });
+});
+
+it("catches up a hidden hold expiry on focus and stops after authorization denial", async () => {
+  vi.useFakeTimers();
+  let hidden = false;
+  vi.spyOn(document, "hidden", "get").mockImplementation(() => hidden);
+  const deadline = Date.now();
+  const hold = deadline + 120000;
+  const fetch = vi
+    .fn()
+    .mockImplementationOnce(async () => pending())
+    .mockImplementation(async () => new Response(null, { status: 403 }));
+  vi.stubGlobal("fetch", fetch);
+  const hook = renderHook(() =>
+    useConfirmationChecking(id, 0, true, deadline, hold),
+  );
+  await act(async () => {});
+  await act(async () => {
+    hidden = true;
+    document.dispatchEvent(new Event("visibilitychange"));
+    await vi.advanceTimersByTimeAsync(120000);
+  });
+  expect(fetch).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    hidden = false;
+    window.dispatchEvent(new Event("focus"));
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(hook.result.current.view).toBe("denied");
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(60000);
+    window.dispatchEvent(new Event("focus"));
+  });
+  expect(fetch).toHaveBeenCalledTimes(2);
+});

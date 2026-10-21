@@ -1,5 +1,11 @@
 # SoccerBotStudio — Service Contracts
 
+## Unresolved confirmation refresh — 21 October 2026 SGT
+
+Protected checkout context exposes the persisted hold expiry as optional checking.holdExpiresAtMs. After bounded checking ends, an unresolved page reads status on foreground/focus (coalesced across events/tabs with a30-second minimum interval) and once at the original hold expiry. Hidden pages catch up when visible. These reads preserve the original deadline, final-read marker and normal polling allowance; they do not restart polling or provider work. Confirmed/denied pages do not recheck. Only an authenticated server expired result permits the existing expiry transition; elapsed browser time alone never clears an unknown payment. Existing8-minute payment,13-minute checking and15-minute hold policies remain unchanged.
+
+Acceptance test1: owner observed unpaid timeout in SimplyBook and could start a new booking from home, while the existing unresolved page stayed stale. HAR16 contains unresolved responses even after the nominal hold deadline; the exact provider/reconciliation timing remains unproven. Focus/hold refresh is implemented for retest, not accepted as deployed. Initial checkout capture and late-payment proof remain missing.
+
 ## Confirmation details and acceptance follow-up — 21 October 2026
 
 The screenshot’s $0.00 was the tax line beneath Amount, not the booking total (HAR15 retained SGD88). Owner subsequently requested removal of both redundant Session Details and Amount sections. BookingConfirmation now renders every session/instructor and the total once in its summary; expanded details contain client/location and a full-width concise disclaimer. Shared Arrival supports compact confirmation wording while retaining the review-page guidance. Receipt tax data and download calculations remain unchanged; only the unused presentation prop is removed.

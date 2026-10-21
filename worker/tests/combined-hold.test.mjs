@@ -73,10 +73,9 @@ test("combined hold performs one preflight and preserves immutable identity acro
       m.origin + `/api/attempts/${c.input.key}/checkout`,
       { headers: c.headers },
     );
-    assert.equal(
-      (await context.json()).checking.deadlineMs,
-      timing.booking_created_ms + 780000,
-    );
+    const checking = (await context.json()).checking;
+    assert.equal(checking.holdExpiresAtMs, timing.expires_ms);
+    assert.equal(checking.deadlineMs, timing.booking_created_ms + 780000);
     assert.equal(timing.payment_window_ms, 480000);
     assert.equal(timing.hold_window_ms, 900000);
     await assert.rejects(
