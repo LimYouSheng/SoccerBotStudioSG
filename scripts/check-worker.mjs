@@ -80,7 +80,8 @@ export function checkWorker(root) {
         ts.isCallExpression(node) &&
         ts.isIdentifier(node.expression) &&
         node.expression.text === "fetch" &&
-        name !== "provider-transport.ts"
+        name !== "provider-transport.ts" &&
+        name !== "telemetry.ts"
       )
         errors.push(`Provider dispatch is disabled: ${name}`);
       ts.forEachChild(node, visit);
@@ -101,6 +102,11 @@ export function checkWorker(root) {
     visited.add(name);
   }
   dfs("index.ts");
+  if (visited.has("telemetry.ts"))
+    errors.push("Telemetry must remain outside the booking graph");
+  if ((graph.get("telemetry.ts") || []).length)
+    errors.push("Telemetry cannot import booking modules");
+  dfs("telemetry.ts");
   for (const name of names)
     if (!visited.has(name)) errors.push(`Unreachable Worker module: ${name}`);
   const config = ts.parseConfigFileTextToJson(
@@ -151,6 +157,38 @@ export function checkWorker(root) {
     config.assets?.directory !== "./out"
   )
     errors.push("API/static routing boundary changed");
+  const telemetry = ts.parseConfigFileTextToJson(
+    "wrangler.telemetry.jsonc",
+    readFileSync(path.join(root, "wrangler.telemetry.jsonc"), "utf8"),
+  ).config;
+  if (
+    telemetry.name !== "soccerbot-telemetry" ||
+    telemetry.main !== "worker/telemetry.ts" ||
+    telemetry.account_id !== config.account_id ||
+    telemetry.workers_dev !== false ||
+    telemetry.preview_urls !== false ||
+    telemetry.vars?.EXPORT_ENABLED !== "false" ||
+    telemetry.vars?.GRAFANA_OTLP_ENDPOINT !== "" ||
+    telemetry.vars?.SUCCESS_SAMPLE_RATE !== "0.1" ||
+    telemetry.limits?.cpu_ms !== 50 ||
+    JSON.stringify(telemetry.secrets?.required) !==
+      JSON.stringify(["GRAFANA_AUTHORIZATION"]) ||
+    telemetry.routes ||
+    telemetry.route ||
+    telemetry.env ||
+    telemetry.triggers ||
+    telemetry.tail_consumers ||
+    telemetry.d1_databases ||
+    telemetry.durable_objects ||
+    telemetry.services
+  )
+    errors.push("Telemetry deployment boundary changed");
+  if (
+    config.tail_consumers ||
+    config.observability?.traces?.enabled ||
+    config.observability?.logs?.destinations?.length
+  )
+    errors.push("Telemetry export requires separate activation review");
   return errors;
 }
 if (

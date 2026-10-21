@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "soccerbot-telemetry",
+  "account_id": "517f4f85eb8f982b483dbc05b797fd88",
+  "limits": { "cpu_ms": 50 },
+  "main": "worker/telemetry.ts",
+  "compatibility_date": "2026-10-21",
+  "workers_dev": false,
+  "preview_urls": false,
+  "vars": {
+    "EXPORT_ENABLED": "false",
+    "GRAFANA_OTLP_ENDPOINT": "",
+    "SUCCESS_SAMPLE_RATE": "0.1",
+  },
+  "secrets": { "required": ["GRAFANA_AUTHORIZATION"] },
+  "observability": { "enabled": true, "logs": { "invocation_logs": false } },
+}

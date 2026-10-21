@@ -15,6 +15,10 @@ function fixture(change) {
   const root = mkdtempSync(path.join(tmpdir(), "worker-policy-"));
   try {
     cpSync("worker", path.join(root, "worker"), { recursive: true });
+    cpSync(
+      "wrangler.telemetry.jsonc",
+      path.join(root, "wrangler.telemetry.jsonc"),
+    );
     cpSync("wrangler.jsonc", path.join(root, "wrangler.jsonc"));
     change(root);
     return checkWorker(root);
@@ -196,5 +200,47 @@ test("rejects wrong database identity binding alias and cross-script coordinator
         change(c);
         writeFileSync(p, JSON.stringify(c));
       }).some((e) => /boundary changed/.test(e)),
+    );
+});
+
+test("rejects telemetry activation and imports across the booking boundary", () => {
+  for (const [file, change, expected] of [
+    [
+      "worker/index.ts",
+      (text) => text + '\nimport "./telemetry";',
+      "outside the booking graph",
+    ],
+    [
+      "worker/telemetry.ts",
+      (text) => text + '\nimport "./access";',
+      "cannot import booking",
+    ],
+    [
+      "wrangler.telemetry.jsonc",
+      (text) =>
+        text.replace('"EXPORT_ENABLED": "false"', '"EXPORT_ENABLED": "true"'),
+      "Telemetry deployment",
+    ],
+    [
+      "wrangler.telemetry.jsonc",
+      (text) => text.replace('"workers_dev": false', '"workers_dev": true'),
+      "Telemetry deployment",
+    ],
+    [
+      "wrangler.jsonc",
+      (text) =>
+        text.replace(
+          '"observability": {',
+          '"tail_consumers": [{"service":"soccerbot-telemetry"}], "observability": {',
+        ),
+      "activation review",
+    ],
+  ])
+    assert.ok(
+      fixture((root) => {
+        const p = path.join(root, file);
+        writeFileSync(p, change(readFileSync(p, "utf8")));
+      }).some((e) => e.includes(expected)),
+      expected,
     );
 });

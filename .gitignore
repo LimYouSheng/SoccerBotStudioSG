@@ -15,3 +15,5 @@ __pycache__/
 
 .wrangler/
 worker/runtime.d.ts
+worker/telemetry-env.d.ts
+.dev.vars*

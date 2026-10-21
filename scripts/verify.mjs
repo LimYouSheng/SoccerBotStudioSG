@@ -36,6 +36,7 @@ function fingerprint() {
         ignored.has(entry.name) ||
         entry.name === "next-env.d.ts" ||
         entry.name === "runtime.d.ts" ||
+        entry.name === "telemetry-env.d.ts" ||
         entry.name.endsWith(".tsbuildinfo")
       )
         continue;
