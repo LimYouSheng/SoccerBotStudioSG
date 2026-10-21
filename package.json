@@ -25,7 +25,8 @@
     "verify:worker": "node scripts/verify-worker.mjs",
     "plan:load": "node scripts/run-load.mjs --plan",
     "test:load:smoke": "node scripts/run-load.mjs --smoke",
-    "test:load": "node scripts/run-load.mjs --campaign"
+    "test:load": "node scripts/run-load.mjs --campaign",
+    "test:load:overload": "node scripts/run-load.mjs --overload"
   },
   "dependencies": {
     "jspdf": "4.2.1",

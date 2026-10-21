@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { campaign, distribution } from "./load-runner.mjs";
+import { campaign, distribution, overloadCampaign } from "./load-runner.mjs";
 import { loadProvider } from "./load-provider.mjs";
 
 test("load runner rejects remote targets and exposes bounded isolated campaign without execution", () => {
@@ -27,6 +27,20 @@ test("load runner rejects remote targets and exposes bounded isolated campaign w
     ),
   );
   assert.equal(campaign(true).length, 4);
+  assert.ok(campaign().every((c) => c.admission === undefined));
+  assert.deepEqual(
+    overloadCampaign().map((c) => [
+      c.customers,
+      c.profile,
+      c.admission,
+      c.deadlineMs,
+      c.maxProviderCalls,
+    ]),
+    [
+      [10, "baseline", "overload", 120000, 2000],
+      [10, "faults", "overload", 120000, 2000],
+    ],
+  );
 });
 
 test("load evidence does not report absent latency samples as zero", () => {

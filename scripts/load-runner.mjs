@@ -23,6 +23,11 @@ export function campaign(smoke = false) {
     })),
   );
 }
+export function overloadCampaign() {
+  return campaign()
+    .filter((c) => c.customers === 10)
+    .map((c) => ({ ...c, admission: "overload" }));
+}
 export async function runCohort(config) {
   assert.ok([1, 3, 5, 10].includes(config.customers));
   assert.ok(["baseline", "faults"].includes(config.profile));
@@ -80,7 +85,9 @@ export async function runCohort(config) {
     });
     return { response, body };
   }
-  const customers = [];
+  const customers = [],
+    accepted = [],
+    rejected = [];
   let deadline;
   const work = async () => {
     // Real access routes; unique identities and non-overlapping weekday slots.
@@ -153,6 +160,14 @@ export async function runCohort(config) {
           `/api/booking/checkout/${c.id}`,
           { method: "POST", headers: c.headers, body: JSON.stringify(c.input) },
         );
+        if (
+          config.admission === "overload" &&
+          result.response.status === 503 &&
+          result.body.error === "provider_queue_busy"
+        ) {
+          rejected.push(c);
+          return;
+        }
         assert.equal(
           result.response.status,
           200,
@@ -164,14 +179,55 @@ export async function runCohort(config) {
           `Checkout state: ${result.body.state}`,
         );
         assert.equal(result.body.state, "associated");
+        accepted.push(c);
       }),
     );
     for (const result of results)
       if (result.status === "rejected") throw result.reason;
-    assert.equal(provider.payments.size, customers.length);
+    report.admission = { accepted: accepted.length, rejected: rejected.length };
+    if (config.admission === "overload") {
+      assert.ok(
+        rejected.length > 0,
+        "Overload scenario did not exercise queue rejection",
+      );
+      assert.ok(accepted.length > 0, "Overload scenario admitted no checkouts");
+    }
+    const verifyRejected = async () => {
+      for (const c of rejected) {
+        assert.equal(
+          await m.db
+            .prepare("SELECT id FROM attempts WHERE id=?")
+            .bind(c.id)
+            .first(),
+          null,
+          "Rejected request persisted an attempt",
+        );
+        assert.ok(
+          ![...provider.groups.values()].some(
+            (g) => g.email === c.input.contact.email,
+          ),
+          "Rejected request created provider effects",
+        );
+        assert.ok(
+          ![...provider.payments.values()].some(
+            (p) => p.reference_number === c.id,
+          ),
+          "Rejected request created payment",
+        );
+        const current = await request(
+          "rejected-current",
+          "/api/booking/current",
+          { headers: c.headers },
+        );
+        assert.equal(current.response.status, 200);
+        assert.equal(current.body.state, "empty");
+      }
+    };
+    await verifyRejected();
+    assert.equal(provider.payments.size, accepted.length);
     assert.equal(
       provider.occupied.size,
-      customers.reduce((n, c) => n + c.size, 0),
+      accepted.reduce((n, c) => n + c.size, 0),
     );
     const before = await m.db
       .prepare(
@@ -232,13 +288,13 @@ export async function runCohort(config) {
       }),
     ]);
     // A bounded scheduled/re-delivery driver, not a retry of booking/payment creation.
-    for (let turn = 0; turn < customers.length + 3; turn++) {
+    for (let turn = 0; turn < accepted.length + 3; turn++) {
       await m.recover();
       const states = await m.db
         .prepare("SELECT state FROM hitpay_payments")
         .all();
       if (states.results.every((row) => row.state === "complete")) break;
-      // A new authentic event wakes recovery without changing original deadlines.
+      // Redeliver the same authentic event without changing original deadlines.
       for (const row of paymentRows.results)
         await webhook(row.request_id, "completed");
     }
@@ -253,7 +309,7 @@ export async function runCohort(config) {
       .prepare("SELECT state,external_state FROM hitpay_payments")
       .all();
     report.paymentStates = states.results;
-    assert.equal(states.results.length, customers.length);
+    assert.equal(states.results.length, accepted.length);
     assert.ok(
       states.results.every(
         (row) => row.state === "complete" && row.external_state === "observed",
@@ -297,11 +353,11 @@ export async function runCohort(config) {
     report.webhookReceipts = receiptCount.n;
     assert.equal(
       receiptCount.n,
-      customers.length * 2,
+      accepted.length * 2,
       "Duplicate webhook receipt was not deduplicated",
     );
     // Read protected context, lose the first dismissal acknowledgement, then retry.
-    for (const c of customers) {
+    for (const c of accepted) {
       const context = await request(
         "context",
         `/api/attempts/${c.id}/checkout`,
@@ -325,6 +381,62 @@ export async function runCohort(config) {
       });
       assert.equal(current.body.state, "empty");
     }
+    assert.equal(provider.payments.size, accepted.length);
+    assert.equal(
+      provider.occupied.size,
+      accepted.reduce((n, c) => n + c.size, 0),
+    );
+    await verifyRejected();
+    // Explicit simulated customer retry after the queue drains, using the exact
+    // original identity and payload. This is not an automatic checkout retry.
+    report.explicitRetries = [];
+    for (const c of rejected) {
+      const retry = () =>
+        request("explicit-checkout-retry", `/api/booking/checkout/${c.id}`, {
+          method: "POST",
+          headers: c.headers,
+          body: JSON.stringify(c.input),
+        });
+      const first = await retry();
+      assert.equal(first.response.status, 200);
+      assert.equal(first.body.state, "associated");
+      assert.equal(first.body.paymentAvailable, true);
+      const saved = await m.db
+        .prepare("SELECT * FROM hitpay_payments WHERE attempt_id=?")
+        .bind(c.id)
+        .first();
+      assert.ok(saved);
+      const effects = {
+        bookings: provider.occupied.size,
+        payments: provider.payments.size,
+      };
+      const repeated = await retry();
+      assert.equal(repeated.response.status, 200);
+      assert.equal(repeated.body.state, "complete");
+      assert.equal(repeated.body.paymentAvailable, false);
+      assert.deepEqual(
+        await m.db
+          .prepare("SELECT * FROM hitpay_payments WHERE attempt_id=?")
+          .bind(c.id)
+          .first(),
+        saved,
+      );
+      assert.deepEqual(
+        { bookings: provider.occupied.size, payments: provider.payments.size },
+        effects,
+      );
+      const ownGroups = [...provider.groups.values()].filter(
+        (g) => g.email === c.input.contact.email,
+      );
+      assert.equal(ownGroups.length, 1);
+      assert.equal(ownGroups[0].items.length, c.size);
+      assert.equal(ownGroups[0].accepted, 0);
+      report.explicitRetries.push({
+        sessions: c.size,
+        status: "associated-unpaid",
+        repeatCreatedEffects: false,
+      });
+    }
     assert.equal(provider.payments.size, customers.length);
     assert.equal(
       provider.occupied.size,
@@ -340,6 +452,12 @@ export async function runCohort(config) {
       "confirmed-context",
       "dismissal-redelivery-safe",
       "zero-unexpected-provider-requests",
+      ...(rejected.length
+        ? [
+            "queue-rejection-zero-effects",
+            "explicit-same-attempt-retry-idempotent",
+          ]
+        : []),
     ];
     report.status = "passed";
   };
