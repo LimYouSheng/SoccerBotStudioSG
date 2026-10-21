@@ -1,5 +1,15 @@
 # SoccerBotStudio — Journey
 
+## 21 October 2026 — full burst campaign reaches queue limit
+
+Owner authorized the next isolated campaign. Ran npm run test:load on clean 21bc10c47562d42029be59638552e39699aba594. Retained log: /workspace/work/confirmation-audit/load-campaign-1.log; receipt: test-results/load-1792572292763/report.json. Source SHA256 72a7d1f92c90db04a534074b69a7e95d31289ec682247a576ae6b51654f419fa; harness SHA256 7a3e97e2e6f48dbfb5343a3f363c741fcce54694635e434a1e2dc379727f9830.
+
+Six cohorts passed: 1/3/5 customers, baseline and faults, with 18 checkouts/64 synthetic sessions, 262 application requests and 503 synthetic provider calls. Both injected readback faults were exercised in every fault cohort. All completed deadline/effect/deduplication/confirmation/dismissal assertions passed. Cohort duration pairs were 5.9/5.8, 25.2/25.2 and 38.5/38.6 seconds. At five customers, maximum foreground wait was about4.5 seconds and display wait8.7 seconds; recovery phase was17.2 seconds. Local finite bursts do not establish live latency or sustained capacity.
+
+The 10-customer baseline failed after20.4 seconds: eight successful checkouts and two503 provider_queue_busy. Foreground queue expiry diagnostics were15002/15004ms, matching the existing15000ms limit in worker/provider-queue.ts. Eight retained attempts were observed; transport counts were38 booking creations and8 payment creations. The runner stopped before recovery/terminal assertions and did not run the10-customer fault profile. No queue deadline, assertion, retry or production behavior was changed. Preserve this failure; add distinct overload-safety coverage before sustained testing rather than reclassifying the original all-success test as passed.
+
+Documentation test-impact review covered runner/provider/tooling tests, CI smoke policy, current milestone/contract/history owners and provider queue semantics. This follow-up changes documentation only; source/policy/format checks apply, with final-commit CI still required. No browser, live-provider, merge or deployment operation occurred.
+
 ## 21 October 2026 — isolated load campaign preparation
 
 Owner requested planning/preparing the combined load, rate-limit and webhook test. Created test/resilience-load-preparation from unmerged PR82, preserving the dependency symlink. New runner reuses actual application routes, coordinator, D1 and migrations with a stateful synthetic provider supporting multiple distinct single/four/eight-session groups. The finite1/3/5/10 baseline/fault matrix is executable locally; no remote URL, real credentials, provider writes or assistant browser execution are supported. Contracts explicitly distinguish finite bursts from sustained throughput and accelerated scheduler stimulation from real cron cadence.
