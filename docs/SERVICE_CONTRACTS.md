@@ -1,5 +1,21 @@
 # SoccerBotStudio — Service Contracts
 
+## Remaining acceptance and combined resilience campaign — 21 October 2026
+
+Owner accepts the observed normal paths: successful single/batch payment, ordinary close/reopen, unpaid timeout and starting again, rejection when attempting payment after expiry, completed dismissal/new booking, and immediate click-and-close recovery with exactly one SimplyBook session. Batch atomicity is accepted by risk decision despite unknown rejection position; stale unresolved-page retesting is waived. These do not require repeated normal bookings. In-flight settlement begun before expiry remains unproven and deferred; retain the8/15/5-minute payment/hold/recovery policy. The hours-later confirmed-to-pending report remains undiagnosed backlog, separate from stale unresolved-page refresh.
+
+**Upcoming combined campaign (planned, not executed):**
+
+1. Verify the tested revision/environment and establish an unloaded baseline. Exercise production Worker routes, coordinator queues, D1 and reconciliation with synthetic provider boundaries and synthetic identities. Owner/CI executes browser scenarios. No automatic live bookings, payments, notification sends or provider rate-limit probing follows from this plan.
+2. Run mixed browsing, single/batch checkout and recovery at1/3/5/10 simulated customers. Inject external429/Retry-After, latency and temporary outages at the transport boundary; observe admission/backpressure, queue waits, provider timing, recovery priority and duplicate effects. Keep the original roadmap's1/5/20-client release workload distinct.
+3. During load, deliver delayed, duplicate and out-of-order valid synthetic webhooks; simulate a lost acknowledgement after receipt persistence and subsequent redelivery. Assert signature/account/attempt authority, durable deduplication, bounded reconciliation and eventual authoritative state after faults clear. A webhook or browser return alone never proves payment/booking completion.
+4. Inject a transport/server failure or lost completed-attempt dismissal response. The dismissal state transition is deterministic; this scenario tests delivery failure, not a known logic defect. Assert original ownership/evidence survive, retry/reload recovers and no second checkout begins before authorized release. This supplements accepted normal dismissal; it does not reopen that manual test.
+5. Report scenario counts, offered/accepted load, queue and end-to-end latency distributions,429/errors, provider calls, recovery delay, duplicate effects and final retained state per attempt. Require no duplicate booking/payment effects, no payment for incomplete batches, no expiry renewal and no unknown-outcome deletion. Record unresolved outcomes rather than forcing cleanup. Define workload duration, target rates, numerical acceptance thresholds and stop conditions before execution; none are fabricated here.
+
+Grafana can assist measurements after activation but is not a prerequisite: retain sanitized diagnostics/runtime receipts. Simulation establishes application behavior, not actual provider delivery order, limits, batch atomicity or deployed latency. Later live checks require their own bounded owner-operated plan.
+
+Owner confirms SimplyBook sends the notification on final payment confirmation; notification timing is accepted for the tested account, not an unresolved manual-send implementation task. Preserve/recheck the intended configuration when migrating accounts. Client identity, mappings, schedules, payment destination and legacy receipt/recovery continuity remain release gates.
+
 ## Consistent calendar selection — 21 October 2026 SGT
 
 Calendar date selection: first entry and refresh resolve the selected day after a successful public month snapshot. Keep a currently available chosen day; otherwise choose the next available date in that month, falling back to its first available future date. Loading, failed reads and a month with no availability do not invent an available date. Selected booking sessions remain unchanged. This adds no polling or provider calls.
@@ -34,7 +50,11 @@ HAR15 supplies post-reopen recovery evidence only (21October12:49:19–12:49:50 
 
 **Overhead and loss:** default10% deterministic successful-correlation sampling; recognized failures/manual review/invalid or rejected token evidence bypass sampling for their invocation. This is not cross-invocation tail sampling or guaranteed failure retention. Maximum32 input events,256 log messages per event,32KiB per accepted input string,128 exported spans and512KB outbound body. Export timeout5seconds; redirects rejected; no response body logged, durable spool, retry or application request delay. The exporter has a50ms CPU limit. Exporter diagnostics report accepted_http/rejected_http/unavailable/invalid_config/oversize and bounded-drop counts where available. HTTP success alone does not prove Grafana accepted every span; receiver-side ingestion must be checked. Cloudflare truncation, CPU exhaustion and network outages can lose telemetry. Existing Cloudflare logs are the validation fallback.
 
+**Dashboard ownership:** keep observability/grafana-dashboard.json as the versioned baseline. Import it into Grafana Cloud and view/edit panels there; export intentional reusable edits back into this file for review so later imports do not overwrite unrecorded changes. Dashboard edits do not change checkout behavior. Browser telemetry remains future work; current export is backend-only.
+
 **Dashboard:** import observability/grafana-dashboard.json and select the Grafana Cloud Tempo data source. Panels use TraceQL metrics for sampled checkout/confirmation latency, D1 round trips, queue wait, SimplyBook/HitPay checkout phase time, cache observations/restoration and retained failures. TraceQL metrics must be available on the selected stack. Success distributions exclude retained failure invocations; raw counts are exported observations, not total traffic or unique incidents. Query syntax follows Grafana's documented functions; live import/rendering is pending because no stack exists.
+
+**Planned next steps:** owner creates a Grafana Cloud stack; engineering then prepares the exact activation change below. Start with the available free tier, verify its current ingestion/retention/TraceQL allowances, and monitor usage before choosing paid capacity. No stack, credentials, ingestion or rendered dashboard is currently verified.
 
 **Activation after stack creation (separate reviewed deployment):**
 

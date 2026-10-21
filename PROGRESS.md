@@ -18,18 +18,23 @@ The owner accepts observed confirmation presentation around4–5 seconds. Perfor
 
 Four-hour cutoff rechecked: BOOKING_LEAD_MINUTES=240 in the deployed baseline; calendar/selection and server checkout use it. Existing boundary regression accepts exactly four hours and rejects less, including crossing the cutoff during reads.
 
-## Outstanding acceptance
+## Acceptance summary and remaining work
 
-| Work                                                                                                 | Gate / milestone                                                                                           |
-| ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Actual single/batch checkout and token restoration after restart/eviction                            | Later M4.6/M5 performance acceptance; verify deployment first                                              |
-| Batch atomicity owner-risk acceptance; later-item/closure evidence remains incomplete                | M4.4–M4.6; no further atomicity experiment required now; preserve recovery protections                     |
-| In-flight payment settling after expiry                                                              | M5.4; retain5-minute buffer,8-minute payment and15-minute hold                                             |
-| Abandonment, lost replies, delayed/duplicate/out-of-order webhooks, reopen/tabs and failed dismissal | M4.6/M5.3–M5.5; owner/CI evidence distinct from provider evidence                                          |
-| Mixed browsing/checkout/recovery at1/3/5/10 simulated customers                                      | Deferred concurrency measurement; queue/rate/recovery/duplicate effects; separate lanes remain future work |
-| Client mappings, schedules, notifications, payments and legacy continuity                            | M6.3/M6.6 before M7 UAT                                                                                    |
+Owner-reported accepted: repeated successful single/batch checkout and payment; ordinary close/reopen; unpaid timeout and starting again; payment attempted after expiry was rejected; completed-attempt dismissal and new booking; SimplyBook notification on final payment confirmation; immediate click-and-close created exactly one SimplyBook session and restored the retained attempt. Do not repeat these normal paths merely to fill a checklist. Batch atomicity is accepted by owner risk decision, not proof of later-item rollback. Stale unresolved-page focus/expiry retesting is waived.
 
-See [milestone status](docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md#milestone-status--21-october-2026) and [test audit](docs/SERVICE_CONTRACTS.md#test-suite-audit--21-october-2026). No M4/M5 closure or production acceptance is claimed.
+| Remaining work                                               | Status / next gate                                                                                                                                                                                                                                                                    |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| PR82 preparation409 messaging                                | Final-commit frontend/backend/live-email CI, then separately authorized merge and independent main/deployment verification. Deployed presentation is not yet established.                                                                                                             |
+| Combined load, rate limiting and webhook resilience          | Upcoming controlled campaign at1/3/5/10 simulated customers: browsing/checkout/recovery, delayed/duplicate/out-of-order webhooks, lost acknowledgements and failed dismissal. Actual application runtime with synthetic external providers first; live provider proof stays separate. |
+| Grafana Cloud hookup                                         | Prepared OTLP Tail exporter/dashboard; no stack yet, export disabled. Secure configuration, reviewed activation, ingestion/dashboard/correlation/privacy/overhead validation remain. See Service Contracts.                                                                           |
+| Actual checkout performance and persistent-token restoration | Deferred; measure single/batch checkout and distinguish memory hits from encrypted SQLite restoration after coordinator restart/eviction.                                                                                                                                             |
+| Hours-later confirmed-to-pending report                      | Undiagnosed backlog item; retain evidence gap and capture if encountered again. Separate from the waived stale unresolved-page retest.                                                                                                                                                |
+| In-flight settlement after expiry                            | Deferred evidence gap, no repeat requested now. Rejection when paying after expiry does not prove this case; retain8-minute payment,15-minute hold and5-minute buffer.                                                                                                                |
+| Client configuration, deployment and UAT                     | M6/M7: mappings, schedules, preservation of accepted notification settings, payment destination, identity and legacy receipt/recovery continuity.                                                                                                                                     |
+
+The original roadmap's1/5/20-client release workload remains distinct from the upcoming1/3/5/10 campaign. Separate browsing/booking execution lanes are future work, not a committed prerequisite. Four-hour lead policy has source/boundary regression coverage; no new live boundary acceptance is claimed. No M4/M5 closure or production readiness is claimed.
+
+See [campaign and Grafana contracts](docs/SERVICE_CONTRACTS.md#remaining-acceptance-and-combined-resilience-campaign--21-october-2026) and [milestone status](docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md#milestone-status--21-october-2026).
 
 ## Update discipline
 
