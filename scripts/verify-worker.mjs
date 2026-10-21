@@ -15,6 +15,21 @@ const commands = [
     ["node_modules/wrangler/bin/wrangler.js", "types", "worker/runtime.d.ts"],
   ],
   [
+    "telemetry-types-generate",
+    "node",
+    [
+      "node_modules/wrangler/bin/wrangler.js",
+      "types",
+      "worker/telemetry-env.d.ts",
+      "--config",
+      "wrangler.telemetry.jsonc",
+      "--env-interface",
+      "TelemetryEnv",
+      "--include-runtime=false",
+      "--strict-vars=false",
+    ],
+  ],
+  [
     "types",
     "node",
     ["node_modules/typescript/bin/tsc", "-p", "worker/tsconfig.json"],
@@ -37,6 +52,7 @@ const commands = [
       "worker/tests/webhook.test.mjs",
       "worker/tests/hitpay.test.mjs",
       "worker/tests/combined-hold.test.mjs",
+      "worker/tests/telemetry.test.mjs",
     ],
   ],
 ];
