@@ -2,7 +2,7 @@
 
 ## Current checkpoint — 22 October 2026 SGT
 
-PR82–84 are merged. PR84 merge `37adaa3a02fda2fa86e852b1538029dc37749557` passed frontend, backend, live-email and deployment in [main run 39626576749](https://github.com/LimYouSheng/SoccerBotStudioSG/actions/runs/39626576749). This documentation update needs its own final-commit CI before readiness.
+PR82–85 are merged. PR85 documentation merge is f0f000c2f600be1930cacf0b2f884103cb23fba7; this refactor starts there. PR84 merge `37adaa3a02fda2fa86e852b1538029dc37749557` passed frontend, backend, live-email and deployment in [main run 39626576749](https://github.com/LimYouSheng/SoccerBotStudioSG/actions/runs/39626576749). This documentation update needs its own final-commit CI before readiness.
 
 | Acceptance                  | Current evidence and limit                                                                                                                                                                                                                                                                                                                                       |
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -15,6 +15,7 @@ PR82–84 are merged. PR84 merge `37adaa3a02fda2fa86e852b1538029dc37749557` pass
 
 ## Remaining work
 
+- Client setup/portability: owner creates accounts/resources first; remove developer-specific pins through validated configuration and test safe first-install/rerun handling before client GitHub delivery.
 - Client rollout/UAT: account and identity mappings, schedules, payment destination, notification configuration and legacy receipt/recovery continuity.
 - Grafana: create stack, configure securely, activate and validate ingestion, dashboards, correlation, privacy and overhead. Export remains disabled.
 - Planned production UI/UX and email-response refinement, followed by affected regression checks and final-commit CI. SimplyBook notification on final payment is already owner-accepted for the tested account.
@@ -26,4 +27,4 @@ No blanket M4/M5 closure or production readiness is claimed. PR82 rejected-prepa
 
 Successful single checkout/reconciliation each use 5 D1 round trips; batch checkout uses 2×sessions+7 (11/15/23 for 2/4/8), excluding coordinator SQLite. Failure/recovery can require more. Public/admin encrypted token retention remains 50 minutes/60 seconds without renewal on restoration. The four-hour booking cutoff has source and boundary regression coverage; exactly four hours is eligible.
 
-Full dated receipts and timing qualifications are in [Journey](docs/SOCCERBOT_JOURNEY.md#acceptance-checkpoint--22-october-2026-sgt); [contracts](docs/SERVICE_CONTRACTS.md#remaining-acceptance-and-combined-resilience-campaign--21-october-2026) and [milestones](docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md#milestone-status--21-october-2026) own their respective rules. Keep this file current; the [prior progress ledger](docs/SOCCERBOT_JOURNEY.md#progress-ledger-archive--through-pr78) and [pre-update checkpoint](https://github.com/LimYouSheng/SoccerBotStudioSG/blob/37adaa3a02fda2fa86e852b1538029dc37749557/PROGRESS.md) preserve history.
+Full dated receipts and timing qualifications are in [Service Contracts history](docs/SERVICE_CONTRACTS.md#part-2--dated-changes-and-evidence); [contracts](docs/SERVICE_CONTRACTS.md#deployment-migration-and-acceptance) and [milestones](docs/SERVICE_CONTRACTS.md#milestones-and-retained-acceptance-criteria) own their respective rules. Keep this file current; the [prior progress ledger](docs/SERVICE_CONTRACTS.md#part-2--dated-changes-and-evidence) and [pre-update checkpoint](https://github.com/LimYouSheng/SoccerBotStudioSG/blob/37adaa3a02fda2fa86e852b1538029dc37749557/PROGRESS.md) preserve history.
