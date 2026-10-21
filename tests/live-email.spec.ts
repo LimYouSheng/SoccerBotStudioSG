@@ -2647,7 +2647,7 @@ test("real API 409 preparation rejection stays on Review without payment verific
     await expect(
       page.getByRole("heading", { name: "Review booking", exact: true }),
     ).toBeVisible();
-    await expect(page.getByRole("alert")).toContainText(
+    await expect(page.getByRole("main").getByRole("alert")).toContainText(
       "We couldn’t start checkout. Please try again later.",
     );
     await expect(

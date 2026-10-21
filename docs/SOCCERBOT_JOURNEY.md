@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## 21 October 2026 — scope the409 browser alert to main
+
+PR82 be37f73 run39570386559 passed frontend/backend; live-email again passed78/81. All three new409 executions failed because the unscoped alert locator matched both the actual Review error and Next.js’s route announcer. The prior locator repair was incomplete. Scope to main, using the established locator already used by adjacent live-email cases. Keep the exact expected message substring,409/code, Review destination, no payment verification, unchanged original attempt and zero-effect assertions. No retries, timeout, inventory or product change. Failed CI log/artifact12332841525 remain retained.
+
+Test-impact review searched Review/site shell, live-email alert assertions and browser inventory. Source/policy, affected ESLint and formatting checks apply; CI must execute all three browser projects on the corrected commit. PR83 inherits the affected test and must receive this correction too. No merge/deployment or assistant browser operation.
+
 ## 21 October 2026 — full burst campaign reaches queue limit
 
 Owner authorized the next isolated campaign. Ran npm run test:load on clean 21bc10c47562d42029be59638552e39699aba594. Retained log: /workspace/work/confirmation-audit/load-campaign-1.log; receipt: test-results/load-1792572292763/report.json. Source SHA256 72a7d1f92c90db04a534074b69a7e95d31289ec682247a576ae6b51654f419fa; harness SHA256 7a3e97e2e6f48dbfb5343a3f363c741fcce54694635e434a1e2dc379727f9830.
