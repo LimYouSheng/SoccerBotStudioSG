@@ -198,7 +198,28 @@ test("combined hold rejects changed price and unavailable selection before creat
       sessions: [{ ...c.input.sessions[0], totalMinor: 1 }],
     });
     assert.equal(invalid.status, 409);
-    assert.equal(m.calls.length, 0);
+    assert.deepEqual(await invalid.json(), {
+      error: "checkout_window_unresolved",
+    });
+    assert.equal(
+      m.calls.filter((call) => call.body?.method === "getStartTimeMatrix")
+        .length,
+      1,
+    );
+    assert.equal(
+      m.calls.filter((call) => call.body?.method === "book").length,
+      0,
+    );
+    for (const table of [
+      "attempts",
+      "dispatches",
+      "session_effects",
+      "hitpay_payments",
+    ])
+      assert.equal(
+        (await m.db.prepare(`SELECT COUNT(*) AS n FROM ${table}`).first()).n,
+        0,
+      );
     const response = await c.send();
     assert.equal(response.status, 200, await response.clone().text());
     assert.equal((await response.json()).state, "selection_unavailable");
