@@ -1,5 +1,9 @@
 # SoccerBotStudio — Journey
 
+## Consistent calendar selection — 21 October 2026 SGT
+
+Owner observed initial entry choosing an available day but browser refresh selecting unavailable today. TimeStep initialized the date before asynchronous month data arrived and never adjusted it. Correct the existing component to resolve a valid date when data arrives or refresh removes the selected day. One regression covers delayed entry, retaining an available choice, moving after availability changes, empty-month behavior and remount. First fixture failed because it had no selected live service/guest mode and exercised demo availability; bind the intended live selection without weakening assertions. Selected23 component cases and targeted lint passed. Prior readback candidate8cf84a3 passed228 frontend/433 Worker tests; this frontend-only follow-up passed final verify:code with229 cases and all static/tooling/installer/type/build/export checks. Prior head8cf84a3 also passed all three CI gates in39553927949; final-source CI remains pending.
+
 ## 21 October 2026 — concurrent checkout rejection readback
 
 Owner waived the old unresolved-page refresh retest because home permits another booking after expiry; this is excluded by owner decision, not proven deployed repair. Owner reported abandonment/dismissal and return to selection worked; replacement checkout was not independently evidenced. HAR17/18 then captured different attempts for the same session with overlapping checkout requests: A succeeded and reached HitPay sandbox, B returned native_customer_window_unavailable. Owner confirmed only one SimplyBook booking. B’s screenshot showed inappropriate payment verification/unavailable UI; subsequent status requests were not saved in HAR18. Different submitted contacts and simultaneous access initialization were observed; the exact rejection predicate was not diagnosed from HARs.

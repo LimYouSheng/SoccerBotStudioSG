@@ -1,5 +1,9 @@
 # SoccerBotStudio — Service Contracts
 
+## Consistent calendar selection — 21 October 2026 SGT
+
+Calendar date selection: first entry and refresh resolve the selected day after a successful public month snapshot. Keep a currently available chosen day; otherwise choose the next available date in that month, falling back to its first available future date. Loading, failed reads and a month with no availability do not invent an available date. Selected booking sessions remain unchanged. This adds no polling or provider calls.
+
 ## Rejected checkout readback — 21 October 2026 SGT
 
 When combined hold/checkout preparation rejects native_customer_window_unavailable, the account coordinator performs bounded readback under current authentication. Read the original attempt and current owned grant first. An existing original attempt or unobserved/other-session active attempt remains blocked. For a different owned attempt with retained association matching the selection, or when no attempt exists, use fresh provider availability for the selected dates (at most12, deduplicated). Missing/failed reads remain unresolved. Availability is evidence of current unavailability, not proof of a particular customer’s booking. No creation/payment retry, grant renewal, cleanup or deadline change follows.

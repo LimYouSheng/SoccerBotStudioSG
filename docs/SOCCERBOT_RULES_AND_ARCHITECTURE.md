@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Consistent calendar selection — 21 October 2026 SGT
+
+Calendar selection must not depend on whether availability was cached before mount. Resolve the visible day from successful month availability while retaining a valid user choice and preserving the booking basket. Empty/failed months keep their honest empty/error state; do not scan other months automatically.
+
 ## Rejected checkout presentation — 21 October 2026 SGT
 
 An explicit preparation-window rejection is not payment verification. Keep it on Review; never invent a checkout handoff or retry a booking write. Classify slot unavailability only from fresh provider availability after checking original-attempt/owned-booking evidence. A claimed grant alone is not proof of provider creation. Preserve unknown effects and use generic retry-later messaging for inconclusive reads. This is M4.6/M5 hardening, not milestone closure.

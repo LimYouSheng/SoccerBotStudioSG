@@ -1114,5 +1114,9 @@
   {
     "file": "src/features/booking/direct-checkout.test.tsx",
     "title": "checkout readback uses slot-specific messaging only for verified unavailability"
+  },
+  {
+    "file": "src/features/booking/booking-parity.test.tsx",
+    "title": "cold calendar entry and refresh select an available day while retaining a valid chosen day"
   }
 ]
