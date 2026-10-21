@@ -21,7 +21,7 @@
     "check:policy": "node scripts/check-policy.mjs",
     "verify:code": "node scripts/verify.mjs code",
     "verify:browser": "node scripts/verify.mjs browser",
-    "format:check": "prettier --check src scripts/*.mjs tests *.ts *.mjs package.json package-lock.json tsconfig.json README.md AGENTS.md docs/*.md .github/workflows/*.yml worker wrangler.jsonc",
+    "format:check": "prettier --check src scripts/*.mjs tests *.ts *.mjs package.json package-lock.json tsconfig.json README.md AGENTS.md docs/*.md .github/workflows/*.yml worker wrangler.jsonc wrangler.telemetry.jsonc observability/*.json",
     "verify:worker": "node scripts/verify-worker.mjs"
   },
   "dependencies": {

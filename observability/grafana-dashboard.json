@@ -1,0 +1,391 @@
+{
+  "title": "SoccerBot backend diagnostics",
+  "uid": "soccerbot-backend",
+  "schemaVersion": 39,
+  "version": 1,
+  "tags": ["soccerbot", "backend", "prepared"],
+  "timezone": "browser",
+  "refresh": "1m",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "DS_TEMPO",
+        "type": "datasource",
+        "query": "tempo",
+        "label": "Tempo",
+        "refresh": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "Scope and evidence limits",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 4
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "Backend diagnostic summaries, not native auto-instrumented call trees. Successes sampled at 10%; detected failures retained within export limits. Counts describe exported observations, not total traffic or unique incidents. Phase timings can overlap. Status/context/receipt latency is backend latency, not browser presentation. Join traces in Explore by `span.soccerbot.correlation_id` or `span.soccerbot.recovery_key`. Deployment and Grafana ingestion acceptance remain pending. TraceQL metrics support is required."
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Checkout latency \u2014 sampled successes",
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "tempo",
+        "uid": "${DS_TEMPO}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "traceql",
+          "query": "{ resource.service.name = \"soccerbot-dev\" && span.soccerbot.event = \"checkout_trace\" && span.soccerbot.retention = \"sampled_success\" } | quantile_over_time(span.soccerbot.durationMs, .5, .95)",
+          "metricsQueryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Confirmation / recovery latency \u2014 sampled successes",
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "tempo",
+        "uid": "${DS_TEMPO}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "traceql",
+          "query": "{ resource.service.name = \"soccerbot-dev\" && span.soccerbot.event = \"confirmation_trace\" && span.soccerbot.retention = \"sampled_success\" } | quantile_over_time(span.soccerbot.durationMs, .5, .95) by (span.soccerbot.boundary)",
+          "metricsQueryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Checkout D1 round trips \u2014 sampled successes",
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "tempo",
+        "uid": "${DS_TEMPO}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "traceql",
+          "query": "{ resource.service.name = \"soccerbot-dev\" && span.soccerbot.event = \"checkout_trace\" && span.soccerbot.retention = \"sampled_success\" } | avg_over_time(span.soccerbot.d1_count)",
+          "metricsQueryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Queue wait \u2014 sampled checkout",
+      "gridPos": {
+        "x": 12,
+        "y": 12,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "tempo",
+        "uid": "${DS_TEMPO}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "traceql",
+          "query": "{ resource.service.name = \"soccerbot-dev\" && span.soccerbot.event = \"checkout_trace\" && span.soccerbot.retention = \"sampled_success\" } | quantile_over_time(span.soccerbot.queue.durationMs, .5, .95)",
+          "metricsQueryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "SimplyBook checkout phase \u2014 sampled successes",
+      "gridPos": {
+        "x": 0,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "tempo",
+        "uid": "${DS_TEMPO}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "traceql",
+          "query": "{ resource.service.name = \"soccerbot-dev\" && span.soccerbot.event = \"checkout_trace\" && span.soccerbot.retention = \"sampled_success\" } | quantile_over_time(span.soccerbot.simplybook.durationMs, .5, .95)",
+          "metricsQueryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "HitPay checkout phase \u2014 sampled successes",
+      "gridPos": {
+        "x": 12,
+        "y": 20,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "tempo",
+        "uid": "${DS_TEMPO}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "traceql",
+          "query": "{ resource.service.name = \"soccerbot-dev\" && span.soccerbot.event = \"checkout_trace\" && span.soccerbot.retention = \"sampled_success\" } | quantile_over_time(span.soccerbot.hitpay.durationMs, .5, .95)",
+          "metricsQueryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Token cache observations \u2014 exported samples",
+      "gridPos": {
+        "x": 0,
+        "y": 28,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "tempo",
+        "uid": "${DS_TEMPO}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "traceql",
+          "query": "{ resource.service.name = \"soccerbot-dev\" && span.soccerbot.event = \"checkout_trace\" && span.soccerbot.retention = \"sampled_success\" } | count_over_time() by (span.soccerbot.token_cached)",
+          "metricsQueryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Persistent token events \u2014 exported observations",
+      "gridPos": {
+        "x": 12,
+        "y": 28,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "tempo",
+        "uid": "${DS_TEMPO}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "traceql",
+          "query": "{ resource.service.name = \"soccerbot-dev\" && span.soccerbot.event = \"provider_token_cache\" } | count_over_time() by (span.soccerbot.family, span.soccerbot.result)",
+          "metricsQueryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Retained failure summaries \u2014 not unique incidents",
+      "gridPos": {
+        "x": 0,
+        "y": 36,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "tempo",
+        "uid": "${DS_TEMPO}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "traceql",
+          "query": "{ resource.service.name = \"soccerbot-dev\" && span.soccerbot.retention = \"failure\" } | count_over_time() by (span.soccerbot.event)",
+          "metricsQueryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "Confirmation D1 round trips \u2014 sampled successes",
+      "gridPos": {
+        "x": 12,
+        "y": 36,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "tempo",
+        "uid": "${DS_TEMPO}"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "queryType": "traceql",
+          "query": "{ resource.service.name = \"soccerbot-dev\" && span.soccerbot.event = \"confirmation_trace\" && span.soccerbot.retention = \"sampled_success\" } | avg_over_time(span.soccerbot.d1.count) by (span.soccerbot.boundary)",
+          "metricsQueryType": "range"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        }
+      }
+    }
+  ]
+}

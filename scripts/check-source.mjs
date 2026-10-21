@@ -55,7 +55,10 @@ export function checkSource(root) {
       if (ignored.has(entry.name)) continue;
       const full = path.join(dir, entry.name);
       const relative = path.relative(root, full).replaceAll(path.sep, "/");
-      if (relative === "worker/runtime.d.ts") continue;
+      if (
+        ["worker/runtime.d.ts", "worker/telemetry-env.d.ts"].includes(relative)
+      )
+        continue;
       names.push(relative);
       if (/[\x00-\x1f<>:"|?*]/.test(entry.name) || /[. ]$/.test(entry.name))
         errors.push(`Nonportable path: ${relative}`);

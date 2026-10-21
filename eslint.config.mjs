@@ -39,6 +39,7 @@ export default defineConfig([
   },
   globalIgnores([
     "worker/runtime.d.ts",
+    "worker/telemetry-env.d.ts",
     ".wrangler/**",
     ".next/**",
     "out/**",

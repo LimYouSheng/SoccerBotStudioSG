@@ -4,6 +4,14 @@
 
 Sessions and total appear once in the top confirmation summary, including every batch session and instructor. Expanded details contain Client Details and Location side by side when space permits, followed by a concise full-width disclaimer and existing provider references. Remove redundant session/amount sections; a zero-tax line must not be mistaken for a zero booking total. Pending/confirmed authority, payment/receipt values and exports are unchanged.
 
+## Backend telemetry preparation — 21 October 2026
+
+The owner prioritizes backend observability before further acceptance experiments and plans Workers Paid; no Grafana stack exists yet. worker/telemetry.ts is a separate Tail Worker entry, never imported by booking code. It converts a strict allowlist of existing diagnostic summaries to OpenTelemetry OTLP/HTTP JSON for Grafana Tempo after producer execution. No new provider/D1 calls, database state, checkout timing instrumentation or browser telemetry. Existing Cloudflare sanitized diagnostics remain during validation.
+
+Native Cloudflare export is supported but automatically includes URL and SQL attributes, so it is not enabled for this privacy boundary. The Tail exporter discards request metadata, headers, bodies, exceptions, arbitrary keys and dynamic text. Correlation UUIDs, hashed recovery keys and validated Worker version UUIDs are diagnostic references only. Per-invocation traces join through explicit correlation/recovery attributes; they do not claim continuous parent-child tracing through RPC/alarm/restart or exact individual-call span timing.
+
+Committed configuration is disabled, has no Grafana endpoint, no producer attachment and no public route. Successful correlation sampling defaults to10%; detected failures bypass that sampling within bounded processing/export limits. Delivery is best effort with no persistent spool or retries; missing telemetry cannot change payment/booking outcomes. Service Contracts owns setup, limits, dashboard interpretation and actual deployment/ingestion acceptance. This advances M6 monitoring preparation, not M4/M5 acceptance or release readiness.
+
 ## Current implementation rules — 20 October 2026
 
 This section is the authoritative current design. Service Contracts owns operation semantics; Journey owns dated evidence. Historical entries below describe their original revisions and do not override this section.
