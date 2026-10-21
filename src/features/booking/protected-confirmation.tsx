@@ -248,7 +248,6 @@ export function ProtectedConfirmation({
     return (
       <BookingConfirmation
         booking={displayedReceipt.booking}
-        taxMinor={displayedReceipt.taxMinor}
         verifiedAtMs={customerProof?.verifiedAtMs ?? saved?.verifiedAtMs}
         onAgain={async () => {
           if (onRestart) {
@@ -305,7 +304,6 @@ export function ProtectedConfirmation({
       return (
         <BookingConfirmation
           booking={details.booking}
-          taxMinor={details.taxMinor}
           pending
           pendingLabel={pendingLabel}
           onAgain={() => {}}

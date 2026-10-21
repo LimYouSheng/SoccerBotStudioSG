@@ -1094,6 +1094,14 @@ test("real payment recovery confirms the browser return from verified provider s
     await expect(
       page.getByRole("heading", { name: "Client Details" }),
     ).toBeVisible();
+    await expect(page.locator(".confirmation-disclaimers")).toHaveCSS(
+      "grid-column-start",
+      "1",
+    );
+    await expect(page.locator(".confirmation-disclaimers")).toHaveCSS(
+      "grid-column-end",
+      "-1",
+    );
     await expect(page.locator(".confirmation-details-grid")).toHaveCSS(
       "text-align",
       "center",
@@ -2416,7 +2424,9 @@ test("real API unpaid return shows the pending confirmation layout without claim
       page.getByRole("heading", { name: "Client Details", exact: true }),
     ).toBeVisible();
     await expect(
-      page.getByRole("region", { name: "Session Details" }),
+      page
+        .getByLabel("Booking summary")
+        .getByRole("list", { name: "Selected sessions" }),
     ).toBeVisible();
     await expect(
       page.getByRole("status", {

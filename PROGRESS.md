@@ -2,11 +2,11 @@
 
 ## Current checkpoint — 21 October 2026 SGT
 
-- Baseline: PR78 merged as 69945cc4ecae4593799f7205beedbc82513f9945. Tested PR head acc82ec11bb00dbcf26a4de322d31e8998ca7cec; owner handoff records all three PR gates passed in run39481563606. Remote main was fetched at that merge for this task.
-- Refreshed main evidence: [run39520056195](https://github.com/LimYouSheng/SoccerBotStudioSG/actions/runs/39520056195) passed all three verification gates and both deployment jobs. Read-only health confirms merge69945cc4 and Worker versione8f92c4a-64d8-4a9b-b0c3-a539c17581c2. This is deployment evidence, not performance/provider acceptance.
-- PR78 local validation reported424/424 Worker and223 frontend tests plus source/policy/types/lint/build/export. These belong to that candidate, not the current edits.
-- Current branch: polish/confirmation-docs-test-audit. Scope: concise documentation, confirmation presentation and test-suite audit. Full local verify:code passed223/223 frontend tests, tooling/installer, source/policy, format/lint/types and build/export. PR79 run39525183294 passed live-email but failed frontend/backend on the same obsolete navy confirmation-heading assertion across all three devices (72/75 browser cases passed in each). The test-only correction keeps navy on other headings/header and explicitly checks the approved confirmation/tick colours. Final repaired-commit CI and owner visual acceptance remain pending; this branch is not merged/deployed.
-- The recovered workspace contained an older clean checkout. The previous worktree and its uncommitted files were absent; its batch-atomicity reminder is incorporated from the owner handoff. The original checkout and its dependencies remain untouched; the new worktree uses a symlink to a separate install of the exact package lock, because the old cache lacked Worker tooling.
+- Deployed baseline: PR79 merge3e74b10a8e96f81051c6c257d6c93a5c277f3f11; main run39530449830 passed all three gates and both deployment jobs. Refreshed health matches Worker versiond92b2c50-c092-476f-a627-e73cf4b65af8. PR80 backend telemetry preparation passed all three gates in39542179705 but remains unmerged, disabled and unattached; owner will configure Grafana later.
+- Current branch fix/confirmation-details derives from main independently of PR80. Remove duplicate expanded session/amount sections; show all sessions and total once above, client/location below and short full-width disclaimer. Full local verify:code passed223 frontend tests plus source/policy/tooling/installer/format/lint/types/build/export. Exact-commit CI and owner visual acceptance remain pending.
+- HAR15 captures only recovery after reopening: same attempt and provider references, unchanged payment deadline and seven pending confirmation reads, all HTTP200. Initial checkout capture is missing, so original duplicate effects are not established. Unpaid-expiry result remains pending.
+- Owner reports an hours-later confirmed page reverting to payment-received/confirmation-pending. Tab was closed; capture is deferred to a later successful-payment ride-along. No diagnosis or repair is claimed.
+- Preserve dependency symlinks and failed evidence. Performance/cache-restoration testing remains postponed; no assistant browser or provider actions.
 
 ## Implemented baseline and evidence limits
 

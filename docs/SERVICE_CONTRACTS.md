@@ -1,5 +1,13 @@
 # SoccerBotStudio — Service Contracts
 
+## Confirmation details and acceptance follow-up — 21 October 2026
+
+The screenshot’s $0.00 was the tax line beneath Amount, not the booking total (HAR15 retained SGD88). Owner subsequently requested removal of both redundant Session Details and Amount sections. BookingConfirmation now renders every session/instructor and the total once in its summary; expanded details contain client/location and a full-width concise disclaimer. Shared Arrival supports compact confirmation wording while retaining the review-page guidance. Receipt tax data and download calculations remain unchanged; only the unused presentation prop is removed.
+
+Mandatory test-impact review covered pending/confirmed/saved receipt views, shared Arrival, all session/instructor/heading assertions, CSS ownership and demo/live browser journeys. Existing component assertions now require the three requested sections, retained total, no duplicate sections and full-width disclaimer; live browser coverage retains session visibility in the summary and checks the disclaimer spans both columns. No test identities, counts, retries, timeouts or financial proof assertions are removed. Full local verify:code passed223 tests and all static/tooling/build gates; browser execution remains owner/CI-only.
+
+HAR15 supplies post-reopen recovery evidence only (21October12:49:19–12:49:50 SGT): same retained attempt/provider references, unchanged payment expiry12:56:46 and checking deadline13:01:46, seven pending confirmation reads and no API errors. It does not establish initial dispatch counts or expiry outcome. Owner’s separate hours-later confirmed-to-pending report has no retained capture; reproduce alongside a later successful-payment acceptance test. No conjectured cause or provider-state change follows from that report.
+
 ## Test-suite audit — 21 October 2026
 
 Review scope: current confirmation/checkout/recovery components and services, all browser profiles, Worker harnesses, fixture transports, inventories, verification scripts and workflow. “Live-email” is the live frontend build profile; it does not mean tests send real email or use actual SimplyBook/HitPay.

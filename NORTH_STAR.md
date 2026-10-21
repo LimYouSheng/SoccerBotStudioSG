@@ -4,7 +4,7 @@
 
 Finish the customer website through client acceptance and handover. Current engineering work is M4.4–M4.6 booking/recovery and M5 payment/confirmation hardening, with some M6 implementation already present. This does not close earlier acceptance gaps or establish client/production readiness. The [canonical milestone status](docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md#milestone-status--21-october-2026) owns the mapping; the original 44 subiteration IDs and commercial schedule remain unchanged.
 
-Current task: compact and reconcile documentation; make the confirmation tick/message more prominent and the details centred and orderly; audit test currency, real application-service coverage and concurrency. Preserve payment/confirmation authority and all recovery safeguards.
+Current task: resume owner-operated acceptance and simplify confirmation details. Keep sessions/total once in the top summary, client/location alongside each other where space permits, and a short full-width disclaimer. Grafana hookup is deferred; PR80 remains separate and unmerged.
 
 Performance and actual persistent-token restoration testing are postponed. Before resuming, verify main CI and the deployed revision, then distinguish warm-memory hits from encrypted SQLite restoration after restart/eviction. Simulated timings and round trips are not live acceptance.
 

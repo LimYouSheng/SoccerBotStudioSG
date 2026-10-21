@@ -1,5 +1,9 @@
 # SoccerBotStudio — Rules & Architecture
 
+## Confirmation details presentation — 21 October 2026
+
+Sessions and total appear once in the top confirmation summary, including every batch session and instructor. Expanded details contain Client Details and Location side by side when space permits, followed by a concise full-width disclaimer and existing provider references. Remove redundant session/amount sections; a zero-tax line must not be mistaken for a zero booking total. Pending/confirmed authority, payment/receipt values and exports are unchanged.
+
 ## Current implementation rules — 20 October 2026
 
 This section is the authoritative current design. Service Contracts owns operation semantics; Journey owns dated evidence. Historical entries below describe their original revisions and do not override this section.

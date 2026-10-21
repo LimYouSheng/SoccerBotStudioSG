@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## 21 October 2026 — acceptance resumed and confirmation details simplified
+
+PR80 headb4d452c2ad10d18ed16e4044dd39ca05a4e361d6 passed frontend/backend/live-email in39542179705. Owner deferred Grafana hookup and resumed acceptance; no merge/deployment of PR80 occurred. Live PR79 main CI/deployment and health were refreshed successfully. HAR15 lacked the original checkout capture but showed retained same-attempt pending recovery; expiry outcome remains open. Owner reported a confirmed page reverting to pending after many hours, then closed it; evidence capture is postponed to a later successful-payment ride-along.
+
+Owner identified the narrow disclaimer and misleading zero tax beneath Amount, then clarified the desired layout: sessions/total once above, client/location alongside each other, disclaimer full width below. The candidate moves the complete session list into the summary (preserving batch sessions/instructors), removes duplicate expanded sections and shortens only confirmation arrival copy. No financial state or receipt calculation changes. First source check caught the now-unused confirmation-service CSS selector during the in-progress edit; remove its obsolete rules at their owners. Repaired full verify:code passed223 tests plus all static/tooling/installer/type/build/export gates. Exact-source CI and physical visual acceptance remain pending. This change is isolated from unmerged PR80 on fix/confirmation-details.
+
 ## 21 October 2026 — PR79 browser colour expectation repair
 
 Run39525183294 on6ea34d5 passed live-email; frontend/backend each passed72/75 browser cases and failed the same typography journey on desktop Chromium, phone WebKit and tablet WebKit. tests/customer.spec.ts pageHeading still required navy rgb(5,10,47) for Booking confirmed; the observed rgb(23,96,120) is the owner-requested new confirmation accent. The earlier impact pass missed that generic helper. Preserve the failed logs and run; this is a test expectation defect, not evidence to revert the requested presentation.
