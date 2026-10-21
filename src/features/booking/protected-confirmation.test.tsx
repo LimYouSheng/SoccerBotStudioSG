@@ -240,8 +240,23 @@ it("verified live receipt uses demo sections and refuses exports after access is
   expect(
     await screen.findByRole("heading", { name: "Client Details" }),
   ).toBeInTheDocument();
-  for (const name of ["Session Details", "Location", "Amount", "Disclaimers"])
+  for (const name of ["Location", "Disclaimers"])
     expect(screen.getByRole("heading", { name })).toBeInTheDocument();
+  expect(screen.getByLabelText("Booking summary")).toHaveTextContent(
+    "$88.00 SGD",
+  );
+  expect(
+    screen.queryByRole("region", { name: "Amount" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("region", { name: "Session Details" }),
+  ).not.toBeInTheDocument();
+  expect(screen.getByRole("region", { name: "Disclaimers" })).toHaveClass(
+    "confirmation-disclaimers",
+  );
+  expect(screen.getByRole("region", { name: "Disclaimers" })).toHaveTextContent(
+    "bring a towel",
+  );
   expect(screen.getByText("Native Trainer")).toBeInTheDocument();
   expect(screen.getByText("701")).toBeInTheDocument();
   expect(screen.getByText("901")).toBeInTheDocument();
@@ -650,7 +665,7 @@ it("pending confirmation retains the final detail layout while hiding success an
   expect(
     document.querySelector(".booking-loading-inline .page-loading-orbit"),
   ).not.toBeNull();
-  for (const name of ["Session Details", "Location", "Amount", "Disclaimers"])
+  for (const name of ["Location", "Disclaimers"])
     expect(screen.getByRole("heading", { name })).toBeVisible();
   expect(screen.getByText("Synthetic Customer")).toBeVisible();
   expect(

@@ -7,6 +7,8 @@ type Window = {
   next: number;
   count: number;
   final?: boolean;
+  refreshNext?: number;
+  holdChecked?: number;
 };
 type ServerWindow = { deadlineMs: number; nextCheckMs: number };
 function windowFor(id: string, deadline = Date.now() + 600000): Window {
@@ -21,7 +23,15 @@ function windowFor(id: string, deadline = Date.now() + 600000): Window {
       value.next >= 0 &&
       value.count >= 0
     )
-      return value;
+      return {
+        ...value,
+        refreshNext: Number.isSafeInteger(value.refreshNext)
+          ? value.refreshNext
+          : undefined,
+        holdChecked: Number.isSafeInteger(value.holdChecked)
+          ? value.holdChecked
+          : undefined,
+      };
   } catch {
     /* Server limits remain authoritative when browser storage fails. */
   }
@@ -39,6 +49,7 @@ export function useConfirmationChecking(
   sessionRevision = 0,
   enabled = true,
   serverDeadline?: number,
+  holdExpiresAtMs?: number,
 ) {
   const [result, setResult] = useState<{
     id: string;
@@ -66,7 +77,9 @@ export function useConfirmationChecking(
       timer: ReturnType<typeof setTimeout> | undefined;
     let budget = windowFor(attemptId, serverDeadline);
     save(attemptId, budget);
+    let unresolved = false;
     const show = (view: View) => {
+      unresolved = view === "unresolved";
       if (active)
         setResult({
           id: attemptId,
@@ -85,7 +98,19 @@ export function useConfirmationChecking(
     let expired = false;
     function schedule() {
       clearTimeout(timer);
-      if (!active || terminal || document.hidden) return;
+      if (!active || document.hidden) return;
+      if (terminal) {
+        if (
+          unresolved &&
+          holdExpiresAtMs !== undefined &&
+          budget.holdChecked !== holdExpiresAtMs
+        )
+          timer = setTimeout(
+            () => void poll("hold"),
+            Math.max(1, holdExpiresAtMs - Date.now()),
+          );
+        return;
+      }
       timer = setTimeout(
         () => void poll(),
         Math.max(
@@ -98,7 +123,7 @@ export function useConfirmationChecking(
         ),
       );
     }
-    function reserve() {
+    function reserve(recheck: boolean) {
       const claim = () => {
         const shared = windowFor(attemptId, serverDeadline);
         budget = {
@@ -106,7 +131,23 @@ export function useConfirmationChecking(
           next: Math.max(budget.next, shared.next),
           count: Math.max(budget.count, shared.count),
           final: budget.final || shared.final,
+          refreshNext: Math.max(
+            budget.refreshNext ?? 0,
+            shared.refreshNext ?? 0,
+          ),
+          holdChecked: shared.holdChecked ?? budget.holdChecked,
         };
+        if (recheck) {
+          const holdDue =
+            holdExpiresAtMs !== undefined &&
+            Date.now() >= holdExpiresAtMs &&
+            budget.holdChecked !== holdExpiresAtMs;
+          if (!holdDue && Date.now() < (budget.refreshNext ?? 0)) return false;
+          budget.refreshNext = Date.now() + 30000;
+          if (holdDue) budget.holdChecked = holdExpiresAtMs;
+          save(attemptId, budget);
+          return true;
+        }
         if (
           (Date.now() >= budget.deadline && budget.final) ||
           budget.count >= 120
@@ -132,17 +173,22 @@ export function useConfirmationChecking(
             .catch(() => claim())
         : claim();
     }
-    async function poll() {
-      if (!active || terminal || busy || document.hidden) return;
+    async function poll(trigger?: "focus" | "hold") {
+      const recheck =
+        terminal &&
+        unresolved &&
+        trigger !== undefined &&
+        Date.now() >= budget.deadline;
+      if (!active || (terminal && !recheck) || busy || document.hidden) return;
       busy = true;
       const current = ++generation;
-      const reservation = reserve();
+      const reservation = reserve(recheck);
       if (
         !(typeof reservation === "boolean" ? reservation : await reservation)
       ) {
         busy = false;
-        if (active && !terminal) {
-          show("checking");
+        if (active) {
+          if (!terminal) show("checking");
           schedule();
         }
         return;
@@ -153,7 +199,7 @@ export function useConfirmationChecking(
       }
       const requestController = new AbortController();
       controller = requestController;
-      show("checking");
+      show(recheck ? "unresolved" : "checking");
       let requestTimer: ReturnType<typeof setTimeout> | undefined;
       try {
         const response = await Promise.race([
@@ -206,7 +252,10 @@ export function useConfirmationChecking(
         } else show("checking");
       } catch (error) {
         if (!active || generation !== current) return;
-        if (Date.now() >= budget.deadline) {
+        if (error instanceof ConfirmationError && error.kind === "denied") {
+          terminal = true;
+          show("denied");
+        } else if (Date.now() >= budget.deadline) {
           terminal = true;
           show("unresolved");
         } else if (error instanceof ConfirmationError) {
@@ -216,10 +265,7 @@ export function useConfirmationChecking(
           );
           budget.next = Math.max(budget.next, error.nextCheckMs ?? 0);
           save(attemptId, budget);
-          if (error.kind === "denied") {
-            terminal = true;
-            show("denied");
-          } else if (error.kind === "exhausted") {
+          if (error.kind === "exhausted") {
             terminal = true;
             show("unresolved");
           } else show(error.kind === "throttled" ? "checking" : "unavailable");
@@ -243,7 +289,7 @@ export function useConfirmationChecking(
         controller?.abort();
         busy = false;
         clearTimeout(timer);
-      } else void poll();
+      } else void poll("focus");
     }
     bind.current = (window) => {
       if (!active) return;
@@ -256,6 +302,8 @@ export function useConfirmationChecking(
         next: Math.max(budget.next, shared.next, window.nextCheckMs),
         count: Math.max(budget.count, shared.count),
         final: budget.final || shared.final,
+        refreshNext: Math.max(budget.refreshNext ?? 0, shared.refreshNext ?? 0),
+        holdChecked: shared.holdChecked ?? budget.holdChecked,
       };
       save(attemptId, budget);
       if (
@@ -285,7 +333,7 @@ export function useConfirmationChecking(
       document.removeEventListener("visibilitychange", visibility);
       window.removeEventListener("focus", visibility);
     };
-  }, [attemptId, sessionRevision, enabled, serverDeadline]);
+  }, [attemptId, sessionRevision, enabled, serverDeadline, holdExpiresAtMs]);
   return {
     customerConfirmation:
       result?.id === attemptId && result.revision === sessionRevision

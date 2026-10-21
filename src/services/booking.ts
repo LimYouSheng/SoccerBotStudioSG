@@ -382,6 +382,22 @@ async function nativeRequest(
         .clone()
         .json()
         .catch(() => null);
+      if (error?.error === "checkout_selection_unavailable")
+        throw new BookingServiceError(
+          "selection_unavailable",
+          "This time slot is no longer available. Please choose another. Your details have been kept.",
+        );
+      if (
+        [
+          "checkout_already_active",
+          "checkout_window_unresolved",
+          "native_customer_window_unavailable",
+        ].includes(error?.error)
+      )
+        throw new BookingServiceError(
+          "checkout_window_blocked",
+          "We couldn’t start checkout. Please try again later.",
+        );
       if (error?.error === "checkout_not_started")
         throw new BookingServiceError(
           "checkout_not_started",

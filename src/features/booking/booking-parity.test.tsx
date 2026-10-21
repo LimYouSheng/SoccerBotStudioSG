@@ -1033,3 +1033,93 @@ test("failed public calendar releases full-page loading and leaves refresh avail
     screen.getByRole("button", { name: "Refresh availability" }),
   ).toBeEnabled();
 });
+
+test("cold calendar entry and refresh select an available day while retaining a valid chosen day", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-21T02:00:00Z"));
+  localStorage.clear();
+  let dates = ["2026-10-22", "2026-10-23"];
+  let release: (() => void) | undefined;
+  const publicCalendar = vi.fn(async ({ month }: { month: string }) => {
+    if (!release)
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+    return {
+      month,
+      serviceId: "2",
+      observedAtMs: Date.now(),
+      dates: dates.map((date) => ({
+        date,
+        available: true,
+        offers: [
+          {
+            serviceId: "2",
+            serviceName: "Session",
+            instructorId: "14",
+            instructorName: "Trainer",
+            startMs: Date.parse(`${date}T12:00:00+08:00`),
+            priceMinor: 8800,
+            currency: "SGD" as const,
+          },
+        ],
+      })),
+    };
+  });
+  const service: BookingService = {
+    ...demoBookingService,
+    mode: "live",
+    operations: { ...demoBookingService.operations, availability: "live" },
+    publicCalendar,
+  };
+  function ChooseService() {
+    const { update } = useBooking();
+    return (
+      <button onClick={() => update({ mode: "guest", nativeServiceId: "2" })}>
+        Choose calendar service
+      </button>
+    );
+  }
+  const view = () => (
+    <BookingProvider bookingService={service}>
+      <ChooseService />
+      <TimeStep />
+    </BookingProvider>
+  );
+  const first = render(view());
+  fireEvent.click(
+    screen.getByRole("button", { name: "Choose calendar service" }),
+  );
+  await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(1));
+  await act(async () => {
+    release!();
+  });
+  const day = (date: string) =>
+    within(screen.getByRole("region", { name: "Booking calendar" })).getByRole(
+      "button",
+      { name: dateLabel(date) },
+    );
+  await waitFor(() =>
+    expect(day("2026-10-22")).toHaveAttribute("aria-pressed", "true"),
+  );
+  fireEvent.click(day("2026-10-23"));
+  fireEvent.click(screen.getByRole("button", { name: "Refresh availability" }));
+  await waitFor(() => expect(publicCalendar).toHaveBeenCalledTimes(2));
+  expect(day("2026-10-23")).toHaveAttribute("aria-pressed", "true");
+  dates = ["2026-10-24"];
+  fireEvent.click(screen.getByRole("button", { name: "Refresh availability" }));
+  await waitFor(() =>
+    expect(day("2026-10-24")).toHaveAttribute("aria-pressed", "true"),
+  );
+  dates = [];
+  fireEvent.click(screen.getByRole("button", { name: "Refresh availability" }));
+  await screen.findByText("No times on this day.");
+  expect(day("2026-10-24")).toHaveAttribute("aria-pressed", "true");
+  first.unmount();
+  dates = ["2026-10-22", "2026-10-23"];
+  render(view());
+  await waitFor(() =>
+    expect(day("2026-10-22")).toHaveAttribute("aria-pressed", "true"),
+  );
+  expect(screen.queryByText("No times on this day.")).not.toBeInTheDocument();
+});

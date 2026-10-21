@@ -4,7 +4,7 @@
 
 Finish the customer website through client acceptance and handover. Current engineering work is M4.4–M4.6 booking/recovery and M5 payment/confirmation hardening, with some M6 implementation already present. This does not close earlier acceptance gaps or establish client/production readiness. The [canonical milestone status](docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md#milestone-status--21-october-2026) owns the mapping; the original 44 subiteration IDs and commercial schedule remain unchanged.
 
-Current task: prepare backend-only OpenTelemetry export and Grafana dashboards using sanitized checkout/reconciliation diagnostics. Owner has no Grafana stack yet and intends Workers Paid. Export remains disabled and unattached; acceptance experiments are paused while this integration is prepared.
+Current task: standardize available-day selection on calendar refresh, alongside the rejected-checkout readback repair; push final CI, then resume owner-operated acceptance. PR81 also includes confirmation details and focus/hold-expiry refresh; the owner waived the latter’s deployed retest. Grafana hookup remains deferred and export disabled.
 
 Performance and actual persistent-token restoration testing are postponed. Before resuming, verify main CI and the deployed revision, then distinguish warm-memory hits from encrypted SQLite restoration after restart/eviction. Simulated timings and round trips are not live acceptance.
 

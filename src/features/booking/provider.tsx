@@ -564,6 +564,15 @@ export function BookingProvider({
           setAction({ status: "failure", operation, error: error.message });
           return false;
         }
+        if (
+          error instanceof BookingServiceError &&
+          error.code === "checkout_window_blocked"
+        ) {
+          // This rejected preparation has no payment handoff. Keep its identity
+          // and show the readback result here instead of polling confirmation.
+          setAction({ status: "failure", operation, error: error.message });
+          return false;
+        }
         // A lost write response is not permission to create another booking.
         // Resolve it once through the protected current-attempt read, accepting
         // only the exact original attempt with a fully verified hold.

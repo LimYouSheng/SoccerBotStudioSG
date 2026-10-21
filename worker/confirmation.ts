@@ -317,6 +317,9 @@ export async function checkoutContext(
     },
     checking: {
       deadlineMs: snapshot.deadline,
+      ...(row.hold_expires_ms === null
+        ? {}
+        : { holdExpiresAtMs: row.hold_expires_ms }),
       nextCheckMs: row.confirmation_next_ms,
       pollAfterMs: policy(env).POLL_INTERVAL_MS,
     },

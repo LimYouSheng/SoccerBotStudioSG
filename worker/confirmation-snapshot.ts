@@ -22,6 +22,7 @@ export async function confirmationSnapshot(
     SELECT a.id,a.created_ms,a.deadline_ms,a.state,a.intent_json,a.intent_hash,
       a.association_json,a.observation_json,a.confirmation_next_ms,
       r.route,c.booking_created_ms,c.payment_window_ms,c.confirmation_json,
+      (SELECT expires_ms FROM hitpay_holds WHERE attempt_id=a.id) AS hold_expires_ms,
       CASE WHEN p.attempt_id IS NULL THEN NULL ELSE json_object(
         'attempt_id',p.attempt_id,'scope_json',p.scope_json,'reference',p.reference,
         'request_id',p.request_id,'checkout_url',p.checkout_url,'expires_ms',p.expires_ms,
@@ -48,6 +49,7 @@ export async function confirmationSnapshot(
         route: string | null;
         booking_created_ms: number | null;
         payment_window_ms: number | null;
+        hold_expires_ms: number | null;
         confirmation_json: string | null;
         payment_json: string | null;
         availability_json: string | null;

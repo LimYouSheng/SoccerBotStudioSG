@@ -9,6 +9,7 @@ import {
   type ReadOptions,
 } from "./public-calendar";
 import { providerSecrets } from "./provider-transport";
+import { intentSchema, associationSchema } from "./journal";
 
 export type Grant = {
   capability_hash: string;
@@ -206,4 +207,85 @@ export async function archiveRejectedCustomerGrant(
       .bind(capabilityHash),
   ]);
   return results.at(-1)!.results.length > 0;
+}
+
+// Called only after preparation rejects its one-use window, before execution.
+// Read existing ownership first; availability never resolves a dispatched write.
+export async function rejectedCheckoutReadback(
+  request: Request,
+  value: unknown,
+  options: ReadOptions,
+) {
+  const input = nativePrepareSchema.parse(value);
+  const access = await authenticate(request, options.env, Date.now());
+  const db = options.env.STATE.withSession("first-primary");
+  const [original, active] = await db.batch<{
+    id: string;
+    intent_json?: string;
+    association_json?: string | null;
+  }>([
+    db.prepare("SELECT id FROM attempts WHERE id=?").bind(input.key),
+    db
+      .prepare(
+        "SELECT a.id,a.intent_json,a.association_json FROM native_checkout_grants g JOIN attempts a ON a.id=g.attempt_id WHERE g.capability_hash=? AND a.owner_id=? LIMIT 1",
+      )
+      .bind(access.capability_hash, access.owner_id),
+  ]);
+  await authenticate(request, options.env, Date.now());
+  if (original.results.length) return "checkout_window_unresolved";
+  const owned = active.results[0];
+  if (owned) {
+    // An owned attempt for another session, or an unobserved write, cannot
+    // establish that this selection is occupied. Never disclose its details.
+    if (
+      typeof owned.association_json !== "string" ||
+      typeof owned.intent_json !== "string"
+    )
+      return "checkout_already_active";
+    associationSchema.parse(JSON.parse(owned.association_json));
+    const intent = intentSchema.parse(JSON.parse(owned.intent_json));
+    if (
+      !input.sessions.some((session) =>
+        intent.sessions.some(
+          (existing) =>
+            existing.serviceId === session.serviceId &&
+            existing.instructorId === session.instructorId &&
+            existing.startMs === session.startMs,
+        ),
+      )
+    )
+      return "checkout_already_active";
+  }
+  const days = new Map<
+    string,
+    Awaited<ReturnType<typeof windowAvailability>>
+  >();
+  for (const session of input.sessions) {
+    const date = new Date(session.startMs + 28800000)
+      .toISOString()
+      .slice(0, 10);
+    let day = days.get(date);
+    if (!day) {
+      day = await windowAvailability({
+        ...options,
+        date,
+        serviceId: "2",
+        fresh: true,
+      });
+      days.set(date, day);
+    }
+    if (
+      !day.offers.some(
+        (offer) =>
+          offer.serviceId === session.serviceId &&
+          offer.instructorId === session.instructorId &&
+          offer.startMs === session.startMs,
+      )
+    ) {
+      await authenticate(request, options.env, Date.now());
+      return "checkout_selection_unavailable";
+    }
+  }
+  await authenticate(request, options.env, Date.now());
+  return "checkout_window_unresolved";
 }

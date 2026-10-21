@@ -22,7 +22,10 @@ import { payHitpayHold } from "./hitpay-hold";
 import { hitpayRecoveryEnabled } from "./hitpay-contract";
 import { recoverHitpay } from "./hitpay-recovery";
 import { ongoingReadbackDue } from "./ongoing-readback";
-import { authorizeCustomerCheckout } from "./customer-authority";
+import {
+  authorizeCustomerCheckout,
+  rejectedCheckoutReadback,
+} from "./customer-authority";
 import {
   publicCalendar,
   calendarWindow,
@@ -994,7 +997,18 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
                   ),
             access,
             retainedGrant,
-          );
+          ).catch(async (error: unknown) => {
+            if (
+              !(error instanceof ApiError) ||
+              error.code !== "native_customer_window_unavailable"
+            )
+              throw error;
+            const code = await rejectedCheckoutReadback(request, input, {
+              ...this.calendarReadOptions(),
+              env,
+            }).catch(() => "checkout_window_unresolved");
+            throw new ApiError(503, code);
+          });
           this.invalidateDisplay();
           return executeNativeCheckout({
             request,

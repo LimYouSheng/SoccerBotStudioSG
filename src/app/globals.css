@@ -258,8 +258,7 @@
   .booking-facts,
   .line-item,
   .check-label,
-  .section-description,
-  .confirmation-service {
+  .section-description {
     font-size: var(--text-body);
     line-height: var(--leading-body);
   }
@@ -3558,13 +3557,16 @@
     margin-bottom: 10px;
     overflow-wrap: anywhere;
   }
-  .confirmation-section .series-list li {
+  .confirmation-summary .series-list li {
     flex-direction: column;
     gap: 6px;
     justify-content: center;
   }
-  .confirmation-section .series-date {
+  .confirmation-summary .series-date {
     text-align: center;
+  }
+  .confirmation-disclaimers {
+    grid-column: 1 / -1;
   }
   .confirmation-provider-references {
     grid-column: 1 / -1;
@@ -3573,9 +3575,6 @@
     font-size: var(--text-meta);
     color: var(--color-muted);
     overflow-wrap: anywhere;
-  }
-  .confirmation-service {
-    margin-bottom: 16px;
   }
   .confirmation-section .rotation-notice {
     margin-bottom: 12px;

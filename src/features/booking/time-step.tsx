@@ -67,6 +67,20 @@ export function TimeStep() {
   const dayAvailability = new Map(
     monthResult?.dates.map((day) => [day.date, day.available]),
   );
+  // Initial entry and browser/availability refresh use the same resolved day.
+  // Wait for a successful month snapshot; loading/failure never moves selection.
+  if (
+    publicCalendarReady &&
+    monthResult &&
+    dayAvailability.get(date) !== true
+  ) {
+    const availableDays = monthResult.dates.filter(
+      (day) => day.available && day.date >= today,
+    );
+    const next =
+      availableDays.find((day) => day.date >= date) ?? availableDays[0];
+    if (next && next.date !== date) setDate(next.date);
+  }
   const displayDate =
     publicCalendarReady && dayAvailability.get(date) !== true ? null : date;
   useEffect(() => {

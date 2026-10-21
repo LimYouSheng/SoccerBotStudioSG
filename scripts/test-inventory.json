@@ -1044,6 +1044,18 @@
     "title": "a return at minute seven keeps six minutes of checking and makes one final read without renewing on reload"
   },
   {
+    "file": "src/features/booking/confirmation-checking.test.tsx",
+    "title": "rechecks unresolved status on focus without renewing the window and coalesces duplicate events"
+  },
+  {
+    "file": "src/features/booking/confirmation-checking.test.tsx",
+    "title": "checks once at the original hold expiry after polling ends and preserves that check across reload"
+  },
+  {
+    "file": "src/features/booking/confirmation-checking.test.tsx",
+    "title": "catches up a hidden hold expiry on focus and stops after authorization denial"
+  },
+  {
     "file": "src/features/booking/direct-checkout.test.tsx",
     "title": "Review performs no provider reads and checkout verifies one booking before HitPay"
   },
@@ -1094,5 +1106,17 @@
   {
     "file": "src/features/booking/direct-checkout.test.tsx",
     "title": "queue rejection keeps the original attempt on Review for an explicit retry"
+  },
+  {
+    "file": "src/features/booking/direct-checkout.test.tsx",
+    "title": "rejected checkout window retains its attempt and displays the readback without payment confirmation polling"
+  },
+  {
+    "file": "src/features/booking/direct-checkout.test.tsx",
+    "title": "checkout readback uses slot-specific messaging only for verified unavailability"
+  },
+  {
+    "file": "src/features/booking/booking-parity.test.tsx",
+    "title": "cold calendar entry and refresh select an available day while retaining a valid chosen day"
   }
 ]

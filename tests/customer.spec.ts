@@ -473,9 +473,7 @@ test("oracle booking sizing and rotation disclaimers persist through checkout", 
   await expect(page.locator("main details[open]")).toHaveCount(1);
   await expect(page.locator(".confirmation-section > h2")).toHaveText([
     "Client Details",
-    "Session Details",
     "Location",
-    "Amount",
     "Disclaimers",
   ]);
   await expect(

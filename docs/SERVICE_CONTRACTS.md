@@ -1,5 +1,31 @@
 # SoccerBotStudio — Service Contracts
 
+## Consistent calendar selection — 21 October 2026 SGT
+
+Calendar date selection: first entry and refresh resolve the selected day after a successful public month snapshot. Keep a currently available chosen day; otherwise choose the next available date in that month, falling back to its first available future date. Loading, failed reads and a month with no availability do not invent an available date. Selected booking sessions remain unchanged. This adds no polling or provider calls.
+
+## Rejected checkout readback — 21 October 2026 SGT
+
+When combined hold/checkout preparation rejects native_customer_window_unavailable, the account coordinator performs bounded readback under current authentication. Read the original attempt and current owned grant first. An existing original attempt or unobserved/other-session active attempt remains blocked. For a different owned attempt with retained association matching the selection, or when no attempt exists, use fresh provider availability for the selected dates (at most12, deduplicated). Missing/failed reads remain unresolved. Availability is evidence of current unavailability, not proof of a particular customer’s booking. No creation/payment retry, grant renewal, cleanup or deadline change follows.
+
+Customer messaging: verified selection unavailable uses “This time slot is no longer available. Please choose another.” Other window failures use “We couldn’t start checkout. Please try again later.” Explicit rejected preparation stays on Review without entering payment verification; preserve the original local attempt for generic failures. Genuine lost-write responses retain the existing recovery handling. Successful-path trips are unchanged; extra reads occur only on this rejection.
+
+Owner acceptance: HAR17 checkout succeeded; HAR18 overlapping attempt received the window rejection. Owner saw only one SimplyBook booking. Later screenshot status requests were outside the saved HAR18. Duplicate creation was not observed; rejected-tab presentation failed. This repair requires final CI and deployed acceptance.
+
+## Unresolved confirmation refresh — 21 October 2026 SGT
+
+Protected checkout context exposes the persisted hold expiry as optional checking.holdExpiresAtMs. After bounded checking ends, an unresolved page reads status on foreground/focus (coalesced across events/tabs with a30-second minimum interval) and once at the original hold expiry. Hidden pages catch up when visible. These reads preserve the original deadline, final-read marker and normal polling allowance; they do not restart polling or provider work. Confirmed/denied pages do not recheck. Only an authenticated server expired result permits the existing expiry transition; elapsed browser time alone never clears an unknown payment. Existing8-minute payment,13-minute checking and15-minute hold policies remain unchanged.
+
+Acceptance test1: owner observed unpaid timeout in SimplyBook and could start a new booking from home, while the existing unresolved page stayed stale. HAR16 contains unresolved responses even after the nominal hold deadline; the exact provider/reconciliation timing remains unproven. Focus/hold refresh is implemented for retest, not accepted as deployed. Initial checkout capture and late-payment proof remain missing.
+
+## Confirmation details and acceptance follow-up — 21 October 2026
+
+The screenshot’s $0.00 was the tax line beneath Amount, not the booking total (HAR15 retained SGD88). Owner subsequently requested removal of both redundant Session Details and Amount sections. BookingConfirmation now renders every session/instructor and the total once in its summary; expanded details contain client/location and a full-width concise disclaimer. Shared Arrival supports compact confirmation wording while retaining the review-page guidance. Receipt tax data and download calculations remain unchanged; only the unused presentation prop is removed.
+
+Mandatory test-impact review covered pending/confirmed/saved receipt views, shared Arrival, all session/instructor/heading assertions, CSS ownership and demo/live browser journeys. Existing component assertions now require the three requested sections, retained total, no duplicate sections and full-width disclaimer; live browser coverage retains session visibility in the summary and checks the disclaimer spans both columns. No test identities, counts, retries, timeouts or financial proof assertions are removed. Full local verify:code passed223 tests and all static/tooling/build gates; browser execution remains owner/CI-only.
+
+HAR15 supplies post-reopen recovery evidence only (21October12:49:19–12:49:50 SGT): same retained attempt/provider references, unchanged payment expiry12:56:46 and checking deadline13:01:46, seven pending confirmation reads and no API errors. It does not establish initial dispatch counts or expiry outcome. Owner’s separate hours-later confirmed-to-pending report has no retained capture; reproduce alongside a later successful-payment acceptance test. No conjectured cause or provider-state change follows from that report.
+
 ## Backend OpenTelemetry export — preparation, 21 October 2026
 
 **Owners:** worker/telemetry.ts, wrangler.telemetry.jsonc, observability/grafana-dashboard.json. This separate Tail handler exports backend diagnostic summaries to Grafana Cloud Tempo using OTLP/HTTP JSON; it does not install a browser SDK or enable Cloudflare automatic traces. Existing logs remain unchanged. Inputs are platform Tail events from soccerbot-dev; only foundation_trace, checkout_trace, confirmation_trace, provider_token_cache and hitpay_transport_failure are recognized. All outbound fields are rebuilt from fixed labels, finite nonnegative measurements, booleans, correlation UUIDs and hashed recovery keys. Raw requests, SQL, exceptions, customer data, tokens, checkout URLs and arbitrary log messages never enter the export body.

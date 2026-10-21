@@ -903,3 +903,77 @@ it("queue rejection keeps the original attempt on Review for an explicit retry",
   expect(fetch.mock.calls[1][0]).toBe(fetch.mock.calls[0][0]);
   expect(fetch.mock.calls[1][1]?.body).toBe(fetch.mock.calls[0][1]?.body);
 });
+
+it("rejected checkout window retains its attempt and displays the readback without payment confirmation polling", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-15T00:00:00Z"));
+  const fetch = vi.fn(async () =>
+    Response.json({ error: "checkout_already_active" }, { status: 503 }),
+  );
+  vi.stubGlobal("fetch", fetch);
+  render(
+    <BookingProvider
+      bookingService={{
+        ...liveBookingService,
+        restore: undefined,
+        calendar: undefined,
+        publicCalendar: undefined,
+      }}
+      identityService={demoCustomerIdentity}
+    >
+      <Seed />
+      <ReviewStep />
+    </BookingProvider>,
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Seed" }));
+  fireEvent.click(screen.getByRole("button", { name: "Repeat checkout" }));
+  await screen.findByText(
+    "We couldn’t start checkout. Please try again later.",
+  );
+  expect(screen.getByTestId("retained").textContent).toMatch(/^[0-9a-f-]{36}$/);
+  expect(screen.getByTestId("action")).toHaveTextContent("failure");
+  expect(navigation.push).not.toHaveBeenCalled();
+  expect(navigation.replace).not.toHaveBeenCalled();
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(screen.queryByText("Verifying your payment…")).not.toBeInTheDocument();
+});
+
+it("checkout readback uses slot-specific messaging only for verified unavailability", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-10-15T00:00:00Z"));
+  const attempt: Attempt = {
+    id,
+    draft,
+    status: "ready",
+    outcome: "pending",
+    checkUntil: 0,
+    booking: null,
+  };
+  for (const error of [
+    "checkout_already_active",
+    "checkout_window_unresolved",
+    "native_customer_window_unavailable",
+    "checkout_selection_unavailable",
+  ]) {
+    const fetch = vi.fn(async () => Response.json({ error }, { status: 503 }));
+    vi.stubGlobal("fetch", fetch);
+    await expect(
+      liveBookingService.pay({
+        attempt,
+        holding: true,
+        startCheckout: true,
+        outcome: "success",
+      }),
+    ).rejects.toMatchObject({
+      code:
+        error === "checkout_selection_unavailable"
+          ? "selection_unavailable"
+          : "checkout_window_blocked",
+      message:
+        error === "checkout_selection_unavailable"
+          ? "This time slot is no longer available. Please choose another. Your details have been kept."
+          : "We couldn’t start checkout. Please try again later.",
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+  }
+});

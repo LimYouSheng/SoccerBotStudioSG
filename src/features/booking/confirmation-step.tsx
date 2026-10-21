@@ -76,7 +76,6 @@ export function BookingConfirmation({
   preview = false,
   pending = false,
   pendingLabel = "Verifying your payment…",
-  taxMinor = 0,
   verifiedAtMs,
   onAgain,
   onHome,
@@ -87,7 +86,6 @@ export function BookingConfirmation({
   preview?: boolean;
   pending?: boolean;
   pendingLabel?: string;
-  taxMinor?: number;
   verifiedAtMs?: number;
   onAgain: () => void | Promise<void>;
   onHome?: () => void | Promise<void>;
@@ -221,13 +219,7 @@ export function BookingConfirmation({
             {booking.slots.length === 1 ? "session" : "sessions"} · Singapore
             time
           </p>
-          <p>
-            {dateLabel(booking.slots[0].date)} · {booking.slots[0].start}–
-            {endTime(booking.slots[0].start)}
-            {booking.slots.length > 1
-              ? ` · +${booking.slots.length - 1} more below`
-              : ""}
-          </p>
+          <SessionList slots={booking.slots} showRotation={false} />
           <div className="paid">
             <span className={pending ? undefined : "pill success"}>
               {pending ? "Total" : preview ? "Paid · Preview" : "Paid"}
@@ -249,24 +241,6 @@ export function BookingConfirmation({
             </section>
             <section
               className="confirmation-section"
-              aria-labelledby="confirmation-sessions"
-            >
-              <h2 className="section-title" id="confirmation-sessions">
-                Session Details
-              </h2>
-              <p className="confirmation-service">
-                <strong>
-                  {booking.slots[0]?.native?.serviceName ?? SERVICE_NAME}
-                </strong>
-                <br />
-                {booking.draft.players}{" "}
-                {booking.draft.players === 1 ? "player" : "players"} per session
-                · 40 minutes · Singapore time
-              </p>
-              <SessionList slots={booking.slots} showRotation={false} />
-            </section>
-            <section
-              className="confirmation-section"
               aria-labelledby="confirmation-location"
             >
               <h2 className="section-title" id="confirmation-location">
@@ -283,20 +257,7 @@ export function BookingConfirmation({
               </p>
             </section>
             <section
-              className="confirmation-section"
-              aria-labelledby="confirmation-amount"
-            >
-              <h2 className="section-title" id="confirmation-amount">
-                Amount
-              </h2>
-              <p className="hint">
-                {preview
-                  ? `${booking.slots.length} session${booking.slots.length === 1 ? "" : "s"} · SGD · Inclusive of GST`
-                  : `SGD · Tax ${money(taxMinor)}`}
-              </p>
-            </section>
-            <section
-              className="confirmation-section"
+              className="confirmation-section confirmation-disclaimers"
               aria-labelledby="confirmation-disclaimers"
             >
               <h2 className="section-title" id="confirmation-disclaimers">
@@ -314,10 +275,10 @@ export function BookingConfirmation({
                     assigned instructor stays for the full session.
                   </p>
                 ))}
-              <Arrival />
+              <Arrival compact />
               <p className="hint">
-                Follow your instructor’s safety guidance. Contact the studio for
-                changes, cancellations or refund enquiries.
+                Follow your instructor’s safety guidance. For changes,
+                cancellations or refunds, contact the studio.
               </p>
               {preview && (
                 <p className="payment-foot">
