@@ -41,6 +41,10 @@ This section is the authoritative current design. Service Contracts owns operati
 - Confirmation/recovery diagnostics are observational: preserve polling quotas, token lifetimes, payment ordering and proof gates. Correlate sanitized background stages with protected-response timing; never treat diagnostic timestamps as booking/payment authority.
 - Source tests, exact-commit CI, deployment and physical provider acceptance are distinct. Owner/CI operate browsers; no assistant bookings, payments, cancellations or notification sends.
 
+## Isolated load preparation — 21 October 2026
+
+The prepared1/3/5/10-customer runner uses one real account coordinator per cohort and stateful synthetic provider boundaries. It adds no remote execution mode, production instrumentation, deadlines or booking behavior. Finite concurrent bursts and fault injections qualify recovery/duplicate-effect invariants; they do not establish sustained capacity, deployed performance or provider acceptance. Service Contracts owns commands/bounds/evidence; Journey owns results. Backend and live-email CI retain every prior gate and add the1/3-customer smoke matrix with explicit policy rejection coverage. Full matrix execution and later sustained-rate/saturation work remain separate from client UAT and the original1/5/20 release requirement.
+
 ## Milestone status — 21 October 2026
 
 The original M1–M9/44-subiteration plan below retains its IDs, commercial schedule and exit evidence. Its dated “Planned” labels describe the original plan; this table is the current engineering assessment, not blanket acceptance.

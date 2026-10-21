@@ -54,6 +54,7 @@ export function checkPagesPolicy(doc) {
     [
       "npm ci",
       "npm run verify:worker",
+      "npm run test:load:smoke",
       "npx playwright install --with-deps chromium webkit",
       "npm run verify:browser",
       releaseCommand,
