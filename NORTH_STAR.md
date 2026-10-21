@@ -4,13 +4,13 @@
 
 Finish the customer website through client acceptance and handover. Current engineering work is M4.4–M4.6 booking/recovery and M5 payment/confirmation hardening, with some M6 implementation already present. This does not close earlier acceptance gaps or establish client/production readiness. The [canonical milestone status](docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md#milestone-status--21-october-2026) owns the mapping; the original 44 subiteration IDs and commercial schedule remain unchanged.
 
-Current task: complete PR83’s authorized merge after fresh CI and publish overload-recovery qualification. The separate10-customer overload baseline/fault profiles passed: rejected requests had no effects, admitted attempts recovered, and explicit same-ID retries succeeded without duplicates. The original all-success burst failure remains evidence of the15-second admission limit. Next load work requires bounded sustained arrival rates and responsiveness targets. Grafana export stays disabled until separately configured.
+Current task: qualify draft PR84’s overload-recovery checks after the authorized PR82/83 merges. The separate10-customer overload baseline/fault profiles passed: rejected requests had no effects, admitted attempts recovered, and explicit same-ID retries succeeded without duplicates. The original all-success burst failure remains evidence of the15-second admission limit. Next load work requires bounded sustained arrival rates and responsiveness targets. Grafana export stays disabled until separately configured.
 
 Performance and actual persistent-token restoration testing are postponed. Before resuming, verify main CI and the deployed revision, then distinguish warm-memory hits from encrypted SQLite restoration after restart/eviction. Simulated timings and round trips are not live acceptance.
 
 ## Next acceptance gates
 
-- Final-commit PR82 CI; merge and main/deployment verification remain separate.
+- PR84 final-commit CI; PR83 independent main/deployment verification.
 - Combined1/3/5/10 simulated-customer load/rate-limit/webhook campaign, including controlled lost acknowledgements and failed dismissal. Real application runtime, synthetic external provider faults first; distinct from live provider acceptance and the original1/5/20 release workload.
 - Grafana stack/secure activation and ingestion/dashboard/correlation/overhead validation; later actual performance and persistent-token restoration measurements.
 - Client staging mappings, schedules, preservation of accepted notification settings, payments and legacy continuity, followed by M6 release evidence and M7 UAT.

@@ -2,6 +2,8 @@
 
 ## 21 October 2026 — overload recovery and explicit retry qualification
 
+Merge follow-through: PR82 main39576113663 passed all gates and Cloudflare deployment. PR83 merge-resolution9de4c1c passed all three gates in39576302620, then merged as7ced699b1e4fbc25a4d889be8d2e67d0c208faba. PR84 retargeted to main; its final CI and PR83 post-merge CI/deployment remain pending.
+
 Owner authorized merging PR82/83 and continuing load resilience. PR82 final9fca84e passed all three gates and merged as d1911c07a8677164b58487da6f17e5d75f5cf819. PR83 final2036d24 also passed all three gates; retargeting to main after squash exposed documentation conflicts. Main’s tree exactly matched9fca84e; retained the newer PR83 documentation, producing9de4c1c with a byte-identical tree to2036d24. Fresh CI precedes merge. Follow-up work uses test/load-overload-recovery; no live financial/provider effects or assistant browser execution.
 
 Added a distinct bounded overload mode, retaining the original strict campaign failure. First receipt test-results/load-1792574527967/report.json passed baseline/fault recovery with explicit queue rejection checks. Added same-ID/payload customer retry and repeat-request effect checks. First strengthened run test-results/load-1792574702526/report.json failed because the runner expected associated on repeated creation; source native-checkout.ts returns the persisted grant state complete with paymentAvailable false. Corrected only that assertion to the exact existing contract, retaining the failed receipt and all payment-row/deadline/effect checks.
