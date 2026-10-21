@@ -1019,6 +1019,28 @@ test("real payment recovery confirms the browser return from verified provider s
     await expect(
       page.getByRole("heading", { name: "Booking confirmed", exact: true }),
     ).toBeVisible();
+    const tick = page.locator(".confirmation-shell .status-icon svg");
+    const tickBox = await tick.boundingBox();
+    expect(tickBox).not.toBeNull();
+    expect(tickBox!.width).toBeGreaterThanOrEqual(48);
+    expect(tickBox!.height).toBeGreaterThanOrEqual(48);
+    await expect(page.getByLabel("Booking summary", { exact: true })).toHaveCSS(
+      "text-align",
+      "center",
+    );
+    const summaryBox = await page
+      .getByLabel("Booking summary", { exact: true })
+      .boundingBox();
+    const cardBox = await page.locator(".confirmation-card").boundingBox();
+    expect(summaryBox).not.toBeNull();
+    expect(cardBox).not.toBeNull();
+    expect(
+      Math.abs(
+        summaryBox!.x +
+          summaryBox!.width / 2 -
+          (cardBox!.x + cardBox!.width / 2),
+      ),
+    ).toBeLessThanOrEqual(1);
     // A download is a new protected read, independent of initial presentation.
     const receiptReadsBeforeDownload = transport.calls.filter((call) =>
       call.path.endsWith("/receipt"),
@@ -1072,6 +1094,15 @@ test("real payment recovery confirms the browser return from verified provider s
     await expect(
       page.getByRole("heading", { name: "Client Details" }),
     ).toBeVisible();
+    await expect(page.locator(".confirmation-details-grid")).toHaveCSS(
+      "text-align",
+      "center",
+    );
+    expect(
+      await page
+        .locator(".confirmation-card")
+        .evaluate((element) => element.scrollWidth <= element.clientWidth),
+    ).toBe(true);
     await expect(page.getByText(/Saved confirmation · Verified/)).toBeVisible();
     await expect(page.getByRole("link", { name: "Open checkout" })).toHaveCount(
       0,

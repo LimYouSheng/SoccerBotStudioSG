@@ -55,6 +55,8 @@
   --color-warning-soft: #fff5db;
   --color-warning-inverse: #fff0be;
   --color-arena-accent: #00b8d4;
+  --color-confirmation: #087c64;
+  --color-confirmation-heading: #176078;
   --font-sans: Roboto, Arial, sans-serif;
   --text-page: 2.5rem;
   --text-dialog: 1.5rem;
@@ -3537,6 +3539,7 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
     gap: 20px 24px;
+    text-align: center;
   }
   .confirmation-details-grid .confirmation-section {
     min-width: 0;
@@ -3548,11 +3551,20 @@
   }
   .confirmation-details-grid .booking-facts {
     grid-template-columns: 1fr;
+    text-align: center;
     gap: 4px;
   }
   .confirmation-details-grid .booking-facts dd {
     margin-bottom: 10px;
     overflow-wrap: anywhere;
+  }
+  .confirmation-section .series-list li {
+    flex-direction: column;
+    gap: 6px;
+    justify-content: center;
+  }
+  .confirmation-section .series-date {
+    text-align: center;
   }
   .confirmation-provider-references {
     grid-column: 1 / -1;
@@ -3625,7 +3637,9 @@
   }
   .confirmation-card .paid {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px;
     align-items: center;
     margin-top: 0;
     padding-top: 0;
@@ -3638,20 +3652,28 @@
     margin-bottom: 16px;
   }
   .confirmation-shell .status-icon {
-    width: 40px;
-    height: 40px;
-    margin-bottom: 10px;
+    width: 80px;
+    height: 80px;
+    margin-bottom: 16px;
+    background: var(--color-confirmation);
+    color: var(--color-on-brand);
   }
   .confirmation-shell .status-icon svg {
-    width: 24px;
-    height: 24px;
+    width: 48px;
+    height: 48px;
+    stroke-width: 3;
+  }
+  .confirmation-shell .status-heading h1 {
+    color: var(--color-confirmation-heading);
   }
   .confirmation-shell .confirmation-card {
-    padding: 16px;
+    padding: 24px;
   }
   .confirmation-summary {
     display: grid;
-    gap: 8px;
+    gap: 12px;
+    text-align: center;
+    overflow-wrap: anywhere;
   }
   .confirmation-summary p {
     margin: 0;
@@ -3663,6 +3685,7 @@
   }
   .confirmation-full-details > summary {
     cursor: pointer;
+    text-align: center;
     min-height: 44px;
     align-content: center;
     color: var(--color-action);
