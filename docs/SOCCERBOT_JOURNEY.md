@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## 21 October 2026 — scope the409 browser alert to main
+
+PR82 be37f73 run39570386559 passed frontend/backend; live-email again passed78/81. All three new409 executions failed because the unscoped alert locator matched both the actual Review error and Next.js’s route announcer. The prior locator repair was incomplete. Scope to main, using the established locator already used by adjacent live-email cases. Keep the exact expected message substring,409/code, Review destination, no payment verification, unchanged original attempt and zero-effect assertions. No retries, timeout, inventory or product change. Failed CI log/artifact12332841525 remain retained.
+
+Test-impact review searched Review/site shell, live-email alert assertions and browser inventory. Source/policy, affected ESLint and formatting checks apply; CI must execute all three browser projects on the corrected commit. PR83 inherits the affected test and must receive this correction too. No merge/deployment or assistant browser operation.
+
 ## 21 October 2026 — PR82 browser alert locator correction
 
 Final documentation head ae5694c run39567290859 passed frontend/backend, including435 Worker cases. Live-email passed78/81: the new409 case failed on all three devices at its exact-text locator. The Review alert contains the expected error plus a Review selections link, so matching its entire text to the message is incorrect. Target the semantic alert and assert that same message; retain409/error-code, Review destination, no verification/payment, unchanged original attempt and zero-effect checks. No production behavior, retries, timeouts or inventory change. Source/policy/format checks cover this test-only repair; final-commit browser CI remains required.
