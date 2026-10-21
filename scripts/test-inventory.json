@@ -1118,5 +1118,9 @@
   {
     "file": "src/features/booking/booking-parity.test.tsx",
     "title": "cold calendar entry and refresh select an available day while retaining a valid chosen day"
+  },
+  {
+    "file": "tests/live-email.spec.ts",
+    "title": "real API 409 preparation rejection stays on Review without payment verification"
   }
 ]

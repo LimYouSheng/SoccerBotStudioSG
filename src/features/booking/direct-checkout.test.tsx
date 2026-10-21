@@ -949,31 +949,37 @@ it("checkout readback uses slot-specific messaging only for verified unavailabil
     checkUntil: 0,
     booking: null,
   };
-  for (const error of [
-    "checkout_already_active",
-    "checkout_window_unresolved",
-    "native_customer_window_unavailable",
-    "checkout_selection_unavailable",
-  ]) {
-    const fetch = vi.fn(async () => Response.json({ error }, { status: 503 }));
-    vi.stubGlobal("fetch", fetch);
-    await expect(
-      liveBookingService.pay({
-        attempt,
-        holding: true,
-        startCheckout: true,
-        outcome: "success",
-      }),
-    ).rejects.toMatchObject({
-      code:
-        error === "checkout_selection_unavailable"
-          ? "selection_unavailable"
-          : "checkout_window_blocked",
-      message:
-        error === "checkout_selection_unavailable"
-          ? "This time slot is no longer available. Please choose another. Your details have been kept."
-          : "We couldn’t start checkout. Please try again later.",
-    });
-    expect(fetch).toHaveBeenCalledTimes(1);
-  }
+  for (const status of [409, 503])
+    for (const error of [
+      "checkout_recovery_required",
+      "checkout_already_active",
+      "checkout_window_unresolved",
+      "native_customer_window_unavailable",
+      "checkout_selection_unavailable",
+    ]) {
+      const fetch = vi.fn(async () => Response.json({ error }, { status }));
+      vi.stubGlobal("fetch", fetch);
+      await expect(
+        liveBookingService.pay({
+          attempt,
+          holding: true,
+          startCheckout: true,
+          outcome: "success",
+        }),
+      ).rejects.toMatchObject({
+        code:
+          error === "checkout_recovery_required"
+            ? "temporarily_unavailable"
+            : error === "checkout_selection_unavailable"
+              ? "selection_unavailable"
+              : "checkout_window_blocked",
+        message:
+          error === "checkout_recovery_required"
+            ? "Your original booking is still being checked. Do not start another booking or payment."
+            : error === "checkout_selection_unavailable"
+              ? "This time slot is no longer available. Please choose another. Your details have been kept."
+              : "We couldn’t start checkout. Please try again later.",
+      });
+      expect(fetch).toHaveBeenCalledTimes(1);
+    }
 });

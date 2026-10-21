@@ -223,8 +223,15 @@ export async function rejectedCheckoutReadback(
     id: string;
     intent_json?: string;
     association_json?: string | null;
+    owner_id?: string;
+    state?: string;
+    effects?: number;
   }>([
-    db.prepare("SELECT id FROM attempts WHERE id=?").bind(input.key),
+    db
+      .prepare(
+        "SELECT a.id,a.owner_id,a.state,a.association_json,(EXISTS(SELECT 1 FROM dispatches d WHERE d.attempt_id=a.id) OR EXISTS(SELECT 1 FROM session_effects e WHERE e.attempt_id=a.id) OR EXISTS(SELECT 1 FROM hitpay_payments p WHERE p.attempt_id=a.id)) AS effects FROM attempts a WHERE a.id=?",
+      )
+      .bind(input.key),
     db
       .prepare(
         "SELECT a.id,a.intent_json,a.association_json FROM native_checkout_grants g JOIN attempts a ON a.id=g.attempt_id WHERE g.capability_hash=? AND a.owner_id=? LIMIT 1",
@@ -232,7 +239,14 @@ export async function rejectedCheckoutReadback(
       .bind(access.capability_hash, access.owner_id),
   ]);
   await authenticate(request, options.env, Date.now());
-  if (original.results.length) return "checkout_window_unresolved";
+  const retained = original.results[0];
+  if (retained)
+    return retained.owner_id === access.owner_id &&
+      (retained.state !== "prepared" ||
+        retained.association_json ||
+        retained.effects === 1)
+      ? "checkout_recovery_required"
+      : "checkout_window_unresolved";
   const owned = active.results[0];
   if (owned) {
     // An owned attempt for another session, or an unobserved write, cannot
