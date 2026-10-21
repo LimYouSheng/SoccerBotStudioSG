@@ -16,6 +16,8 @@ Public/admin token records persist encrypted in account Durable Object SQLite wi
 
 The owner accepts observed confirmation presentation around4–5 seconds. Performance and live cache acceptance are postponed.
 
+Four-hour cutoff rechecked: BOOKING_LEAD_MINUTES=240 in the deployed baseline; calendar/selection and server checkout use it. Existing boundary regression accepts exactly four hours and rejects less, including crossing the cutoff during reads.
+
 ## Outstanding acceptance
 
 | Work                                                                                                           | Gate / milestone                                                                                           |
