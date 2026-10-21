@@ -32,7 +32,7 @@ Keep NORTH_STAR to the current goal and next gate; PROGRESS to the current revis
 
 ## Boundaries
 
-No assistant bookings, payments, cancellations, refunds, notification sends or historical cleanup. No destructive reset, force push, secret disclosure or unapproved provider/account changes. Historical grants, budgets and deadlines never authorize new activity. Performance and deployed token-restoration acceptance are postponed by the owner. Keep eight-minute payment, fifteen-minute hold and five-minute recovery buffer policies until separately reviewed evidence supports a change.
+No assistant bookings, payments, cancellations, refunds, notification sends or historical cleanup. No destructive reset, force push, secret disclosure or unapproved provider/account changes. Historical grants, budgets and deadlines never authorize new activity. Single-checkout timing and deployed token restoration now have bounded evidence; further warm-cache/batch performance and sustained-capacity work remain optional follow-ups, not new live-test authorization. Keep eight-minute payment, fifteen-minute hold and five-minute recovery buffer policies until separately reviewed evidence supports a change.
 
 No background agents or standing service. Routine cloud source work does not require a Mac installer. If delivering one, use the canonical guarded tooling and verify exact final bytes, hashes and links.
 

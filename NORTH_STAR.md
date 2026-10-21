@@ -1,22 +1,13 @@
 # North Star: dependable customer booking and quick rebooking
 
-## Current goal — 21 October 2026 SGT
+## Current goal — 22 October 2026 SGT
 
-Finish the customer website through client acceptance and handover. Current engineering work is M4.4–M4.6 booking/recovery and M5 payment/confirmation hardening, with some M6 implementation already present. This does not close earlier acceptance gaps or establish client/production readiness. The [canonical milestone status](docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md#milestone-status--21-october-2026) owns the mapping; the original 44 subiteration IDs and commercial schedule remain unchanged.
+Strengthen production UI/UX and email responses, then complete client configuration, UAT and handover. Current engineering remains M4.4–M4.6/M5 hardening with M6 preparation; no blanket milestone or production-readiness claim follows. The [canonical milestone status](docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md#milestone-status--21-october-2026) preserves the original M1–M9 and 44 subiteration IDs.
 
-Current task: qualify draft PR84’s overload-recovery checks after the authorized PR82/83 merges. The separate10-customer overload baseline/fault profiles passed: rejected requests had no effects, admitted attempts recovered, and explicit same-ID retries succeeded without duplicates. The original all-success burst failure remains evidence of the15-second admission limit. Next load work requires bounded sustained arrival rates and responsiveness targets. Grafana export stays disabled until separately configured.
+PR82–84 are merged. Bounded load/recovery/retry acceptance is complete for the tested synthetic-provider scope. Deployed logs establish persistent token restoration. The owner reports the 15-minute timeout checked and the long-open confirmation remaining confirmed; no further normal-path booking is requested.
 
-Performance and actual persistent-token restoration testing are postponed. Before resuming, verify main CI and the deployed revision, then distinguish warm-memory hits from encrypted SQLite restoration after restart/eviction. Simulated timings and round trips are not live acceptance.
+Next gates: regression checks after UI/UX/email changes; secure Grafana hookup and ingestion/correlation/privacy/overhead validation; client mappings, schedules, payment destination, notification configuration and legacy receipt/recovery continuity through UAT. Grafana remains disabled. Additional warm-cache/batch performance and sustained-capacity experiments are optional follow-ups; the original release workload is a separate gate, not silently waived.
 
-## Next acceptance gates
+Late settlement and remaining batch-atomicity uncertainty are owner-accepted risks, not experimentally proven passes. Keep eight-minute payment, fifteen-minute hold and five-minute recovery buffer policies. Owner/CI operates browsers and provider experiments.
 
-- PR84 final-commit CI; PR83 independent main/deployment verification.
-- Combined1/3/5/10 simulated-customer load/rate-limit/webhook campaign, including controlled lost acknowledgements and failed dismissal. Real application runtime, synthetic external provider faults first; distinct from live provider acceptance and the original1/5/20 release workload.
-- Grafana stack/secure activation and ingestion/dashboard/correlation/overhead validation; later actual performance and persistent-token restoration measurements.
-- Client staging mappings, schedules, preservation of accepted notification settings, payments and legacy continuity, followed by M6 release evidence and M7 UAT.
-
-Normal checkout/payment, unpaid timeout/rebooking, after-expiry payment rejection, close/reopen, immediate click-and-close recovery and completed dismissal are owner-reported accepted. Batch atomicity is accepted by owner risk decision; stale unresolved-page focus/15-minute retesting was previously waived and is now reopened by the owner for later acceptance. Do not reopen these normal-path tests. In-flight late settlement remains a deferred evidence gap; the separate hours-later confirmed-to-pending report remains undiagnosed backlog.
-
-Owner/CI operates browsers and provider experiments. Do not reduce the five-minute recovery buffer; retain eight-minute payment and fifteen-minute hold policies. PROGRESS owns the current revision and verification checkpoint; the three canonical documents own rules, contracts and evidence.
-
-[Previous North Star entries](https://github.com/LimYouSheng/SoccerBotStudioSG/blob/69945cc4ecae4593799f7205beedbc82513f9945/NORTH_STAR.md) are historical orientation. Older native-only payment, Details-time creation and preflight designs do not override current rules.
+PROGRESS owns the current checkpoint; Journey retains full historical evidence and qualifications. [Previous North Star entries](https://github.com/LimYouSheng/SoccerBotStudioSG/blob/37adaa3a02fda2fa86e852b1538029dc37749557/NORTH_STAR.md) remain historical orientation.
