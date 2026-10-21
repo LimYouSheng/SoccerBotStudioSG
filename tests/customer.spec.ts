@@ -579,7 +579,7 @@ test("header blue and the typography hierarchy stay consistent across every book
 }) => {
   const brand = "rgb(5, 10, 47)";
   const pageSize = page.viewportSize()!.width <= 700 ? 32 : 40;
-  async function pageHeading(name: string) {
+  async function pageHeading(name: string, color = brand) {
     const heading = page
       .getByRole("main")
       .getByRole("heading", { level: 1, name, exact: true });
@@ -592,7 +592,7 @@ test("header blue and the typography hierarchy stay consistent across every book
         parseFloat(getComputedStyle(node).fontSize),
       ),
     ).toBeCloseTo(pageSize, 5);
-    await expect(heading).toHaveCSS("color", brand);
+    await expect(heading).toHaveCSS("color", color);
     await expect(heading).toHaveCSS("font-weight", "900");
     expect(
       await page.evaluate(
@@ -700,7 +700,21 @@ test("header blue and the typography hierarchy stay consistent across every book
     brand,
   );
   await payAttempt(page);
-  await pageHeading("Booking confirmed");
+  // Confirmation has its own approved success accent; every earlier heading
+  // and the site header retain navy, with the same type and overflow checks.
+  await pageHeading("Booking confirmed", "rgb(23, 96, 120)");
+  await expect(page.locator(".site-header")).toHaveCSS(
+    "background-color",
+    brand,
+  );
+  await expect(page.locator(".confirmation-shell .status-icon")).toHaveCSS(
+    "background-color",
+    "rgb(8, 124, 100)",
+  );
+  await expect(page.locator(".confirmation-shell .status-icon svg")).toHaveCSS(
+    "color",
+    "rgb(255, 255, 255)",
+  );
   await page.getByText("View full details", { exact: true }).click();
   await sectionType(".confirmation-section > h2");
   await expect(page.locator(".confirmation-card .paid strong")).toHaveCSS(

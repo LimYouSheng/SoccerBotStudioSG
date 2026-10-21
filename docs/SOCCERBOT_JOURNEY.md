@@ -1,5 +1,11 @@
 # SoccerBotStudio — Journey
 
+## 21 October 2026 — PR79 browser colour expectation repair
+
+Run39525183294 on6ea34d5 passed live-email; frontend/backend each passed72/75 browser cases and failed the same typography journey on desktop Chromium, phone WebKit and tablet WebKit. tests/customer.spec.ts pageHeading still required navy rgb(5,10,47) for Booking confirmed; the observed rgb(23,96,120) is the owner-requested new confirmation accent. The earlier impact pass missed that generic helper. Preserve the failed logs and run; this is a test expectation defect, not evidence to revert the requested presentation.
+
+The helper now accepts an explicit expected colour for confirmation only. All other headings, header blue, font size/weight, section hierarchy and overflow assertions remain; add exact teal-circle and white-tick assertions. No production source, timeout, retry, test identity/count or device coverage changes. Repeat impact search across colour/heading/status-icon helpers and both browser profiles; source/policy/type checks and affected lint/format checks passed; new final-head CI remains required. Owner/CI retains browser execution.
+
 ## 21 October 2026 — PR78 handoff and documentation/presentation audit
 
 PR78 owner-merged as69945cc4ecae4593799f7205beedbc82513f9945; handoff records frontend/backend/live-email CI39481563606 passed on acc82ec11bb00dbcf26a4de322d31e8998ca7cec. Remote main fetched at the merge. Subsequent read-only refresh found main run39520056195 passed all three verification gates plus Pages/Cloudflare deployment jobs; public health confirmed source69945cc4ecae4593799f7205beedbc82513f9945 and Workerversione8f92c4a-64d8-4a9b-b0c3-a539c17581c2. Performance and deployed token-restoration acceptance are postponed. Prior424 Worker/223 frontend results belong to PR78. Batch atomicity remains unproven independently of studio capacity; retain partial/unknown evidence and prohibit incomplete-batch payment. No provider action occurred.
