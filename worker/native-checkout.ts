@@ -441,11 +441,7 @@ export async function executeNativeCheckout(options: {
         undefined,
         !!options.creationOnly && !cleanupMode,
       );
-      if (
-        consolidated &&
-        intent.sessions.length === 1 &&
-        operation.kind === "book"
-      )
+      if (consolidated && operation.kind === "book")
         rawEvidence.statement = holdEvidenceStatement(
           env.STATE,
           attemptId,
@@ -747,7 +743,7 @@ export async function executeNativeCheckout(options: {
               ...(payment ? [payment] : []),
             ],
           });
-        if (options.prepared?.preparation && intent.sessions.length === 1) {
+        if (options.prepared?.preparation) {
           let committed = false;
           ensureHold = async () => {
             if (!committed) {
@@ -1203,8 +1199,8 @@ export async function prepareCustomerNative(
       throw new ApiError(409, "native_attempt_already_bound");
     return { attemptId: grant.attempt_id, state: "prepared" as const };
   }
-  if (retainedGrant?.preparation && attemptId && intent.sessions.length === 1) {
-    // Stage only a new single attempt. No provider write is authorized until
+  if (retainedGrant?.preparation && attemptId) {
+    // Stage only a new attempt. No provider write is authorized until
     // these statements and the fresh dispatch predicates commit together.
     try {
       await prepareProvider?.();

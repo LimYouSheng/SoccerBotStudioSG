@@ -221,10 +221,7 @@ export default {
             throw new ApiError(405, "operation_unavailable");
           const value = await inputBody(request);
           const checkoutAccess =
-            holdMatch[1] === "checkout" &&
-            z
-              .object({ sessions: z.array(z.unknown()).length(1) })
-              .safeParse(value).success
+            holdMatch[1] === "checkout"
               ? await authenticateCheckout(request, {
                   ...env,
                   STATE: instrumentStorage(env.STATE, "d1"),
