@@ -2,7 +2,7 @@
 
 ## Current goal — 22 October 2026 SGT
 
-Reduce avoidable checkout token misses and prepare measured placement experiments, then strengthen production UI/UX and email responses and complete client configuration, UAT and handover. Current engineering remains M4.4–M4.6/M5 hardening with M6 preparation; no blanket milestone or production-readiness claim follows. The [canonical milestone status](docs/SERVICE_CONTRACTS.md#milestones-and-retained-acceptance-criteria) preserves the original M1–M9 and 44 subiteration IDs.
+Complete the token-refresh change through normal CI/merge gates, then strengthen production UI/UX and email responses and complete client configuration, UAT and handover. The separate real-checkout placement experiment is owner-waived; choose initial client placement from verified database location and validate it during normal UAT. Current engineering remains M4.4–M4.6/M5 hardening with M6 preparation; no blanket milestone or production-readiness claim follows. The [canonical milestone status](docs/SERVICE_CONTRACTS.md#milestones-and-retained-acceptance-criteria) preserves the original M1–M9 and 44 subiteration IDs.
 
 PR82–84 are merged. Bounded load/recovery/retry acceptance is complete for the tested synthetic-provider scope. Deployed logs establish persistent token restoration. The owner reports the 15-minute timeout checked and the long-open confirmation remaining confirmed; no further normal-path booking is requested.
 
