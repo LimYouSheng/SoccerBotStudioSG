@@ -248,3 +248,121 @@ test(
     }
   },
 );
+
+test("placement diagnostics retain bounded timings and D1 locations without provider or customer payloads", () => {
+  const safe = sanitizeDiagnostic({
+    event: "provider_transport_timing",
+    correlationId,
+    operation: "public_auth",
+    outcome: "ok",
+    durationMs: 100,
+    headersMs: 90,
+    bodyMs: 10,
+    url: "SECRET",
+    token: "SECRET",
+  });
+  assert.equal(safe.headersMs, 90);
+  assert.equal(safe.bodyMs, 10);
+  assert.equal(safe.operation, "public_auth");
+  assert.doesNotMatch(JSON.stringify(safe), /SECRET/);
+  assert.equal(
+    sanitizeDiagnostic({
+      event: "provider_transport_timing",
+      correlationId,
+      operation: "SECRET",
+    }),
+    undefined,
+  );
+  const d1 = sanitizeDiagnostic({
+    event: "foundation_trace",
+    correlationId,
+    d1Execution: {
+      statements: 2,
+      sqlDurationMs: 0.5,
+      colos: ["KIX", "SECRET", "SIN"],
+      sql: "SECRET",
+      results: ["SECRET"],
+    },
+  });
+  assert.equal(d1["d1_execution.sqlDurationMs"], 0.5);
+  assert.equal(d1.d1_colos, "KIX,SIN");
+  assert.doesNotMatch(JSON.stringify(d1), /SECRET/);
+  for (const result of ["refresh_due", "refreshed"]) {
+    assert.equal(
+      sanitizeDiagnostic({
+        event: "provider_token_cache",
+        correlationId,
+        family: "public",
+        result,
+      }).result,
+      result,
+    );
+  }
+});
+
+test("D1 diagnostics preserve promise identity and count batch statements separately from round trips", async (t) => {
+  const compiled = await build({
+    entryPoints: ["worker/diagnostics.ts"],
+    bundle: true,
+    write: false,
+    platform: "node",
+    format: "esm",
+  });
+  const { traced, instrumentStorage, providerTransportTiming } = await import(
+    `data:text/javascript;base64,${Buffer.from(compiled.outputFiles[0].text).toString("base64")}`
+  );
+  const logs = [];
+  t.mock.method(console, "log", (line) => logs.push(JSON.parse(line)));
+  const response = [
+    {
+      meta: { timings: { sql_duration_ms: 0.2 }, served_by_colo: "KIX" },
+      results: ["SECRET"],
+    },
+    {
+      meta: { timings: { sql_duration_ms: 0.3 }, served_by_colo: "KIX" },
+      results: ["SECRET"],
+    },
+    { meta: { timings: { sql_duration_ms: NaN }, served_by_colo: "SECRET" } },
+  ];
+  const promise = Promise.resolve(response);
+  const failure = new Error("SECRET");
+  const target = {
+    batch() {
+      assert.equal(this, target);
+      return promise;
+    },
+    run() {
+      return Promise.reject(failure);
+    },
+    first() {
+      return Promise.resolve({
+        meta: { timings: { sql_duration_ms: 999 }, served_by_colo: "BAD" },
+      });
+    },
+  };
+  await traced(correlationId, "http", async () => {
+    const wrapped = instrumentStorage(target, "d1");
+    assert.equal(wrapped.batch(), promise);
+    assert.equal(await promise, response);
+    await wrapped.first();
+    await assert.rejects(wrapped.run(), (error) => error === failure);
+    const transport = providerTransportTiming("public_auth");
+    transport.headers();
+    transport.finish(false);
+  });
+  const trace = logs.find((log) => log.event === "foundation_trace");
+  assert.deepEqual(trace.d1Execution, {
+    statements: 2,
+    sqlDurationMs: 0.5,
+    colos: ["KIX"],
+  });
+  assert.equal(trace.spans.d1.count, 3);
+  assert.equal(trace.spans.d1.errors, 1);
+  const transport = logs.find(
+    (log) => log.event === "provider_transport_timing",
+  );
+  assert.equal(transport.correlationId, correlationId);
+  assert.ok(transport.headersMs >= 0 && transport.bodyMs >= 0);
+  assert.equal(transport.durationMs, transport.headersMs + transport.bodyMs);
+  assert.doesNotMatch(JSON.stringify(logs), /SECRET/);
+});

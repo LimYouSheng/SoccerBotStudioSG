@@ -37,6 +37,7 @@
     "PROVIDER_ACCESS": "disabled",
     "LIVE_CUSTOMER_ACCESS": "disabled",
     "PUBLIC_DISPLAY_WARMING": "disabled",
+    "PUBLIC_TOKEN_REFRESH_AHEAD": "disabled",
     "CHECKOUT_PAYMENT_ROUTE": "native",
     "HITPAY_CHECKOUT": "disabled",
     "HITPAY_RECOVERY": "disabled",

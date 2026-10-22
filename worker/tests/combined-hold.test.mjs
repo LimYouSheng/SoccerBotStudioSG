@@ -1895,6 +1895,27 @@ test("direct single checkout uses only public authentication and creation before
           entry.correlationId === response.headers.get("x-request-id"),
       );
       assert.ok(phaseTrace, "correlated checkout phase trace retained");
+      const transports = traces.filter(
+        (entry) =>
+          entry.event === "provider_transport_timing" &&
+          entry.correlationId === response.headers.get("x-request-id"),
+      );
+      assert.deepEqual(
+        transports.map((entry) => entry.operation),
+        warm
+          ? ["simplybook", "hitpay_create"]
+          : ["public_auth", "simplybook", "hitpay_create"],
+      );
+      for (const entry of transports) {
+        assert.equal(entry.outcome, "ok");
+        assert.ok(entry.headersMs >= 0 && entry.bodyMs >= 0);
+        assert.equal(entry.durationMs, entry.headersMs + entry.bodyMs);
+        assert.doesNotMatch(
+          JSON.stringify(entry),
+          /synthetic-public-token|checkout\.hit-pay|synthetic@example/,
+        );
+      }
+
       assert.equal(phaseTrace.tokenCached, warm);
       assert.equal(phaseTrace.phases.simplybook.calls, 1);
       assert.equal(phaseTrace.phases.hitpay.calls, 1);

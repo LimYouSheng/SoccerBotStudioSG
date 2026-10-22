@@ -2096,3 +2096,186 @@ test("late authentication rejection cannot evict a newer token", async (t) => {
     "old rejection cannot clear the newly verified token",
   );
 });
+
+function refreshFixture(t) {
+  let now = Date.now();
+  t.mock.method(Date, "now", () => now);
+  const config = ts.parseConfigFileTextToJson(
+    "wrangler.jsonc",
+    readFileSync("wrangler.jsonc", "utf8"),
+  ).config;
+  const env = {
+    ...config.vars,
+    SOURCE_REVISION: "a".repeat(40),
+    PROVIDER_ACCESS: "trusted-reads",
+    LIVE_CUSTOMER_ACCESS: "enabled",
+    PUBLIC_TOKEN_REFRESH_AHEAD: "enabled",
+    SIMPLYBOOK_DEV_COMPANY_LOGIN: "synthetic-company",
+    SIMPLYBOOK_DEV_ADMIN_LOGIN: "synthetic-admin",
+    SIMPLYBOOK_DEV_API_KEY: "synthetic-public-key",
+    SIMPLYBOOK_DEV_ADMIN_API_USER_KEY: "synthetic-admin-key",
+  };
+  const db = new DatabaseSync(":memory:");
+  t.after(() => db.close());
+  const sql = {
+    exec(query, ...args) {
+      const rows = db.prepare(query).all(...args);
+      return { toArray: () => rows };
+    },
+  };
+  const cache = new ProviderTokenCache(sql);
+  const control = {
+    liveCustomer: true,
+    reserve: async () => "synthetic",
+    finish() {},
+    claim: () => ({ generation: 1, claim: "synthetic" }),
+    complete: () => true,
+    pause() {},
+  };
+  return {
+    env,
+    db,
+    sql,
+    cache,
+    control,
+    advance: (ms) => {
+      now += ms;
+    },
+    now: () => now,
+  };
+}
+
+test("public refresh-ahead replaces only near-expiry tokens and persists a new absolute expiry across restoration", async (t) => {
+  const f = refreshFixture(t);
+  const original = {
+    value: "synthetic-old-public-token",
+    issued: f.now(),
+    until: f.now() + 50 * 60000,
+  };
+  await f.cache.save(f.env, "public", original);
+  await f.cache.save(f.env, "admin", {
+    value: "synthetic-admin-token",
+    issued: f.now(),
+    until: f.now() + 60000,
+  });
+  const admin = f.db
+    .prepare("SELECT * FROM provider_token_cache WHERE family='admin'")
+    .get();
+  let calls = 0;
+  t.mock.method(globalThis, "fetch", async (url, options) => {
+    calls++;
+    assert.equal(new URL(url).pathname, "/login");
+    const body = JSON.parse(options.body);
+    return Response.json({ id: body.id, result: "synthetic-new-public-token" });
+  });
+  const session = new ProviderSession(f.sql);
+  await session.refreshPublicTokenAhead(f.env, f.control);
+  assert.equal(calls, 0);
+  f.advance(30 * 60000 - 1);
+  await session.refreshPublicTokenAhead(f.env, f.control);
+  assert.equal(calls, 0);
+  f.advance(1);
+  await session.refreshPublicTokenAhead(f.env, f.control);
+  assert.equal(calls, 1);
+  const replacement = await f.cache.load(f.env, "public");
+  assert.equal(replacement.value, "synthetic-new-public-token");
+  assert.equal(replacement.issued, f.now());
+  assert.equal(replacement.until, f.now() + 50 * 60000);
+  assert.deepEqual(
+    f.db
+      .prepare("SELECT * FROM provider_token_cache WHERE family='admin'")
+      .get(),
+    admin,
+  );
+  await new ProviderSession(f.sql).checkoutToken(f.env, f.control);
+  assert.equal(calls, 1);
+  assert.deepEqual(await f.cache.load(f.env, "public"), replacement);
+});
+
+test("public refresh-ahead shares authentication with checkout and does not reuse the retired generation", async (t) => {
+  const f = refreshFixture(t);
+  await f.cache.save(f.env, "public", {
+    value: "synthetic-old-public-token",
+    issued: f.now() - 30 * 60000,
+    until: f.now() + 20 * 60000,
+  });
+  const entered = Promise.withResolvers(),
+    release = Promise.withResolvers();
+  let calls = 0;
+  t.mock.method(globalThis, "fetch", async (_url, options) => {
+    calls++;
+    entered.resolve();
+    await release.promise;
+    return Response.json({
+      id: JSON.parse(options.body).id,
+      result: "synthetic-new-public-token",
+    });
+  });
+  const session = new ProviderSession(f.sql);
+  const refresh = session.refreshPublicTokenAhead(f.env, f.control);
+  await entered.promise;
+  assert.equal(await f.cache.load(f.env, "public"), undefined);
+  let settled = false;
+  const checkout = session.checkoutToken(f.env, f.control).then(() => {
+    settled = true;
+  });
+  await session.refreshPublicTokenAhead(f.env, f.control);
+  assert.equal(settled, false);
+  release.resolve();
+  await Promise.all([refresh, checkout]);
+  assert.equal(calls, 1);
+});
+
+test("failed public refresh cannot restore a retired token and later demand authenticates without replay", async (t) => {
+  const f = refreshFixture(t);
+  await f.cache.save(f.env, "public", {
+    value: "synthetic-old-public-token",
+    issued: f.now() - 30 * 60000,
+    until: f.now() + 20 * 60000,
+  });
+  let calls = 0;
+  t.mock.method(globalThis, "fetch", async (_url, options) => {
+    if (++calls === 1)
+      throw new Error("synthetic lost authentication response");
+    return Response.json({
+      id: JSON.parse(options.body).id,
+      result: "synthetic-new-public-token",
+    });
+  });
+  const session = new ProviderSession(f.sql);
+  await assert.rejects(
+    session.refreshPublicTokenAhead(f.env, f.control),
+    /provider_transport_uncertain/,
+  );
+  assert.equal(await f.cache.load(f.env, "public"), undefined);
+  await session.refreshPublicTokenAhead(f.env, f.control);
+  assert.equal(calls, 1, "empty cache does not cause a background retry loop");
+  await new ProviderSession(f.sql).checkoutToken(f.env, f.control);
+  assert.equal(calls, 2);
+});
+
+test("public refresh-ahead is gated and never renews an expired token", async (t) => {
+  const f = refreshFixture(t);
+  t.mock.method(globalThis, "fetch", () =>
+    assert.fail("no provider dispatch allowed"),
+  );
+  const session = new ProviderSession(f.sql);
+  await session.refreshPublicTokenAhead(
+    { ...f.env, PUBLIC_TOKEN_REFRESH_AHEAD: "disabled" },
+    f.control,
+  );
+  await assert.rejects(
+    session.refreshPublicTokenAhead(
+      { ...f.env, LIVE_CUSTOMER_ACCESS: "disabled" },
+      f.control,
+    ),
+    /provider_access_disabled/,
+  );
+  await f.cache.save(f.env, "public", {
+    value: "synthetic-expired-public-token",
+    issued: f.now() - 50 * 60000,
+    until: f.now(),
+  });
+  await session.refreshPublicTokenAhead(f.env, f.control);
+  assert.equal(await f.cache.load(f.env, "public"), undefined);
+});

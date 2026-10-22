@@ -10,7 +10,12 @@ import {
 } from "./webhook-contract";
 import { z } from "zod";
 import { providerId } from "./provider-normalization";
-import { measure, traceId, traceHitpayFailure } from "./diagnostics";
+import {
+  measure,
+  traceId,
+  traceHitpayFailure,
+  providerTransportTiming,
+} from "./diagnostics";
 import { ApiError } from "./policy";
 
 // Fixed identity endpoints share the physical transport owner. Their durable
@@ -539,6 +544,15 @@ export async function providerRequest(
     let finishCheckoutProvider: (() => void) | undefined;
     let finishConfirmationProvider: ReturnType<typeof confirmationTransport>;
     let confirmationFailed = false;
+    const transportTiming =
+      operation === "public-auth"
+        ? providerTransportTiming("public_auth")
+        : operation === "admin-auth"
+          ? providerTransportTiming("admin_auth")
+          : native &&
+              ["book", "batch-create", "batch-close"].includes(native.kind)
+            ? providerTransportTiming("simplybook")
+            : undefined;
     try {
       if (
         native?.kind === "booking-cancel" &&
@@ -566,6 +580,7 @@ export async function providerRequest(
         redirect: "manual",
         signal: controller.signal,
       });
+      transportTiming?.headers();
       httpStatus = response.status;
       if (response.status >= 300 && response.status < 400) {
         await response.body?.cancel();
@@ -688,6 +703,7 @@ export async function providerRequest(
           : "provider_transport_uncertain",
       );
     } finally {
+      transportTiming?.finish(confirmationFailed);
       finishConfirmationProvider?.(confirmationFailed);
       finishCheckoutProvider?.();
       clearTimeout(timer);
@@ -786,6 +802,10 @@ export async function hitpayRequest(
     `hitpay-${operation.kind}`,
   );
   let confirmationFailed = false;
+  const transportTiming =
+    operation.kind === "create"
+      ? providerTransportTiming("hitpay_create")
+      : undefined;
   try {
     const response = await fetch(url, {
       method: operation.kind === "create" ? "POST" : "GET",
@@ -800,6 +820,7 @@ export async function hitpayRequest(
         ? { body: JSON.stringify(operation.body) }
         : {}),
     });
+    transportTiming?.headers();
     if (
       !response.ok ||
       !response.headers
@@ -854,6 +875,7 @@ export async function hitpayRequest(
     confirmationFailed = true;
     throw error;
   } finally {
+    transportTiming?.finish(confirmationFailed);
     finishConfirmationProvider?.(confirmationFailed);
     finishCheckoutProvider?.();
     clearTimeout(timer);

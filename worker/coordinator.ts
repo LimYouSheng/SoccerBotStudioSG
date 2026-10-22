@@ -781,6 +781,10 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     if (!store.claimRefresh(Date.now())) return;
     for (const month of months)
       await this.providerQueue.run("display", async () => {
+        await this.provider.refreshPublicTokenAhead(
+          this.env,
+          this.providerControl(false, true),
+        );
         const generation = store.generation();
         // Force fresh range evidence without discarding the last retained display.
         this.calendarReads.invalidate();
