@@ -70,6 +70,18 @@ Bounded synthetic load is accepted for 1/3/5 baseline/fault cohorts and separate
 
 Owner accepts normal payment/recovery/dismissal, 15-minute timeout and the observed long-open confirmation remaining confirmed. Deployed logs prove public-token SQLite restoration outside memory; HAR08 measured one 4.87-second checkout including a 0.992-second token miss. HAR09 is identical and proves no fresh network read. Batch later-item rollback/failed closure and in-flight late settlement remain unproven owner-accepted risks. Keep financial policies unchanged. Remaining: client rollout/UAT, Grafana validation, and regression checks after UI/UX/email refinements; further warm/batch performance and sustained-capacity work are optional follow-ups, not blanket milestone closure.
 
+### Client initial placement strategy (planned)
+
+Choose database and coordinator placement together before the client account Durable Object is first used:
+
+1. Create the client D1 database with the `apac` location hint; inspect primary-query metadata (`served_by_primary` and `served_by_colo`) to establish its actual serving location. A hint is best effort, not a guaranteed city.
+2. If the primary is in Japan, prefer the account DO hint `apac-ne`; if near Singapore, prefer `apac-se`. For another location, measure before selecting. Keep these environment-specific choices in validated configuration, not repository/account hardcoding. The configuration/provisioning automation is still future work.
+3. Apply the chosen hint on the new account object's first creation/use. Leave frontend/entry Worker routing unchanged initially; Worker placement does not relocate the account DO. Do not rename or replace an existing object to move it without a separate plan preserving coordination, token and recovery state.
+4. Verify the DO's actual execution with Cloudflare GraphQL `durableObjectsInvocationsAdaptiveGroups` or `durableObjectsPeriodicGroups`, grouped by `objectId` and `coloCode`; record namespace/object identity and observation window. Incoming `request.cf.colo`, provider response edges and the requested hint are not execution-location proof. Missing analytics is inconclusive.
+5. Validate owner-operated checkout end to end, including provider timings, D1 round trips, queue waits and failures. Nearby D1 is an initial candidate-selection rule, not proof of the globally fastest placement or a 2–3-second checkout.
+
+This is a client setup strategy, not a deployed setting or authorization to provision/migrate resources. Existing developer placement evidence and its limits are retained in Part 2.
+
 ### Checkout placement experiment
 
 Use one tested source revision and separate warm-token, restored-token and genuinely cold-token cohorts. Record full HTTP/checkout duration, queue wait, each provider transport timing, D1 round-trip duration/count and available SQL metadata. Preserve failures in the report; compare total latency, not a single faster span. The 21 October trace measured 4.870s browser / 4.704s HTTP / 4.227s coordinator, including 0.992s token, 1.668s booking, 0.872s HitPay and 0.878s across five D1 calls. Six comparable single paths across different versions are directional evidence, not a percentile benchmark. A management SQL probe served by primary KIX does not locate the coordinator or measure checkout SQL cost.
@@ -259,6 +271,12 @@ Current position: M4.4–M4.6/M5 hardening, M6 preparation; M7 UAT, M8 launch/ha
 [Original scope and exit evidence](https://github.com/LimYouSheng/SoccerBotStudioSG/blob/f0f000c2f600be1930cacf0b2f884103cb23fba7/docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md#m94--ongoing-changes-and-eventual-exit).
 
 ## Part 2 — Dated changes and evidence
+
+### 22 October 2026 — Execution location correction and client placement strategy
+
+Read-only Cloudflare GraphQL analytics for 22 October identify the existing `soccerbot-dev` account DO (`simplybook-developer-account`) in **SJC (San Jose)** in both invocation and periodic datasets. The bounded probe's D1 primary reads were served in **KIX (Osaka)**: current compute and database are not both in Japan. Matching probe object IDs establish **SIN (Singapore)** for `apac-se` and **CDG (Paris)** for `weur`; no matching `apac-ne` record was returned. Its 8–9ms D1 reads suggest proximity to KIX but do not establish its exact execution colo. This supersedes the earlier blanket statement that actual DO locations were unverified; it does not locate every entry Worker invocation or prove a checkout saving.
+
+Owner requests the initial client placement strategy above: create D1 with `apac`, verify its primary location, select a nearby initial DO hint and verify actual execution and end-to-end latency. PR86 remains unmerged by owner confirmation; main is still `f0f000c2f600be1930cacf0b2f884103cb23fba7`. No runtime configuration, resources, state or deployment changed. Test-impact review: documentation-only rules/history/progress update; existing runtime, browser and inventory assertions remain applicable. Source/policy/format/diff checks apply; final-head CI remains required.
 
 ### 22 October 2026 — Bounded placement screening after auth patch publication
 
