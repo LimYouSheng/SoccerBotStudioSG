@@ -2,7 +2,9 @@
 
 ## Current checkpoint — 22 October 2026 SGT
 
-PR82–86 are merged. PR86 merge is `d7a8d2b209b535d23a62702e4d59538e00a47012`. PR87 contains the six-file cleanup; this function-documentation follow-up is based on its `59d027f66a48c907c2bd22927dcb5f3ec07dfd76` head. Add one-line JSDoc/TSDoc and PEP 257 summaries without changing executable logic (Python docstring metadata is intentional). Validate comment-free syntax equivalence, source/policy/tooling/installer checks and full non-browser/Worker suites; final-commit CI remains pending. No merge or deployment is performed by this documentation task.
+PR82–88 are merged. Current main is `fabaea571d366ea7dfb584e61eaa7344c9fc3974`. PR88's three PR gates passed; its [main run 39729470052](https://github.com/LimYouSheng/SoccerBotStudioSG/actions/runs/39729470052) passed frontend/backend but failed live-email (80/81): the tablet-WebKit failed-readback case exceeded its 30-second test limit. The saved trace shows roughly ten seconds of fixture startup and slow execution; the exact cause is unresolved. Cloudflare deployment was skipped; Pages deployment passed. Do not treat the successful PR run as merged-release acceptance.
+
+This follow-up clarifies document ownership and removes repeated engineering instructions. It changes documentation only and requires its own final-commit CI. The original failure remains retained; no timeout, retry or assertion was changed.
 
 | Acceptance                  | Current evidence and limit                                                                                                                                                                                                                                                                                                                                       |
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -19,9 +21,11 @@ Merged PR86 includes the token-refresh/placement preparation alongside the docum
 
 ## Checkout placement experiment — waived
 
-Owner waived the separate real-checkout regional comparison. No test deployments or cold-token controls were implemented; the quiet-window question is retired. Retain the client strategy: verify D1 location, prefer a nearby initial DO placement (`apac-ne` for Japan D1), and validate actual execution/checkout during client UAT. Expected savings are not a measured performance pass. Existing dev placement remains unchanged; the cleanup requires final-head CI.
+Owner waived the separate real-checkout regional comparison. No test deployments or cold-token controls were implemented; the quiet-window question is retired. Retain the client strategy: verify D1 location, prefer a nearby initial DO placement (`apac-ne` for Japan D1), and validate actual execution/checkout during client UAT. Expected savings are not a measured performance pass. Existing dev placement remains unchanged.
 
 ## Remaining work
+
+- Diagnose the main live-email timeout and obtain all merged-revision gates before claiming a verified Cloudflare release.
 
 - Security maintenance and scanning (planned): verify/enable Dependabot alerts and security-update PRs; weekly grouped npm/GitHub Actions updates and the owner's weekly security-email digest; dependency vulnerability checks (npm audit), CodeQL/code scanning, and secret scanning/push protection where supported. Retain targeted authentication/payment/configuration security tests and review; Grafana does not replace vulnerability scanning. Review pinned Node and Worker compatibility updates deliberately. Preserve exact pins/lockfile; require review and all three final-commit CI gates before merge/deployment, with no automatic merge of unreviewed updates. Repository scan found no Dependabot/CodeQL workflow or explicit npm audit command; account-level security settings were not exposed by the connector, so their current state remains unverified. This task enables nothing.
 

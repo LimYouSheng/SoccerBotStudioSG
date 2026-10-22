@@ -270,6 +270,12 @@ Current position: M4.4–M4.6/M5 hardening, M6 preparation; M7 UAT, M8 launch/ha
 
 ## Part 2 — Dated changes and evidence
 
+### 22 October 2026 — Unique documentation ownership after PR88
+
+Owner requests that each file have one purpose without duplicated instructions. AGENTS owns engineering policy and the document map; the local skill becomes a discovery entry point; README owns setup/configuration/commands; North Star states the goal; Progress tracks current evidence and actions; Architecture explains topology/interactions; Service Contracts retains system rules and dated history. Historical records remain intact. The external cloud skill cannot be edited through the available tools; AGENTS explicitly supersedes its stale repository guidance. PR88 is already merged, so this is a linked follow-up rather than an amendment of the merged commit. Test-impact review covers planning-document integrity, local links and format/source/policy checks; no runtime, browser test or inventory changes.
+
+PR88 main run `39729470052` failed one of 81 live-email browser cases after passing frontend/backend; Cloudflare deployment was skipped. Saved trace evidence indicates slow fixture startup/execution, but the root cause is not established. Preserve that failure independently of the documentation cleanup.
+
 ### 22 October 2026 — One-line major-function documentation
 
 Owner requests conventional one-line function documentation. Add JSDoc/TSDoc summaries to major frontend, service, Worker and JavaScript tooling functions, and PEP 257 docstrings to Python installer functions. Preserve detailed safety rationale and generated/runtime declarations, test assertions and inventories. AGENTS records the convention for future edits. Test-impact review covers source-text checkers, tooling/installer behavior and all application/Worker owners; compare TypeScript output with comments removed and Python ASTs with function docstrings removed, then run non-browser and Worker verification. Python function `__doc__` metadata intentionally changes; no business logic, API, dependency or deployment changes are intended. Final-commit frontend/backend/live-email CI remains required.
