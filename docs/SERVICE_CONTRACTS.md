@@ -74,7 +74,7 @@ Owner accepts normal payment/recovery/dismissal, 15-minute timeout and the obser
 
 Use one tested source revision and separate warm-token, restored-token and genuinely cold-token cohorts. Record full HTTP/checkout duration, queue wait, each provider transport timing, D1 round-trip duration/count and available SQL metadata. Preserve failures in the report; compare total latency, not a single faster span. The 21 October trace measured 4.870s browser / 4.704s HTTP / 4.227s coordinator, including 0.992s token, 1.668s booking, 0.872s HitPay and 0.878s across five D1 calls. Six comparable single paths across different versions are directional evidence, not a percentile benchmark. A management SQL probe served by primary KIX does not locate the coordinator or measure checkout SQL cost.
 
-Regional comparison is pending an isolated diagnostic deployment: use distinct test-only objects in a separate namespace with best-effort `apac-se`, `apac-ne` and one provider-informed alternative; never change the active account object's name/namespace. Start with bounded read-only measurements, one request at a time, a fixed request budget and stop on auth/rate/transport failure. Use a separate provider test account for token-generation comparisons so probes cannot invalidate the active account's token. Do not infer write latency from HEAD requests or read latency alone. Owner-operated checkout is the final validation, with no automatic booking/payment probes. Compare baseline and candidate in alternating windows; report each observation and median/range when the sample is small, not an unsupported p95. Keep a candidate only if total checkout improves without higher failures, queue waits or duplicate effects. A 2–3-second cold checkout remains a target, not acceptance.
+Authenticated regional comparison remains pending. The bounded unauthenticated screening below is complete. For a future authenticated diagnostic deployment: use distinct test-only objects in a separate namespace with best-effort `apac-se`, `apac-ne` and one provider-informed alternative; never change the active account object's name/namespace. Start with bounded read-only measurements, one request at a time, a fixed request budget and stop on auth/rate/transport failure. Use a separate provider test account for token-generation comparisons so probes cannot invalidate the active account's token. Do not infer write latency from HEAD requests or read latency alone. Owner-operated checkout is the final validation, with no automatic booking/payment probes. Compare baseline and candidate in alternating windows; report each observation and median/range when the sample is small, not an unsupported p95. Keep a candidate only if total checkout improves without higher failures, queue waits or duplicate effects. A 2–3-second cold checkout remains a target, not acceptance.
 
 [Cloudflare DO location hints](https://developers.cloudflare.com/durable-objects/reference/data-location/) apply only on first creation and do not relocate an existing object. [Workers placement](https://developers.cloudflare.com/workers/configuration/placement/) does not move the account DO or its RPC execution. Verify placement through supported Cloudflare diagnostics; incoming-request colo is not proof of DO execution location. Client placement is chosen at initial setup from measurements; no existing state migration or new resource deployment is authorized by local verification.
 
@@ -259,6 +259,24 @@ Current position: M4.4–M4.6/M5 hardening, M6 preparation; M7 UAT, M8 launch/ha
 [Original scope and exit evidence](https://github.com/LimYouSheng/SoccerBotStudioSG/blob/f0f000c2f600be1930cacf0b2f884103cb23fba7/docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md#m94--ongoing-changes-and-eventual-exit).
 
 ## Part 2 — Dated changes and evidence
+
+### 22 October 2026 — Bounded placement screening after auth patch publication
+
+After auth patch `9f74969268e76a051f3f287f5a7b8eb99138ea4b` was pushed to PR86, the owner authorized a bounded placement experiment. Temporary Worker `soccerbot-placement-20261022` version `838f8834-6736-4d58-b517-50e006360d3d` used a separate DO namespace with hints `apac-se`, `apac-ne`, `weur`; no public endpoint or provider credentials. Nine atomic one-shot claims capped activity at 18 unauthenticated HEAD requests and nine D1 `SELECT 1` reads. Repeated schedules reused stored outcomes. Local workerd checks covered the budget, concurrent claims, failure/no replay and absolute expiry. Scheduled completion reported all nine samples; seven detailed records were retrievable through combined and per-region telemetry queries. Missing: apac-ne round 1 and weur round 0. Do not infer their values.
+
+| Hint    | Round | SimplyBook HEAD ms | HitPay HEAD ms | D1 round-trip ms | SQL ms |
+| ------- | ----: | -----------------: | -------------: | ---------------: | -----: |
+| apac-se |     0 |               1070 |            123 |               91 | 0.1437 |
+| apac-se |     1 |               1062 |            250 |               87 | 0.0970 |
+| apac-se |     2 |                281 |             86 |               87 | 0.1085 |
+| apac-ne |     0 |                703 |            507 |                9 | 0.1043 |
+| apac-ne |     2 |                191 |            152 |                8 | 0.1835 |
+| weur    |     1 |                397 |            226 |              231 | 0.1311 |
+| weur    |     2 |                126 |            375 |              229 | 0.1078 |
+
+Every captured D1 read reached primary KIX. SimplyBook HEAD returned 200; HitPay HEAD returned 404. These screen public endpoint paths, not authenticated token/booking/payment APIs; no p95, actual DO colo or checkout saving is established. Response-edge labels SIN/KIX/CDG are upstream edges, not DO location proof. Northeast Asia is the first candidate for the current Japan-based D1; Southeast Asia remains a client candidate if D1 is provisioned nearby. Select client D1 and coordinator placement jointly. No active coordinator was moved and no booking/payment was created.
+
+Schedule removal and temporary Worker deletion succeeded; a subsequent settings read returned 404. A proposed logging-only redeploy to consolidate records was rejected by automatic approval review as outside capture/cleanup and was not executed; read-only region queries were used instead. Probe source SHA256: `bdd87f50950ca8619192979e2d106d48f9f05e951b78346ccb17392b9992051b`. The result update is documentation-only; source/policy/format/diff checks apply and final-head CI remains required.
 
 ### 22 October 2026 — Public token refresh-ahead and placement diagnostics
 
