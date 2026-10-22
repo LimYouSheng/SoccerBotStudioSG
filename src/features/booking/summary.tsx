@@ -19,6 +19,7 @@ import { dateLabel, endTime, money } from "@/domain/dates";
 import { bookingCover } from "@/content/media";
 import { InstructorProfile } from "./instructor";
 import { useBooking } from "./provider";
+/** Render selected sessions with their dates, times and instructors. */
 export function SessionList({
   slots,
   remove,
@@ -78,6 +79,7 @@ export function SessionList({
   return list;
 }
 
+/** Present the total derived from the selected sessions. */
 export function PriceSummary({ draft }: { draft: BookingDraft }) {
   const prices = [...new Set(draft.slots.map(sessionPrice))].sort(
     (a, b) => a - b,
@@ -105,6 +107,7 @@ export function PriceSummary({ draft }: { draft: BookingDraft }) {
     </div>
   );
 }
+/** Render the booking summary and permitted editing actions. */
 export function Summary({ basket = false }: { basket?: boolean }) {
   const { draft, update, now, availability } = useBooking();
   const result = availability.result;

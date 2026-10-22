@@ -11,6 +11,7 @@ type InstructorProps =
 function instructorDisplay(props: InstructorProps) {
   return props.profile ?? INSTRUCTORS[props.id];
 }
+/** Display the selected instructor's identity. */
 export function InstructorIdentity(props: InstructorProps) {
   const instructor = instructorDisplay(props);
   return (
@@ -25,6 +26,7 @@ export function InstructorIdentity(props: InstructorProps) {
     </>
   );
 }
+/** Present the instructor profile details. */
 export function InstructorProfile(props: InstructorProps) {
   const instructor = instructorDisplay(props);
   return (

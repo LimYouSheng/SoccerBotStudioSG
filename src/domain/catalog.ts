@@ -38,12 +38,14 @@ export const CATALOGUE_MAX_AGE_MS = 60000;
 // Public display only: one missed fifteen-minute refresh may retain the prior
 // snapshot. The original observation deadline never moves when it is served.
 export const DISPLAY_SNAPSHOT_MAX_AGE_MS = 30 * 60_000;
+/** Calculate the expiry of a display snapshot. */
 export function displayDeadline(
   value: { observedAtMs: number; displayExpiresAtMs?: number },
   fallback: number,
 ) {
   return value.displayExpiresAtMs ?? value.observedAtMs + fallback;
 }
+/** Reject malformed or expired display snapshot deadlines. */
 export function validDisplayDeadline(value: {
   observedAtMs: number;
   displayExpiresAtMs?: number;
@@ -97,6 +99,7 @@ export const catalogueSchema = z
       .max(CATALOGUE_RECORD_LIMIT),
   })
   .superRefine(checkCatalogue);
+/** Validate catalogue data before exposing it to selection controls. */
 function checkCatalogue(
   value: {
     services: { id: string; instructorIds: string[] | null }[];
@@ -140,6 +143,7 @@ export const providerSelectionSchema = z.strictObject({
   players: z.number().int().min(1).max(MAX_PLAYERS),
 });
 export type ProviderSelection = z.infer<typeof providerSelectionSchema>;
+/** Resolve a selected service against the available catalogue. */
 export function catalogueSelection(
   catalogue: ProviderCatalogue,
   selection: ProviderSelection,
@@ -159,6 +163,7 @@ export function catalogueSelection(
   return { service, instructor };
 }
 // Refresh display/review without rewriting the selected IDs, contact or committed intent.
+/** Validate catalogue selections before presenting review details. */
 export function catalogueReview(
   previous: ProviderCatalogue,
   current: ProviderCatalogue,

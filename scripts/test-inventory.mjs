@@ -1,4 +1,5 @@
 import ts from "typescript";
+/** Inspect test declarations for exact inventory and prohibited controls. */
 export function inspectTests(file, text) {
   const source = ts.createSourceFile(
     file,
@@ -9,6 +10,7 @@ export function inspectTests(file, text) {
   );
   const inventory = [],
     errors = [];
+  /** Inspect test syntax for inventory entries and prohibited execution controls. */
   function visit(node) {
     if (ts.isCallExpression(node)) {
       const expression = node.expression.getText(source);

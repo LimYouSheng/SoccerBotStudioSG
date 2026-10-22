@@ -20,6 +20,7 @@ declare global {
     turnstile?: Turnstile;
   }
 }
+/** Manage the Turnstile widget lifecycle for email verification. */
 export function EmailBotProof({
   onToken,
 }: {

@@ -2,6 +2,7 @@ import { lstatSync, readdirSync, realpathSync, rmSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
+/** Remove generated Next.js type caches before fresh type generation. */
 export function resetNextTypes(root) {
   const base = realpathSync(root);
   const targets = [".next/types", ".next/dev/types"];

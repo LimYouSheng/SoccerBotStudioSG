@@ -116,6 +116,7 @@ export const PITCH_STROKES = (() => {
     );
   return lines;
 })();
+/** Locate the pitch origin within the measured arena bounds. */
 export function measurePitchOrigin(area: HTMLElement): EntryOrigin {
   const rect = area.getBoundingClientRect(),
     pitch = area.querySelector<SVGGElement>(".arena-pitch"),
@@ -176,6 +177,7 @@ const entryLogoPath = (project: (point: Point) => Point) =>
   ENTRY_LOGO_CONTOURS.map((contour) =>
     entryPath(contour.map(project), true),
   ).join("");
+/** Calculate the target arc for the arena entry path. */
 export function entryTargetArc(
   [cx, cy]: Point,
   radius: number,
@@ -192,6 +194,7 @@ export function entryTargetArc(
     return `M${point(start)}A${r} ${r} 0 1 1 ${point(start + Math.PI)}A${r} ${r} 0 1 1 ${point(start)}Z`;
   return `M${point(start)}A${r} ${r} 0 ${sweep > Math.PI ? 1 : 0} 1 ${point(end)}`;
 }
+/** Calculate arena geometry and element positions for an animation frame. */
 export function entryFrame(
   progress: number,
   origin: EntryOrigin,

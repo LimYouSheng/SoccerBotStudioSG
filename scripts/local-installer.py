@@ -36,6 +36,7 @@ PLANNING_OWNERS = PLANNING_DOCUMENTS | {
 
 
 def delivery_scope(manifest):
+    """Validate the requested full or planning-only delivery scope."""
     bundle = json.loads(manifest.read_text())
     scope = bundle.get('scope', 'full')
     guard.require(scope in {'full', 'planning'}, 'Unknown delivery scope')
@@ -52,7 +53,7 @@ def delivery_scope(manifest):
 
 
 def check_planning_documents(root, candidate):
-    """Dependency-free integrity gate; no Node, application build or browser invocation."""
+    """Validate planning document integrity without invoking Node or browsers."""
     for name in PLANNING_DOCUMENTS:
         source = (candidate / name).read_text()
         guard.require(source.strip() and source.endswith('\n'), f'Empty or incomplete document: {name}')
@@ -67,6 +68,7 @@ def check_planning_documents(root, candidate):
 
 
 def verify_planning(root, run, receipt):
+    """Run the bounded planning and installer verification gates."""
     check_planning_documents(root, root)
     for name in ('guarded-update.test.py', 'local-installer.test.py'):
         command = [sys.executable, '-B', str(root / 'scripts' / name), '-v']
@@ -86,7 +88,7 @@ def verify_planning(root, run, receipt):
 
 
 def select_manifest(root, source, run):
-    """Accept only exact reviewed prior candidates or the completed target."""
+    """Accept only an exact reviewed prior candidate or the completed target."""
     bundle = json.loads(source.read_text())
     variants = bundle.get('updates', [bundle])
     guard.require(bool(variants), 'Missing reviewed source baselines')
@@ -107,7 +109,7 @@ def select_manifest(root, source, run):
 
 
 def check_prerequisites(root, candidate):
-    """Read installed tools and browser paths; never install packages or launch a browser."""
+    """Inspect installed tools and browsers without installing or launching them."""
     package = json.loads((candidate / 'package.json').read_text())
     lock = json.loads((candidate / 'package-lock.json').read_text())['packages']
     required = {**package['dependencies'], **package['devDependencies']}
@@ -146,6 +148,7 @@ console.log(JSON.stringify(['chromium-headless-shell', 'webkit'].map(name => ({n
 
 
 def collect_local_evidence(root, destination, verification):
+    """Validate local verification receipts against the applied candidate."""
     source = root / 'test-results'
     destination.mkdir(parents=True, exist_ok=True)
     names = {'verification-all.json'}
@@ -171,7 +174,7 @@ def collect_local_evidence(root, destination, verification):
 
 
 def verify_local(root, run, receipt):
-    """User-executed full restoration scope: one fresh build, then the browser matrix."""
+    """Run the owner-invoked build and browser verification matrix."""
     results = root / 'test-results'
     guard.safe_directory(results)
     report = results / 'verification-all.json'
@@ -200,9 +203,11 @@ def verify_local(root, run, receipt):
 
 class LiveLog:
     def __init__(self, terminal, log):
+        """Retain the output streams used by the installer log writer."""
         self.terminal, self.log = terminal, log
 
     def write(self, text):
+        """Mirror installer output to the configured log streams."""
         self.log.write(text)
         self.log.flush()
         self.terminal.write(text)
@@ -210,17 +215,19 @@ class LiveLog:
         return len(text)
 
     def flush(self):
+        """Flush each configured installer log stream."""
         self.log.flush()
         self.terminal.flush()
 
 
 def banner(kind, text):
+    """Print the current installer phase with its delivery identity."""
     colour = {'RUNNING': 36, 'PASS': 32, 'STOPPED': 31, 'PENDING': 33}[kind]
     print(f'\033[{colour}m{kind} — {text}\033[0m', flush=True)
 
 
 def select_runtime(environment, home):
-    """Use an installed exact pin without sourcing shell profiles or changing defaults."""
+    """Select an installed pinned runtime without changing shell defaults."""
     active = shutil.which('node', path=environment.get('PATH', ''))
     roots = [Path(environment['NVM_DIR']).expanduser()] if environment.get('NVM_DIR') else []
     roots.append(home / '.nvm')
@@ -250,6 +257,7 @@ def select_runtime(environment, home):
 
 @contextmanager
 def process_environment(environment):
+    """Build the child-process environment for the selected runtime."""
     previous = os.environ.copy()
     os.environ.clear()
     os.environ.update(environment)
@@ -261,11 +269,12 @@ def process_environment(environment):
 
 
 def save_json(path, value):
+    """Write the structured installer receipt to its destination."""
     path.write_text(json.dumps(value, indent=2) + '\n')
 
 
 def archive_failure(run, destination):
-    """Include diagnostics, never source backups, payloads, dependencies or environment files."""
+    """Archive diagnostics while excluding secrets, payloads and source backups."""
     with ZipFile(destination, 'x', ZIP_DEFLATED) as archive:
         for file in sorted(run.rglob('*')):
             relative = file.relative_to(run)
@@ -277,6 +286,7 @@ def archive_failure(run, destination):
 
 
 def run_local(root, manifest, logs, desktop, home):
+    """Apply and verify the reviewed candidate while retaining failure evidence."""
     root, logs = root.absolute(), logs.absolute()
     guard.safe_directory(logs)
     guard.require(not logs.resolve().is_relative_to(root.resolve()), 'Logs must be outside the repository')
@@ -381,6 +391,7 @@ def run_local(root, manifest, logs, desktop, home):
 
 
 def main():
+    """Parse arguments and run the reviewed local installer."""
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('repository', type=Path)

@@ -3,6 +3,7 @@ import { Suspense, useState, useRef, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { startSyntheticCheckout } from "@/services/confirmation";
 import { ProtectedConfirmation } from "@/features/booking/protected-confirmation";
+/** Drive the local synthetic checkout without creating provider effects. */
 function Experiment() {
   const params = useSearchParams(),
     router = useRouter();
@@ -14,6 +15,7 @@ function Experiment() {
   useEffect(() => () => controller.current?.abort(), []);
   if (id)
     return <ProtectedConfirmation attemptId={id} checkoutMode="synthetic" />;
+  /** Start one synthetic checkout and ignore results after navigation or cancellation. */
   async function start() {
     if (inFlight.current) return;
     inFlight.current = true;
@@ -61,6 +63,7 @@ function Experiment() {
     </div>
   );
 }
+/** Render the synthetic preview route within a suspense boundary. */
 export default function ExperimentPage() {
   return (
     <Suspense fallback={<p>Preparing preview…</p>}>

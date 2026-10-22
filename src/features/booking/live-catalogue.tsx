@@ -8,6 +8,7 @@ import {
 } from "@/services/customer-catalogue";
 import { CONTACT } from "@/domain/catalog";
 import { money } from "@/domain/dates";
+/** Load and present the live service catalogue with explicit failure states. */
 export function LiveCatalogue({
   service = customerCatalogueService,
   onSelect,

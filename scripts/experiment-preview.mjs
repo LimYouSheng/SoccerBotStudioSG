@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import ts from "typescript";
 import { seedFoundation } from "../worker/tests/foundation-fixture.mjs";
+/** Create an isolated local checkout fixture that forbids provider traffic. */
 export async function createExperimentPreview() {
   const config = ts.parseConfigFileTextToJson(
     "wrangler.jsonc",
@@ -66,6 +67,7 @@ export async function createExperimentPreview() {
       await mf.dispose();
       rmSync(dir, { recursive: true, force: true });
     },
+    /** Forward loopback preview requests into the isolated Worker fixture. */
     async handle(request, response) {
       const url = new URL(request.url, "http://127.0.0.1:4173");
       if (

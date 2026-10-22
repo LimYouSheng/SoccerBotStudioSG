@@ -1,5 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 export default class BrowserEvidence {
+  /** Record the browser configuration before collecting test evidence. */
   onBegin(config) {
     mkdirSync("test-results", { recursive: true });
     writeFileSync(

@@ -42,6 +42,7 @@ export type RecoveryReader = {
   read: (input: RecoveryInput, signal: AbortSignal) => Promise<unknown>;
 };
 
+/** Claim due recovery work under its retained lease and budget. */
 export async function claimRecovery(
   db: D1Database,
   id: string,
@@ -65,6 +66,7 @@ export async function claimRecovery(
   return result[0].results[0] as RecoveryClaim | undefined;
 }
 
+/** Load the attempt associated with a valid recovery claim. */
 async function claimedAttempt(
   db: D1Database,
   claim: RecoveryClaim,
@@ -93,6 +95,7 @@ async function claimedAttempt(
   if (!row) throw new ApiError(409, "stale_recovery_claim");
   return row;
 }
+/** Classify authoritative readback into a retained recovery outcome. */
 function decision(
   env: Env,
   row: StoredAttempt & { owner_id: string },
@@ -118,6 +121,7 @@ function decision(
   }
 }
 
+/** Persist the recovery result while preserving unresolved effect evidence. */
 export async function completeRecovery(
   env: Env,
   claim: RecoveryClaim,
@@ -211,6 +215,7 @@ export async function completeRecovery(
   return { state, reason };
 }
 
+/** Bound recovery readback by its permitted duration. */
 async function boundedRead(
   reader: RecoveryReader,
   input: RecoveryInput,
@@ -241,6 +246,7 @@ async function boundedRead(
   }
 }
 
+/** Reconcile the selected attempt under its claimed recovery scope. */
 async function runSelectedRecovery(
   env: Env,
   options: {
@@ -348,6 +354,7 @@ async function runSelectedRecovery(
   return outcomes;
 }
 
+/** Process a bounded batch of eligible recovery work. */
 export async function runRecoveryBatch(
   env: Env,
   options: {
@@ -361,6 +368,7 @@ export async function runRecoveryBatch(
   return runSelectedRecovery(env, options, reader);
 }
 
+/** Report retention candidates without deleting historical evidence. */
 export async function retentionPreview(
   db: D1Database,
   now: number,
@@ -396,6 +404,7 @@ export async function retentionPreview(
 
 // Internal supervised trigger only; no HTTP route, scheduler, or draining loop.
 // A trusted operator composition must bind the grant and admitted exchange.
+/** Reconcile native booking evidence under the original attempt identity. */
 export async function runNativeReadback(
   env: Env,
   options: {

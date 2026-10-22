@@ -39,11 +39,13 @@ const schema = z.object({
   POLL_INTERVAL_MS: duration(1000, 30000),
   CHECKING_DEADLINE_MS: duration(60000, 1800000),
 });
+/** Validate environment configuration against the supported developer policy. */
 export function policy(env: Env) {
   return schema.parse(env);
 }
 // Ongoing customer operations have no campaign expiry. Operator experiments
 // retain their separately installed grants, deadlines and cumulative budgets.
+/** Require explicit provider and customer access for a published revision. */
 export function liveCustomerAccess(env: Env) {
   const p = policy(env);
   return (
@@ -65,6 +67,7 @@ export class ApiError extends Error {
 export type RpcOutcome<T> =
   | { ok: true; value: T }
   | { ok: false; error: { status: number; code: string } };
+/** Convert known API failures into safe serializable RPC outcomes. */
 export async function rpcOutcome<T>(
   operation: () => Promise<T>,
 ): Promise<RpcOutcome<T>> {
@@ -75,10 +78,12 @@ export async function rpcOutcome<T>(
     return { ok: false, error: { status: error.status, code: error.code } };
   }
 }
+/** Restore a known API failure from its safe RPC representation. */
 export function unwrapRpcOutcome<T>(outcome: RpcOutcome<T>): T {
   if (!outcome.ok) throw new ApiError(outcome.error.status, outcome.error.code);
   return outcome.value;
 }
+/** Hash a string using SHA-256 for retained identity comparisons. */
 export async function digest(value: string) {
   return Array.from(
     new Uint8Array(
@@ -87,12 +92,14 @@ export async function digest(value: string) {
     (b) => b.toString(16).padStart(2, "0"),
   ).join("");
 }
+/** Generate an unpredictable server-issued capability value. */
 export function capability() {
   return Array.from(crypto.getRandomValues(new Uint8Array(32)), (b) =>
     b.toString(16).padStart(2, "0"),
   ).join("");
 }
 
+/** Hash scoped identity parts using the validated server-side key. */
 export async function keyedHash(pepper: string, parts: string[]) {
   if (pepper.length < 32 || pepper.length > 512)
     throw new ApiError(503, "identity_unavailable");

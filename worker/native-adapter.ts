@@ -39,6 +39,7 @@ const retainedNativeKeySchema = z.strictObject({
   nativeCustomerId: z.string().optional(),
 });
 // Empty policy rejects navigation; production uses only the supplied fixed shape.
+/** Construct the accepted native checkout link from validated references. */
 export function nativeCheckoutLink(raw: unknown, configured = true) {
   const parsed = z.object({ link: z.string().min(1).max(4096) }).safeParse(raw);
   if (!configured || !parsed.success || !isNativeCheckoutUrl(parsed.data.link))
@@ -60,6 +61,7 @@ function validateScope(scope: NativeScope) {
 // Implements the existing composition contract: book returns a single invoice;
 // multiple sessions use one signed native batch closure. Neither path creates
 // an independent payment or retries a dispatched booking/finalization.
+/** Create provider booking operations bound to durable attempt evidence. */
 export function nativeBookingOperations(options: {
   scope: NativeScope;
   exchange: NativeExchange;
@@ -156,6 +158,7 @@ export function nativeBookingOperations(options: {
       await matches(value, context.attemptId);
       return options.prebooking.revalidate(value, context.sessionIndex);
     },
+    /** Create one session while retaining raw provider references before validation. */
     async createSession(session, value, context) {
       await matches(value, context.attemptId);
       if (
@@ -359,6 +362,7 @@ export function nativeBookingOperations(options: {
         confirmed: true,
       };
     },
+    /** Close and validate the batch before permitting payment handoff. */
     async finalize(ids, value, attemptId, assertCurrent) {
       await matches(value, attemptId);
       if (
@@ -463,6 +467,7 @@ export function nativeBookingOperations(options: {
 }
 // One read per known booking and one invoice read. Receipt times are captured by the
 // authenticated exchange, not by provider entity timestamps or browser polling.
+/** Read authoritative native booking evidence for the retained attempt. */
 export async function readNativeAttempt(options: {
   scope: NativeScope;
   parallelSingle?: boolean;
@@ -549,6 +554,7 @@ export type NativeCheckoutTiming = {
   supervisionDeadlineMs: number;
   handoffAtMs: number;
 };
+/** Derive checkout expiry from the original provider booking time. */
 export function nativeCheckoutDeadline(
   timing: NativeCheckoutTiming,
   now: number,
@@ -591,6 +597,7 @@ export function nativeCheckoutDeadline(
 }
 // Reserve the potentially stateful GET before dispatch. Lost/malformed replies
 // remain unknown, and a new adapter instance cannot regenerate the link.
+/** Validate native checkout prerequisites before retaining handoff evidence. */
 export async function prepareNativeLink(
   db: D1Database,
   scope: NativeScope,
@@ -675,6 +682,7 @@ export async function prepareNativeLink(
 }
 
 // Provider-required legacy signature only; never used for SoccerBot access.
+/** Generate the native booking signature for the validated reference. */
 export async function nativeBookingSignature(
   bookingId: string,
   hash: string,
@@ -696,6 +704,7 @@ export async function nativeBookingSignature(
   ).join("");
 }
 
+/** Read the saved native checkout without replaying booking creation. */
 export async function storedNativeCheckout(
   db: D1Database,
   attemptId: string,
@@ -733,6 +742,7 @@ export async function storedNativeCheckout(
 
 // Opaque native references use the existing per-attempt effect store. Unlike
 // authentication tokens, booking hashes must survive a restart for known-ID reads.
+/** Retain provider booking keys under their original attempt association. */
 async function retainNativeBookingKey(
   db: D1Database,
   attemptId: string,
@@ -795,6 +805,7 @@ async function retainNativeBookingKey(
     throw new ApiError(409, "native_key_not_retained");
   return fence !== undefined && result.at(-1)!.results.length === 1;
 }
+/** Read the retained signature for an associated native booking. */
 export async function storedNativeSignature(
   db: D1Database,
   attemptId: string,
@@ -818,6 +829,7 @@ export async function storedNativeSignature(
 
 // A lost finalization reply can be reconciled only from every retained new
 // booking key. No email lookup, batch replay, invoice creation or payment write.
+/** Recover booking associations from retained provider references. */
 export async function recoverNativeAssociation(options: {
   db: D1Database;
   scope: NativeScope;
@@ -882,6 +894,7 @@ export async function recoverNativeAssociation(options: {
 
 // Read only retained new-booking keys. The same strict association/money
 // normalization is used by recovery and compensation; a candidate is not proof.
+/** Read the retained native key set needed for authoritative recovery. */
 async function readNativeKeySet(options: {
   scope: NativeScope;
   keys: z.infer<typeof retainedNativeKeySchema>[];
@@ -963,6 +976,7 @@ async function readNativeKeySet(options: {
   };
 }
 
+/** Collect retained booking candidates without treating them as confirmation. */
 function retainedNativeCandidates(
   intent: z.infer<typeof intentSchema>,
   effects: { step: string; outcome: string; reference_id: string | null }[],
@@ -995,6 +1009,7 @@ function retainedNativeCandidates(
 
 // Operator-only inspection: a signed read of the exact retained record. It
 // neither reconciles an attempt nor invokes compensation/finalization.
+/** Inspect native provider state without creating or cancelling bookings. */
 export async function inspectNativeAttempt(options: {
   db: D1Database;
   scope: NativeScope;
@@ -1087,6 +1102,7 @@ export async function inspectNativeAttempt(options: {
 
 // Finite server-owned compensation only. It never repairs a cart, grants access,
 // refunds money, or treats a cancellation response as proof of cancellation.
+/** Compensate only eligible newly created unpaid effects within the granted scope. */
 export async function compensateNativeAttempt(options: {
   db: D1Database;
   scope: NativeScope;
@@ -1301,6 +1317,7 @@ export async function compensateNativeAttempt(options: {
 }
 
 // One request-local snapshot only; opaque recovery keys never enter responses or logs.
+/** Extract validated native signatures from retained snapshot evidence. */
 export async function nativeSignaturesFromSnapshot(
   rows: { step: string; reference_id: string }[],
   association: unknown,

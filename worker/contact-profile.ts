@@ -34,6 +34,7 @@ function ongoingContact(env: Env) {
       liveCustomerAccess(env),
   );
 }
+/** Read the contact profile under verified customer ownership. */
 export async function readContactProfile(
   request: Request,
   env: Env,
@@ -69,6 +70,7 @@ export async function readContactProfile(
     contact: row.name === null ? null : { name: row.name, phone: row.phone },
   };
 }
+/** Save permitted contact details under current identity and consent. */
 export async function saveContactProfile(
   request: Request,
   env: Env,

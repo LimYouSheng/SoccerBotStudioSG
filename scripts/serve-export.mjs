@@ -15,6 +15,7 @@ const types = {
   ".txt": "text/plain",
   ".xml": "application/xml",
 };
+/** Serve the static export locally with bounded path handling. */
 export function exportServer(directory, basePath, handler) {
   const root = resolve(directory);
   return createServer(async (request, response) => {

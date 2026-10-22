@@ -84,6 +84,7 @@ interface BookingContextValue extends StoredBooking {
   retryRebooking: () => void;
 }
 const Context = createContext<BookingContextValue | null>(null);
+/** Coordinate draft, identity and checkout state across the booking flow. */
 export function BookingProvider({
   children,
   bookingService = services.booking,
@@ -735,6 +736,7 @@ export function BookingProvider({
         retryRebooking() {
           if (exitWork.current) void finishExit(exitWork.current.id);
         },
+        /** Restart the draft flow after an eligible attempt expiry. */
         restartAfterExpiry(id) {
           if (
             active.current ||
@@ -766,6 +768,7 @@ export function BookingProvider({
           setRestoredOwner({ service, identityService });
           commit({ version: 2, draft: blankDraft(), attempt: null });
         },
+        /** Apply draft changes while preserving the booking state constraints. */
         update(change) {
           const current = latest.current;
           if (current.attempt?.held || current.attempt?.verifying) {
@@ -834,6 +837,7 @@ export function BookingProvider({
   );
 }
 
+/** Read booking state and actions from the required provider. */
 export function useBooking() {
   const context = useContext(Context);
   if (!context) throw new Error("BookingProvider is required.");

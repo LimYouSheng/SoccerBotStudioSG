@@ -11,6 +11,7 @@ import type { HitpayRow } from "./hitpay-journal";
 import { ApiError } from "./policy";
 
 // Request-local primary snapshot. Never retained across HTTP requests or writes.
+/** Build a confirmation snapshot from retained booking evidence. */
 export async function confirmationSnapshot(
   env: Env,
   id: string,

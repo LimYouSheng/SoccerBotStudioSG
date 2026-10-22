@@ -52,6 +52,7 @@ import { providerSecrets, type NativeExchange } from "./provider-transport";
 // Both operator experiments and ongoing customer checkout use one-use grants.
 // Customer grants are issued after authenticated consent and fresh slot reads.
 
+/** Resolve the retained native checkout status for the customer attempt. */
 export async function nativeCheckoutStatus(
   request: Request,
   env: Env,
@@ -101,6 +102,7 @@ type PreparedCheckout = {
   row: AttemptSnapshot;
   preparation?: D1PreparedStatement[];
 };
+/** Execute claimed booking effects and retain evidence before payment handoff. */
 export async function executeNativeCheckout(options: {
   request: Request;
   env: Env;
@@ -1018,6 +1020,7 @@ export async function executeNativeCheckout(options: {
   return { attemptId, ...result };
 }
 
+/** Validate the customer's retained native checkout window. */
 async function customerNativeWindow(
   request: Request,
   env: Env,
@@ -1098,6 +1101,7 @@ async function customerNativeWindow(
   };
   return { p, access, grant, contract, dates, binding };
 }
+/** Prepare protected native checkout authority for validated selections. */
 export async function prepareCustomerNative(
   request: Request,
   env: Env,
@@ -1361,6 +1365,7 @@ export async function prepareCustomerNative(
   }
   return results[0].value;
 }
+/** Read native availability under current customer authority. */
 export async function customerNativeAvailability(options: {
   request: Request;
   env: Env;
@@ -1512,6 +1517,7 @@ export async function customerNativeAvailability(options: {
   }
 }
 
+/** Resolve the current native attempt without creating a replacement. */
 export async function currentCustomerNative(request: Request, env: Env) {
   const access = await authenticate(request, env, Date.now());
   const row = await env.STATE.withSession("first-primary")
@@ -1587,6 +1593,7 @@ export async function currentCustomerNative(request: Request, env: Env) {
   });
 }
 
+/** Read customer calendar data within the authorized native window. */
 export async function customerNativeCalendar(options: {
   request: Request;
   env: Env;

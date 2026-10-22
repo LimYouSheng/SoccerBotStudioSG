@@ -27,6 +27,7 @@ function luminance(hex) {
   });
   return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
 }
+/** Check source and styles against the approved presentation constraints. */
 export function designAudit(text) {
   const errors = [],
     contrast = [];

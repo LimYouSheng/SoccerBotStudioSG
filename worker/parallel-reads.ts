@@ -1,5 +1,6 @@
 // Account callers retain physical admission limits. Stop scheduling on failure,
 // drain started siblings, and report the first failed input deterministically.
+/** Execute read operations within the configured concurrency bound. */
 export async function parallelReads<T>(
   operations: (() => Promise<T>)[],
   onFailure?: (index: number) => void,

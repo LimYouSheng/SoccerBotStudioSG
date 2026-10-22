@@ -8,6 +8,7 @@ import type { ProviderSession, ProviderControl } from "./provider-session";
 // Durable annotation intent is saved before association. Dispatch is claimed
 // separately after checkout, under the same account admission limits. A missing
 // response remains unknown; neither cron nor another request resends it.
+/** Annotate eligible pending bookings using retained effect accounting. */
 export async function annotatePendingBooking(
   env: Env,
   provider: ProviderSession,

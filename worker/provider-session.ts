@@ -63,6 +63,7 @@ export class ProviderSession {
   private readonly restoration = new Map<ProviderFamily, Promise<void>>();
   private readonly tokenEpoch = new Map<ProviderFamily, number>();
   private boundCredentials: string | undefined;
+  /** Attach persistent token storage when an account SQLite binding is available. */
   constructor(sql?: SqlStorage) {
     if (sql) this.durableTokens = new ProviderTokenCache(sql);
   }
@@ -76,6 +77,7 @@ export class ProviderSession {
     this.cachedIdentity = undefined;
     tokenCacheEvent(family, reason);
   }
+  /** Restore an unexpired encrypted token without extending its retention. */
   private async restoreToken(env: Env, family: ProviderFamily) {
     if (
       this.tokens.has(family) ||
@@ -115,6 +117,7 @@ export class ProviderSession {
       companyLogin: secrets.company,
     });
   }
+  /** Invalidate cached authentication when the provider credential scope changes. */
   private bindScope(env: Env) {
     const secrets = providerSecrets(env);
     const key = JSON.stringify([
@@ -141,6 +144,7 @@ export class ProviderSession {
     this.boundCredentials = credentials;
     return secrets;
   }
+  /** Read catalogue data using scoped provider authentication. */
   async catalogue(
     env: Env,
     control: ProviderControl,
@@ -173,6 +177,7 @@ export class ProviderSession {
       cacheOnly,
     );
   }
+  /** Read provider evidence needed to review a booking selection. */
   prebooking(
     env: Env,
     control: ProviderControl,
@@ -207,6 +212,7 @@ export class ProviderSession {
   }
   // One named discovery only. Caller supplies the existing durable admission owner,
   // never a URL, method, service ID or a browser assertion of verification.
+  /** Read required booking-field definitions under the discovery scope. */
   async discoverFields(env: Env, control: ProviderControl) {
     const p = policy(env);
     if (
@@ -236,6 +242,7 @@ export class ProviderSession {
   private cachedIdentity:
     { value: Record<string, unknown>; until: number } | undefined;
 
+  /** Collect provider evidence for the authorized account comparison. */
   async comparison(
     env: Env,
     control: ProviderControl,
@@ -297,6 +304,7 @@ export class ProviderSession {
 
   // Read-only internal transport. Finite checkout uses the separate nativeWrite
   // entry with durable grant validation; a read grant can never dispatch writes.
+  /** Dispatch an authenticated native read and handle token rejection. */
   async nativeRead(
     env: Env,
     control: ProviderControl,
@@ -360,6 +368,7 @@ export class ProviderSession {
   // grant, guest capability, attempt and budget immediately before each write.
   // Checkout creation needs only the public API token. Account configuration
   // and studio capacity are enforced by SimplyBook and response validation.
+  /** Acquire public authentication and record checkout cache usage. */
   async checkoutToken(env: Env, control: ProviderControl) {
     const secrets = this.bindScope(env);
     if (
@@ -382,6 +391,7 @@ export class ProviderSession {
 
   // Background queue only. Retire before issuing a replacement: SimplyBook's
   // contract does not establish that two token generations remain valid.
+  /** Retire and replace an eligible public token within the serialized workflow. */
   async refreshPublicTokenAhead(env: Env, control: ProviderControl) {
     if (policy(env).PUBLIC_TOKEN_REFRESH_AHEAD !== "enabled") return;
     const secrets = this.bindScope(env);
@@ -406,6 +416,7 @@ export class ProviderSession {
     tokenCacheEvent("public", "refreshed");
   }
 
+  /** Dispatch an authorized native write without blindly replaying failures. */
   async nativeWrite(
     env: Env,
     control: ProviderControl,
@@ -518,6 +529,7 @@ export class ProviderSession {
     throw error;
   }
 
+  /** Reuse or acquire a scoped token with fixed absolute retention. */
   private async token(
     family: ProviderFamily,
     env: Env,
@@ -588,6 +600,7 @@ export class ProviderSession {
     }
   }
 
+  /** Verify provider account identity within the bounded authentication cache. */
   async identity(
     env: Env,
     control: ProviderControl,

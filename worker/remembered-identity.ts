@@ -33,9 +33,11 @@ function tokenFrom(request: Request) {
 function cookie(token: string, expires: number) {
   return `${name}=${token}; Path=/; Secure; HttpOnly; SameSite=Strict; Expires=${new Date(expires).toUTCString()}`;
 }
+/** Expire the browser's remembered-identity cookie. */
 export function clearRememberedCookie() {
   return `${name}=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0`;
 }
+/** Revoke the remembered identity presented by the current browser. */
 export async function revokePresentedRemembered(
   request: Request,
   env: Env,
@@ -51,6 +53,7 @@ export async function revokePresentedRemembered(
     .run();
 }
 // Revoke a previously remembered browser identity only after fresh verification succeeds.
+/** Replace remembered identity without retaining superseded browser authority. */
 export async function replaceRememberedIdentity(
   request: Request,
   env: Env,
@@ -64,6 +67,7 @@ export async function replaceRememberedIdentity(
   ).bind(now, id, env.APP_ORIGIN, env.DEPLOYMENT_ACCOUNT_ID, hash, hash);
 }
 // Append immediately after the successful single-use verified_identity write.
+/** Prepare bounded remembered-identity issuance under current consent. */
 export async function rememberedIssuance(
   env: Env,
   access: Access,
@@ -95,6 +99,7 @@ export async function rememberedIssuance(
     ],
   };
 }
+/** Restore an eligible remembered identity after server-side validation. */
 export async function restoreRememberedIdentity(
   request: Request,
   env: Env,
@@ -181,6 +186,7 @@ export async function restoreRememberedIdentity(
   cookies.push(cookie(successor, family.expires_ms));
   return { email: family.email, expiresAt: expiry };
 }
+/** Revoke the customer's active and remembered browser identity authority. */
 export async function revokeAllIdentities(
   request: Request,
   env: Env,

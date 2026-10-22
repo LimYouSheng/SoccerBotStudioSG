@@ -19,6 +19,7 @@ import {
 } from "@/domain/dates";
 import type { AvailableSlot } from "@/services/contracts";
 import { useBooking } from "./provider";
+/** Manage calendar, session-time and instructor selection. */
 export function TimeStep() {
   const { selectionNotice } = useBooking();
   const {
@@ -122,6 +123,7 @@ export function TimeStep() {
     result?.status === "success"
       ? result.slots.filter((slot) => slot.date === date)
       : [];
+  /** Apply a session selection while enforcing the current booking constraints. */
   function select({
     date,
     start,

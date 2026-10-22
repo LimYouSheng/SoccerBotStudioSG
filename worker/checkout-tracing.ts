@@ -31,6 +31,7 @@ type CheckoutTrace = {
 const context = new AsyncLocalStorage<CheckoutTrace>();
 const elapsed = (start: number) => Math.max(0, performance.now() - start);
 
+/** Initialize sanitized timing counters for one checkout. */
 export function createCheckoutTrace(correlationId: string): CheckoutTrace {
   if (!/^[a-f0-9-]{36}$/.test(correlationId))
     throw new Error("Invalid trace identity");
@@ -61,6 +62,7 @@ function change(trace: CheckoutTrace, phase: Phase) {
 }
 
 // Bind inside the queued callback: another request may own the queue's drain.
+/** Run checkout work within its asynchronous trace context. */
 export function runCheckoutTrace<T>(
   trace: CheckoutTrace | undefined,
   operation: () => Promise<T>,
@@ -72,6 +74,7 @@ export function runCheckoutTrace<T>(
   });
 }
 
+/** Record whether checkout authentication used a cached token. */
 export function checkoutTokenCache(cached: boolean) {
   const trace = context.getStore();
   if (!trace || trace.closed || trace.tokenCached !== undefined)
@@ -84,6 +87,7 @@ export function checkoutTokenCache(cached: boolean) {
 }
 
 // Capture the phase at dispatch, even when a D1 promise settles in a later phase.
+/** Accumulate D1 timing and round trips for the active checkout. */
 export function checkoutD1() {
   const trace = context.getStore();
   if (!trace || trace.closed) return undefined;
@@ -98,6 +102,7 @@ export function checkoutD1() {
 }
 
 // Called after admission, immediately before fetch; ends after body consumption.
+/** Accumulate provider timing for the active checkout stage. */
 export function checkoutProvider(
   phase: "simplybook" | "verification" | "hitpay",
 ) {
@@ -116,6 +121,7 @@ export function checkoutProvider(
   };
 }
 
+/** Emit the completed checkout timing summary without customer data. */
 export function finishCheckoutTrace(trace: CheckoutTrace | undefined) {
   if (!trace || trace.closed) return undefined;
   change(trace, trace.phase);

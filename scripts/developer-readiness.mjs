@@ -11,6 +11,7 @@ export const readGrantSql =
 
 // All newly applied columns remain in the fingerprint. No deletion or default
 // substitution can hide a changed recovery/checking counter.
+/** Hash retained rows for before-and-after preservation checks. */
 export function fingerprintRows(rows, key) {
   assert(Array.isArray(rows));
   const keys = Array.isArray(key) ? key : [key];
@@ -33,6 +34,7 @@ export function fingerprintRows(rows, key) {
   return createHash("sha256").update(JSON.stringify(normalized)).digest("hex");
 }
 
+/** Evaluate the observed developer environment against the required scope. */
 export function assessReadiness(expected, receipt, nonce, now) {
   const h = receipt.health;
   if (receipt.status !== 200 || !h || typeof h !== "object")
@@ -58,6 +60,7 @@ export function assessReadiness(expected, receipt, nonce, now) {
   return { ready: true, reason: "matched" };
 }
 
+/** Collect bounded readiness evidence using the supplied management operations. */
 export async function verifyReadiness(expected, io) {
   assert.match(expected.revision, /^[a-f0-9]{40}$/);
   assert.match(expected.versionId, /^[a-f0-9-]{36}$/);
@@ -125,6 +128,7 @@ export async function verifyReadiness(expected, io) {
   return { ready: false, reason: "readiness_exhausted", receipts };
 }
 
+/** Read deployment health with bounded transport and captured diagnostics. */
 export function curlHealth(origin, nonce) {
   assert.equal(new URL(origin).origin, origin);
   assert.equal(new URL(origin).protocol, "https:");
@@ -180,6 +184,7 @@ export function curlHealth(origin, nonce) {
 
 // Parse final headers without splitting blank lines inside a formatted JSON body.
 // Denial bodies and unrelated response headers never enter retained evidence.
+/** Validate captured HTTP health output before accepting readiness evidence. */
 export function parseCurlHealth(raw) {
   assert(Buffer.byteLength(raw) <= 32768);
   let remaining = raw,

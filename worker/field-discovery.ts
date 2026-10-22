@@ -17,6 +17,7 @@ const field = z.object({
   ]),
 });
 const schema = z.array(field).max(64);
+/** Normalize required provider fields for bounded setup discovery. */
 export function discoveryFields(body: unknown) {
   const parsed = schema.safeParse(body);
   if (

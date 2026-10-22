@@ -19,6 +19,7 @@ const Loading = createContext<((label: string) => () => void) | null>(null);
 
 // Keep the active screen mounted: loading must not discard contact, consent,
 // provider widgets or an in-flight attempt. Multiple reads share one overlay.
+/** Share booking loading state across asynchronous operations. */
 export function BookingLoadingProvider({ children }: { children: ReactNode }) {
   const [pending, setPending] = useState<Map<symbol, string>>(() => new Map());
   const register = useCallback((label: string) => {
@@ -63,6 +64,7 @@ export function BookingLoadingProvider({ children }: { children: ReactNode }) {
     </Loading.Provider>
   );
 }
+/** Render the shared booking progress presentation. */
 export function BookingLoading({
   label = "Preparing your booking…",
   compact = false,

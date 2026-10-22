@@ -11,6 +11,7 @@ import { SERVICE_NAME } from "@/domain/demo-catalog";
 import { normalizeContact, type ContactDetails } from "@/domain/contact";
 import { useBooking } from "./provider";
 import { PriceSummary, SessionList } from "./summary";
+/** Render the customer's contact details for booking review. */
 export function ClientDetails({ contact }: { contact: ContactDetails }) {
   const c = normalizeContact(contact);
   return (
@@ -34,6 +35,7 @@ export function ClientDetails({ contact }: { contact: ContactDetails }) {
     </dl>
   );
 }
+/** Present the session arrival instructions. */
 export function Arrival({ compact = false }: { compact?: boolean } = {}) {
   return (
     <section className="arrival-information" aria-label="Before your session">
@@ -54,6 +56,7 @@ export function Arrival({ compact = false }: { compact?: boolean } = {}) {
     </section>
   );
 }
+/** Review selections and consent before starting checkout. */
 export function ReviewStep({
   verifying = false,
 }: { verifying?: boolean } = {}) {

@@ -8,6 +8,7 @@ import { MAX_PLAYERS } from "@/domain/booking-policy";
 import { SERVICE_NAME } from "@/domain/demo-catalog";
 import { LiveCatalogue } from "./live-catalogue";
 import { useBooking } from "./provider";
+/** Select the live or demo session presentation. */
 export function SessionStep() {
   const { bookingService } = useBooking();
   return bookingService.mode === "live" ? (
@@ -16,6 +17,7 @@ export function SessionStep() {
     <SessionPresentation />
   );
 }
+/** Resolve live catalogue data for the session selection step. */
 function LiveSession({ data }: { data: CustomerCatalogue }) {
   const { draft, update } = useBooking();
   const eligible = data.services.filter(
@@ -67,6 +69,7 @@ function LiveSession({ data }: { data: CustomerCatalogue }) {
     />
   );
 }
+/** Render session information and player-count controls. */
 function SessionPresentation({
   serviceName = SERVICE_NAME,
   pending = false,

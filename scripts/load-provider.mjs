@@ -8,6 +8,7 @@ const templates = JSON.parse(
 ).responses;
 const wall = (ms) =>
   new Date(ms + 28800000).toISOString().slice(0, 19).replace("T", " ");
+/** Create synthetic provider behavior and effect accounting for load tests. */
 export function loadProvider({ delayMs = 0, maxCalls = 2000 } = {}) {
   const groups = new Map(),
     bookings = new Map(),
@@ -20,6 +21,7 @@ export function loadProvider({ delayMs = 0, maxCalls = 2000 } = {}) {
   const business = "00000000-0000-4000-8000-000000000003";
   const response = (call, result) =>
     Response.json({ jsonrpc: "2.0", id: call.body.id, result });
+  /** Create a synthetic booking group with an unpaid invoice. */
   function group() {
     const id = ++serial;
     const invoice = structuredClone(templates.invoiceBefore);
@@ -50,6 +52,7 @@ export function loadProvider({ delayMs = 0, maxCalls = 2000 } = {}) {
     for (const detail of g.details)
       detail.invoice_amount = g.invoice.amount.toFixed(4);
   }
+  /** Resolve a simulated provider call while recording bounded effects and faults. */
   async function respond(call) {
     assert.ok(++calls <= maxCalls, "Synthetic provider call budget exceeded");
     const url = new URL(call.url),
@@ -256,6 +259,7 @@ export function loadProvider({ delayMs = 0, maxCalls = 2000 } = {}) {
         },
       ];
     },
+    /** Construct synthetic webhook evidence for the load-test payment. */
     webhook(id, status) {
       const p = payments.get(id);
       assert.ok(p);

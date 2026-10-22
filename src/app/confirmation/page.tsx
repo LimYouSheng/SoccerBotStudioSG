@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useBooking } from "@/features/booking/provider";
 import { ProtectedConfirmation } from "@/features/booking/protected-confirmation";
+/** Resolve the attempt parameter into a protected confirmation view. */
 function ConfirmationRoute() {
   const params = useSearchParams();
   const {
@@ -24,6 +25,7 @@ function ConfirmationRoute() {
     />
   );
 }
+/** Render the confirmation route with a loading boundary. */
 export default function ConfirmationPage() {
   return (
     <Suspense fallback={<PendingConfirmation />}>

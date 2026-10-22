@@ -1,5 +1,6 @@
 import { liveCustomerAccess, policy } from "./policy";
 
+/** Check whether ongoing customer reconciliation is enabled. */
 export function ongoingReadbackEnabled(env: Env) {
   const enabled: unknown = Reflect.get(env, "LIVE_READBACK");
   return (
@@ -11,6 +12,7 @@ export function ongoingReadbackEnabled(env: Env) {
 
 // Checkout's persisted grant supplies provenance; no browser session is renewed.
 // Existing deadlines and five-try recovery ownership remain authoritative.
+/** Select an eligible retained attempt for ongoing readback. */
 export async function ongoingReadbackDue(
   env: Env,
   now: number,

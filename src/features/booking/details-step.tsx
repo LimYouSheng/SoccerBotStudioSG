@@ -14,6 +14,7 @@ import { ReviewStep } from "./review-step";
 type TextKey = {
   [K in keyof ContactDetails]: ContactDetails[K] extends string ? K : never;
 }[keyof ContactDetails];
+/** Collect contact, player and consent details before booking review. */
 export function DetailsStep({
   profileOnly = false,
   onClose,
@@ -61,6 +62,7 @@ export function DetailsStep({
     [contactKey, identityService],
   );
   const remember = identityService.current()?.remember === true;
+  /** Validate and retain customer details before advancing to review. */
   async function save() {
     if (activeSave.current || !remember) return false;
     const next = contactErrors(c, draft.accountEmail);
@@ -107,6 +109,7 @@ export function DetailsStep({
     update({ contact: { ...c, [key]: value } });
     setErrors((current) => ({ ...current, [key]: undefined }));
   }
+  /** Render a contact input with its validation feedback. */
   function field(
     key: TextKey,
     label: string,
@@ -141,6 +144,7 @@ export function DetailsStep({
       </div>
     );
   }
+  /** Render a contact selection control with validation feedback. */
   function select(
     key: TextKey,
     label: string,

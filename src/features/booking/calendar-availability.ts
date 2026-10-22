@@ -21,6 +21,7 @@ const retention = (entry: CalendarAvailability) =>
       : CATALOGUE_MAX_AGE_MS;
 // Load only the displayed month. Other months load on navigation, never as
 // background prefetch or an empty-result polling loop.
+/** Load calendar availability and reconcile the selected day. */
 export function useCalendarAvailability(
   service: BookingService,
   serviceId: string | undefined,
@@ -201,6 +202,7 @@ export function useCalendarAvailability(
   return {
     cachedDates,
     reconcile,
+    /** Resolve a cached calendar entry and filter offers against the current cutoff. */
     entry(selected: string, now: number) {
       const value = current?.entries[selected];
       const observedNow = Math.max(now, value?.receivedAtMs ?? now);

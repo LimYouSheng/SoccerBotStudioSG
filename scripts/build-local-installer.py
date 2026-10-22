@@ -11,6 +11,7 @@ import textwrap
 
 
 def build(manifest, output):
+    """Package the reviewed manifest and guarded runner into a checksummed installer."""
     scripts = Path(__file__).parent
     modules = {name: (scripts / name).read_text() for name in ('guarded-update.py', 'local-installer.py')}
     for name, source in modules.items():

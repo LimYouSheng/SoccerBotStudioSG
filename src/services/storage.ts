@@ -18,6 +18,7 @@ const record = (value: unknown): Record<string, unknown> | null =>
   value !== null && typeof value === "object" && !Array.isArray(value)
     ? (value as Record<string, unknown>)
     : null;
+/** Migrate a stored draft into the current client schema. */
 function upgradeDraft(value: unknown): unknown {
   const draft = record(value);
   if (!draft || !("instructor" in draft) || !Array.isArray(draft.slots))
@@ -43,6 +44,7 @@ function upgradeDraft(value: unknown): unknown {
     }),
   };
 }
+/** Migrate a stored booking into the current client schema. */
 export function upgradeBooking(value: unknown): unknown {
   const booking = record(value),
     draft = record(booking?.draft);
@@ -64,6 +66,7 @@ export function upgradeBooking(value: unknown): unknown {
     })),
   };
 }
+/** Validate and upgrade the persisted client booking state. */
 function upgradeStored(value: unknown): unknown {
   const stored = record(value);
   if (stored?.version !== 1) return value;
@@ -81,6 +84,7 @@ function upgradeStored(value: unknown): unknown {
       : null,
   };
 }
+/** Read local storage without propagating unavailable-storage errors. */
 export function safeRead(key: string, persistent = false): unknown {
   try {
     return JSON.parse(
@@ -90,6 +94,7 @@ export function safeRead(key: string, persistent = false): unknown {
     return null;
   }
 }
+/** Write local state while tolerating unavailable browser storage. */
 export function safeWrite(
   key: string,
   value: unknown,
@@ -104,6 +109,7 @@ export function safeWrite(
     /* Private browsing may deny persistence. In-memory flow remains available. */
   }
 }
+/** Remove local state while tolerating unavailable browser storage. */
 export function safeRemove(key: string, persistent = false): void {
   try {
     (persistent ? localStorage : sessionStorage).removeItem(key);
@@ -111,6 +117,7 @@ export function safeRemove(key: string, persistent = false): void {
     /* Storage can be disabled. */
   }
 }
+/** Load validated persisted booking state. */
 export function loadBooking(): StoredBooking {
   const parsed = storedSchema.safeParse(
     safeRead(KEY) ?? upgradeStored(safeRead(LEGACY_KEY)),
@@ -119,16 +126,19 @@ export function loadBooking(): StoredBooking {
     ? parsed.data
     : { version: 2, draft: blankDraft(), attempt: null };
 }
+/** Persist the permitted booking state fields. */
 export function saveBooking(value: StoredBooking) {
   safeWrite(KEY, value);
 }
 
 // An editable live draft is display data only. Attempts and payment authority
 // are always restored from the authenticated server, never browser storage.
+/** Load the client draft without treating it as server authority. */
 export function loadLiveDraft() {
   const parsed = draftSchema.safeParse(safeRead("soccerbot-live-draft"));
   return parsed.success ? { ...parsed.data, accepted: false } : blankDraft();
 }
+/** Persist the live booking draft for browser continuity. */
 export function saveLiveDraft(draft: StoredBooking["draft"]) {
   safeWrite("soccerbot-live-draft", { ...draft, accepted: false });
 }

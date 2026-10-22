@@ -12,6 +12,7 @@ export type Access = {
   expires_ms: number;
   fresh_checkout?: number;
 };
+/** Validate the presented access capability against retained server state. */
 export async function authenticate(
   request: Request,
   env: Env,
@@ -49,6 +50,7 @@ export async function authenticate(
   if (!row) throw new ApiError(401, "access_denied");
   return row;
 }
+/** Create a bounded server-issued access capability. */
 export async function createAccess(env: Env, now: number) {
   const token = capability(),
     owner = crypto.randomUUID(),
@@ -60,6 +62,7 @@ export async function createAccess(env: Env, now: number) {
     .run();
   return `${cookieName}=${token}; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=${Math.floor(duration / 1000)}`;
 }
+/** Revoke the retained access capability. */
 export async function revokeAccess(env: Env, access: Access, now: number) {
   await env.STATE.prepare(
     "UPDATE guest_access SET revoked_ms=? WHERE capability_hash=? AND revoked_ms IS NULL",
@@ -69,12 +72,14 @@ export async function revokeAccess(env: Env, access: Access, now: number) {
   return clearAccessCookie();
 }
 
+/** Expire the browser's access cookie. */
 export function clearAccessCookie() {
   return `${cookieName}=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0`;
 }
 
 // Internal HTTP-to-coordinator context. SQL write fences still recheck access
 // after token warming and before either provider effect.
+/** Authenticate checkout ownership before exposing attempt state. */
 export async function authenticateCheckout(request: Request, env: Env) {
   assertBindingShape(env);
   return authenticate(

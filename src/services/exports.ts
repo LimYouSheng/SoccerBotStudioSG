@@ -23,6 +23,7 @@ function utcTime(date: string, time: string) {
     .replace(/[-:]/g, "")
     .replace(/\.\d{3}Z/, "Z");
 }
+/** Generate calendar content from the validated booking details. */
 export function calendarText(booking: Booking, preview = true): string {
   const stamp = new Date(booking.createdAt)
     .toISOString()
@@ -64,6 +65,7 @@ export function calendarText(booking: Booking, preview = true): string {
       .join("\r\n") + "\r\n"
   );
 }
+/** Download the booking as a calendar file. */
 export function downloadCalendar(booking: Booking, preview = true) {
   download(
     new Blob([calendarText(booking, preview)], {
@@ -72,6 +74,7 @@ export function downloadCalendar(booking: Booking, preview = true) {
     `${booking.reference}.ics`,
   );
 }
+/** Generate and download a PDF of the booking details. */
 export async function downloadBooking(
   booking: Booking,
   preview = true,

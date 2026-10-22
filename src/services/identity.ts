@@ -27,6 +27,7 @@ const savedSchema = z.strictObject({
 });
 const unavailable = () =>
   new Error("Email verification is unavailable. You can continue as a guest.");
+/** Send an identity request with bounded transport and response validation. */
 async function identityRequest(
   path: string,
   method: "GET" | "POST" | "DELETE",
@@ -74,6 +75,7 @@ async function identityRequest(
 }
 // Display cache only. The server cookie/challenge remains authoritative, and no
 // browser storage can establish verified ownership or a provider client binding.
+/** Create the server-backed customer identity service. */
 export function createLiveIdentityService(): CustomerIdentityService {
   let current: VerifiedIdentity | null = null,
     generation = 0;

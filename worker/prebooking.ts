@@ -21,6 +21,7 @@ import { CatalogueReads, freshReceipt } from "./catalogue";
 import { providerId } from "./provider-normalization";
 import type { NativeExchange } from "./provider-transport";
 type Intent = z.infer<typeof intentSchema>;
+/** Build the permitted provider booking comment from validated details. */
 export function nativeBookingComment(value: unknown, sessionIndex: number) {
   const intent = intentSchema.parse(value);
   const session = intent.sessions[sessionIndex];
@@ -41,6 +42,7 @@ const record = (raw: unknown): Record<string, unknown> => {
     throw new ApiError(503, "availability_representation_unavailable");
   return raw as Record<string, unknown>;
 };
+/** Enumerate session starts supported by the provider timetable. */
 export function offeredStarts(raw: unknown, date: string): string[] {
   const map = record(raw),
     starts = map[date];
@@ -58,6 +60,7 @@ export function offeredStarts(raw: unknown, date: string): string[] {
     throw new ApiError(503, "availability_representation_unavailable");
   return starts;
 }
+/** Select instructors eligible for the requested service. */
 export function eligibleInstructors(raw: unknown): string[] {
   if (!Array.isArray(raw) || raw.length > CATALOGUE_RECORD_LIMIT)
     throw new ApiError(503, "eligibility_representation_unavailable");
@@ -99,6 +102,7 @@ export const nativeAccountContractSchema = z
   );
 export type NativeAccountContract = z.infer<typeof nativeAccountContractSchema>;
 // The server selects the priced native service; browser prices never authorize a charge.
+/** Normalize the session selection under the native booking contract. */
 export function nativeContractSelection(
   contract: NativeAccountContract,
   startMs: number,
@@ -116,6 +120,7 @@ export function nativeContractSelection(
 }
 // Only new ongoing customer contracts use current opening hours. Historical
 // finite trials and already-created booking readback keep their original scope.
+/** Validate customer session times against the studio's opening policy. */
 export function nativeCustomerHours(
   contract: NativeAccountContract | undefined,
   startMs: number,
@@ -127,6 +132,7 @@ export function nativeCustomerHours(
 // Lead policy comes from a trusted server-owned account contract, never a
 // customer DTO. Ongoing customer contracts use 240 minutes; historical finite
 // trials retain their original 48-hour rule or exact date-specific exception.
+/** Resolve the lead-time policy within the permitted native trial scope. */
 export function nativeTrialLeadMs(
   contractValue: unknown,
   binding: CatalogueBinding,
@@ -185,6 +191,7 @@ export class NativePrebooking {
   invalidate() {
     this.catalogue.invalidate(this.binding);
   }
+  /** Validate booking selections against provider setup and session evidence. */
   async review(value: unknown, sessionIndex = 0) {
     const intent = intentSchema.parse(value),
       now = Date.now();
@@ -364,6 +371,7 @@ export class NativePrebooking {
       ],
     };
   }
+  /** Recheck reviewed selections before permitting booking dispatch. */
   async revalidate(
     value: Intent,
     sessionIndex = 0,

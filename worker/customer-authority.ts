@@ -33,6 +33,7 @@ export type Grant = {
 
 // Ordinary customer consent creates one short-lived, immutable checkout grant.
 // The site stays open; a grant is never renewed or replayed after dispatch.
+/** Validate customer authority and retain the checkout preparation grant. */
 export async function authorizeCustomerCheckout(
   request: Request,
   value: unknown,
@@ -176,6 +177,7 @@ export async function authorizeCustomerCheckout(
   return results.at(-1)!.results[0] as Grant | undefined;
 }
 
+/** Prepare archival statements for explicitly rejected checkout grants. */
 function rejectedGrantStatements(env: Env, capabilityHash: string) {
   // The account coordinator serializes this rollover. Archive only a proven
   // preflight rejection with no dispatch or effect; never renew uncertain writes.
@@ -195,6 +197,7 @@ function rejectedGrantStatements(env: Env, capabilityHash: string) {
       .bind(capabilityHash),
   ];
 }
+/** Archive a rejected grant without discarding dispatched effects. */
 export async function archiveRejectedCustomerGrant(
   env: Env,
   capabilityHash: string,
@@ -211,6 +214,7 @@ export async function archiveRejectedCustomerGrant(
 
 // Called only after preparation rejects its one-use window, before execution.
 // Read existing ownership first; availability never resolves a dispatched write.
+/** Distinguish a rejected preparation from an attempt requiring recovery. */
 export async function rejectedCheckoutReadback(
   request: Request,
   value: unknown,

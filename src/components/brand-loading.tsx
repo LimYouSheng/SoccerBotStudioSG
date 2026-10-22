@@ -1,4 +1,5 @@
 import { darkLogo } from "@/content/media";
+/** Render the branded loading indicator and status message. */
 export function BrandLoading({
   compact = false,
   leaving = false,

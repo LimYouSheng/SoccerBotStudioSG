@@ -12,6 +12,7 @@ import { JSDOM } from "jsdom";
 import { parse, walk } from "css-tree";
 import { siteBasePath } from "../src/content/site-path.ts";
 
+/** Fingerprint the files in a static export for artifact verification. */
 export function exportInventory(directory) {
   const result = {};
   function visit(folder) {
@@ -33,6 +34,7 @@ export function exportInventory(directory) {
   return result;
 }
 
+/** Validate exported routes and local assets for the configured base path. */
 export function checkExport(directory, basePath) {
   const root = resolve(directory),
     files = exportInventory(root);
@@ -64,6 +66,7 @@ export function checkExport(directory, basePath) {
     styles = 0,
     fonts = 0,
     images = 0;
+  /** Validate a referenced export asset without allowing paths outside the export. */
   function reference(value, from) {
     if (/^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(value)) return;
     const url = new URL(value, `https://export.invalid${basePath}/${from}`);

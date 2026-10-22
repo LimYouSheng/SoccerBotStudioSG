@@ -7,6 +7,7 @@ import { Icon } from "./icon";
 import { ArenaFacility } from "./arena-facility";
 import { entryPath, PITCH_STROKES } from "./arena-geometry";
 import { useBookingNavigation } from "./booking-navigation";
+/** Render the interactive arena with responsive entry animation. */
 export function Arena() {
   const { entering, enter } = useBookingNavigation(),
     area = useRef<HTMLAnchorElement>(null);
@@ -14,6 +15,7 @@ export function Arena() {
     for (const name of ["--look-x", "--look-y", "--light-x", "--light-y"])
       area.current?.style.removeProperty(name);
   }
+  /** Update arena motion from the current pointer position. */
   function move(event: PointerEvent<HTMLAnchorElement>) {
     if (
       entering ||

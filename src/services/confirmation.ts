@@ -75,6 +75,7 @@ const contextSchema = z.strictObject({
     pollAfterMs: z.number().int().min(1000).max(30000),
   }),
 });
+/** Read protected booking data with consistent response validation. */
 async function protectedRead(
   attemptId: string,
   operation: string,
@@ -117,6 +118,7 @@ async function protectedRead(
   if (!response.ok) throw new ConfirmationError("unavailable");
   return { response, checking };
 }
+/** Read and validate the server's confirmation evidence. */
 export async function readConfirmation(attemptId: string, signal: AbortSignal) {
   const { response, checking } = await protectedRead(
     attemptId,
@@ -132,6 +134,7 @@ export async function readConfirmation(attemptId: string, signal: AbortSignal) {
     throw new ConfirmationError("unavailable");
   return { ...decision, checking };
 }
+/** Read the authorized receipt for the current booking attempt. */
 export async function readBookingReceipt(
   attemptId: string,
   signal: AbortSignal,
@@ -152,6 +155,7 @@ export async function readBookingReceipt(
     throw new ConfirmationError("unavailable");
   return bookingFromReceipt(receipt);
 }
+/** Build a display booking from validated receipt evidence. */
 export function bookingFromReceipt<
   T extends z.infer<typeof bookingDetailsSchema>,
 >(receipt: T) {
@@ -196,6 +200,7 @@ export function bookingFromReceipt<
   return { ...receipt, booking };
 }
 export const protectedCheckoutService: ProtectedCheckoutService = {
+  /** Read and validate protected checkout context for the selected mode. */
   async context({ attemptId, mode, signal }) {
     const { response } = await protectedRead(
       attemptId,
@@ -229,6 +234,7 @@ export const protectedCheckoutService: ProtectedCheckoutService = {
   },
 };
 
+/** Create an attempt through the isolated local preview endpoint. */
 export async function startSyntheticCheckout(
   signal: AbortSignal,
 ): Promise<string> {
@@ -244,6 +250,7 @@ export async function startSyntheticCheckout(
     .attemptId;
 }
 
+/** Request an authenticated expiry check without assuming payment cancellation. */
 export async function expireBooking(attemptId: string) {
   const id = idSchema.parse(attemptId);
   const response = await fetch(`/api/attempts/${id}/expire`, {
@@ -258,6 +265,7 @@ export async function expireBooking(attemptId: string) {
     );
 }
 
+/** Dismiss a completed attempt through the authenticated server endpoint. */
 export async function dismissCompletedBooking(attemptId: string) {
   const id = idSchema.parse(attemptId);
   const response = await fetch(`/api/attempts/${id}/dismiss`, {
@@ -276,6 +284,7 @@ export async function dismissCompletedBooking(attemptId: string) {
 // Tab-local navigation intent only; the server still verifies completion and
 // ownership before releasing anything. Retain interrupted exits across reload.
 const exitKey = "soccerbot.completed-exit";
+/** Read the locally retained completed-checkout exit intent. */
 export function completedExitIntent() {
   try {
     const value = idSchema.safeParse(sessionStorage.getItem(exitKey));
@@ -284,6 +293,7 @@ export function completedExitIntent() {
     return null;
   }
 }
+/** Retain the completed-checkout exit intent for safe retry. */
 export function rememberCompletedExit(id: string) {
   try {
     sessionStorage.setItem(exitKey, idSchema.parse(id));
@@ -291,6 +301,7 @@ export function rememberCompletedExit(id: string) {
     // Current-page work remains protected if browser storage is unavailable.
   }
 }
+/** Remove the locally retained completed-checkout exit intent. */
 export function forgetCompletedExit(id: string) {
   try {
     if (completedExitIntent() === id) sessionStorage.removeItem(exitKey);

@@ -6,6 +6,7 @@ import {
   type EntryOrigin,
   type Viewport,
 } from "./arena-geometry";
+/** Translate entry animation geometry into element styles. */
 function pathStyle(id: string): React.SVGProps<SVGPathElement> {
   if (id.includes("brand")) return { fill: "#b5e6eb", fillRule: "evenodd" };
   if (id === "field") return { fill: "url(#entry-turf)" };
@@ -39,6 +40,7 @@ function pathStyle(id: string): React.SVGProps<SVGPathElement> {
   const [stroke, strokeWidth] = style[id] || ["#85b7c6", 0.8];
   return { fill: "none", stroke, strokeWidth };
 }
+/** Animate the arena entry using measured geometry and motion preferences. */
 export function ArenaEntry({
   origin,
   viewport,

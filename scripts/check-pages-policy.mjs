@@ -3,6 +3,7 @@ const mainOnly =
   "github.ref == 'refs/heads/main' && github.event_name != 'pull_request'";
 const releaseCommand =
   "node scripts/prepare-developer-release.mjs\nnode scripts/check-developer-release.mjs\n";
+/** Verify that CI preserves the separate Pages and Worker release gates. */
 export function checkPagesPolicy(doc) {
   const errors = [];
   const require = (condition, message) => {

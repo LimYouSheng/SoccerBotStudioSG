@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 
 // Public build inputs only. Neither profile grants delivery or provider access.
 export const emailSitekey = "0x4AAAAAAFSTbdgbJQsvM5vy";
+/** Validate public build inputs for the selected release composition. */
 export function releaseProfile(env = process.env) {
   const name = env.RELEASE_PROFILE || "closed-demo";
   assert.ok(

@@ -23,6 +23,7 @@ const id = (value: unknown) =>
   /^[1-9]\d{0,15}$/.test(String(value))
     ? String(value)
     : null;
+/** Normalize retained provider status before evaluating hold evidence. */
 const status = (value: unknown) =>
   typeof value === "string" &&
   [
@@ -63,6 +64,7 @@ function booking(value: unknown) {
     invoiceStatus: status(b.invoice_status),
   };
 }
+/** Extract invoice evidence from the retained provider response. */
 function invoice(value: unknown) {
   const i = object(value);
   return {
@@ -92,6 +94,7 @@ function invoice(value: unknown) {
 }
 // Private observational evidence only. Persist before strict normalization; never
 // feed these fields into booking authority or expose them in customer responses.
+/** Prepare storage of raw hold evidence and provider references. */
 export function holdEvidenceStatement(
   db: D1Database,
   attemptId: string,
@@ -125,6 +128,7 @@ export function holdEvidenceStatement(
     .bind(JSON.stringify(evidence), attemptId);
 }
 
+/** Persist booking hold evidence before strict response validation. */
 export async function retainHoldEvidence(
   ...args: Parameters<typeof holdEvidenceStatement>
 ) {

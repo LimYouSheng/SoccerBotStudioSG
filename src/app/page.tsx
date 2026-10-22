@@ -4,6 +4,7 @@ import { BookingLink } from "@/components/booking-navigation";
 import { Icon } from "@/components/icon";
 import { homeMedia } from "@/content/media";
 import { SERVICE_NAME } from "@/domain/demo-catalog";
+/** Present the studio introduction and booking entry points. */
 export default function Home() {
   return (
     <>

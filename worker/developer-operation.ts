@@ -3,6 +3,7 @@ import { coordinatorName } from "./bindings";
 import { ApiError, digest } from "./policy";
 import { runScheduledRecovery } from "./scheduled-recovery";
 
+/** Dispatch only the developer operation permitted by the retained grant. */
 export async function developerOperation(
   request: Request,
   env: Env,

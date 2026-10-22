@@ -12,6 +12,8 @@ Use one feature branch and the existing component/domain/service/style owners. R
 
 Server-side identity, attempt ownership, price/time policy, durable claims and current provider evidence govern effects. Preserve original attempt identity, unknown outcomes, raw/reference evidence and original deadlines. No blind replay, automatic uncertain cleanup, Preview fallback in live operations or payment-only booking confirmation. Never modify accepted migrations or expose secrets/customer data.
 
+Use one-line JSDoc/TSDoc summaries (`/** ... */`) for major TypeScript/JavaScript functions and one-line PEP 257 docstrings (`"""..."""`) for Python functions. Describe purpose or an important constraint with an imperative sentence; omit redundant type/parameter prose. Keep detailed safety rationale beside the relevant logic and exclude generated code, test callbacks and trivial accessors from blanket documentation.
+
 ## Verify
 
 After every logical change and repair, complete the mandatory test-impact pass: search all affected component, service, Worker, browser, fixture and inventory owners; update obsolete assumptions without weakening their purpose; run meaningful affected checks.

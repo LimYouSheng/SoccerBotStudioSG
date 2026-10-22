@@ -64,6 +64,7 @@ function choice(
   if (typeof value === "string" && choices.includes(value))
     target[name] = value;
 }
+/** Retain only allowlisted diagnostic fields for telemetry export. */
 export function sanitizeDiagnostic(value: unknown): Fields | undefined {
   const source = object(value);
   if (
@@ -226,6 +227,7 @@ async function hash(value: string) {
     b.toString(16).padStart(2, "0"),
   ).join("");
 }
+/** Build bounded OTLP spans from sanitized diagnostic summaries. */
 export async function telemetryPayload(events: TraceItem[], rate: number) {
   const spans = [];
   let dropped = 0;
@@ -314,6 +316,7 @@ export async function telemetryPayload(events: TraceItem[], rate: number) {
 }
 
 export default {
+  /** Export sampled sanitized telemetry outside the customer request path. */
   async tail(events, env) {
     if (env.EXPORT_ENABLED !== "true") return;
     const rate = Number(env.SUCCESS_SAMPLE_RATE);

@@ -270,6 +270,10 @@ Current position: M4.4–M4.6/M5 hardening, M6 preparation; M7 UAT, M8 launch/ha
 
 ## Part 2 — Dated changes and evidence
 
+### 22 October 2026 — One-line major-function documentation
+
+Owner requests conventional one-line function documentation. Add JSDoc/TSDoc summaries to major frontend, service, Worker and JavaScript tooling functions, and PEP 257 docstrings to Python installer functions. Preserve detailed safety rationale and generated/runtime declarations, test assertions and inventories. AGENTS records the convention for future edits. Test-impact review covers source-text checkers, tooling/installer behavior and all application/Worker owners; compare TypeScript output with comments removed and Python ASTs with function docstrings removed, then run non-browser and Worker verification. Python function `__doc__` metadata intentionally changes; no business logic, API, dependency or deployment changes are intended. Final-commit frontend/backend/live-email CI remains required.
+
 ### 22 October 2026 — Retire obsolete examples, receipts and proof packet
 
 Owner approves removal of `.env.example`, the three historical JSON receipts (`verification`, `review-verification`, `source-fingerprint`) and `scripts/prepare-identity-proof.mjs` with its dedicated test. The packet is tied to the expired 12 October identity-proof campaign and has no current workflow caller. README now explains the public Turnstile build key separately from private Worker secrets; `.env*` remains ignored. Historical bytes remain in revision `d7a8d2b209b535d23a62702e4d59538e00a47012`. Keep migrations, active synthetic browser/runtime fixtures, installer tooling, test inventories, telemetry setup and assets. Test-impact review searched callers, CI, inventories and document links; only tests of the retired packet are removed. Remaining source/policy/tooling/installer checks and final-commit frontend/backend/live-email CI remain required. No runtime or provider behavior changes.

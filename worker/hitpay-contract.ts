@@ -3,16 +3,19 @@ import { ApiError, digest } from "./policy";
 import { isHitpayCheckoutUrl } from "../src/domain/native-checkout";
 
 export const hitpayId = z.string().uuid();
+/** Read a named HitPay configuration value. */
 export function hitpaySetting(env: Env, name: string) {
   const value: unknown = Reflect.get(env, name);
   return typeof value === "string" ? value : "";
 }
+/** Check whether the configured environment permits HitPay recovery. */
 export function hitpayRecoveryEnabled(env: Env) {
   return (
     env.ENVIRONMENT === "developer" &&
     hitpaySetting(env, "HITPAY_RECOVERY") === "enabled"
   );
 }
+/** Validate the accepted HitPay sandbox configuration. */
 export function hitpayConfiguration(env: Env) {
   const key = hitpaySetting(env, "HITPAY_SANDBOX_API_KEY");
   const businessId = hitpayId.parse(hitpaySetting(env, "HITPAY_BUSINESS_ID"));
@@ -24,6 +27,7 @@ export function hitpayConfiguration(env: Env) {
     throw new ApiError(503, "hitpay_unavailable");
   return { key, businessId, merchant };
 }
+/** Reject payment creation outside the accepted checkout configuration. */
 export function assertHitpayCreation(env: Env) {
   hitpayConfiguration(env);
   if (
@@ -55,6 +59,7 @@ export const paymentScopeSchema = z.strictObject({
   currency: z.literal("SGD"),
 });
 export type PaymentScope = z.infer<typeof paymentScopeSchema>;
+/** Require payment authority to match the retained booking scope. */
 export async function assertPaymentScope(env: Env, scope: PaymentScope) {
   const config = hitpayConfiguration(env);
   if (
@@ -69,6 +74,7 @@ export async function assertPaymentScope(env: Env, scope: PaymentScope) {
   )
     throw new ApiError(409, "hitpay_scope_mismatch");
 }
+/** Convert a validated payment amount to integer minor units. */
 export function minorAmount(value: unknown) {
   if (typeof value !== "string" && typeof value !== "number")
     throw new ApiError(409, "hitpay_money_mismatch");
@@ -111,6 +117,7 @@ export class HitpayAssociationError extends ApiError {
     super(409, "hitpay_association_mismatch");
   }
 }
+/** Map provider failures to safe payment failure classifications. */
 export function hitpayFailureReason(error: unknown) {
   return error instanceof HitpayAssociationError
     ? "hitpay_mismatch_" + error.field
@@ -118,6 +125,7 @@ export function hitpayFailureReason(error: unknown) {
       ? error.code
       : "hitpay_verification_unavailable";
 }
+/** Validate payment identity, merchant, amount and state against the attempt. */
 export function verifyHitpayRequest(
   raw: unknown,
   scope: PaymentScope,

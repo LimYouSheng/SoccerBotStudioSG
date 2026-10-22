@@ -26,6 +26,7 @@ const windowSchema = z
 // Each installed one-use window permits one known-attempt readback: N + 5
 // physical calls including cold setup. The grant must cover that exact cost;
 // aggregate admission and the existing time limit remain in the account DO.
+/** Dispatch due reconciliation within ongoing or explicitly granted recovery scope. */
 export async function runScheduledRecovery(
   env: Env,
   clock: () => number = Date.now,

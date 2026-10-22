@@ -35,6 +35,7 @@ const holidays: Readonly<Record<string, readonly string[]>> = {
     "12-25",
   ],
 };
+/** Select the session rate for the Singapore calendar date. */
 export function sessionRate(date: string) {
   if (!isDate(date) || !holidays[date.slice(0, 4)]) return null;
   const holiday = holidays[date.slice(0, 4)].includes(date.slice(5));

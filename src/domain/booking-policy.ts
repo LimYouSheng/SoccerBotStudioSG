@@ -13,6 +13,7 @@ export const NATIVE_TRIAL_LEAD_MS = 48 * 60 * 60 * 1000;
 // Singapore daily opening window. The full playing session must finish by close.
 export const OPENING_MINUTE = 12 * 60;
 export const CLOSING_MINUTE = 20 * 60;
+/** Check whether a session start falls within studio opening hours. */
 export function withinOpeningHours(startMs: number): boolean {
   if (!Number.isFinite(startMs)) return false;
   const elapsedMs = (startMs + 8 * 3600000) % 86400000;

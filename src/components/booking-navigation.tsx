@@ -33,11 +33,13 @@ const Navigation = createContext<{
   entering: boolean;
   enter: (href: string, arena?: HTMLElement) => void;
 } | null>(null);
+/** Read the shared booking navigation context. */
 export function useBookingNavigation() {
   const context = useContext(Navigation);
   if (!context) throw new Error("Booking navigation provider missing");
   return context;
 }
+/** Coordinate booking navigation with the current draft and route. */
 export function BookingNavigation({ children }: { children: ReactNode }) {
   const router = useRouter(),
     pathname = usePathname();
@@ -47,6 +49,7 @@ export function BookingNavigation({ children }: { children: ReactNode }) {
   const active = useRef(false),
     committed = useRef(false);
   const arrived = !!entry && pathname !== entry.from;
+  /** Enter the booking flow while respecting retained attempt state. */
   function enter(to: string, arena?: HTMLElement) {
     if (active.current) return;
     if (
@@ -192,6 +195,7 @@ export function BookingNavigation({ children }: { children: ReactNode }) {
     </Navigation.Provider>
   );
 }
+/** Navigate through the shared booking entry controls. */
 export function BookingLink({
   onClick,
   ...props

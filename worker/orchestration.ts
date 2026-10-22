@@ -91,6 +91,7 @@ export type BookingOperations = {
   ) => Promise<unknown>;
 };
 
+/** Coordinate session creation and closure while preserving partial-effect evidence. */
 export async function orchestrateBooking(
   request: Request,
   env: Env,

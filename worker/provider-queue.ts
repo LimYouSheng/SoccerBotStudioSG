@@ -13,6 +13,7 @@ export class ProviderQueue {
   private foregroundRun = 0;
   private recoveryRun = 0;
 
+  /** Configure bounded queue capacity and reserved recovery admission. */
   constructor(
     private readonly limits = {
       capacity: 24,
@@ -21,6 +22,7 @@ export class ProviderQueue {
     },
   ) {}
 
+  /** Queue provider work with bounded waits and reserved recovery capacity. */
   run<T>(priority: Priority, operation: () => Promise<T>): Promise<T> {
     const waiting =
       this.recovery.length + this.foreground.length + this.display.length;
@@ -72,6 +74,7 @@ export class ProviderQueue {
     );
   }
 
+  /** Execute queued work serially while balancing recovery and display priority. */
   private async drain() {
     if (this.running) return;
     this.running = true;

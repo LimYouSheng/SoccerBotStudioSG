@@ -31,6 +31,7 @@ const screens = {
   payment: PaymentStep,
   confirmation: ConfirmationStep,
 };
+/** Render the guarded booking step and its navigation controls. */
 export function BookingPage({ step }: { step: BookingStep }) {
   const {
       ready,

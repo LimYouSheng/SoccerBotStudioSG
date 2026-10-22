@@ -2,6 +2,7 @@ import { z } from "zod";
 import { validDisplayDeadline } from "./catalog";
 import { providerReferencesSchema } from "./provider-references";
 // Initial sandbox checkout URL only; the server binds merchant and request ID.
+/** Restrict hosted payment URLs to the accepted HitPay origins. */
 export function isHitpayCheckoutUrl(value: string): boolean {
   return (
     value === value.trim() &&
@@ -18,6 +19,7 @@ export const hitpayHandoffSchema = z.strictObject({
 
 // Owner-supplied token-free historical native destination shape, 9 October 2026.
 // Validating this initial URL does not attest downstream redirects or sandbox mode.
+/** Validate a native checkout URL against the accepted host policy. */
 export function isNativeCheckoutUrl(value: string): boolean {
   return /^https:\/\/soccerbotstudiosg\.simplybook\.asia\/v2\/client\/pay-later\/id\/[A-Za-z0-9_-]+\/hash\/[A-Za-z0-9_-]+$/.test(
     value,
@@ -156,6 +158,7 @@ export const receiptSchema = bookingDetailsSchema.safeExtend({
 });
 
 // Display-only conversion shared by calendar prefetch and fresh daily reads.
+/** Convert validated native availability into customer-facing slots. */
 export function nativeDisplaySlots(
   date: string,
   offers: z.infer<typeof nativeOfferSchema>[],

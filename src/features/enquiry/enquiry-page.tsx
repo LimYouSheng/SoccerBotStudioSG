@@ -21,6 +21,7 @@ const blank: Enquiry = {
 const subscribeToHydration = () => () => {};
 const hydratedSnapshot = () => true;
 const serverSnapshot = () => false;
+/** Validate and submit customer enquiries through the configured service. */
 export function EnquiryPage() {
   const ready = useSyncExternalStore(
     subscribeToHydration,
