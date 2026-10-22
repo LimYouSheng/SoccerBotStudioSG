@@ -252,6 +252,10 @@ Current position: M4.4–M4.6/M5 hardening, M6 preparation; M7 UAT, M8 launch/ha
 
 ## Part 2 — Dated changes and evidence
 
+### 22 October 2026 — Dependency security maintenance added to backlog
+
+Owner requests a to-do item for automatic security detection and update preparation: Dependabot alerts, security-update PRs and weekly grouped routine npm/GitHub Actions updates. Review pinned Node and Worker compatibility-date changes deliberately; preserve exact pins and the lockfile. Merges require review and all three final-commit CI gates; do not automatically merge or deploy unreviewed updates. Cloudflare manages its infrastructure patching; application/toolchain maintenance remains ours. This records future work only: no repository settings, dependencies or deployment behavior changed. Test-impact review: documentation-only backlog/history update; existing test inventories and workflows remain applicable.
+
 ### 22 October 2026 — Documentation consolidation and client migration plan
 
 Owner replaces three overlapping canonical documents with Architecture (diagram and one-page explanation) and this two-part Service Contracts document. Cloud setup essentials move into AGENTS. No booking/payment behavior changes. PR85 acceptance documentation was merged before this refactor. The owner will configure client resources before deployment automation and client-repository delivery; portability/provisioning is planned, not implemented. Developer pins remain in runtime and release code and need validated environment configuration.

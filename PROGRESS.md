@@ -15,6 +15,8 @@ PR82–85 are merged. PR85 documentation merge is f0f000c2f600be1930cacf0b2f8841
 
 ## Remaining work
 
+- Dependency security maintenance: enable Dependabot alerts/security-update PRs and weekly grouped routine updates for npm dependencies and GitHub Actions; review pinned Node and Worker compatibility updates. Preserve exact dependency pins/lockfile and require review plus all three final-commit CI gates before merge/deployment. No automatic merge or deployment of unreviewed updates. Planned only; settings are not enabled by this task.
+
 - Client setup/portability: owner creates accounts/resources first; remove developer-specific pins through validated configuration and test safe first-install/rerun handling before client GitHub delivery.
 - Client rollout/UAT: account and identity mappings, schedules, payment destination, notification configuration and legacy receipt/recovery continuity.
 - Grafana: create stack, configure securely, activate and validate ingestion, dashboards, correlation, privacy and overhead. Export remains disabled.
