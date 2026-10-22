@@ -370,6 +370,19 @@ class PlanningTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertEqual(receipt['status'], 'failed')
 
+    def test_planning_integrity_requires_architecture_and_contracts(self):
+        for name in delivery.PLANNING_DOCUMENTS:
+            path = self.repo / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text('Document\n')
+        for missing in ('docs/Architecture/diagram.md', 'docs/Architecture/README.md', 'docs/SERVICE_CONTRACTS.md'):
+            path = self.repo / missing
+            saved = path.read_text()
+            path.unlink()
+            with self.assertRaises(FileNotFoundError):
+                delivery.check_planning_documents(self.repo, self.repo)
+            path.write_text(saved)
+
     def test_planning_integrity_rejects_missing_duplicate_or_reordered_iteration(self):
         for name in delivery.PLANNING_DOCUMENTS:
             path = self.repo / name
@@ -379,7 +392,7 @@ class PlanningTests(unittest.TestCase):
             path = self.repo / name
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text('# fixture\n')
-        rules = self.repo / 'docs/SOCCERBOT_RULES_AND_ARCHITECTURE.md'
+        rules = self.repo / 'docs/SERVICE_CONTRACTS.md'
         headings = [f'### M{major}.{minor} — fixture\n' for major, count in enumerate((4, 5, 6, 6, 5, 6, 4, 4, 4), 1) for minor in range(1, count + 1)]
         rules.write_text(''.join(headings))
         with redirect_stdout(io.StringIO()):

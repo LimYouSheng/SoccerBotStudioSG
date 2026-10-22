@@ -14,6 +14,7 @@ type Trace = {
   started: number;
   httpStatus?: number;
   spans: Record<Span, Metric>;
+  d1Execution: { statements: number; sqlDurationMs: number; colos: string[] };
 };
 const context = new AsyncLocalStorage<Trace>();
 export function traceId() {
@@ -41,7 +42,11 @@ export function traceStatus(status: number) {
   const trace = context.getStore();
   if (trace) trace.httpStatus = status;
 }
-export function measure<T>(span: Span, operation: () => T): T {
+export function measure<T>(
+  span: Span,
+  operation: () => T,
+  d1Metadata = false,
+): T {
   const trace = context.getStore(),
     start = performance.now();
   const checkoutEnd = span === "d1" ? checkoutD1() : undefined;
@@ -64,7 +69,10 @@ export function measure<T>(span: Span, operation: () => T): T {
     ) {
       // Observe settlement without replacing the caller's promise or error.
       void Promise.resolve(result).then(
-        () => end(false),
+        (value) => {
+          if (d1Metadata && trace) captureD1Execution(value, trace);
+          end(false);
+        },
         () => end(true),
       );
     } else end(false);
@@ -85,6 +93,7 @@ export async function traced<T>(
   const trace: Trace = {
     correlationId,
     started: performance.now(),
+    d1Execution: { statements: 0, sqlDurationMs: 0, colos: [] },
     spans: {
       storage: fresh(),
       d1: fresh(),
@@ -115,6 +124,7 @@ export async function traced<T>(
             : { httpStatus: trace.httpStatus }),
           durationMs: Math.max(0, performance.now() - trace.started),
           spans: trace.spans,
+          d1Execution: trace.d1Execution,
         }),
       );
     }
@@ -135,7 +145,11 @@ export function instrumentStorage<T extends object>(
         if (
           ["first", "all", "raw", "run", "exec", "batch"].includes(String(key))
         )
-          return measure(span, invoke);
+          return measure(
+            span,
+            invoke,
+            span === "d1" && ["all", "run", "batch"].includes(String(key)),
+          );
         const result: unknown = invoke();
         if (
           ["prepare", "bind", "withSession"].includes(String(key)) &&
@@ -147,4 +161,66 @@ export function instrumentStorage<T extends object>(
       };
     },
   });
+}
+
+// D1 metadata is optional (first/raw do not expose it). Never inspect row data.
+function captureD1Execution(value: unknown, trace: Trace) {
+  for (const result of Array.isArray(value) ? value : [value]) {
+    if (!result || typeof result !== "object" || !("meta" in result)) continue;
+    const meta = result.meta;
+    if (!meta || typeof meta !== "object") continue;
+    const timings = "timings" in meta ? meta.timings : undefined;
+    const duration =
+      timings && typeof timings === "object" && "sql_duration_ms" in timings
+        ? timings.sql_duration_ms
+        : undefined;
+    if (
+      typeof duration === "number" &&
+      Number.isFinite(duration) &&
+      duration >= 0
+    ) {
+      trace.d1Execution.statements++;
+      trace.d1Execution.sqlDurationMs += duration;
+    }
+    const colo = "served_by_colo" in meta ? meta.served_by_colo : undefined;
+    if (
+      typeof colo === "string" &&
+      /^[A-Z]{3}$/.test(colo) &&
+      trace.d1Execution.colos.length < 8 &&
+      !trace.d1Execution.colos.includes(colo)
+    )
+      trace.d1Execution.colos.push(colo);
+  }
+}
+
+// Timings include network AND upstream processing. Headers timing is not RTT.
+export function providerTransportTiming(
+  operation: "public_auth" | "admin_auth" | "simplybook" | "hitpay_create",
+) {
+  const correlationId = traceId();
+  const started = performance.now();
+  let headersMs: number | undefined;
+  return {
+    headers() {
+      headersMs = Math.max(0, performance.now() - started);
+    },
+    finish(failed: boolean) {
+      const durationMs = Math.max(0, performance.now() - started);
+      console.log(
+        JSON.stringify({
+          event: "provider_transport_timing",
+          correlationId,
+          operation,
+          outcome: failed ? "error" : "ok",
+          durationMs,
+          ...(headersMs === undefined
+            ? {}
+            : {
+                headersMs,
+                bodyMs: Math.max(0, durationMs - headersMs),
+              }),
+        }),
+      );
+    },
+  };
 }

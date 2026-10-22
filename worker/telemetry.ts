@@ -73,6 +73,7 @@ export function sanitizeDiagnostic(value: unknown): Fields | undefined {
     return;
   const result: Fields = { correlation_id: source.correlationId };
   choice(result, "event", source.event, [
+    "provider_transport_timing",
     "foundation_trace",
     "checkout_trace",
     "confirmation_trace",
@@ -82,7 +83,27 @@ export function sanitizeDiagnostic(value: unknown): Fields | undefined {
   if (!result.event) return;
   metrics(result, "", source, ["durationMs"]);
   choice(result, "outcome", source.outcome, ["ok", "error"]);
-  if (source.event === "foundation_trace") {
+  if (source.event === "provider_transport_timing") {
+    choice(result, "operation", source.operation, [
+      "public_auth",
+      "admin_auth",
+      "simplybook",
+      "hitpay_create",
+    ]);
+    if (!result.operation) return;
+    metrics(result, "", source, ["headersMs", "bodyMs"]);
+  } else if (source.event === "foundation_trace") {
+    metrics(result, "d1_execution.", source.d1Execution, [
+      "statements",
+      "sqlDurationMs",
+    ]);
+    const colos = object(source.d1Execution).colos;
+    if (Array.isArray(colos)) {
+      const safe = colos
+        .filter((v) => typeof v === "string" && /^[A-Z]{3}$/.test(v))
+        .slice(0, 8);
+      if (safe.length) result.d1_colos = safe.join(",");
+    }
     choice(result, "boundary", source.boundary, [
       "http",
       "coordinator",
@@ -167,6 +188,8 @@ export function sanitizeDiagnostic(value: unknown): Fields | undefined {
       "scope_changed",
       "authentication_rejected",
       "stale_rejection",
+      "refresh_due",
+      "refreshed",
     ]);
     if (!result.family || !result.result) return;
   } else {

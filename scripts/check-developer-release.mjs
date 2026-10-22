@@ -20,6 +20,7 @@ assert.deepEqual(liveConfig, {
     PROVIDER_ACCESS: "trusted-reads",
     LIVE_CUSTOMER_ACCESS: "enabled",
     PUBLIC_DISPLAY_WARMING: "enabled",
+    PUBLIC_TOKEN_REFRESH_AHEAD: "enabled",
     PREMIUM_SERVICE_ID: "3",
     IDENTITY_DELIVERY: "ongoing",
     LIVE_READBACK: "enabled",

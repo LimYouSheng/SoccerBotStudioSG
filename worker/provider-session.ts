@@ -380,6 +380,32 @@ export class ProviderSession {
     }
   }
 
+  // Background queue only. Retire before issuing a replacement: SimplyBook's
+  // contract does not establish that two token generations remain valid.
+  async refreshPublicTokenAhead(env: Env, control: ProviderControl) {
+    if (policy(env).PUBLIC_TOKEN_REFRESH_AHEAD !== "enabled") return;
+    const secrets = this.bindScope(env);
+    if (
+      !control.liveCustomer ||
+      !liveCustomerAccess(env) ||
+      secrets.company.toLowerCase() === "soccerbotstudio"
+    )
+      throw new ApiError(503, "provider_access_disabled");
+    await this.restoreToken(env, "public");
+    const current = this.tokens.get("public");
+    // Cold/expired tokens remain owned by the normal demand path. No new
+    // activity merely because the cache is empty, and no change to admin TTL.
+    if (
+      !current ||
+      current.until <= Date.now() ||
+      current.until - Date.now() > 20 * 60000
+    )
+      return;
+    this.invalidateToken("public", "refresh_due");
+    await this.token("public", env, control);
+    tokenCacheEvent("public", "refreshed");
+  }
+
   async nativeWrite(
     env: Env,
     control: ProviderControl,
