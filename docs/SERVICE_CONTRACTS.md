@@ -252,6 +252,10 @@ Current position: M4.4–M4.6/M5 hardening, M6 preparation; M7 UAT, M8 launch/ha
 
 ## Part 2 — Dated changes and evidence
 
+### 22 October 2026 — Security scanning and weekly notification scope
+
+Owner adds dependency vulnerability scanning (Dependabot and npm audit), CodeQL/code scanning, secret scanning/push protection where available, and weekly Dependabot security-email notifications to the future setup. Keep targeted authentication/payment/configuration tests and security review; runtime Grafana monitoring and a clean vulnerability scan do not establish security acceptance. Personal email preferences require owner configuration. Offline inspection found only verify.yml in .github, with no Dependabot configuration, CodeQL workflow or explicit npm audit command. The GitHub connector did not expose account-level security settings; do not claim those protections are disabled or enabled. Documentation-only task: no scanner, account setting, dependency or deployment changed. Source/policy/format/diff checks cover the backlog edit; test inventory and current runtime gates are unchanged.
+
 ### 22 October 2026 — Dependency security maintenance added to backlog
 
 Owner requests a to-do item for automatic security detection and update preparation: Dependabot alerts, security-update PRs and weekly grouped routine npm/GitHub Actions updates. Review pinned Node and Worker compatibility-date changes deliberately; preserve exact pins and the lockfile. Merges require review and all three final-commit CI gates; do not automatically merge or deploy unreviewed updates. Cloudflare manages its infrastructure patching; application/toolchain maintenance remains ours. This records future work only: no repository settings, dependencies or deployment behavior changed. Test-impact review: documentation-only backlog/history update; existing test inventories and workflows remain applicable.
