@@ -50,3 +50,31 @@ flowchart TB
 ```
 
 Reconciliation verifies provider state before confirmation; arrows do not imply parallel provider writes or that a callback proves payment. D1 and Durable Object SQLite are separate stores. The diagram shows current integrations, not authorization to provision or activate them.
+
+## Planned client delivery topology
+
+Agreed target, not configured yet. The runtime components above apply independently to each environment.
+
+```mermaid
+flowchart TB
+  Repo["One client-owned GitHub repository"]
+  PR["Feature branch / PR · three CI gates"]
+  StageGate["Trusted candidate · passing CI · one shared staging candidate"]
+  Stage["Developer Cloudflare account · existing Worker / D1 / DO retained"]
+  TestProviders["Separate SimplyBook test account · HitPay sandbox"]
+  Review["Owner staging acceptance · merge"]
+  Main["Main · three merged-revision CI gates"]
+  Approval["GitHub production environment · owner approval"]
+  Prod["Client Cloudflare account · separate Worker / D1 / DO"]
+  LiveProviders["Client SimplyBook · HitPay live"]
+  StageSecrets["Staging configuration / scoped credentials"]
+  ProdSecrets["Production configuration / scoped credentials"]
+  Repo --> PR --> StageGate
+  StageGate -->|automatic staging deployment| Stage
+  StageSecrets --> Stage
+  Stage <--> TestProviders
+  Stage --> Review --> Main --> Approval
+  Approval -->|verified production artifact| Prod
+  ProdSecrets --> Prod
+  Prod <--> LiveProviders
+```
