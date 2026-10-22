@@ -49,6 +49,7 @@ export const demoIdentityService: IdentityService = {
       attempts: 0,
     };
   },
+  /** Validate the demo identity challenge against its simulated state. */
   verify(challenge, code, remember) {
     if (
       challenge.used ||

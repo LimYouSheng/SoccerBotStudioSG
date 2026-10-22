@@ -10,6 +10,7 @@ import { Dialog } from "./dialog";
 import { BookingLink } from "./booking-navigation";
 import { PlayerAppPrompt } from "./player-app-prompt";
 import { Icon } from "./icon";
+/** Render shared navigation, footer and customer support controls. */
 export function SiteShell({ children }: { children: ReactNode }) {
   const pathname = usePathname(),
     router = useRouter(),

@@ -47,6 +47,7 @@ const fresh = (): Metric => ({ count: 0, durationMs: 0, errors: 0 });
 
 // Join authorized HAR requests and background runs without logging attempt or
 // provider IDs. No database, RPC, provider call or stored diagnostic record.
+/** Hash attempt identity for sanitized confirmation correlation. */
 export async function confirmationTraceKey(attemptId: string) {
   const bytes = await crypto.subtle.digest(
     "SHA-256",
@@ -56,6 +57,7 @@ export async function confirmationTraceKey(attemptId: string) {
     b.toString(16).padStart(2, "0"),
   ).join("");
 }
+/** Initialize counters for one confirmation operation. */
 export function createConfirmationTrace(correlationId: string): Trace {
   const now = performance.now();
   return {
@@ -75,6 +77,7 @@ export function createConfirmationTrace(correlationId: string): Trace {
     ) as Trace["operations"],
   };
 }
+/** Select the current confirmation stage for timing attribution. */
 export function confirmationStage(stage: Stage) {
   const trace = context.getStore();
   if (!trace || trace.closed) return;
@@ -83,6 +86,7 @@ export function confirmationStage(stage: Stage) {
   trace.changed = now;
   trace.stage = stage;
 }
+/** Run confirmation work within its asynchronous trace context. */
 export function runConfirmationTrace<T>(
   trace: Trace,
   stage: Stage,
@@ -93,10 +97,12 @@ export function runConfirmationTrace<T>(
     return operation();
   });
 }
+/** Record the confirmation outcome for the active trace. */
 export function confirmationResult(result: Trace["result"]) {
   const trace = context.getStore();
   if (trace && !trace.closed) trace.result = result;
 }
+/** Record confirmation cache usage without exposing cached data. */
 export function confirmationCache(
   family: "public" | "admin" | "identity",
   state: "hit" | "miss" | "shared",
@@ -106,6 +112,7 @@ export function confirmationCache(
   const key = `${family}_${state}`;
   trace.caches[key] = (trace.caches[key] ?? 0) + 1;
 }
+/** Accumulate a confirmation-stage metric. */
 export function confirmationMetric(label: Label) {
   const trace = context.getStore();
   if (!trace || trace.closed) return undefined;
@@ -127,6 +134,7 @@ export function confirmationMetric(label: Label) {
   };
 }
 // Runtime allowlist: never forward URLs, request bodies or dynamic provider data.
+/** Attribute provider transport timing to the active confirmation trace. */
 export function confirmationTransport(operation: string) {
   const map: Record<string, Label> = {
     "public-auth": "public_auth",
@@ -142,6 +150,7 @@ export function confirmationTransport(operation: string) {
   const label = Object.hasOwn(map, operation) ? map[operation] : undefined;
   return label ? confirmationMetric(label) : undefined;
 }
+/** Emit the sanitized confirmation timing and outcome summary. */
 export function finishConfirmationTrace(
   trace: Trace,
   key: string,

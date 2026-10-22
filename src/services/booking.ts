@@ -87,6 +87,7 @@ function decode<T>(schema: z.ZodType<T>, value: unknown, input = false): T {
       : invalidResponse();
   return parsed.data;
 }
+/** Dispatch a booking command with consistent error handling. */
 async function invoke<T>(
   signal: AbortSignal | undefined,
   operation: () => Promise<T>,
@@ -105,6 +106,7 @@ async function invoke<T>(
     );
   }
 }
+/** Validate the attempt returned by a booking operation. */
 function resultAttempt(
   value: unknown,
   draft: z.infer<typeof draftSchema>,
@@ -135,6 +137,7 @@ function resultAttempt(
   return result;
 }
 
+/** Validate a booking result against the permitted state transition. */
 function transitioned(
   operation: "pay" | "check" | "resolve",
   previous: Attempt,
@@ -165,6 +168,7 @@ function transitioned(
 
 // Named booking boundary, not an RPC dispatcher. Validation also protects test
 // and future adapters: successful TypeScript typing alone is not wire evidence.
+/** Wrap a booking adapter with validated inputs and result transitions. */
 export function defineBookingService(adapter: BookingService): BookingService {
   function supported(operation: keyof BookingService["operations"]) {
     if (adapter.operations[operation] !== adapter.mode)
@@ -247,6 +251,7 @@ export function defineBookingService(adapter: BookingService): BookingService {
             }),
         }
       : {}),
+    /** Read availability for the requested booking selection. */
     availability(input) {
       return invoke(input.signal, async () => {
         supported("availability");
@@ -272,6 +277,7 @@ export function defineBookingService(adapter: BookingService): BookingService {
         return slots;
       });
     },
+    /** Create checkout under the current protected booking authority. */
     checkout(input) {
       return invoke(input.signal, async () => {
         supported("checkout");
@@ -285,6 +291,7 @@ export function defineBookingService(adapter: BookingService): BookingService {
         return result;
       });
     },
+    /** Continue the current attempt through the configured payment flow. */
     pay(input) {
       return invoke(input.signal, async () => {
         supported("pay");
@@ -344,6 +351,7 @@ const unavailable = async (): Promise<never> => {
 };
 // No guessed live route and no demo import/fallback. Protected confirmation has
 // its existing independent, cookie-authorized readConfirmation owner.
+/** Send an authenticated native request and validate its response. */
 async function nativeRequest(
   path: string,
   method: "GET" | "POST",
@@ -457,6 +465,7 @@ export const liveBookingService: BookingService = defineBookingService({
     check: "unavailable",
     resolve: "unavailable",
   },
+  /** Restore the retained attempt through the server-authorized state. */
   async restore(signal) {
     const current = nativeCurrentSchema.parse(
       await nativeRequest("/api/booking/current", "GET", signal),
@@ -513,6 +522,7 @@ export const liveBookingService: BookingService = defineBookingService({
     if (!response.ok) throw invalidResponse();
     return decode(publicCalendarSchema, await response.json());
   },
+  /** Read eligible dates from the native calendar endpoint. */
   async calendar({ month, serviceId, signal }) {
     const value = nativeCalendarSchema.parse(
       await nativeRequest(
@@ -542,6 +552,7 @@ export const liveBookingService: BookingService = defineBookingService({
       })),
     };
   },
+  /** Read availability for the requested booking selection. */
   async availability({ date, serviceId, signal, fresh }) {
     if (!serviceId) return unavailable();
     providerIdentifier.parse(serviceId);
@@ -569,6 +580,7 @@ export const liveBookingService: BookingService = defineBookingService({
       throw invalidResponse();
     return nativeDisplaySlots(date, data.offers);
   },
+  /** Create checkout under the current protected booking authority. */
   async checkout({ draft, previous, signal, holding }) {
     if (draft.slots.some((slot) => !slot.native)) return unavailable();
     if (
@@ -626,6 +638,7 @@ export const liveBookingService: BookingService = defineBookingService({
       booking: null,
     };
   },
+  /** Continue the current attempt through the configured payment flow. */
   async pay({
     attempt,
     signal,
@@ -765,6 +778,7 @@ export const liveBookingService: BookingService = defineBookingService({
 
 // Separate live DTO boundary: no preview enum, price, timetable or identity cast.
 // A deployed route is intentionally unavailable until its read authority is bound.
+/** Wrap catalogue reads with input and response validation. */
 export function defineCatalogueService(
   binding: CatalogueBinding,
   adapter: CatalogueService,

@@ -10,6 +10,7 @@ import { money } from "@/domain/dates";
 import { useBooking } from "./provider";
 import { SessionList } from "./summary";
 import { ProtectedConfirmation } from "./protected-confirmation";
+/** Manage payment handoff and recovery presentation for the current attempt. */
 export function PaymentStep() {
   const {
     attempt,

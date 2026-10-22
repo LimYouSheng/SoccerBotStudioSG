@@ -12,6 +12,7 @@ const schemas = {
 // Account-DO SQLite retains only public display DTOs, never customer/payment
 // authority. Provider caches retain their separate short freshness windows.
 export class DisplaySnapshots {
+  /** Initialize account-scoped display snapshot storage. */
   constructor(
     private sql: SqlStorage,
     private scope: string,
@@ -40,6 +41,7 @@ export class DisplaySnapshots {
     kind: "catalogue",
     key: string,
   ): z.infer<typeof customerCatalogueSchema> | undefined;
+  /** Read an unexpired snapshot from the current display generation. */
   read(kind: keyof typeof schemas, key: string) {
     const row = this.sql
       .exec<{ payload: string }>(
@@ -58,6 +60,7 @@ export class DisplaySnapshots {
       /* Corrupt display data is a cache miss, never write authority. */
     }
   }
+  /** Save a display snapshot only for the expected generation. */
   save(
     kind: keyof typeof schemas,
     key: string,
@@ -108,6 +111,7 @@ export class DisplaySnapshots {
         .toArray().length === 1
     );
   }
+  /** Select the calendar months eligible for display warming. */
   months() {
     const today = new Date(Date.now() + 28800000).toISOString().slice(0, 7);
     const end = new Date(today + "-01T00:00:00Z");

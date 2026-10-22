@@ -5,6 +5,7 @@ import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { exportInventory } from "./check-export.mjs";
+/** Verify sealed release bytes and receipts before allowing deployment. */
 export function validateDeployment(directory, revision) {
   assert.match(revision, /^[a-f0-9]{40}$/);
   const read = (file) =>
@@ -71,6 +72,7 @@ export function validateDeployment(directory, revision) {
 // Cloudflare can acknowledge activation before every edge reports the new
 // revision. Observe only the known previous revision while propagation settles;
 // never redeploy, accept a third revision, or retry failed/malformed health reads.
+/** Observe bounded revision propagation without redeploying the artifact. */
 export async function awaitDeploymentHealth({
   revision,
   previousRevision,
@@ -113,6 +115,7 @@ async function readHealth(origin) {
   assert.equal(response.status, 200);
   return response.json();
 }
+/** Check deployed sandbox settings and required secret binding names. */
 export function verifySandboxSettings(settings, config) {
   for (const name of [
     "SOURCE_REVISION",
@@ -147,6 +150,7 @@ export function verifySandboxSettings(settings, config) {
     );
   }
 }
+/** Deploy the verified main artifact and record its observed revision. */
 async function deploy() {
   assert.equal(process.env.GITHUB_REF, "refs/heads/main");
   assert.ok(

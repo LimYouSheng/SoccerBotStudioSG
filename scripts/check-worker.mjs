@@ -2,6 +2,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import ts from "typescript";
+/** Audit Worker boundaries, migrations and required verification controls. */
 export function checkWorker(root) {
   const errors = [],
     dir = path.join(root, "worker");
@@ -54,6 +55,7 @@ export function checkWorker(root) {
     }
     if (/@ts-(?:ignore|nocheck)|eslint-disable|\bany\b/.test(text))
       errors.push(`Worker suppression/unsafe type: ${name}`);
+    /** Inspect Worker syntax for prohibited runtime dependencies and patterns. */
     function visit(node) {
       if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
         const spec = node.moduleSpecifier?.text;

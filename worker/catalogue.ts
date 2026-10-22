@@ -57,6 +57,7 @@ function instructorIds(raw: unknown): string[] | null {
 }
 // getEventList(true,false) / getUnitList(true,false) are documented full maps,
 // without pagination arguments. Reject wrappers/cursors/truncation, never take a page.
+/** Normalize provider catalogue records into the supported service contract. */
 export function normalizeCatalogue(
   services: unknown,
   instructors: unknown,
@@ -88,6 +89,7 @@ export function normalizeCatalogue(
     }),
   });
 }
+/** Check whether the retained catalogue receipt is still usable. */
 export function freshReceipt(
   receivedAtMs: number,
   now: number,
@@ -122,6 +124,7 @@ export class CatalogueReads {
       entry.pending = undefined;
     }
   }
+  /** Read catalogue evidence within the authorized provider scope. */
   async read(
     binding: CatalogueBinding,
     exchange: NativeExchange,

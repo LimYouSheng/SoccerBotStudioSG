@@ -9,6 +9,7 @@ import { ApiError } from "./policy";
 import { intentSchema, associationSchema } from "./journal";
 
 // Unknown flag values must not be coerced to false or paid.
+/** Normalize a provider flag without relying on loose truthiness. */
 export function providerFlag(value: unknown): boolean | null {
   if (value === true || value === 1 || value === "1") return true;
   if (value === false || value === 0 || value === "0") return false;
@@ -26,6 +27,7 @@ function record(value: unknown): Record<string, unknown> {
     ? (value as Record<string, unknown>)
     : {};
 }
+/** Normalize provider money values into integer minor units. */
 export function minorUnits(value: unknown): number | null {
   const s =
     typeof value === "number" || typeof value === "string" ? String(value) : "";
@@ -50,6 +52,7 @@ function invoiceStatus(value: unknown) {
     : "unknown";
 }
 // Fixed historical23 diagnostics. Never constructs confirmation input/intent.
+/** Compare retained provider evidence under the historical comparison contract. */
 export function historicalComparison(
   bookingValue: unknown,
   invoiceValue: unknown,
@@ -244,11 +247,13 @@ export type NativeValidationReason = {
   field: NativeValidationField;
   problem: "missing" | "malformed" | "mismatch";
 };
+/** Read the safe classification of a native validation failure. */
 export function nativeValidationReason(error: unknown) {
   return error instanceof NativeValidationError
     ? { field: error.reason.field, problem: error.reason.problem }
     : undefined;
 }
+/** Reject invalid native evidence with a bounded failure classification. */
 export function rejectNative(
   field: NativeValidationField,
   problem: NativeValidationReason["problem"],
@@ -263,6 +268,7 @@ export function rejectNative(
 function invalid(value: unknown, field: NativeValidationField): never {
   return rejectNative(field, value == null ? "missing" : "malformed");
 }
+/** Require the provider value to have the supported record shape. */
 export function nativeRecord(
   value: unknown,
   field: NativeValidationField,
@@ -271,6 +277,7 @@ export function nativeRecord(
     invalid(value, field);
   return value as Record<string, unknown>;
 }
+/** Require the provider value to have the supported collection shape. */
 export function nativeArray(
   value: unknown,
   count: number,
@@ -280,6 +287,7 @@ export function nativeArray(
   if (value.length !== count) rejectNative(field, "mismatch");
   return value;
 }
+/** Normalize and validate a provider identifier. */
 export function providerId(
   value: unknown,
   field: NativeValidationField = "provider.id",
@@ -292,6 +300,7 @@ export function providerId(
     invalid(value, field);
   return text;
 }
+/** Normalize and validate a native booking hash. */
 export function nativeHash(
   value: unknown,
   field: NativeValidationField,
@@ -325,6 +334,7 @@ function decimal(value: unknown, field: NativeValidationField) {
   if (parsed === null) invalid(value, field);
   return parsed;
 }
+/** Require exactly one native record where the contract expects a singleton. */
 export function nativeSingle(
   value: unknown,
   field: NativeValidationField,
@@ -348,6 +358,7 @@ function nativeSchema<T>(
 }
 // Only booking local wall times have this established Singapore contract.
 // Invoice created/due/payment datetimes are deliberately not parsed here.
+/** Normalize provider booking time under the supported timezone contract. */
 export function bookingWallTime(
   value: unknown,
   timezone: string,
@@ -379,6 +390,7 @@ function boundIntent(value: unknown) {
   else if (!intent.contact) rejectNative("intent.contact", "missing");
   return intent;
 }
+/** Validate invoice identity, totals and payment evidence against the booking scope. */
 function invoiceEvidence(raw: unknown, context: NativeReadContext) {
   const intent = boundIntent(context.intent),
     refs = nativeSchema(associationSchema, context.association, "association");
@@ -640,6 +652,7 @@ type BookingFieldContext = {
 };
 // One predicate owner: normal reads fail fast; private inspection evaluates each
 // independent predicate without turning results into booking authority.
+/** Check provider booking fields against the expected customer selection. */
 function bookingFieldChecks(
   booking: Record<string, unknown>,
   context: BookingFieldContext,
@@ -775,6 +788,7 @@ function bookingFieldChecks(
 // Fixed labels only; unknown provider keys and all scalar values stay out of
 // stored evidence. This reports current getBookingDetails, never the lost book
 // envelope or an invoice/payment decision.
+/** Inspect native booking evidence and retain validation findings. */
 export function inspectNativeBooking(
   raw: unknown,
   context: BookingFieldContext & { bookingId: string },
@@ -882,6 +896,7 @@ export function inspectNativeBooking(
   };
 }
 
+/** Normalize authoritative booking and invoice readback evidence. */
 export function normalizeNativeReads(
   bookingValue: unknown,
   invoiceValue: unknown,
@@ -985,6 +1000,7 @@ export function normalizeNativeReads(
 }
 // A partial batch response is evidence only for its exact selected session.
 // It cannot establish an invoice or payment authority.
+/** Validate a created native session against its requested selection. */
 export function normalizeNativeSession(
   raw: unknown,
   context: Pick<NativeReadContext, "intent" | "timezone"> & {
@@ -1069,6 +1085,7 @@ export function normalizeNativeSession(
 // The retained keys identify the exact allocated set; the invoice must prove
 // every session/customer/money predicate. Checkout still requires signed reads.
 // The separate closure bookings container has no authority over that set.
+/** Validate complete batch membership and invoice evidence before payment. */
 export function normalizeNativeBatchClosure(
   raw: unknown,
   context: Omit<NativeReadContext, "association">,
@@ -1115,6 +1132,7 @@ export function normalizeNativeBatchClosure(
     invoice: normalized.invoice,
   };
 }
+/** Normalize provider creation evidence without inventing missing references. */
 export function normalizeNativeCreation(
   raw: unknown,
   context: Omit<NativeReadContext, "association">,

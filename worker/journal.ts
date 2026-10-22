@@ -62,6 +62,7 @@ export const intentSchema = z
     )
       ctx.addIssue({ code: "custom", message: "overlap" });
   });
+/** Retain a validated booking attempt before dispatching provider effects. */
 export async function prepareAttempt(
   db: D1Database,
   owner: string,
@@ -113,6 +114,7 @@ export async function prepareAttempt(
   completion?.inspect(results.slice(2));
   return row;
 }
+/** Claim an attempt's provider dispatch exactly once under its current state. */
 export async function claimDispatch(
   db: D1Database,
   id: string,
@@ -136,6 +138,7 @@ export async function claimDispatch(
     throw new ApiError(409, "dispatch_not_claimed");
   return { dispatchId, fence: version + 1 };
 }
+/** Retain provider observations against the original attempt identity. */
 export async function recordObservation(
   db: D1Database,
   id: string,
@@ -155,6 +158,7 @@ export async function recordObservation(
     : await statement.run();
   if (result.meta.changes !== 1) throw new ApiError(409, "stale_completion");
 }
+/** Fence an uncertain attempt for authoritative recovery. */
 export async function requireRecovery(
   db: D1Database,
   id: string,
@@ -179,6 +183,7 @@ export const associationSchema = z
     bookingIds: z.array(z.string().min(1).max(128)).min(1).max(12),
   })
   .refine((v) => new Set(v.bookingIds).size === v.bookingIds.length);
+/** Bind validated booking and invoice evidence to the retained attempt. */
 export async function bindAssociation(
   db: D1Database,
   id: string,

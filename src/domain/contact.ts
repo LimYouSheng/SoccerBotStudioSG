@@ -22,6 +22,7 @@ export const validPhone = (value: string) =>
   /^\+?[\d\s()-]{8,24}$/.test(value) &&
   value.replace(/\D/g, "").length >= 8 &&
   value.replace(/\D/g, "").length <= 15;
+/** Normalize customer contact fields before validation and storage. */
 export function normalizeContact(contact: ContactDetails): ContactDetails {
   return Object.fromEntries(
     Object.entries(contactSchema.parse(contact)).map(([key, value]) => [
@@ -30,6 +31,7 @@ export function normalizeContact(contact: ContactDetails): ContactDetails {
     ]),
   ) as ContactDetails;
 }
+/** Validate the required customer and guardian contact fields. */
 export function contactErrors(
   contact: ContactDetails,
   verifiedEmail?: string,

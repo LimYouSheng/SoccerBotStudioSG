@@ -22,6 +22,7 @@ import {
 } from "./native-adapter";
 import { ProviderSession, type ProviderControl } from "./provider-session";
 
+/** Reconcile payment and booking accounting without replaying uncertain effects. */
 export async function recoverHitpay(
   env: Env,
   id: string,

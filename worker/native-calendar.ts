@@ -12,6 +12,7 @@ import { freshReceipt } from "./catalogue";
 export const CALENDAR_CACHE_MS = 60000;
 const dayMs = 86400000;
 const dateMs = (date: string) => Date.parse(`${date}T00:00:00Z`);
+/** Enumerate the dates covered by the requested calendar range. */
 export function calendarDates(month: string, approved: string[]) {
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))
     throw new ApiError(400, "calendar_month_invalid");
@@ -21,6 +22,7 @@ export function calendarDates(month: string, approved: string[]) {
 }
 // Do not bridge unapproved gaps; each request is at most the existing 15-day
 // transport bound. Four months therefore need ranges, not 120 daily reads.
+/** Partition calendar dates into supported provider query ranges. */
 export function calendarRanges(dates: string[]) {
   const ranges: { from: string; to: string; dates: string[] }[] = [];
   for (const date of dates) {
@@ -60,6 +62,7 @@ export class NativeCalendarReads {
         this.entries.delete(key);
     }
   }
+  /** Read native calendar availability within the authorized query scope. */
   async read(input: {
     scope: string;
     month: string;

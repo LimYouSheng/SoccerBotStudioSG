@@ -1,4 +1,5 @@
 import Link from "next/link";
+/** Offer a navigation path when the requested route does not exist. */
 export default function NotFound() {
   return (
     <div className="mx-auto min-h-[55vh] max-w-xl px-6 py-20 text-center">

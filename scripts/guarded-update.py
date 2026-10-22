@@ -14,24 +14,29 @@ import unicodedata
 
 
 def require(ok, message):
+    """Reject a failed precondition before continuing the guarded operation."""
     if not ok:
         raise RuntimeError(message)
 
 
 def digest(data):
+    """Return the SHA-256 fingerprint of the supplied bytes."""
     return hashlib.sha256(data).hexdigest()
 
 
 def git(root, *args):
+    """Run a checked Git inspection without optional repository locking."""
     result = subprocess.run(['git', '-C', str(root), *args], capture_output=True, text=True, env={**os.environ, 'GIT_OPTIONAL_LOCKS': '0'}, check=True)
     return result.stdout.strip()
 
 
 def safe_directory(path):
+    """Reject paths that traverse symbolic links."""
     require(not any(p.is_symlink() for p in [path, *path.parents]), f'Symlinked directory refused: {path}')
 
 
 def checked_path(root, name):
+    """Resolve a portable manifest path within the repository boundary."""
     path = PurePosixPath(name)
     require(name and '\\' not in name and not path.is_absolute() and '..' not in path.parts and '.git' not in path.parts and str(path) == name, 'Unsafe manifest path')
     require(not any(re.search(r'[\x00-\x1f<>:"|?*]', part) or part.endswith(('.', ' ')) for part in path.parts), 'Nonportable manifest path')
@@ -42,6 +47,7 @@ def checked_path(root, name):
 
 
 def portable(names):
+    """Validate path spelling for portable filesystem use."""
     seen = {}
     for name in names:
         for parent in [PurePosixPath(name), *PurePosixPath(name).parents]:
@@ -52,6 +58,7 @@ def portable(names):
 
 
 def inventory(root, missing=(), generated=()):
+    """Fingerprint source files while excluding generated and ignored paths."""
     names = git(root, 'ls-files', '-c', '-o', '--exclude-standard', '-z').split('\0')
     portable(filter(None, names))
     result = {}
@@ -65,6 +72,7 @@ def inventory(root, missing=(), generated=()):
 
 
 def state(root):
+    """Capture the repository identity and source inventory for guarded comparison."""
     require(git(root, 'rev-parse', '--show-toplevel') == str(root), 'Use the exact repository root')
     require(not git(root, 'diff', '--cached', '--name-only'), 'Staged changes must be preserved and reviewed first')
     branch = git(root, 'branch', '--show-current')
@@ -74,11 +82,12 @@ def state(root):
 
 
 def lock_path(root):
+    """Resolve the external lock path for this repository."""
     return Path(tempfile.gettempdir()) / f'soccerbot-{os.getuid()}-{digest(str(root).encode())[:24]}.lock'
 
 
 def portable_health(root, candidate):
-    """Dependency-free preflight; semantic/CSS/type gates remain mandatory in verify-code."""
+    """Check source portability without replacing semantic or type verification."""
     portable(candidate)
     for name in candidate:
         file = checked_path(root, name)
@@ -100,6 +109,7 @@ def portable_health(root, candidate):
 
 
 def make_manifest(root, candidate, output):
+    """Build a guarded change manifest from the reviewed source inventories."""
     require(not output.is_relative_to(root) and not candidate.is_relative_to(root), 'Keep candidate and manifest outside target repository')
     baseline, revision = inventory(root), state(root)
     payload = {}
@@ -122,6 +132,7 @@ def make_manifest(root, candidate, output):
 
 
 def atomic_write(target, data):
+    """Replace file contents atomically while preserving the requested mode."""
     target.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(dir=target.parent, prefix='.soccerbot-', delete=False) as handle:
         temp = Path(handle.name)
@@ -136,6 +147,7 @@ def atomic_write(target, data):
 
 
 def collect_code_evidence(root, destination):
+    """Validate the saved non-browser verification receipt against the candidate."""
     source = root / 'test-results'
     report = source / 'verification-code.json'
     if not report.is_file() or report.is_symlink():
@@ -156,6 +168,7 @@ def collect_code_evidence(root, destination):
 
 
 def apply(root, manifest_file, logs, verify_code=False, preflight=None, verify_local=None):
+    """Apply a verified manifest under a repository lock with external backups."""
     safe_directory(root)
     safe_directory(logs)
     require(not logs.is_relative_to(root), 'Logs and backups must be outside the repository')
@@ -280,6 +293,7 @@ def apply(root, manifest_file, logs, verify_code=False, preflight=None, verify_l
 
 
 def main():
+    """Parse arguments and run the guarded source operation."""
     os.umask(0o077)
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)

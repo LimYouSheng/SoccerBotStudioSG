@@ -12,6 +12,7 @@ import type { ProviderSession, ProviderControl } from "./provider-session";
 
 // The anchored hold and its observation are committed in one D1 batch.
 // The original booking timestamp is read by SQLite, not a separate round trip.
+/** Prepare the retained hold query used by hosted payment creation. */
 export function hitpayHoldStatement(
   env: Env,
   scope: NativeScope,
@@ -63,6 +64,7 @@ export type VerifiedHold = {
 };
 // A held slot must be unavailable to others. Payment validates the existing
 // booking/invoice identities and state, never the availability of their slots.
+/** Create or reuse hosted payment only after validating the retained hold. */
 export async function payHitpayHold(
   request: Request,
   env: Env,

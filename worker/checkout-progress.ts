@@ -7,6 +7,7 @@ import type { HitpayRow } from "./hitpay-journal";
 
 // Customer success requires current booking and paid invoice readback.
 // Historical snapshots from the early-payment design are not sufficient.
+/** Retain validated customer confirmation without renewing its original timestamp. */
 export async function retainCustomerConfirmation(
   env: Env,
   payment: HitpayRow,
@@ -44,6 +45,7 @@ export async function retainCustomerConfirmation(
     .run();
 }
 
+/** Read the retained confirmation for the authorized attempt. */
 export async function customerConfirmation(
   env: Env,
   id: string,
@@ -71,6 +73,7 @@ export async function customerConfirmation(
 // contract is established. An expired request alone cannot authorize release.
 const unpaidExpiry = `EXISTS(SELECT 1 FROM hitpay_holds h JOIN checkout_progress c ON c.attempt_id=h.attempt_id WHERE h.attempt_id=native_checkout_grants.attempt_id AND MAX(c.booking_created_ms+c.payment_window_ms+300000,h.expires_ms)<=?) AND NOT EXISTS(SELECT 1 FROM hitpay_payments p WHERE p.attempt_id=native_checkout_grants.attempt_id)`;
 
+/** Derive the checking deadline from retained checkout timing. */
 export async function checkoutCheckingDeadline(
   env: Env,
   id: string,
@@ -87,6 +90,7 @@ export async function checkoutCheckingDeadline(
     : fallback;
 }
 
+/** Determine expiry from the attempt's original checkout deadline. */
 export async function checkoutExpired(env: Env, id: string, now: number) {
   return !!(await env.STATE.withSession("first-primary")
     .prepare(
@@ -95,6 +99,7 @@ export async function checkoutExpired(env: Env, id: string, now: number) {
     .bind(id, now, id, now)
     .first());
 }
+/** Check expiry while preserving unresolved payment outcomes. */
 export async function expireCheckout(request: Request, env: Env, id: string) {
   const access = await authenticate(request, env, Date.now());
   if (

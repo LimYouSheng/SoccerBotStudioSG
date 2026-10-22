@@ -24,6 +24,7 @@ type Result =
     };
 // BookingProvider is the sole query owner. Calendar, basket and instructor cards
 // share one read per distinct date in this input revision. No persistent cache.
+/** Load slot availability while rejecting stale selection responses. */
 export function useBookingAvailability(
   service: BookingService,
   dates: string[],

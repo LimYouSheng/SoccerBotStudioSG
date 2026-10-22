@@ -33,6 +33,7 @@ export type HitpayRow = {
   external_state: string;
   external_reservation: string | null;
 };
+/** Read the retained HitPay payment row for an attempt. */
 export async function paymentRow(db: D1Database, id: string) {
   return db
     .withSession("first-primary")
@@ -40,6 +41,7 @@ export async function paymentRow(db: D1Database, id: string) {
     .bind(id)
     .first<HitpayRow>();
 }
+/** Resolve the payment route permitted by the environment configuration. */
 export async function selectPaymentRoute(env: Env, id: string) {
   const selected =
     hitpaySetting(env, "CHECKOUT_PAYMENT_ROUTE") === "hitpay"
@@ -61,6 +63,7 @@ export async function selectPaymentRoute(env: Env, id: string) {
   if (row?.route !== selected) throw new ApiError(409, "payment_route_changed");
   return selected;
 }
+/** Reserve payment state against validated booking and invoice evidence. */
 export async function prepareHitpay(
   env: Env,
   scope: NativeScope,
@@ -199,6 +202,7 @@ export async function prepareHitpay(
 }
 // Historical payment evidence only; this never authorizes confirmation or export.
 // The caller authenticates ownership before reading this private metadata.
+/** Read payment evidence retained under the original attempt. */
 export async function recordedHitpayPayment(
   env: Env,
   id: string,
@@ -234,6 +238,7 @@ export type PaymentReadSnapshot = {
   route: string | null;
   payment: HitpayRow | null;
 };
+/** Return a validated saved checkout URL without recreating payment. */
 export async function storedHitpayCheckout(
   env: Env,
   id: string,
@@ -268,6 +273,7 @@ export async function storedHitpayCheckout(
     expiresAtMs: row.expires_ms,
   };
 }
+/** Prepare atomic statements that claim a hosted payment effect. */
 export function hitpayClaimStatements(env: Env, id: string, now: number) {
   // An interrupted final claim may retain an unseen authenticated receipt.
   // Exhaustion and its permitted wake-up must commit before selecting new work.
@@ -281,10 +287,12 @@ export function hitpayClaimStatements(env: Env, id: string, now: number) {
     ).bind(now + 120000, id, now, now),
   ];
 }
+/** Claim the retained payment effect before provider dispatch. */
 export async function claimHitpay(env: Env, id: string, now: number) {
   const results = await env.STATE.batch(hitpayClaimStatements(env, id, now));
   return (results.at(-1)!.results[0] as HitpayRow | undefined) ?? null;
 }
+/** Recover payment request evidence using the retained attempt identity. */
 export async function findHitpayRequest(
   env: Env,
   row: HitpayRow,
@@ -332,6 +340,7 @@ export async function findHitpayRequest(
   return verified;
 }
 
+/** Require consistent payment evidence before publishing confirmation. */
 export async function hitpayConfirmationGuard(
   env: Env,
   id: string,
@@ -376,6 +385,7 @@ export async function hitpayConfirmationGuard(
 
 // A durable receipt watermark closes the webhook-versus-active-claim race.
 // Each distinct authenticated receipt can wake eligible terminal work once.
+/** Reopen eligible retained payment review for authoritative reconciliation. */
 export function reopenHitpayReview(db: D1Database, id: string, now: number) {
   return db
     .prepare(

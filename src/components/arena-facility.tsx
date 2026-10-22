@@ -1,4 +1,5 @@
 import { FACILITY_EDGES } from "./arena-geometry";
+/** Render the illustrated arena facility. */
 export function ArenaFacility() {
   return (
     <svg

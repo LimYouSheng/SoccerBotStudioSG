@@ -14,6 +14,7 @@ const ROTATION: InstructorId[] = [
   "instructor4",
 ];
 // The starting instructor remains for the full session, including a crossing.
+/** Build the demo session representation for a selected slot. */
 export function demoSession(slot: Slot): Session | null {
   const minute = clockMinutes(slot.start);
   if (

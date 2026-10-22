@@ -52,6 +52,7 @@ function randomCode() {
   } while (value[0] >= 4294000000);
   return String(value[0] % 1000000).padStart(6, "0");
 }
+/** Bound an identity operation by its permitted duration. */
 async function bounded<T>(work: (signal: AbortSignal) => Promise<T>) {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -71,6 +72,7 @@ async function bounded<T>(work: (signal: AbortSignal) => Promise<T>) {
   }
 }
 
+/** Issue a rate-limited email challenge after validating bot proof. */
 export async function requestIdentityChallenge(
   request: Request,
   env: Env,
@@ -186,6 +188,7 @@ export async function requestIdentityChallenge(
   return { challengeId: id, expiresAt: expires, resendAfter: now + 60000 };
 }
 
+/** Verify the challenge and issue the permitted customer identity state. */
 export async function verifyIdentityChallenge(
   request: Request,
   env: Env,
@@ -246,6 +249,7 @@ export async function verifyIdentityChallenge(
   return readVerifiedIdentity(request, env, clock());
 }
 
+/** Read current verified identity without exposing unrelated customer records. */
 export async function readVerifiedIdentity(
   request: Request,
   env: Env,
@@ -272,6 +276,7 @@ export async function readVerifiedIdentity(
 
 // An authenticated email never authorizes a directory listing. Missing/shared
 // matches return no prefill. A future provider mapper supplies only exact matches.
+/** Resolve contact details only under current verified identity. */
 export function verifiedContact(email: string, matches: unknown) {
   const parsed = z
     .array(

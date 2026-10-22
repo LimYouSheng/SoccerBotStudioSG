@@ -20,6 +20,7 @@ import { ApiError } from "./policy";
 
 // Fixed identity endpoints share the physical transport owner. Their durable
 // admission is owned by identity-delivery, separately from SimplyBook accounting.
+/** Send the bounded identity-provider request with validated credentials. */
 export async function identityRequest(
   kind: "bot" | "email",
   secret: string,
@@ -137,6 +138,7 @@ export const nativeClientSchema = z
 export const nativeAdditionalSchema = z
   .object({ handle_invoice: z.literal(true) })
   .strict();
+/** Build the accepted provider fields for native session creation. */
 export function nativeBookFields(client: unknown, additional: unknown) {
   const a = nativeClientSchema.safeParse(client);
   const b = nativeAdditionalSchema.safeParse(additional);
@@ -210,6 +212,7 @@ export type ProviderSecrets = {
   publicKey: string;
   adminKey: string;
 };
+/** Validate provider credentials and forbidden-account protections. */
 export function providerSecrets(env: Env): ProviderSecrets {
   const read = (name: string) => {
     const value: unknown = Reflect.get(env, name);
@@ -231,6 +234,7 @@ export function providerSecrets(env: Env): ProviderSecrets {
 }
 
 // Only this module owns physical dispatch. No caller-supplied URL or RPC method.
+/** Dispatch allowlisted provider operations with bounded transport accounting. */
 export async function providerRequest(
   operation: ProviderOperation,
   secrets: ProviderSecrets,
@@ -722,6 +726,7 @@ export async function providerRequest(
 }
 
 // Retain only known validation field names, never upstream values or messages.
+/** Extract the permitted HitPay response fields for strict validation. */
 async function hitpayValidationFields(response: Response): Promise<string[]> {
   const reader = response.body?.getReader();
   if (!reader) return [];
@@ -772,6 +777,7 @@ async function hitpayValidationFields(response: Response): Promise<string[]> {
 
 // HitPay credentials are confined to one sandbox host; redirects never carry them.
 // The caller must durably reserve creation or a recovery claim before dispatch.
+/** Send a scoped HitPay sandbox request without exposing credentials or URLs. */
 export async function hitpayRequest(
   key: string,
   operation:

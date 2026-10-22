@@ -4,6 +4,7 @@ export const siteBasePath =
 if (siteBasePath !== "" && siteBasePath !== "/SoccerBotStudioSG")
   throw new Error("NEXT_PUBLIC_BASE_PATH must be empty or /SoccerBotStudioSG");
 
+/** Prefix local asset and route paths for the configured deployment. */
 export function sitePath(path: string): string {
   if (!path.startsWith("/") || path.startsWith("//"))
     throw new Error("Expected a local absolute site path");

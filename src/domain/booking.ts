@@ -102,6 +102,7 @@ export const totalCents = (draft: BookingDraft) =>
   draft.slots.reduce((sum, slot) => sum + sessionPrice(slot), 0);
 export const paymentLocked = (attempt: Attempt | null) =>
   !!attempt && ["checking", "pending", "late", "paid"].includes(attempt.status);
+/** Check whether two session selections overlap in time. */
 export function overlaps(a: Slot, b: Slot) {
   const duration = SESSION_MINUTES + ("native" in a && a.native ? 10 : 0);
   return (
@@ -112,9 +113,11 @@ export function overlaps(a: Slot, b: Slot) {
 }
 // Slots are Singapore wall times regardless of the device timezone. Browser time
 // is a demo clock only; a live adapter must revalidate with trusted server time.
+/** Check whether a session has started using Singapore wall time. */
 export function isElapsed(slot: Slot, now = Date.now()): boolean {
   return Date.parse(`${slot.date}T${slot.start}:00+08:00`) <= now;
 }
+/** Validate session selections against booking policy and availability. */
 export function selectionErrors(slots: Slot[], now = Date.now()): string[] {
   const today = todaySG(new Date(now));
   if (!slots.length) return ["Choose at least one session."];
@@ -164,6 +167,7 @@ export function selectionErrors(slots: Slot[], now = Date.now()): string[] {
     return ["Selected sessions must not overlap."];
   return [];
 }
+/** Return the first blocking error in the current booking draft. */
 export function draftError(draft: BookingDraft): string | null {
   if (!draftSchema.safeParse(draft).success || !draft.mode)
     return "Review your booking options.";
@@ -183,6 +187,7 @@ export function draftError(draft: BookingDraft): string | null {
   if (!draft.accepted) return "Review and accept the booking information.";
   return null;
 }
+/** Copy the draft fields retained in a booking snapshot. */
 export function snapshot(draft: BookingDraft): BookingDraft {
   return structuredClone({
     ...draft,
@@ -200,6 +205,7 @@ export const BOOKING_STEPS = [
   "confirmation",
 ] as const;
 export type BookingStep = (typeof BOOKING_STEPS)[number];
+/** Choose the permitted booking step from the current draft state. */
 export function guardedStep(
   requested: BookingStep,
   draft: BookingDraft,

@@ -19,6 +19,7 @@ const windowSchema = z.strictObject({
 });
 
 // Exact bytes are needed for the documented HMAC, before UTF-8/JSON parsing.
+/** Read a webhook body within the configured size and deadline limits. */
 async function rawBody(request: Request) {
   if (
     request.headers.get("content-type")?.split(";")[0].trim() !==
@@ -81,6 +82,7 @@ function shape(value: unknown, depth = 0): unknown {
 
 // Discovery ingress only. Unsupported event semantics never enqueue recovery,
 // inspect protected attempts or dispatch provider requests. A receipt is not payment.
+/** Authenticate and retain provider webhook evidence without claiming confirmation. */
 export async function captureWebhook(
   request: Request,
   env: Env,

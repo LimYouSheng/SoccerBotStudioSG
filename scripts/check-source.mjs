@@ -26,6 +26,7 @@ const offlineEntries = [
     specifier: "./confirmation",
   },
 ];
+/** Detect paths that collide on case-insensitive filesystems. */
 export function checkCaseCollisions(names) {
   const errors = [];
   const portablePaths = new Map();
@@ -46,10 +47,12 @@ export function checkCaseCollisions(names) {
   }
   return [...new Set(errors)];
 }
+/** Audit source ownership, imports and test controls before verification. */
 export function checkSource(root) {
   const errors = [],
     files = [],
     names = [];
+  /** Collect portable source paths while rejecting unexpected symbolic links. */
   function walk(dir) {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       if (ignored.has(entry.name)) continue;
@@ -137,6 +140,7 @@ export function checkSource(root) {
       true,
       file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
     );
+    /** Inspect syntax nodes for source ownership and import-policy violations. */
     function visit(node) {
       let moduleName;
       if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node))

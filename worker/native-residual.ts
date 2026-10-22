@@ -26,6 +26,7 @@ export const residualSchema = z
   );
 export type ResidualAuthority = z.infer<typeof residualSchema>;
 
+/** Classify native failures without exposing arbitrary provider details. */
 export function safeNativeFailure(error: unknown) {
   return error instanceof ApiError && /^[a-z][a-z0-9_]{0,100}$/.test(error.code)
     ? error.code
@@ -34,6 +35,7 @@ export function safeNativeFailure(error: unknown) {
       : "internal_error";
 }
 
+/** Validate the retained scope for inspecting or compensating residual effects. */
 export async function residualGrant(
   env: Env,
   scope: {
@@ -72,6 +74,7 @@ export async function residualGrant(
     throw new ApiError(409, "native_residual_grant_unavailable");
 }
 
+/** Handle residual booking effects within the explicitly authorized scope. */
 export async function recoverNativeResidual(options: {
   db: D1Database;
   scope: NativeScope;

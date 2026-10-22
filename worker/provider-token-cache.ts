@@ -21,11 +21,13 @@ const unhex = (value: string) => {
 // Account-owned encrypted cache only. No D1, RPC exposure, credentials in SQL,
 // sliding expiry, identity proof or booking authority. Two replaceable rows.
 export class ProviderTokenCache {
+  /** Initialize persistent encrypted token storage for the account. */
   constructor(private readonly sql: SqlStorage) {
     sql.exec(
       "CREATE TABLE IF NOT EXISTS provider_token_cache(family TEXT PRIMARY KEY,scope TEXT NOT NULL,issued_ms INTEGER NOT NULL,expires_ms INTEGER NOT NULL,iv TEXT NOT NULL,ciphertext TEXT NOT NULL)",
     );
   }
+  /** Derive encryption material and scope from account and credential identity. */
   private async binding(env: Env, family: ProviderFamily) {
     const secrets = providerSecrets(env);
     const identity = JSON.stringify([
@@ -58,6 +60,7 @@ export class ProviderTokenCache {
   remove(family: ProviderFamily) {
     this.sql.exec("DELETE FROM provider_token_cache WHERE family=?", family);
   }
+  /** Decrypt a matching unexpired token and reject invalid persistent records. */
   async load(
     env: Env,
     family: ProviderFamily,
@@ -122,6 +125,7 @@ export class ProviderTokenCache {
       return;
     }
   }
+  /** Persist the encrypted token with its original absolute expiry. */
   async save(env: Env, family: ProviderFamily, token: CachedProviderToken) {
     const { scope, key } = await this.binding(env, family);
     const iv = crypto.getRandomValues(new Uint8Array(12));
@@ -147,6 +151,7 @@ export class ProviderTokenCache {
     );
   }
 }
+/** Emit only the sanitized token family and cache outcome. */
 export function tokenCacheEvent(family: ProviderFamily, result: string) {
   console.log(
     JSON.stringify({

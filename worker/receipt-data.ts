@@ -6,6 +6,7 @@ import {
   receiptSchema,
   bookingDetailsSchema,
 } from "../src/domain/native-checkout";
+/** Build customer booking details from validated retained evidence. */
 export async function bookingDetailsData(
   env: Env,
   row: {
@@ -62,6 +63,7 @@ export async function bookingDetailsData(
   });
 }
 
+/** Build the authorized receipt representation from booking evidence. */
 export async function receiptData(
   env: Env,
   row: Parameters<typeof bookingDetailsData>[1],

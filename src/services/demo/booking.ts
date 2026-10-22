@@ -74,6 +74,7 @@ export const demoBookingModel = {
       };
     });
   },
+  /** Simulate checkout creation within the demo booking state. */
   checkout(draft: BookingDraft, previous: Attempt | null): Attempt {
     if (paymentLocked(previous))
       throw new BookingServiceError(
@@ -136,6 +137,7 @@ export const demoBookingModel = {
       checkUntil: Date.now() + 5000,
     };
   },
+  /** Resolve a demo attempt without creating provider effects. */
   resolve(attempt: Attempt, now = Date.now()): Attempt {
     if (attempt.status !== "checking" || now < attempt.checkUntil)
       return attempt;
@@ -176,6 +178,7 @@ export const demoBookingService = defineBookingService({
   async availability({ date }) {
     return demoBookingModel.availability(date);
   },
+  /** Simulate checkout creation within the demo booking state. */
   async checkout({ draft, previous }) {
     return demoBookingModel.checkout(draft, previous);
   },
@@ -185,6 +188,7 @@ export const demoBookingService = defineBookingService({
   async check({ attempt }) {
     return demoBookingModel.check(attempt);
   },
+  /** Resolve a demo attempt without creating provider effects. */
   async resolve({ attempt, now }) {
     return demoBookingModel.resolve(attempt, now);
   },

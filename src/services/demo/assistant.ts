@@ -2,6 +2,7 @@ import { ADDRESS, CONTACT } from "@/domain/catalog";
 import { dateLabel, money } from "@/domain/dates";
 import type { AssistantService } from "../contracts";
 export const demoAssistantService: AssistantService = {
+  /** Return a deterministic demo assistant response without external traffic. */
   reply(text, booking) {
     if (/cancel|change|reschedul|move|refund/i.test(text))
       return booking

@@ -80,6 +80,7 @@ const paths: Record<string, ReactNode> = {
     </>
   ),
 };
+/** Render the selected icon with shared accessibility attributes. */
 export function Icon({
   name,
   className = "",

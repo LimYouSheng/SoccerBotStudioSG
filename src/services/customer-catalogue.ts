@@ -11,6 +11,7 @@ export interface CustomerCatalogueService {
   peek?(): CustomerCatalogue | undefined;
 }
 const transport: CustomerCatalogueService = {
+  /** Fetch customer catalogue data within the supplied request context. */
   async read(signal) {
     const unavailable = () =>
       new BookingServiceError(
@@ -62,6 +63,7 @@ const transport: CustomerCatalogueService = {
 
 // Public display metadata only. A page reload gets a new cache; authentication
 // never becomes a cache key and this snapshot cannot authorize a booking.
+/** Create the protected customer catalogue service. */
 export function createCustomerCatalogueService(): CustomerCatalogueService & {
   peek(): CustomerCatalogue | undefined;
 } {
@@ -78,6 +80,7 @@ export function createCustomerCatalogueService(): CustomerCatalogueService & {
   }
   return {
     peek,
+    /** Fetch customer catalogue data within the supplied request context. */
     async read(signal) {
       signal.throwIfAborted();
       const cached = peek();

@@ -12,6 +12,7 @@ import {
 } from "./hitpay-contract";
 
 const maximumBytes = 32768;
+/** Read the webhook body within its size and time limits. */
 async function rawBody(request: Request) {
   if (!request.body) throw new ApiError(400, "hitpay_body_required");
   const reader = request.body.getReader();
@@ -46,6 +47,7 @@ async function rawBody(request: Request) {
 }
 // Separate event-webhook contract. No legacy payload HMAC, timestamp assumption,
 // or trusted payment status. Authenticated identity only schedules a server read.
+/** Authenticate and retain webhook evidence before scheduling payment recovery. */
 export async function receiveHitpayWebhook(request: Request, env: Env) {
   if (request.method !== "POST")
     throw new ApiError(405, "operation_unavailable");

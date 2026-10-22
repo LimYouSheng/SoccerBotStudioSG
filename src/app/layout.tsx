@@ -15,6 +15,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 export const viewport: Viewport = { themeColor: "#050a2f" };
+/** Wrap all routes in the shared site and booking providers. */
 export default function RootLayout({
   children,
 }: {

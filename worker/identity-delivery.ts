@@ -31,6 +31,7 @@ function secret(env: Env, name: string) {
     throw unavailable();
   return value;
 }
+/** Resolve the authorized email-delivery window for this request. */
 async function windowFor(env: Env, now: number, reserve = false) {
   const mode: unknown = Reflect.get(env, "IDENTITY_DELIVERY");
   if (mode === "ongoing") {
@@ -66,6 +67,7 @@ async function windowFor(env: Env, now: number, reserve = false) {
 }
 // Once provisioned, the proof lifetime also bounds identity reads/restoration.
 // This is developer test authority, separate from the immutable 90-day expiry.
+/** Require a currently open identity-proof window. */
 export async function assertIdentityProofOpen(env: Env) {
   const mode: unknown = Reflect.get(env, "IDENTITY_DELIVERY");
   if (mode === "ongoing") {
@@ -78,6 +80,7 @@ export async function assertIdentityProofOpen(env: Env) {
   if (proof) await windowFor(env, Date.now());
 }
 // Bounded before parsing, and never includes request bodies or provider errors in logs.
+/** Read and validate the bounded identity request payload. */
 export async function inputBody(request: Request): Promise<unknown> {
   if (
     request.headers.get("content-type")?.split(";")[0].trim() !==
@@ -114,6 +117,7 @@ export async function inputBody(request: Request): Promise<unknown> {
     void reader.cancel().catch(() => {});
   }
 }
+/** Dispatch authorized identity operations under delivery and abuse limits. */
 export async function identityDelivery(
   request: Request,
   env: Env,
@@ -154,6 +158,7 @@ export async function identityDelivery(
   const sourceHash = await keyedHash(pepper, ["delivery-source", source]);
   const resendKey = secret(env, "RESEND_API_KEY");
   const botKey = secret(env, "TURNSTILE_SECRET");
+  /** Dispatch the authorized identity action within its delivery window. */
   async function dispatch(
     kind: "bot" | "email",
     id: string,

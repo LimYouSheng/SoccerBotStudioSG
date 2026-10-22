@@ -1,5 +1,6 @@
 import postcss from "postcss";
 import * as cssTree from "css-tree";
+/** Validate stylesheet ownership and reject prohibited CSS patterns. */
 export function checkCss(text, runtime = "") {
   const errors = [];
   let root;

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { releaseProfile } from "./release-profile.mjs";
+/** Require evidence from each configured browser engine. */
 export function validateEngines(projects) {
   const expected = [
     {
@@ -17,6 +18,7 @@ export function validateEngines(projects) {
     ? []
     : ["Actual browser engine/retry matrix differs"];
 }
+/** Validate complete browser results without accepting skips or retries. */
 export function validateResults(
   kind,
   report,
@@ -95,6 +97,7 @@ export function validateResults(
       ) !== JSON.stringify([...projects].sort())
     )
       errors.push("Browser project matrix differs");
+    /** Collect nested browser test results for completeness checks. */
     function walk(suites) {
       for (const suite of suites || []) {
         for (const spec of suite.specs || []) {

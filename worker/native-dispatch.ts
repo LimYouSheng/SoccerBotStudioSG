@@ -4,6 +4,7 @@ import { ApiError } from "./policy";
 
 // One transaction claims the first provider write. Result gates also
 // appear in SQL: a failed predicate cannot authorize a later statement.
+/** Atomically claim native dispatch before provider writes. */
 export async function claimNativeDispatch(
   db: D1Database,
   id: string,
@@ -85,6 +86,7 @@ export async function claimNativeDispatch(
 
 // Every later batch effect combines fresh authority and one durable reservation.
 // Unknown effects cannot be inserted twice, including after process loss.
+/** Claim one native effect under the retained attempt fence. */
 export async function claimNativeEffect(
   db: D1Database,
   id: string,

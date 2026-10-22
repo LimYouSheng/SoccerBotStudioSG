@@ -1,6 +1,7 @@
 "use client";
 import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { Icon } from "./icon";
+/** Manage modal focus, dismissal and restoration for shared dialogs. */
 export function Dialog({
   title,
   onClose,

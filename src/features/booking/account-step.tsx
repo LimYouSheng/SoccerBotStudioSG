@@ -8,6 +8,7 @@ import type { CustomerChallenge } from "@/services/contracts";
 import { useBooking } from "./provider";
 import { EmailBotProof } from "./email-bot-proof";
 import { DetailsStep } from "./details-step";
+/** Manage guest or verified-account entry into the booking flow. */
 export function AccountStep() {
   const { update, identityService, rebookingError, retryRebooking } =
       useBooking(),
@@ -51,6 +52,7 @@ export function AccountStep() {
     setBotToken("");
     setBotGeneration((value) => value + 1);
   }
+  /** Run an identity action with shared busy and error handling. */
   async function perform(work: (signal: AbortSignal) => Promise<void>) {
     if (active.current) return;
     refreshing.current?.abort();
@@ -70,6 +72,7 @@ export function AccountStep() {
       }
     }
   }
+  /** Validate the chosen identity path before advancing the booking flow. */
   async function proceed(
     signal: AbortSignal,
     verifiedEmail?: string,

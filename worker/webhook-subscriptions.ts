@@ -30,6 +30,7 @@ const canonical = (entries: Entry[]) =>
 
 // Operator-only, one create and one delete. All physical traffic uses the same
 // durable account budget. Unknown effects retain their phase and never replay.
+/** Manage provider subscriptions only under a retained operation grant. */
 export async function manageWebhookSubscription(
   env: Env,
   provider: ProviderSession,

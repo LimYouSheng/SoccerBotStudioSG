@@ -39,12 +39,14 @@ export type ReadOptions = {
   lastDispatchMs?: () => number;
   cacheOnly?: boolean;
 };
+/** Check whether a public calendar read window is configured. */
 export function hasPublicCalendarWindow(env: Env) {
   return (
     liveCustomerAccess(env) ||
     Boolean(Reflect.get(env, "PUBLIC_CALENDAR_WINDOW_JSON"))
   );
 }
+/** Validate the account and limits for public calendar access. */
 export function calendarWindow(options: ReadOptions) {
   const { env } = options;
   const p = policy(env);
@@ -128,6 +130,7 @@ export function calendarWindow(options: ReadOptions) {
 
 // The same read-only window admits session details and slots. It creates no
 // customer-specific write authority; checkout still requires its exact grant.
+/** Read the service catalogue within the public display window. */
 export async function windowCatalogue(options: ReadOptions) {
   const { window, control, assertOpen } = calendarWindow(options);
   if (!options.cacheOnly) await options.provider.identity(options.env, control);
@@ -156,6 +159,7 @@ export async function windowCatalogue(options: ReadOptions) {
   });
 }
 
+/** Build calendar availability within the permitted provider query window. */
 export async function windowCalendar(
   options: ReadOptions & {
     month: string;
@@ -279,6 +283,7 @@ export async function windowCalendar(
   });
 }
 
+/** Resolve session availability within the validated display window. */
 export async function windowAvailability(
   options: ReadOptions & { date: string; serviceId: string; fresh?: boolean },
 ) {
@@ -291,6 +296,7 @@ export async function windowAvailability(
   return nativeAvailabilitySchema.parse(day);
 }
 
+/** Serve a bounded public calendar read through the account's read controls. */
 export async function publicCalendar(options: ReadOptions & { month: string }) {
   const raw = await windowCalendar(options);
   const { window } = calendarWindow(options);

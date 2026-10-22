@@ -17,10 +17,12 @@ type Trace = {
   d1Execution: { statements: number; sqlDurationMs: number; colos: string[] };
 };
 const context = new AsyncLocalStorage<Trace>();
+/** Read the active asynchronous trace correlation ID. */
 export function traceId() {
   return context.getStore()?.correlationId || crypto.randomUUID();
 }
 // Fixed metadata only. Never include upstream URLs, headers or body text.
+/** Record an allowlisted HitPay failure classification. */
 export function traceHitpayFailure(
   operation: "create" | "read" | "search",
   status: number,
@@ -38,10 +40,12 @@ export function traceHitpayFailure(
     }),
   );
 }
+/** Set the response status on the active diagnostic trace. */
 export function traceStatus(status: number) {
   const trace = context.getStore();
   if (trace) trace.httpStatus = status;
 }
+/** Measure an operation while preserving its result and error behavior. */
 export function measure<T>(
   span: Span,
   operation: () => T,
@@ -82,6 +86,7 @@ export function measure<T>(
     throw error;
   }
 }
+/** Run an operation with isolated sanitized diagnostic accounting. */
 export async function traced<T>(
   correlationId: string,
   boundary: "http" | "coordinator" | "scheduled",
@@ -132,11 +137,13 @@ export async function traced<T>(
 }
 // Preserve native receivers and promise identities. Only terminal D1 calls are
 // timed; prepare/bind/session chaining never logs SQL or values.
+/** Wrap storage operations to measure D1 calls without logging row data. */
 export function instrumentStorage<T extends object>(
   target: T,
   span: "storage" | "d1" = "storage",
 ): T {
   return new Proxy(target, {
+    /** Intercept storage methods while preserving their receiver and results. */
     get(object, key) {
       const member: unknown = Reflect.get(object, key);
       if (typeof member !== "function") return member;
@@ -164,6 +171,7 @@ export function instrumentStorage<T extends object>(
 }
 
 // D1 metadata is optional (first/raw do not expose it). Never inspect row data.
+/** Collect bounded SQL timing and serving-colo metadata from D1 results. */
 function captureD1Execution(value: unknown, trace: Trace) {
   for (const result of Array.isArray(value) ? value : [value]) {
     if (!result || typeof result !== "object" || !("meta" in result)) continue;
@@ -194,6 +202,7 @@ function captureD1Execution(value: unknown, trace: Trace) {
 }
 
 // Timings include network AND upstream processing. Headers timing is not RTT.
+/** Create sanitized header and body timing for one provider request. */
 export function providerTransportTiming(
   operation: "public_auth" | "admin_auth" | "simplybook" | "hitpay_create",
 ) {
@@ -204,6 +213,7 @@ export function providerTransportTiming(
     headers() {
       headersMs = Math.max(0, performance.now() - started);
     },
+    /** Finalize the sanitized provider transport timing record. */
     finish(failed: boolean) {
       const durationMs = Math.max(0, performance.now() - started);
       console.log(

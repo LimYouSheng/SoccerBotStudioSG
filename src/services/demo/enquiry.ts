@@ -3,6 +3,7 @@ import { validEmail, validPhone } from "@/domain/contact";
 import { isDate, todaySG } from "@/domain/dates";
 import type { EnquiryService } from "../contracts";
 export const demoEnquiryService: EnquiryService = {
+  /** Simulate enquiry submission without sending an external notification. */
   async submit(value) {
     if (
       value.name.trim().length < 2 ||

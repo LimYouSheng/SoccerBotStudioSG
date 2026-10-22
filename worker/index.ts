@@ -76,6 +76,7 @@ const headers = {
   "Referrer-Policy": "no-referrer",
 };
 export default {
+  /** Run due recovery and configured display warming from the scheduler. */
   async scheduled(event: ScheduledController, env: Env) {
     event.noRetry();
     try {
@@ -102,6 +103,7 @@ export default {
       console.error(JSON.stringify({ event: "display_refresh_unavailable" }));
     }
   },
+  /** Route requests through environment, origin and operation-authority checks. */
   async fetch(request: Request, env: Env): Promise<Response> {
     const requestStarted = performance.now();
     const correlationId = crypto.randomUUID(),

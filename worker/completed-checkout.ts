@@ -4,6 +4,7 @@ import { ApiError } from "./policy";
 
 // Called in the account's foreground queue. Only explicit confirmed-page exit
 // releases the current grant; ownership, payment and receipt evidence stay put.
+/** Release an eligible completed checkout without erasing unresolved outcomes. */
 export async function dismissCompletedCheckout(
   request: Request,
   env: Env,

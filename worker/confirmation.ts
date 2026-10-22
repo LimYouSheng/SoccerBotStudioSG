@@ -25,6 +25,7 @@ export type CheckingWindow = {
   nextCheckMs: number;
   remaining: number;
 };
+/** Resolve protected confirmation from retained and reconciled evidence. */
 export async function confirmation(
   request: Request,
   env: Env,
@@ -119,6 +120,7 @@ export async function confirmation(
 }
 // Shared decision mapping. Caller supplies independently established authority:
 // authenticated customer access, or a current bounded internal recovery claim.
+/** Evaluate retained confirmation evidence without trusting browser claims. */
 export function decideStoredConfirmation(
   row: StoredAttempt,
   access: Access,
@@ -205,6 +207,7 @@ export function decideStoredConfirmation(
 }
 
 // A protected context/read boundary, not an invented native preparation method.
+/** Build protected checkout context for handoff and recovery presentation. */
 export async function checkoutContext(
   request: Request,
   env: Env,

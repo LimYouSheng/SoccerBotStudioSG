@@ -11,6 +11,7 @@ type Window = {
   holdChecked?: number;
 };
 type ServerWindow = { deadlineMs: number; nextCheckMs: number };
+/** Derive the bounded checking window from protected checkout context. */
 function windowFor(id: string, deadline = Date.now() + 600000): Window {
   try {
     const value = JSON.parse(
@@ -44,6 +45,7 @@ function save(id: string, window: Window) {
     /* No capability or decision is persisted. */
   }
 }
+/** Coordinate bounded polling, focus refresh and hold-expiry checks. */
 export function useConfirmationChecking(
   attemptId: string,
   sessionRevision = 0,
@@ -96,6 +98,7 @@ export function useConfirmationChecking(
     let paymentReceived = false;
     let customerConfirmation: import("@/services/contracts").CheckoutContext["customerConfirmation"];
     let expired = false;
+    /** Schedule the next bounded confirmation check for the active attempt. */
     function schedule() {
       clearTimeout(timer);
       if (!active || document.hidden) return;
@@ -123,6 +126,7 @@ export function useConfirmationChecking(
         ),
       );
     }
+    /** Reserve a confirmation check within the attempt's polling limits. */
     function reserve(recheck: boolean) {
       const claim = () => {
         const shared = windowFor(attemptId, serverDeadline);
@@ -173,6 +177,7 @@ export function useConfirmationChecking(
             .catch(() => claim())
         : claim();
     }
+    /** Read confirmation without overlapping requests or reviving terminal state. */
     async function poll(trigger?: "focus" | "hold") {
       const recheck =
         terminal &&

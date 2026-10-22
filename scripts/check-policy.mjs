@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import YAML from "yaml";
 import { checkPagesPolicy } from "./check-pages-policy.mjs";
+/** Validate runtime pins, lockfile integrity and verification policy. */
 export function checkPolicy({
   pkg,
   lock,
@@ -134,6 +135,7 @@ export function checkPolicy({
   errors.push(...checkPagesPolicy(doc));
   return errors;
 }
+/** Collect the configuration files consumed by the policy checker. */
 export function policyInputs(root) {
   const read = (name) => readFileSync(`${root}/${name}`, "utf8");
   return {

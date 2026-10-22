@@ -6,6 +6,7 @@ import { receiptData } from "./receipt-data";
 
 // Export authorization is rechecked for every read, independent of the UI's
 // confirmed state. No provider calls, cookie forwarding or draft authority.
+/** Authorize receipt access and return validated booking details. */
 export async function bookingReceipt(
   request: Request,
   env: Env,

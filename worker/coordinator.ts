@@ -90,6 +90,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
   private get sql() {
     return instrumentStorage(this.ctx.storage.sql);
   }
+  /** Initialize durable account coordination and recover interrupted transport accounting. */
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
     this.provider = new ProviderSession(this.sql);
@@ -126,6 +127,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       "CREATE INDEX IF NOT EXISTS admissions_unfinished ON admissions(finished) WHERE finished=0",
     );
   }
+  /** Reconcile interrupted transport accounting without replaying uncertain writes. */
   private recoverInterruptedTransports() {
     const now = Date.now();
     this.ctx.storage.transactionSync(() => {
@@ -148,6 +150,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       );
     });
   }
+  /** Reserve provider capacity under the account's durable admission limits. */
   admit(
     recovery: boolean,
     customer = false,
@@ -230,6 +233,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       return { allowed: true, id, used: budget.used + 1 };
     });
   }
+  /** Provide transport admission and completion accounting to provider operations. */
   private providerControl(
     recovery = false,
     customer = false,
@@ -315,6 +319,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       pause: () => this.finish("", 60000),
     };
   }
+  /** Execute an authorized provider read through account coordination. */
   async providerRead(
     operation:
       "provider_identity" | "historical_comparison" | "native_field_discovery",
@@ -390,6 +395,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
   }
   // A one-use operator grant owns this read-only calendar range. Customer
   // grants still admit only their two exact dates after operator selection.
+  /** Coordinate a scoped provider webhook-subscription operation. */
   async webhookSubscription(
     capabilityHash: string,
     action: "create" | "cleanup",
@@ -408,6 +414,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       ),
     );
   }
+  /** Run the bounded native discovery operation under its retained grant. */
   async nativeDiscoveryProbe(
     rawScope: unknown,
     expiresMs: number,
@@ -608,6 +615,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       }
     });
   }
+  /** Read the customer catalogue through the serialized provider queue. */
   async customerCatalogue(
     scope: { startingUsed: number; maxCalls: number; expiresMs: number },
     correlationId: string,
@@ -660,6 +668,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       };
     });
   }
+  /** Read native slot availability under the granted operation scope. */
   async nativeAvailability(
     scope: { date: string; serviceId: string; cookie: string; fresh?: boolean },
     correlationId: string,
@@ -719,6 +728,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       JSON.stringify([binding, p.SOURCE_REVISION, p.PREMIUM_SERVICE_ID]),
     );
   }
+  /** Serve a valid display snapshot or queue a provider calendar read. */
   async publicCalendar(month: string, correlationId: string) {
     return rpcOutcome(() =>
       traced(correlationId, "coordinator", async () => {
@@ -737,6 +747,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       }),
     );
   }
+  /** Filter cached display dates using the current booking cutoff. */
   private filterDisplayCalendar(
     value: Awaited<ReturnType<typeof publicCalendar>>,
   ) {
@@ -774,6 +785,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       }),
     );
   }
+  /** Refresh display snapshots and eligible tokens through the display queue. */
   async warmDisplay() {
     if (!this.displayWarmingEnabled()) return;
     const store = this.snapshots();
@@ -811,6 +823,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     }
   }
 
+  /** Bind calendar reads to this account's provider and controls. */
   private calendarReadOptions() {
     return {
       env: this.env,
@@ -840,6 +853,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       ),
     );
   }
+  /** Coordinate authenticated dismissal of a completed attempt. */
   async dismissCompleted(
     scope: { attemptId: string; cookie: string },
     correlationId: string,
@@ -858,6 +872,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       ),
     );
   }
+  /** Read catalogue data within the bounded calendar window. */
   async windowCatalogue(correlationId: string) {
     return rpcOutcome(() =>
       traced(correlationId, "coordinator", async () => {
@@ -876,6 +891,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     );
   }
 
+  /** Read native calendar evidence under the authorized scope. */
   async nativeCalendar(
     scope: { month: string; serviceId: string; cookie: string },
     correlationId: string,
@@ -919,6 +935,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     );
     return rpcOutcome(() => pending);
   }
+  /** Serialize customer checkout preparation and return a safe RPC outcome. */
   async prepareCustomer(
     scope: { cookie: string; value: unknown },
     correlationId: string,
@@ -939,6 +956,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     );
     return rpcOutcome(() => pending);
   }
+  /** Coordinate booking holds while retaining durable effect evidence. */
   async holdCustomer(
     scope: {
       attemptId: string;
@@ -1078,6 +1096,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       ),
     );
   }
+  /** Serialize native checkout under the original attempt identity. */
   async nativeCheckout(
     scope: { attemptId: string; cookie: string; holding?: boolean },
     correlationId: string,
@@ -1101,6 +1120,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     );
     return rpcOutcome(() => pending);
   }
+  /** Serialize hosted payment creation for the retained booking hold. */
   async hitpayPayment(
     scope: { attemptId: string; cookie: string },
     correlationId: string,
@@ -1133,6 +1153,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     );
     await this.ctx.storage.setAlarm(Date.now());
   }
+  /** Process retained payment wakeups without discarding newer generations. */
   async alarm() {
     const wake = this.sql
       .exec<{
@@ -1155,6 +1176,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     if (this.sql.exec("SELECT 1 FROM payment_wakeups LIMIT 1").toArray().length)
       await this.ctx.storage.setAlarm(Date.now());
   }
+  /** Run HitPay reconciliation with recovery priority and sanitized tracing. */
   async hitpayRecovery(attemptId: string, correlationId: string) {
     const key = await confirmationTraceKey(attemptId);
     const trace = createConfirmationTrace(correlationId);
@@ -1179,6 +1201,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       finishConfirmationTrace(trace, key, "recovery", failed);
     }
   }
+  /** Queue authoritative readback for an ongoing customer attempt. */
   async ongoingRecovery(attemptId: string, correlationId: string) {
     const run = this.providerQueue.run("recovery", async () => {
       const due = await ongoingReadbackDue(this.env, Date.now(), attemptId);
@@ -1200,6 +1223,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     });
     return run;
   }
+  /** Reconcile a native attempt within its bounded recovery grant. */
   async nativeRecovery(
     scope: {
       attemptId: string;
@@ -1443,6 +1467,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
     policy(this.env);
     return this.providerAccounting();
   }
+  /** Report bounded discovery readiness without exposing provider credentials. */
   discoveryReadiness() {
     const p = policy(this.env),
       now = Date.now();
@@ -1462,6 +1487,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       },
     };
   }
+  /** Read the account's retained provider admission counters. */
   private providerAccounting() {
     const used =
       this.sql
@@ -1480,6 +1506,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       recoveryReserve: 16,
     };
   }
+  /** Finalize retained transport accounting for the admitted operation. */
   finish(
     id: string,
     cooldownMs = 0,
@@ -1515,6 +1542,7 @@ export class SoccerBotAccountCoordinator extends DurableObject<Env> {
       );
     });
   }
+  /** Claim an eligible refresh without exceeding the retained admission scope. */
   claimRefresh(key: string, generation: number) {
     if (
       !/^(confirmation:[a-f0-9-]{36}|token:(public|admin))$/.test(key) ||

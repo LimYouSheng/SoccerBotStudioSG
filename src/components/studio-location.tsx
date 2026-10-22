@@ -6,6 +6,7 @@ import { Icon } from "./icon";
 const mapQuery = encodeURIComponent(
   `${LOCATION.building}, ${LOCATION.street}, ${LOCATION.postal}`,
 );
+/** Present the studio address and on-demand location dialog. */
 export function StudioLocation() {
   const [open, setOpen] = useState(false);
   return (

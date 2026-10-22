@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { createBookingMechanism } from "../worker/tests/booking-mechanism-fixture.mjs";
 import { loadProvider } from "./load-provider.mjs";
+/** Summarize measured samples without inventing missing observations. */
 export function distribution(values) {
   if (!values.length) return { count: 0, p50: null, p95: null, max: null };
   const sorted = [...values].sort((a, b) => a - b);
@@ -12,6 +13,7 @@ export function distribution(values) {
     max: sorted.at(-1),
   };
 }
+/** Define the bounded baseline and fault workload cohorts. */
 export function campaign(smoke = false) {
   return (smoke ? [1, 3] : [1, 3, 5, 10]).flatMap((customers) =>
     ["baseline", "faults"].map((profile) => ({
@@ -23,11 +25,13 @@ export function campaign(smoke = false) {
     })),
   );
 }
+/** Define overload cohorts separately from all-success capacity expectations. */
 export function overloadCampaign() {
   return campaign()
     .filter((c) => c.customers === 10)
     .map((c) => ({ ...c, admission: "overload" }));
 }
+/** Run an isolated customer cohort and retain timing and effect evidence. */
 export async function runCohort(config) {
   assert.ok([1, 3, 5, 10].includes(config.customers));
   assert.ok(["baseline", "faults"].includes(config.profile));
@@ -43,6 +47,7 @@ export async function runCohort(config) {
   const m = await createBookingMechanism({
     displayWarming: true,
     respond: provider.respond,
+    /** Collect runtime diagnostics used to evaluate the load cohort. */
     onLog(line) {
       try {
         const event = JSON.parse(line);
@@ -68,6 +73,7 @@ export async function runCohort(config) {
     assertions: [],
     externalNetworkRequests: 0,
   };
+  /** Dispatch a measured customer request into the isolated load-test Worker. */
   async function request(kind, path, init = {}) {
     assert.ok(
       performance.now() - started < config.deadlineMs,

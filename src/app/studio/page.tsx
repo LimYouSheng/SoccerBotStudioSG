@@ -2,6 +2,7 @@ import { BookingLink } from "@/components/booking-navigation";
 import { studioMedia } from "@/content/media";
 import { Icon } from "@/components/icon";
 export const metadata = { title: "The studio" };
+/** Present the studio facilities using the approved media catalogue. */
 export default function Studio() {
   return (
     <section className="studio-showcase" aria-labelledby="studio-title">

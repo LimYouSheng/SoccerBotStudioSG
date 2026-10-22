@@ -17,6 +17,7 @@ import {
 import type { CheckoutContext } from "@/services/contracts";
 import { money } from "@/domain/dates";
 import { useConfirmationChecking } from "./confirmation-checking";
+/** Present protected checkout status without trusting browser payment claims. */
 export function ProtectedConfirmation({
   attemptId,
   checkoutMode,
@@ -450,6 +451,7 @@ export function ProtectedConfirmation({
   );
 }
 
+/** Render the retained session summary while confirmation is unresolved. */
 function ConfirmationSummary({
   summary,
 }: {

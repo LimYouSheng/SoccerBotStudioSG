@@ -26,8 +26,10 @@ const ignored = new Set([
   "coverage",
   "__pycache__",
 ]);
+/** Fingerprint verification inputs to bind receipts to their source. */
 function fingerprint() {
   const hash = createHash("sha256");
+  /** Collect verification input hashes while excluding generated artifacts. */
   function visit(dir) {
     for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) =>
       a.name.localeCompare(b.name),

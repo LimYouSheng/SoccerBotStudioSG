@@ -182,24 +182,27 @@ function pending(
     : { status: "pending", reason };
 }
 
-/**
+/*
  * Decisions only: no I/O, clocks, persistence, mutation, retries or polling.
  * The caller must authenticate/revoke access, load immutable approved intent,
  * and normalize complete authenticated provider reads independently of the client.
  * Matching these runtime shapes does NOT establish that provenance.
  * All results contain only closed status/reason codes; denied callers learn no IDs.
  */
+/** Decide confirmation from supplied evidence without establishing its provenance. */
 export function verifyConfirmation(value: unknown): ConfirmationDecision {
   return verifyEvidence(value);
 }
 // Historical presentation only. Access is still checked at nowMs; evidence is
 // checked at its recorded time. This decision must never authorize exports.
+/** Validate retained confirmation evidence against its original context. */
 export function verifyRecordedConfirmation(
   value: unknown,
   recordedAtMs: number,
 ): ConfirmationDecision {
   return verifyEvidence(value, recordedAtMs);
 }
+/** Require consistent booking and payment evidence before confirmation. */
 function verifyEvidence(
   value: unknown,
   recordedAtMs?: number,

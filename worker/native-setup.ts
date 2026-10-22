@@ -38,6 +38,7 @@ function shape(value: unknown) {
   };
 }
 
+/** Inspect provider setup evidence against the required booking contract. */
 export async function inspectNativeSetup(
   exchange: NativeExchange,
   from: string,
@@ -98,6 +99,7 @@ export async function inspectNativeSetup(
   }
 }
 
+/** Normalize provider webhook subscription evidence for review. */
 export async function subscriptionSnapshot(raw: unknown) {
   const parsed = z
     .array(
@@ -151,6 +153,7 @@ export async function subscriptionSnapshot(raw: unknown) {
 
 // Account response diagnostics only. Retain field names/types, never IDs, URLs,
 // event values, secrets or contacts. This is not normalized subscription proof.
+/** Validate the supported webhook subscription response structure. */
 export function webhookSubscriptionStructure(raw: unknown): unknown {
   const known = new Set([
     "id",

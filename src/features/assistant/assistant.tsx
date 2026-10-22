@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/icon";
 import { services } from "@/services";
 import { useBooking } from "@/features/booking/provider";
+/** Manage the customer assistant conversation and presentation. */
 export function Assistant() {
   const [open, setOpen] = useState(false),
     [text, setText] = useState(""),

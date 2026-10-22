@@ -27,6 +27,7 @@ function PendingConfirmationHeading({ label }: { label: string }) {
   );
 }
 
+/** Present a pending booking without claiming final confirmation. */
 export function PendingConfirmation({
   label = "Checking your booking…",
   children,
@@ -51,6 +52,7 @@ export function PendingConfirmation({
   );
 }
 
+/** Select the appropriate confirmation presentation for the booking state. */
 export function ConfirmationStep() {
   const { attempt, reset } = useBooking(),
     router = useRouter(),
@@ -71,6 +73,7 @@ export function ConfirmationStep() {
     />
   );
 }
+/** Render confirmed booking details and authorized export actions. */
 export function BookingConfirmation({
   booking,
   preview = false,

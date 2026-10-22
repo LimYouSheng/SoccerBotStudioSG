@@ -11,6 +11,7 @@ function subscribe(notify: () => void) {
 }
 const firstVisit = () => safeRead(KEY, true) !== true;
 const serverVisit = () => false;
+/** Present the player application prompt and its dismissal control. */
 export function PlayerAppPrompt() {
   const unseen = useSyncExternalStore(subscribe, firstVisit, serverVisit);
   const [dismissed, setDismissed] = useState(false);
